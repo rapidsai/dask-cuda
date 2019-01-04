@@ -22,7 +22,6 @@ def cuda_visible_devices(i, visible=None):
         try:
             visible = list(map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(",")))
         except KeyError:
-            n = get_n_gpus()
             visible = list(range(get_n_gpus()))
 
     L = visible[i:] + visible[:i]
