@@ -20,7 +20,7 @@ def cuda_visible_devices(i, visible=None):
     """
     if visible is None:
         try:
-            visible = list(map(int, os.environ['CUDA_VISIBLE_DEVICES'].split(',')))
+            visible = list(map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(",")))
         except KeyError:
             n = get_n_gpus()
             visible = list(range(get_n_gpus()))
@@ -31,8 +31,12 @@ def cuda_visible_devices(i, visible=None):
 
 class LocalCUDACluster(LocalCluster):
     def __init__(
-        self, n_workers=None, threads_per_worker=1, processes=True,
-        memory_limit=None, **kwargs
+        self,
+        n_workers=None,
+        threads_per_worker=1,
+        processes=True,
+        memory_limit=None,
+        **kwargs,
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
@@ -70,7 +74,8 @@ class LocalCUDACluster(LocalCluster):
 
         yield [
             self._start_worker(
-                **self.worker_kwargs, env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)}
+                **self.worker_kwargs,
+                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             )
             for i in range(n_workers)
         ]

@@ -4,7 +4,7 @@ import os
 
 def get_n_gpus():
     try:
-        return len(os.environ['CUDA_VISIBLE_DEVICES'].split(','))
+        return len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
     except KeyError:
         return _n_gpus_from_nvidia_smi()
 
