@@ -12,3 +12,15 @@ Currently Includes
 
 -   `LocalCUDACluster`: a subclass of `dask.distributed.LocalCluster` that
     eases deployment on single-node multi-GPU systems.
+
+
+Example
+-------
+
+```python
+from dask_cuda import LocalCUDACluster
+from dask.distributed import Client
+
+cluster = LocalCUDACluster()
+client = Client(cluster)
+```
