@@ -35,7 +35,7 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit=None,
-        **kwargs,
+        **kwargs
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
