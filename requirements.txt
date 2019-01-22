@@ -1,2 +1,2 @@
 dask
-distributed
+distributed>=1.25.2
