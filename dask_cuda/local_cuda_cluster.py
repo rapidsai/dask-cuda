@@ -13,7 +13,7 @@ def cuda_visible_devices(i, visible=None):
 
     Examples
     --------
-    >>> cuda_viskble_devices(0, range(4))
+    >>> cuda_visible_devices(0, range(4))
     '0,1,2,3'
     >>> cuda_visible_devices(3, range(8))
     '3,4,5,6,7,0,1,2'
