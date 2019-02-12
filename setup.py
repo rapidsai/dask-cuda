@@ -25,4 +25,8 @@ setup(
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=open('requirements.txt').read().strip().split('\n'),
+    entry_points='''
+        [console_scripts]
+        dask-cuda-worker=dask_cuda.dask_cuda_worker:go
+      ''',
 )
