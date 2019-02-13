@@ -25,8 +25,6 @@ def test_cuda_visible_devices(loop):
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
-                    "--nprocs",
-                    "4",
                     "--no-bokeh",
                 ]
             ) as worker:

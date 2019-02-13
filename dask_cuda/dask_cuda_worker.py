@@ -24,6 +24,7 @@ from distributed.proctitle import (
 )
 
 from .local_cuda_cluster import cuda_visible_devices
+from .utils import get_n_gpus
 
 from toolz import valmap
 from tornado.ioloop import IOLoop, TimeoutError
@@ -56,15 +57,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="private key file for TLS (in PEM format)",
 )
 @click.option(
-    "--worker-port",
-    type=int,
-    default=0,
-    help="Serving computation port, defaults to random",
-)
-@click.option(
-    "--nanny-port", type=int, default=0, help="Serving nanny port, defaults to random"
-)
-@click.option(
     "--bokeh-port", type=int, default=0, help="Bokeh port, defaults to random port"
 )
 @click.option(
@@ -74,20 +66,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     show_default=True,
     required=False,
     help="Launch Bokeh Web UI",
-)
-@click.option(
-    "--listen-address",
-    type=str,
-    default=None,
-    help="The address to which the worker binds. " "Example: tcp://0.0.0.0:9000",
-)
-@click.option(
-    "--contact-address",
-    type=str,
-    default=None,
-    help="The address the worker advertises to the scheduler for "
-    "communication with it and other workers. "
-    "Example: tcp://127.0.0.1:9000",
 )
 @click.option(
     "--host",
@@ -103,12 +81,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--interface", type=str, default=None, help="Network interface like 'eth0' or 'ib0'"
 )
 @click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
-@click.option(
-    "--nprocs",
-    type=int,
-    default=1,
-    help="Number of worker processes to launch.  Defaults to one.",
-)
 @click.option(
     "--name",
     type=str,
@@ -130,11 +102,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
-)
-@click.option(
-    "--nanny/--no-nanny",
-    default=True,
-    help="Start workers in nanny process for management",
 )
 @click.option("--pid-file", type=str, default="", help="File to write the process PID")
 @click.option(
@@ -176,13 +143,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 def main(
     scheduler,
     host,
-    worker_port,
-    listen_address,
-    contact_address,
-    nanny_port,
     nthreads,
-    nprocs,
-    nanny,
     name,
     memory_limit,
     pid_file,
@@ -208,66 +169,13 @@ def main(
         tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
     )
 
-    if nprocs > 1 and worker_port != 0:
-        logger.error(
-            "Failed to launch worker.  You cannot use the --worker-port argument when nprocs > 1."
-        )
-        exit(1)
-
-    if nprocs > 1 and nanny_port != 0:
-        logger.error(
-            "Failed to launch worker.  You cannot use the --nanny_port argument when nprocs > 1."
-        )
-        exit(1)
-
-    if nprocs > 1 and not nanny:
-        logger.error(
-            "Failed to launch worker.  You cannot use the --no-nanny argument when nprocs > 1."
-        )
-        exit(1)
-
-    if contact_address and not listen_address:
-        logger.error(
-            "Failed to launch worker. "
-            "Must specify --listen-address when --contact-address is given"
-        )
-        exit(1)
-
-    if nprocs > 1 and listen_address:
-        logger.error(
-            "Failed to launch worker. "
-            "You cannot specify --listen-address when nprocs > 1."
-        )
-        exit(1)
-
-    if (worker_port or host) and listen_address:
-        logger.error(
-            "Failed to launch worker. "
-            "You cannot specify --listen-address when --worker-port or --host is given."
-        )
-        exit(1)
-
     try:
-        if listen_address:
-            (host, worker_port) = get_address_host_port(listen_address, strict=True)
-
-        if contact_address:
-            # we only need this to verify it is getting parsed
-            (_, _) = get_address_host_port(contact_address, strict=True)
-        else:
-            # if contact address is not present we use the listen_address for contact
-            contact_address = listen_address
-    except ValueError as e:
-        logger.error("Failed to launch worker. " + str(e))
-        exit(1)
-
-    if nanny:
-        port = nanny_port
-    else:
-        port = worker_port
+        nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+    except KeyError:
+        nprocs = get_n_gpus()
 
     if not nthreads:
-        nthreads = _ncores // nprocs
+        nthreads = min(1, _ncores // nprocs )
 
     if pid_file:
         with open(pid_file, "w") as f:
@@ -302,14 +210,8 @@ def main(
 
     loop = IOLoop.current()
 
-    if nanny:
-        kwargs = {"worker_port": worker_port, "listen_address": listen_address}
-        t = Nanny
-    else:
-        kwargs = {}
-        if nanny_port:
-            kwargs["service_ports"] = {"nanny": nanny_port}
-        t = Worker
+    kwargs = {"worker_port": None, "listen_address": None}
+    t = Nanny
 
     if not scheduler and not scheduler_file and "scheduler-address" not in config:
         raise ValueError(
@@ -323,8 +225,8 @@ def main(
         else:
             host = get_ip_interface(interface)
 
-    if host or port:
-        addr = uri_from_host_port(host, port, 0)
+    if host:
+        addr = uri_from_host_port(host, 0, 0)
     else:
         # Choose appropriate address for scheduler
         addr = None
@@ -347,7 +249,7 @@ def main(
             preload=preload,
             preload_argv=preload_argv,
             security=sec,
-            contact_address=contact_address,
+            contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             **kwargs
@@ -358,8 +260,7 @@ def main(
     @gen.coroutine
     def close_all():
         # Unregister all workers from scheduler
-        if nanny:
-            yield [n._close(timeout=2) for n in nannies]
+        yield [n._close(timeout=2) for n in nannies]
 
     def on_signal(signum):
         logger.info("Exiting on signal %d", signum)
