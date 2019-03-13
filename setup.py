@@ -19,7 +19,7 @@ setup(
         "Intended Audience :: Developers",
         "Topic :: Database",
         "Topic :: Scientific/Engineering",
-        "License :: OSI Approved :: Apoache License",
+        "License :: OSI Approved :: Apache License",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
     ],
