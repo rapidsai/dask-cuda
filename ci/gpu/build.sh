@@ -44,6 +44,4 @@ conda config --set ssl_verify False
 
 pip install -e .
 pip install pytest
-py.test --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
-
-exit 0
+pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v

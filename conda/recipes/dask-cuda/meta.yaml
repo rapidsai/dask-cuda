@@ -4,7 +4,6 @@
 #   conda build -c conda-forge -c defaults .
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
 {% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
-{% set cuda_version='.'.join(environ.get('CUDA', 'unknown').split('.')[:2]) %}
 package:
   name: dask-cuda
   version: {{ version }}
@@ -14,13 +13,7 @@ source:
 
 build:
   number: {{ git_revision_count }}
-  string: cuda{{ cuda_version }}_{{ git_revision_count }}
-  script_env:
-    - CC
-    - CXX
-    - CUDAHOSTCXX
-    - PARALLEL_LEVEL
-    - BUILD_ABI
+  string: {{ git_revision_count }}
 
 requirements:
   build:
