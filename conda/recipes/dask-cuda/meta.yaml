@@ -18,12 +18,12 @@ build:
 requirements:
   build:
     - python x.x
-    - dask-core>=1.1.4
-    - distributed>=1.25.2
+    - dask-core >=1.1.4
+    - distributed >=1.25.2
   run:
     - python x.x
-    - dask-core>=1.1.4
-    - distributed>=1.25.2
+    - dask-core >=1.1.4
+    - distributed >=1.25.2
 
 test:
   imports:
