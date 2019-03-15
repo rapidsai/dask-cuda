@@ -1,2 +1,2 @@
-dask
+dask-core=1.1.4
 distributed>=1.25.2
