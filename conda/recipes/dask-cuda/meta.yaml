@@ -18,6 +18,7 @@ build:
 requirements:
   build:
     - python x.x
+    - setuptools
     - dask-core>=1.1.4
     - distributed>=1.25.2
   run:
