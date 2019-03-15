@@ -1,0 +1,37 @@
+# Copyright (c) 2019, NVIDIA CORPORATION.
+
+# Usage:
+#   conda build -c conda-forge -c defaults .
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
+{% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
+package:
+  name: dask-cuda
+  version: {{ version }}
+
+source:
+  path: ../../..
+
+build:
+  number: {{ git_revision_count }}
+  string: {{ git_revision_count }}
+
+requirements:
+  build:
+    - python x.x
+    - dask-core>=1.1.4
+    - distributed>=1.25.2
+  run:
+    - python x.x
+    - dask-core>=1.1.4
+    - distributed>=1.25.2
+
+test:
+  imports:
+    - dask_cuda
+
+
+about:
+  home: http://rapids.ai/
+  license: Apache-2.0
+  license_file: ../../../LICENSE
+  summary: dask-cuda library
