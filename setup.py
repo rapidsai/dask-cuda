@@ -9,7 +9,7 @@ with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
 
 version = os.environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev0').lstrip('v')
 setup(
-    name="dask_cuda",
+    name="dask-cuda",
     version=version,
     description="Utilities for Dask and CUDA interactions",
     long_description=long_description,
