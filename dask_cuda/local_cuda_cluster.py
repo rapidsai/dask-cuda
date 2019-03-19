@@ -50,7 +50,7 @@ class LocalCUDACluster(LocalCluster):
             n_workers=n_workers,
             threads_per_worker=threads_per_worker,
             memory_limit=memory_limit,
-            **kwargs,
+            **kwargs
         )
 
     @gen.coroutine
