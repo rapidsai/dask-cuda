@@ -65,19 +65,19 @@ class CUDAWorker(Worker):
                 'device_memory_target_fraction')
         else:
             self.device_memory_target_fraction = dask.config.get(
-                'dask-cuda.worker.device-memory.target')
+                'cuda.worker.device-memory.target')
         if 'device_memory_spill_fraction' in kwargs:
             self.device_memory_spill_fraction = kwargs.pop(
                 'device_memory_spill_fraction')
         else:
             self.device_memory_spill_fraction = dask.config.get(
-                'dask_cuda.worker.device-memory.spill')
+                'cuda.worker.device-memory.spill')
         if 'device_memory_pause_fraction' in kwargs:
             self.device_memory_pause_fraction = kwargs.pop(
                 'device_memory_pause_fraction')
         else:
             self.device_memory_pause_fraction = dask.config.get(
-                'dask_cuda.worker.device-memory.pause')
+                'cuda.worker.device-memory.pause')
 
         super().__init__(**kwargs)
 
@@ -205,12 +205,12 @@ class CUDAWorker(Worker):
         If we rise above (device_memory_spill_fraction * memory_limit) of
         device memory use, start dumping data to disk. The default value
         for device_memory_spill_fraction is 0.7, defined via configuration
-        'dask-cuda.worker.device-memory.target'.
+        'cuda.worker.device-memory.target'.
 
         If we rise above (device_memory_pause_fraction * memory_limit) of
         device memory use, stop execution of new tasks. The default value
         for device_memory_pause_fraction is 0.8, defined via configuration
-        'dask-cuda.worker.device-memory.pause'.
+        'cuda.worker.device-memory.pause'.
         """
         if self._memory_monitoring:
             return

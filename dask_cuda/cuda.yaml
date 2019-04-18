@@ -1,4 +1,4 @@
-dask-cuda:
+cuda:
   worker:
     # Fractions of device memory at which we take action to avoid memory blowup
     # Set any of the lower three values to False to turn off the behavior entirely

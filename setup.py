@@ -27,7 +27,7 @@ setup(
         "Programming Language :: Python :: 3.7",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
-    package_data={'dask_cuda': ['dask_cuda.yaml']},
+    package_data={'dask_cuda': ['cuda.yaml']},
     install_requires=open('requirements.txt').read().strip().split('\n'),
     entry_points='''
         [console_scripts]
