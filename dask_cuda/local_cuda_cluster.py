@@ -5,6 +5,7 @@ from tornado import gen
 from dask.distributed import LocalCluster
 from distributed.worker import TOTAL_MEMORY
 
+from .cuda_worker import get_device_total_memory
 from .utils import get_n_gpus
 
 
@@ -35,6 +36,7 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit=None,
+        device_memory_limit=None,
         **kwargs
     ):
         if n_workers is None:
@@ -45,11 +47,16 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("Can not specify more processes than GPUs")
         if memory_limit is None:
             memory_limit = TOTAL_MEMORY / n_workers
+        if device_memory_limit is None:
+            device_memory_limit = get_device_total_memory() / n_workers
+        device_memory_limit = int(device_memory_limit)
+
         LocalCluster.__init__(
             self,
             n_workers=n_workers,
             threads_per_worker=threads_per_worker,
             memory_limit=memory_limit,
+            device_memory_limit=device_memory_limit,
             **kwargs,
         )
 

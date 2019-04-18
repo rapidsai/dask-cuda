@@ -6,7 +6,7 @@ import os
 from sys import exit
 
 import click
-from distributed import Nanny, Worker
+from distributed import Nanny
 from distributed.config import config
 from distributed.utils import get_ip_interface, parse_timedelta
 from distributed.worker import _ncores
@@ -23,6 +23,7 @@ from distributed.proctitle import (
     enable_proctitle_on_current,
 )
 
+from .cuda_worker import CUDAWorker
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import get_n_gpus
 
@@ -99,6 +100,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "'auto', or zero for no memory management",
 )
 @click.option(
+    "--device-memory-limit",
+    default="auto",
+    help="Bytes of memory per CUDA device that the worker can use. "
+    "This can be an integer (bytes), "
+    "float (fraction of total system memory), "
+    "string (like 5GB or 5000M), "
+    "'auto', or zero for no memory management",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -146,6 +156,7 @@ def main(
     nthreads,
     name,
     memory_limit,
+    device_memory_limit,
     pid_file,
     reconnect,
     resources,
@@ -243,6 +254,7 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
+            device_memory_limit=device_memory_limit,
             reconnect=reconnect,
             local_dir=local_directory,
             death_timeout=death_timeout,
@@ -252,6 +264,7 @@ def main(
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
+            worker_class=CUDAWorker,
             **kwargs
         )
         for i in range(nprocs)
