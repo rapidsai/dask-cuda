@@ -19,9 +19,16 @@ cd $WORKSPACE
 export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
 export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
 
+################################################################################
+# SETUP - Install additional packages
+################################################################################
+
 # Use dask-distributed master until there's a release with
 # https://github.com/dask/distributed/pull/2625
 pip install --upgrade git+https://github.com/dask/distributed
+
+# Install CuPy for tests
+pip install cupy-cuda100==6.0.0rc1
 
 ################################################################################
 # SETUP - Check environment
