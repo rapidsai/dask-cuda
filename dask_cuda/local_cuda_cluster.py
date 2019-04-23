@@ -5,7 +5,7 @@ from tornado import gen
 from dask.distributed import LocalCluster
 from distributed.worker import TOTAL_MEMORY
 
-from .cuda_worker import get_device_total_memory
+from .cuda_worker import CUDAWorker, get_device_total_memory
 from .utils import get_n_gpus
 
 
@@ -57,6 +57,7 @@ class LocalCUDACluster(LocalCluster):
             threads_per_worker=threads_per_worker,
             memory_limit=memory_limit,
             device_memory_limit=device_memory_limit,
+            worker_class=CUDAWorker,
             **kwargs,
         )
 
