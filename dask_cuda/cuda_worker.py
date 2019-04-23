@@ -57,8 +57,8 @@ class CUDAWorker(Worker):
     parameters, refer to that.
     """
 
-    def __init__(self, **kwargs):
-        self.device_memory_limit = kwargs.pop('device_memory_limit')
+    def __init__(self, scheduler_ip=None, **kwargs):
+        self.device_memory_limit = kwargs.pop('device_memory_limit', None)
 
         if 'device_memory_target_fraction' in kwargs:
             self.device_memory_target_fraction = kwargs.pop(
@@ -79,14 +79,10 @@ class CUDAWorker(Worker):
             self.device_memory_pause_fraction = dask.config.get(
                 'cuda.worker.device-memory.pause')
 
-        super().__init__(**kwargs)
+        super().__init__(scheduler_ip=scheduler_ip, **kwargs)
 
         self.device_memory_limit = parse_device_memory_limit(
             self.device_memory_limit, self.ncores)
-
-        print('self.device_memory_target_fraction', self.device_memory_target_fraction)
-        print('self.device_memory_spill_fraction', self.device_memory_spill_fraction)
-        print('self.device_memory_pause_fraction', self.device_memory_pause_fraction)
 
         self.data = DeviceHostFile(device_memory_limit=self.device_memory_limit,
                                    memory_limit=self.memory_limit,
@@ -98,9 +94,9 @@ class CUDAWorker(Worker):
         if self.device_memory_limit:
             self._device_memory_monitoring = False
             pc = PeriodicCallback(
-                    self.device_memory_monitor,
-                    self.memory_monitor_interval * 1000,
-                    io_loop=self.io_loop
+                self.device_memory_monitor,
+                self.memory_monitor_interval * 1000,
+                io_loop=self.io_loop
             )
             self.periodic_callbacks["device_memory"] = pc
 
@@ -112,7 +108,7 @@ class CUDAWorker(Worker):
             logger.info('-' * 49)
 
     def _check_for_pause(self, fraction, pause_fraction, used_memory, memory_limit,
-                      paused, free_func, worker_description):
+                         paused, free_func, worker_description):
         if pause_fraction and fraction > pause_fraction:
             # Try to free some memory while in paused state
             if free_func:
