@@ -19,9 +19,17 @@ cd $WORKSPACE
 export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
 export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
 
+# Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
+# will possibly be enabled by default starting on 1.17)
+export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
+
 ################################################################################
 # SETUP - Install additional packages
 ################################################################################
+
+# Use dask master until there's a release with
+# https://github.com/dask/dask/pull/4715
+pip install --upgrade git+https://github.com/dask/dask
 
 # Use dask-distributed master until there's a release with
 # https://github.com/dask/distributed/pull/2625
