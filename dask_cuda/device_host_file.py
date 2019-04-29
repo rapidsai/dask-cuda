@@ -3,6 +3,7 @@ from zict.common import ZictBase
 from distributed.protocol import deserialize_bytes, serialize_bytes
 from distributed.worker import weight
 
+from functools import partial
 import os
 
 
@@ -29,13 +30,13 @@ class DeviceHostFile(ZictBase):
                  local_dir='dask-worker-space', compress=False):
         path = os.path.join(local_dir, 'storage')
 
-        self.device_func = dict()
         self.host_func = dict()
-        self.disk_func = Func(serialize_bytes, deserialize_bytes,
-                              File(path))
-
+        self.disk_func = Func(partial(serialize_bytes, on_error='raise'),
+                              deserialize_bytes, File(path))
         self.host = Buffer(self.host_func, self.disk_func, memory_limit,
                            weight=weight)
+
+        self.device_func = dict()
         self.device_host_func = Func(_serialize_if_device,
                                      _deserialize_if_device, self.host)
         self.device = Buffer(self.device_func, self.device_host_func,
