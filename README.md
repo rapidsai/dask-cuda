@@ -17,3 +17,14 @@ from dask.distributed import Client
 cluster = LocalCUDACluster()
 client = Client(cluster)
 ```
+
+What this is not
+----------------
+
+This library does not automatically convert your Dask code to run on GPUs.
+
+It only helps with deployment and management of Dask workers in multi-GPU
+systems.  Parallelizing GPU libraries like [RAPIDS](https://rapids.ai) and
+[CuPy](https://cupy.chainer.org) with Dask is an ongoing effort.  You may wish
+to read about this effort at [blog.dask.org](https://blog.dask.org) for more
+information..
