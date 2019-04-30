@@ -8,10 +8,15 @@ import os
 
 
 def _is_device_object(obj):
+    """
+    Check if obj is a device object, by checking if it has a
+    __cuda_array_interface__ attributed
+    """
     return hasattr(obj, '__cuda_array_interface__')
 
 
 def _serialize_if_device(obj):
+    """ Serialize an object if it's a device object """
     if _is_device_object(obj):
         return serialize_bytes(obj, on_error='raise')
     else:
@@ -19,6 +24,7 @@ def _serialize_if_device(obj):
 
 
 def _deserialize_if_device(obj):
+    """ Deserialize an object if it's an instance of bytes """
     if isinstance(obj, bytes):
         return deserialize_bytes(obj)
     else:
@@ -26,8 +32,27 @@ def _deserialize_if_device(obj):
 
 
 class DeviceHostFile(ZictBase):
+    """ Manages serialization/deserialization of objects.
+
+    Three LRU cache levels are controlled, for device, host and disk.
+    Each level takes care of serializing objects once its limit has been
+    reached and pass it to the subsequent level. Similarly, each cache
+    may deserialize the object, but storing it back in the appropriate
+    cache, depending on the type of object being deserialized.
+
+    Parameters
+    ----------
+    device_memory_limit: int
+        Number of bytes of CUDA device memory for device LRU cache,
+        spills to host cache once filled.
+    memory_limit: int
+        Number of bytes of host memory for host LRU cache, spills to
+        disk once filled.
+    local_dir: path
+        Path where to store serialized objects on disk
+    """
     def __init__(self, device_memory_limit=None, memory_limit=None,
-                 local_dir='dask-worker-space', compress=False):
+                 local_dir='dask-worker-space'):
         path = os.path.join(local_dir, 'storage')
 
         self.host_func = dict()
