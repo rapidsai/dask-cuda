@@ -6,6 +6,7 @@ from dask.distributed import Client
 from distributed.worker import TOTAL_MEMORY
 from dask_cuda import LocalCUDACluster
 from dask_cuda import utils
+import pytest
 
 
 @gen_test(timeout=20)
@@ -58,3 +59,19 @@ async def test_with_subset_of_cuda_visible_devices():
                     }
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]
+
+
+@gen_test(timeout=20)
+async def test_ucx_protocol():
+    pytest.importorskip("distributed.comm.ucx")
+    async with LocalCUDACluster(
+        protocol="ucx",
+        interface="ib0",
+        scheduler_port=0,
+        asynchronous=True,
+        dashboard_address=None,
+        data=dict,
+    ) as cluster:
+        assert all(
+            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
+        )
