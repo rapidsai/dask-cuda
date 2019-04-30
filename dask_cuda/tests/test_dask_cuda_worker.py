@@ -16,7 +16,7 @@ from distributed.utils_test import loop  # noqa: F401
 
 
 def test_cuda_visible_devices(loop):
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,6,7"
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]) as sched:
             with popen(
@@ -42,7 +42,7 @@ def test_cuda_visible_devices(loop):
 
                     # verify 4 workers with the 4 expected CUDA_VISIBLE_DEVICES
                     result = client.run(get_visible_devices)
-                    expected = {"2,3,7,8": 1, "3,7,8,2": 1, "7,8,2,3": 1, "8,2,3,7": 1}
+                    expected = {"2,3,6,7": 1, "3,6,7,2": 1, "6,7,2,3": 1, "7,2,3,6": 1}
                     for v in result.values():
                         del expected[v]
                     assert len(expected) == 0
