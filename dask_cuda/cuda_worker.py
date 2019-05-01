@@ -58,7 +58,8 @@ class CUDAWorker(Worker):
     """
 
     def __init__(self, scheduler_ip=None, **kwargs):
-        self.device_memory_limit = kwargs.pop('device_memory_limit', None)
+        self.device_memory_limit = kwargs.pop('device_memory_limit',
+                                              get_device_total_memory())
 
         if 'device_memory_target_fraction' in kwargs:
             self.device_memory_target_fraction = kwargs.pop(

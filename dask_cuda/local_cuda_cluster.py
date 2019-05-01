@@ -48,9 +48,6 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("Can not specify more processes than GPUs")
         if memory_limit is None:
             memory_limit = TOTAL_MEMORY / n_workers
-        if device_memory_limit is None:
-            device_memory_limit = get_device_total_memory() / n_workers
-        device_memory_limit = int(device_memory_limit)
 
         LocalCluster.__init__(
             self,
