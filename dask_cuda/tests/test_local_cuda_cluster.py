@@ -32,6 +32,10 @@ async def test_local_cuda_cluster():
             # Use full memory
             assert sum(w.memory_limit for w in cluster.workers) == TOTAL_MEMORY
 
+            for w, devices in result.items():
+                ident = devices[0]
+                assert ident in cluster.scheduler.workers[w].name
+
 
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():

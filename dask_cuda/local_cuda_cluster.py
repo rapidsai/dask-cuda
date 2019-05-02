@@ -84,6 +84,7 @@ class LocalCUDACluster(LocalCluster):
             self._start_worker(
                 **self.worker_kwargs,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+                name="gpu-" + str(i),
             )
             for i in range(n_workers)
         ]
