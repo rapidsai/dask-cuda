@@ -57,7 +57,7 @@ class CUDAWorker(Worker):
     parameters, refer to that.
     """
 
-    def __init__(self, scheduler_ip=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.device_memory_limit = kwargs.pop('device_memory_limit',
                                               get_device_total_memory())
 
@@ -80,7 +80,7 @@ class CUDAWorker(Worker):
             self.device_memory_pause_fraction = dask.config.get(
                 'cuda.worker.device-memory.pause')
 
-        super().__init__(scheduler_ip=scheduler_ip, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.device_memory_limit = parse_device_memory_limit(
             self.device_memory_limit, self.ncores)
