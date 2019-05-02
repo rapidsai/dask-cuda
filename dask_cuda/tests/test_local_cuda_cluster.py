@@ -47,7 +47,7 @@ async def test_with_subset_of_cuda_visible_devices():
             scheduler_port=0, asynchronous=True, diagnostics_port=None
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
-                assert len(cluster.workers) == 4
+                assert len(cluster.workers) == test_gpus
 
                 # CUDA_VISIBLE_DEVICES cycles properly
                 def get_visible_devices():

@@ -21,8 +21,8 @@ requirements:
     - setuptools
   run:
     - python x.x
-    - dask-core >=1.1.4
-    - distributed >=1.25.2
+    - dask-core >=1.2.1
+    - distributed >=1.27.1
     - numpy >=1.16.0
     - numba >=0.40.1
 
