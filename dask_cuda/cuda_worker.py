@@ -122,14 +122,21 @@ class CUDAWorker(Worker):
                                format_bytes(used_memory),
                                format_bytes(memory_limit))
                 return True
-        elif paused:
-            logger.warning("Worker is at %d%% memory usage. Resuming worker. "
-                           "Process memory: %s -- Worker memory limit: %s",
-                           int(fraction * 100),
-                           format_bytes(used_memory),
-                           format_bytes(memory_limit))
+        return False
+
+    def _resume_message(self, fraction, used_memory, memory_limit,
+                        worker_description):
+        logger.warning("%s is at %d%% memory usage. Resuming worker. "
+                       "Process memory: %s -- Worker memory limit: %s",
+                       worker_description,
+                       int(fraction * 100),
+                       format_bytes(used_memory),
+                       format_bytes(memory_limit))
+
+    def _resume_worker(self):
+        if self.paused and not (self._paused or self._device_paused):
+            self.paused = False
             self.ensure_computing()
-            return False
 
     @gen.coroutine
     def memory_monitor(self):
@@ -156,10 +163,16 @@ class CUDAWorker(Worker):
 
         # Pause worker threads if device memory use above
         # (self.memory_pause_fraction * 100)%
+        old_pause_state = self._paused
+        worker_description = 'Worker'
         self._paused = self._check_for_pause(frac, self.memory_pause_fraction, memory,
                                              self.memory_limit, self._paused,
-                                             self._throttled_gc.collect(), 'Worker')
-        self.paused = (self._paused or self._device_paused)
+                                             self._throttled_gc.collect(),
+                                             worker_description)
+        if old_pause_state and not self._paused:
+            self._resume_message(frac, memory, self.memory_limit,
+                                 worker_description)
+        self._resume_worker()
 
         # Dump data to disk if memory use above
         # (self.memory_spill_fraction * 100)%
@@ -218,11 +231,16 @@ class CUDAWorker(Worker):
 
         # Pause worker threads if device memory use above
         # (self.device_memory_pause_fraction * 100)%
-        self._paused = self._check_for_pause(frac, self.device_memory_pause_fraction,
-                                             memory, self.device_memory_limit,
-                                             self._device_paused, None,
-                                             "Worker's CUDA device")
-        self.paused = (self._paused or self._device_paused)
+        old_pause_state = self._device_paused
+        worker_description = "Worker's CUDA device"
+        self._device_paused = self._check_for_pause(
+                frac, self.device_memory_pause_fraction, memory,
+                self.device_memory_limit, self._device_paused, None,
+                worker_description)
+        if old_pause_state and not self._device_paused:
+            self._resume_message(frac, memory, self.device_memory_limit,
+                                 worker_description)
+        self._resume_worker()
 
         # Dump device data to host if device memory use above
         # (self.device_memory_spill_fraction * 100)%
