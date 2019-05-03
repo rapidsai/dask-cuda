@@ -4,6 +4,7 @@ from tornado import gen
 
 from dask.distributed import LocalCluster
 from distributed.worker import TOTAL_MEMORY
+from distributed.utils import get_ip_interface
 
 from .utils import get_n_gpus
 
@@ -35,7 +36,7 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit=None,
-        **kwargs
+        **kwargs,
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
@@ -60,21 +61,30 @@ class LocalCUDACluster(LocalCluster):
         """
         if self.status == "running":
             return
-        if (ip is None) and (not self.scheduler_port) and (not self.processes):
-            # Use inproc transport for optimization
-            scheduler_address = "inproc://"
-        elif ip is not None and ip.startswith("tls://"):
-            scheduler_address = "%s:%d" % (ip, self.scheduler_port)
+
+        if self.protocol == "inproc://":
+            address = self.protocol
         else:
             if ip is None:
-                ip = "127.0.0.1"
-            scheduler_address = (ip, self.scheduler_port)
-        self.scheduler.start(scheduler_address)
+                if self.interface:
+                    ip = get_ip_interface(self.interface)
+                else:
+                    ip = "127.0.0.1"
+
+            if "://" in ip:
+                address = ip
+            else:
+                address = self.protocol + ip
+            if self.scheduler_port:
+                address += ":" + str(self.scheduler_port)
+
+        self.scheduler.start(address)
 
         yield [
             self._start_worker(
                 **self.worker_kwargs,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+                name="gpu-" + str(i),
             )
             for i in range(n_workers)
         ]
