@@ -13,11 +13,7 @@ fi
 
 SOURCE_BRANCH=master
 
-if [ "$LABEL_MAIN" == "1" ]; then
-  LABEL_OPTION="--label main --label cuda${CUDA_REL}"
-else
-  LABEL_OPTION="--label dev --label cuda${CUDA_REL}"
-fi
+LABEL_OPTION="--label main --label cuda9.2 --label cuda10.0"
 echo "LABEL_OPTION=${LABEL_OPTION}"
 
 # Restrict uploads to master branch
