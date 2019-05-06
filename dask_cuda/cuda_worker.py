@@ -23,7 +23,7 @@ def get_device_used_memory():
 
 def parse_device_memory_limit(memory_limit, ncores):
     """ Parse device memory limit input """
-    if memory_limit is None or memory_limit == 0 or memory_limit == 'auto':
+    if memory_limit is None or memory_limit == 0 or memory_limit == "auto":
         memory_limit = int(get_device_total_memory())
     with ignoring(ValueError, TypeError):
         x = float(memory_limit)
@@ -58,36 +58,46 @@ class CUDAWorker(Worker):
     """
 
     def __init__(self, *args, **kwargs):
-        self.device_memory_limit = kwargs.pop('device_memory_limit',
-                                              get_device_total_memory())
+        self.device_memory_limit = kwargs.pop(
+            "device_memory_limit", get_device_total_memory()
+        )
 
-        if 'device_memory_target_fraction' in kwargs:
+        if "device_memory_target_fraction" in kwargs:
             self.device_memory_target_fraction = kwargs.pop(
-                'device_memory_target_fraction')
+                "device_memory_target_fraction"
+            )
         else:
             self.device_memory_target_fraction = dask.config.get(
-                'cuda.worker.device-memory.target')
-        if 'device_memory_spill_fraction' in kwargs:
+                "distributed.worker.device-memory.target"
+            )
+        if "device_memory_spill_fraction" in kwargs:
             self.device_memory_spill_fraction = kwargs.pop(
-                'device_memory_spill_fraction')
+                "device_memory_spill_fraction"
+            )
         else:
             self.device_memory_spill_fraction = dask.config.get(
-                'cuda.worker.device-memory.spill')
-        if 'device_memory_pause_fraction' in kwargs:
+                "distributed.worker.device-memory.spill"
+            )
+        if "device_memory_pause_fraction" in kwargs:
             self.device_memory_pause_fraction = kwargs.pop(
-                'device_memory_pause_fraction')
+                "device_memory_pause_fraction"
+            )
         else:
             self.device_memory_pause_fraction = dask.config.get(
-                'cuda.worker.device-memory.pause')
+                "distributed.worker.device-memory.pause"
+            )
 
         super().__init__(*args, **kwargs)
 
         self.device_memory_limit = parse_device_memory_limit(
-            self.device_memory_limit, self.ncores)
+            self.device_memory_limit, self.ncores
+        )
 
-        self.data = DeviceHostFile(device_memory_limit=self.device_memory_limit,
-                                   memory_limit=self.memory_limit,
-                                   local_dir=self.local_dir)
+        self.data = DeviceHostFile(
+            device_memory_limit=self.device_memory_limit,
+            memory_limit=self.memory_limit,
+            local_dir=self.local_dir,
+        )
 
         self._paused = False
         self._device_paused = False
@@ -97,41 +107,53 @@ class CUDAWorker(Worker):
             pc = PeriodicCallback(
                 self.device_memory_monitor,
                 self.memory_monitor_interval * 1000,
-                io_loop=self.io_loop
+                io_loop=self.io_loop,
             )
             self.periodic_callbacks["device_memory"] = pc
 
     def _start(self, addr_on_port=0):
         super()._start(addr_on_port)
         if self.device_memory_limit:
-            logger.info('        Device Memory: %26s',
-                        format_bytes(self.device_memory_limit))
-            logger.info('-' * 49)
+            logger.info(
+                "        Device Memory: %26s", format_bytes(self.device_memory_limit)
+            )
+            logger.info("-" * 49)
 
-    def _check_for_pause(self, fraction, pause_fraction, used_memory, memory_limit,
-                         paused, free_func, worker_description):
+    def _check_for_pause(
+        self,
+        fraction,
+        pause_fraction,
+        used_memory,
+        memory_limit,
+        paused,
+        free_func,
+        worker_description,
+    ):
         if pause_fraction and fraction > pause_fraction:
             # Try to free some memory while in paused state
             if free_func:
                 free_func()
             if not self._paused:
-                logger.warning("%s is at %d%% memory usage. Pausing worker.  "
-                               "Process memory: %s -- Worker memory limit: %s",
-                               worker_description,
-                               int(fraction * 100),
-                               format_bytes(used_memory),
-                               format_bytes(memory_limit))
+                logger.warning(
+                    "%s is at %d%% memory usage. Pausing worker.  "
+                    "Process memory: %s -- Worker memory limit: %s",
+                    worker_description,
+                    int(fraction * 100),
+                    format_bytes(used_memory),
+                    format_bytes(memory_limit),
+                )
                 return True
         return False
 
-    def _resume_message(self, fraction, used_memory, memory_limit,
-                        worker_description):
-        logger.warning("%s is at %d%% memory usage. Resuming worker. "
-                       "Process memory: %s -- Worker memory limit: %s",
-                       worker_description,
-                       int(fraction * 100),
-                       format_bytes(used_memory),
-                       format_bytes(memory_limit))
+    def _resume_message(self, fraction, used_memory, memory_limit, worker_description):
+        logger.warning(
+            "%s is at %d%% memory usage. Resuming worker. "
+            "Process memory: %s -- Worker memory limit: %s",
+            worker_description,
+            int(fraction * 100),
+            format_bytes(used_memory),
+            format_bytes(memory_limit),
+        )
 
     def _resume_worker(self):
         if self.paused and not (self._paused or self._device_paused):
@@ -164,14 +186,18 @@ class CUDAWorker(Worker):
         # Pause worker threads if device memory use above
         # (self.memory_pause_fraction * 100)%
         old_pause_state = self._paused
-        worker_description = 'Worker'
-        self._paused = self._check_for_pause(frac, self.memory_pause_fraction, memory,
-                                             self.memory_limit, self._paused,
-                                             self._throttled_gc.collect(),
-                                             worker_description)
+        worker_description = "Worker"
+        self._paused = self._check_for_pause(
+            frac,
+            self.memory_pause_fraction,
+            memory,
+            self.memory_limit,
+            self._paused,
+            self._throttled_gc.collect(),
+            worker_description,
+        )
         if old_pause_state and not self._paused:
-            self._resume_message(frac, memory, self.memory_limit,
-                                 worker_description)
+            self._resume_message(frac, memory, self.memory_limit, worker_description)
         self._resume_worker()
 
         # Dump data to disk if memory use above
@@ -182,12 +208,14 @@ class CUDAWorker(Worker):
             need = memory - target
             while memory > target:
                 if not self.data.host.fast:
-                    logger.warning("Memory use is high but worker has no data "
-                                   "to store to disk.  Perhaps some other process "
-                                   "is leaking memory?  Process memory: %s -- "
-                                   "Worker memory limit: %s",
-                                   format_bytes(proc.memory_info().rss),
-                                   format_bytes(self.memory_limit))
+                    logger.warning(
+                        "Memory use is high but worker has no data "
+                        "to store to disk.  Perhaps some other process "
+                        "is leaking memory?  Process memory: %s -- "
+                        "Worker memory limit: %s",
+                        format_bytes(proc.memory_info().rss),
+                        format_bytes(self.memory_limit),
+                    )
                     break
                 k, v, weight = self.data.host.fast.evict()
                 del k, v
@@ -202,8 +230,11 @@ class CUDAWorker(Worker):
                     self._throttled_gc.collect()
                     memory = proc.memory_info().rss
             if count:
-                logger.debug("Moved %d pieces of data and %s bytes to disk",
-                             count, format_bytes(total))
+                logger.debug(
+                    "Moved %d pieces of data and %s bytes to disk",
+                    count,
+                    format_bytes(total),
+                )
 
         self._memory_monitoring = False
         raise gen.Return(total)
@@ -215,12 +246,12 @@ class CUDAWorker(Worker):
         If we rise above (device_memory_spill_fraction * memory_limit) of
         device memory use, start dumping data to disk. The default value
         for device_memory_spill_fraction is 0.7, defined via configuration
-        'cuda.worker.device-memory.target'.
+        'distributed.worker.device-memory.target'.
 
         If we rise above (device_memory_pause_fraction * memory_limit) of
         device memory use, stop execution of new tasks. The default value
         for device_memory_pause_fraction is 0.8, defined via configuration
-        'cuda.worker.device-memory.pause'.
+        'distributed.worker.device-memory.pause'.
         """
         if self._memory_monitoring:
             return
@@ -234,28 +265,38 @@ class CUDAWorker(Worker):
         old_pause_state = self._device_paused
         worker_description = "Worker's CUDA device"
         self._device_paused = self._check_for_pause(
-                frac, self.device_memory_pause_fraction, memory,
-                self.device_memory_limit, self._device_paused, None,
-                worker_description)
+            frac,
+            self.device_memory_pause_fraction,
+            memory,
+            self.device_memory_limit,
+            self._device_paused,
+            None,
+            worker_description,
+        )
         if old_pause_state and not self._device_paused:
-            self._resume_message(frac, memory, self.device_memory_limit,
-                                 worker_description)
+            self._resume_message(
+                frac, memory, self.device_memory_limit, worker_description
+            )
         self._resume_worker()
 
         # Dump device data to host if device memory use above
         # (self.device_memory_spill_fraction * 100)%
-        if (self.device_memory_spill_fraction
-                and frac > self.device_memory_spill_fraction):
+        if (
+            self.device_memory_spill_fraction
+            and frac > self.device_memory_spill_fraction
+        ):
             target = self.device_memory_limit * self.device_memory_target_fraction
             count = 0
             while memory > target:
                 if not self.data.device.fast:
-                    logger.warning("CUDA device memory use is high but worker has "
-                                   "no data to store to host.  Perhaps some other "
-                                   "process is leaking memory?  Process memory: "
-                                   "%s -- Worker memory limit: %s",
-                                   format_bytes(get_device_used_memory()),
-                                   format_bytes(self.device_memory_limit))
+                    logger.warning(
+                        "CUDA device memory use is high but worker has "
+                        "no data to store to host.  Perhaps some other "
+                        "process is leaking memory?  Process memory: "
+                        "%s -- Worker memory limit: %s",
+                        format_bytes(get_device_used_memory()),
+                        format_bytes(self.device_memory_limit),
+                    )
                     break
                 k, v, weight = self.data.device.fast.evict()
                 del k, v
@@ -264,8 +305,11 @@ class CUDAWorker(Worker):
                 yield gen.moment
                 memory = get_device_used_memory()
             if count:
-                logger.debug("Moved %d pieces of data and %s bytes to host memory",
-                             count, format_bytes(total))
+                logger.debug(
+                    "Moved %d pieces of data and %s bytes to host memory",
+                    count,
+                    format_bytes(total),
+                )
 
         self._device_memory_monitoring = False
         raise gen.Return(total)

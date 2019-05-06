@@ -6,35 +6,45 @@ import dask.array as da
 import pytest
 
 
-@pytest.mark.parametrize("params", [
-    {"device_memory_limit" : 2e9,
-     "memory_limit": 4e9,
-     "host_target": 0.6,
-     "host_spill": 0.7,
-     "spills_to_disk": False},
-    {"device_memory_limit" : 2e9,
-     "memory_limit": 1e9,
-     "host_target": 0.3,
-     "host_spill": 0.3,
-     "spills_to_disk": True}
-])
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "device_memory_limit": 2e9,
+            "memory_limit": 4e9,
+            "host_target": 0.6,
+            "host_spill": 0.7,
+            "spills_to_disk": False,
+        },
+        {
+            "device_memory_limit": 2e9,
+            "memory_limit": 1e9,
+            "host_target": 0.3,
+            "host_spill": 0.3,
+            "spills_to_disk": True,
+        },
+    ],
+)
 @pytest.mark.parametrize("device_limit", [0.3, 0.5])
 def test_device_spill(params, device_limit):
     @gen_cluster(
         client=True,
         ncores=[("127.0.0.1", 1)],
         Worker=CUDAWorker,
-        worker_kwargs={"device_memory_limit": params["device_memory_limit"],
-                       "memory_limit": params["memory_limit"]},
+        worker_kwargs={
+            "device_memory_limit": params["device_memory_limit"],
+            "memory_limit": params["memory_limit"],
+        },
         config={
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
-            "cuda.worker.device-memory.target": device_limit,
-            "cuda.worker.device-memory.spill": device_limit
+            "distributed.worker.device-memory.target": device_limit,
+            "distributed.worker.device-memory.spill": device_limit,
         },
     )
     def test_device_spill(client, scheduler, worker):
         import cupy
+
         cupy.cuda.set_allocator(None)
         cupy.cuda.set_pinned_memory_allocator(None)
 
