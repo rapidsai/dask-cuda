@@ -6,7 +6,7 @@ from dask.distributed import LocalCluster
 from distributed.worker import TOTAL_MEMORY
 from distributed.utils import get_ip_interface
 
-from .cuda_nanny import CUDANanny
+from .nanny import CUDANanny
 from .utils import get_n_gpus
 
 

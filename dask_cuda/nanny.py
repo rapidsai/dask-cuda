@@ -1,6 +1,6 @@
 from distributed import Nanny
 
-from .cuda_worker import CUDAWorker
+from .worker import CUDAWorker
 
 
 class CUDANanny(Nanny):

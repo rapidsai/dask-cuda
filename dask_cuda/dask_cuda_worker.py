@@ -3,7 +3,6 @@ from __future__ import print_function, division, absolute_import
 import atexit
 import logging
 import os
-from sys import exit
 
 import click
 from distributed import Nanny
@@ -16,14 +15,13 @@ from distributed.cli.utils import (
     uri_from_host_port,
     install_signal_handlers,
 )
-from distributed.comm import get_address_host_port
 from distributed.preloading import validate_preload_argv
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
 
-from .cuda_worker import CUDAWorker
+from .worker import CUDAWorker
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import get_n_gpus
 
@@ -186,7 +184,7 @@ def main(
         nprocs = get_n_gpus()
 
     if not nthreads:
-        nthreads = min(1, _ncores // nprocs )
+        nthreads = min(1, _ncores // nprocs)
 
     if pid_file:
         with open(pid_file, "w") as f:

@@ -1,6 +1,6 @@
 from distributed.utils_test import gen_cluster
 from distributed import wait
-from dask_cuda.cuda_worker import CUDAWorker
+from dask_cuda.worker import CUDAWorker
 from dask_cuda.utils_test import assert_device_host_file_size as assert_dhf_size
 import dask.array as da
 import pytest
