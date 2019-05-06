@@ -9,6 +9,6 @@ class CUDANanny(Nanny):
     This is a subclass of Nanny, with the only difference
     being worker_class=CUDAWorker.
     """
-    def __init__(self, *args, **kwargs):
-        Nanny.__init__(self, *args,
-                       worker_class=CUDAWorker, **kwargs)
+
+    def __init__(self, *args, worker_class=CUDAWorker, **kwargs):
+        Nanny.__init__(self, *args, worker_class=worker_class, **kwargs)

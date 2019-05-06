@@ -7,7 +7,6 @@ from distributed.worker import TOTAL_MEMORY
 from distributed.utils import get_ip_interface
 
 from .cuda_nanny import CUDANanny
-from .cuda_worker import CUDAWorker, get_device_total_memory
 from .utils import get_n_gpus
 
 
@@ -39,7 +38,8 @@ class LocalCUDACluster(LocalCluster):
         processes=True,
         memory_limit=None,
         device_memory_limit=None,
-        **kwargs
+        worker_class=CUDANanny,
+        **kwargs,
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
@@ -56,7 +56,7 @@ class LocalCUDACluster(LocalCluster):
             threads_per_worker=threads_per_worker,
             memory_limit=memory_limit,
             device_memory_limit=device_memory_limit,
-            worker_class=CUDANanny,
+            worker_class=worker_class,
             **kwargs,
         )
 
