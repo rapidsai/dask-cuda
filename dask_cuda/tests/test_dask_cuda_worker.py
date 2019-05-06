@@ -84,8 +84,10 @@ def test_cuda_visible_devices(loop):
                     # verify n_gpus workers with CUDA_VISIBLE_DEVICES
                     # in proper order
                     result = client.run(get_visible_devices)
-                    expected = {cuda_visible_devices(i, [j for j in
-                        range(n_gpus)]): 1 for i in range(n_gpus)}
+                    expected = {
+                        cuda_visible_devices(i, [j for j in range(n_gpus)]): 1
+                        for i in range(n_gpus)
+                    }
                     for v in result.values():
                         del expected[v]
                     assert len(expected) == 0

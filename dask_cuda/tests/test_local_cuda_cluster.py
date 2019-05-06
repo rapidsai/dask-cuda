@@ -45,8 +45,7 @@ async def test_with_subset_of_cuda_visible_devices():
     if n_gpus < 2:
         pytest.skip("More than 1 GPU required for test")
     test_gpus = n_gpus // 2
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in
-        range(test_gpus)])
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in range(test_gpus)])
     try:
         async with LocalCUDACluster(
             scheduler_port=0, asynchronous=True, diagnostics_port=None
@@ -60,11 +59,11 @@ async def test_with_subset_of_cuda_visible_devices():
 
                 result = await client.run(get_visible_devices)
 
-                assert all(len(v.split(",")) == test_gpus for v in
-                        result.values())
+                assert all(len(v.split(",")) == test_gpus for v in result.values())
                 for i in range(test_gpus):
-                    assert {int(v.split(",")[i]) for v in
-                            result.values()} == set(list(range(test_gpus)))
+                    assert {int(v.split(",")[i]) for v in result.values()} == set(
+                        list(range(test_gpus))
+                    )
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]
 

@@ -13,17 +13,23 @@ from cupy.testing import assert_array_equal
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
 def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_range):
     import tempfile
-    tmpdir = tempfile.TemporaryDirectory()
-    dhf = DeviceHostFile(device_memory_limit=1024 * 16,
-                         memory_limit=1024 * 16,
-                         local_dir=tmpdir.name)
 
-    host = [(gen_random_key(64), np.random.random(randint(*array_size_range)))
-            for i in range(num_host_arrays)]
-    device = [(gen_random_key(64), cupy.random.random(randint(*array_size_range)))
-              for i in range(num_device_arrays)]
+    tmpdir = tempfile.TemporaryDirectory()
+    dhf = DeviceHostFile(
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir.name
+    )
+
+    host = [
+        (gen_random_key(64), np.random.random(randint(*array_size_range)))
+        for i in range(num_host_arrays)
+    ]
+    device = [
+        (gen_random_key(64), cupy.random.random(randint(*array_size_range)))
+        for i in range(num_device_arrays)
+    ]
 
     import random
+
     full = host + device
     random.shuffle(full)
 
@@ -43,9 +49,11 @@ def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_r
 
 def test_device_host_file_step_by_step():
     import tempfile
+
     tmpdir = tempfile.TemporaryDirectory()
-    dhf = DeviceHostFile(device_memory_limit=1024 * 16, memory_limit=1024 * 16,
-                         local_dir=tmpdir.name)
+    dhf = DeviceHostFile(
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir.name
+    )
 
     a = np.random.random(1000)
     b = cupy.random.random(1000)
