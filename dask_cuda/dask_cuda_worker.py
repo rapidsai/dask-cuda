@@ -102,7 +102,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default="auto",
     help="Bytes of memory per CUDA device that the worker can use. "
     "This can be an integer (bytes), "
-    "float (fraction of total system memory), "
+    "float (fraction of total device memory), "
     "string (like 5GB or 5000M), "
     "'auto', or zero for no memory management",
 )
