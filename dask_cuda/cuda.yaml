@@ -5,4 +5,4 @@ distributed:
     device-memory:
       target: 0.60  # target fraction to stay below
       spill: 0.70  # fraction at which we spill to host
-      pause: 0.80  # fraction at which we pause worker threads
+      pause: 0.0  # fraction at which we pause worker threads - Disabled (0.0) by default, preventing worker from stalling when third-party memory managers are used and can't be disabled
