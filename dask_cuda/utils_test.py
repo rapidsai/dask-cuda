@@ -5,9 +5,9 @@ from random import choice
 
 
 def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
-    byte_sum = dhf.device.total_weight + dhf.host.total_weight
+    byte_sum = dhf.device_buffer.fast.total_weight + dhf.host_buffer.fast.total_weight
     file_path = [
-        os.path.join(dhf.disk.d.directory, safe_key(k))
+        os.path.join(dhf.disk.directory, safe_key(k))
         for k in dhf.disk.keys()
     ]
     file_size = [os.path.getsize(f) for f in file_path]

@@ -207,7 +207,7 @@ class CUDAWorker(Worker):
             count = 0
             need = memory - target
             while memory > target:
-                if not self.data.host:
+                if not self.data.host_buffer.fast:
                     logger.warning(
                         "Memory use is high but worker has no data "
                         "to store to disk.  Perhaps some other process "
@@ -217,7 +217,7 @@ class CUDAWorker(Worker):
                         format_bytes(self.memory_limit),
                     )
                     break
-                k, v, weight = self.data.host.evict()
+                k, v, weight = self.data.host_buffer.fast.evict()
                 del k, v
                 total += weight
                 count += 1
@@ -288,7 +288,7 @@ class CUDAWorker(Worker):
             target = self.device_memory_limit * self.device_memory_target_fraction
             count = 0
             while memory > target:
-                if not self.data.device:
+                if not self.data.device_buffer.fast:
                     logger.warning(
                         "CUDA device memory use is high but worker has "
                         "no data to store to host.  Perhaps some other "
@@ -298,7 +298,7 @@ class CUDAWorker(Worker):
                         format_bytes(self.device_memory_limit),
                     )
                     break
-                k, v, weight = self.data.device.evict()
+                k, v, weight = self.data.device_buffer.fast.evict()
                 del k, v
                 total += weight
                 count += 1

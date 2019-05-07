@@ -73,9 +73,9 @@ class DeviceHostFile(ZictBase):
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
 
-        self.device = self.device_buffer.fast
-        self.host = self.host_buffer.fast
-        self.disk = self.host_buffer.slow
+        self.device = self.device_buffer.fast.d
+        self.host = self.host_buffer.fast.d
+        self.disk = self.host_buffer.slow.d
 
     def __setitem__(self, key, value):
         if _is_device_object(value):
