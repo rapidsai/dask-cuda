@@ -12,7 +12,6 @@ def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
     ]
     file_size = [os.path.getsize(f) for f in file_path]
     byte_sum += sum(file_size)
-    print(file_size)
 
     # Allow up to chunk_overhead bytes overhead per chunk on disk
     host_overhead = len(dhf.host) * chunk_overhead

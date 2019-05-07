@@ -96,17 +96,17 @@ def test_device_host_file_step_by_step():
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
     assert_array_equal(dhf["a1"], a)
-    del dhf.device_buffer["a1"]
+    del dhf["a1"]
     assert_array_equal(dhf["a2"], a)
-    del dhf.device_buffer["a2"]
+    del dhf["a2"]
     assert_array_equal(dhf["b1"], b)
-    del dhf.device_buffer["b1"]
+    del dhf["b1"]
     assert_array_equal(dhf["b2"], b)
-    del dhf.device_buffer["b2"]
+    del dhf["b2"]
     assert_array_equal(dhf["b3"], b)
-    del dhf.device_buffer["b3"]
+    del dhf["b3"]
     assert_array_equal(dhf["b4"], b)
-    del dhf.device_buffer["b4"]
+    del dhf["b4"]
 
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
