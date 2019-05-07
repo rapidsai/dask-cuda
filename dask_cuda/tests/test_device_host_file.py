@@ -4,7 +4,6 @@ from dask_cuda.device_host_file import DeviceHostFile
 from random import randint
 
 import pytest
-from dask_cuda.utils_test import gen_random_key
 from cupy.testing import assert_array_equal
 
 
@@ -20,11 +19,11 @@ def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_r
     )
 
     host = [
-        (gen_random_key(64), np.random.random(randint(*array_size_range)))
+        ("x-%d" % i, np.random.random(randint(*array_size_range)))
         for i in range(num_host_arrays)
     ]
     device = [
-        (gen_random_key(64), cupy.random.random(randint(*array_size_range)))
+        ("dx-%d" % i, cupy.random.random(randint(*array_size_range)))
         for i in range(num_device_arrays)
     ]
 

@@ -1,9 +1,28 @@
 from distributed.utils_test import gen_cluster
 from distributed import wait
 from dask_cuda.worker import CUDAWorker
-from dask_cuda.utils_test import assert_device_host_file_size as assert_dhf_size
 import dask.array as da
 import pytest
+import os
+from zict.file import _safe_key as safe_key
+
+
+def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
+    byte_sum = dhf.device_buffer.fast.total_weight + dhf.host_buffer.fast.total_weight
+    file_path = [
+        os.path.join(dhf.disk.directory, safe_key(k))
+        for k in dhf.disk.keys()
+    ]
+    file_size = [os.path.getsize(f) for f in file_path]
+    byte_sum += sum(file_size)
+
+    # Allow up to chunk_overhead bytes overhead per chunk on disk
+    host_overhead = len(dhf.host) * chunk_overhead
+    disk_overhead = len(dhf.disk) * chunk_overhead
+    assert (
+        byte_sum >= total_bytes
+        and byte_sum <= total_bytes + host_overhead + disk_overhead
+    )
 
 
 @pytest.mark.parametrize(
@@ -56,14 +75,14 @@ def test_device_spill(params, device_limit):
         yield wait(xx)
 
         # Allow up to 1024 bytes overhead per chunk serialized
-        assert_dhf_size(worker.data, x.nbytes, 1024)
+        assert_device_host_file_size(worker.data, x.nbytes, 1024)
 
         y = client.compute(x.sum())
         res = yield y
 
         assert (abs(res / x.size) - 0.5) < 1e-3
 
-        assert_dhf_size(worker.data, x.nbytes, 1024)
+        assert_device_host_file_size(worker.data, x.nbytes, 1024)
         if params["spills_to_disk"]:
             assert len(worker.data.disk) > 0
         else:
