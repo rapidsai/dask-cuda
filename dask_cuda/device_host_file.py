@@ -61,40 +61,44 @@ class DeviceHostFile(ZictBase):
         self.disk_func = Func(
             partial(serialize_bytes, on_error="raise"), deserialize_bytes, File(path)
         )
-        self.host = Buffer(self.host_func, self.disk_func, memory_limit, weight=weight)
+        self.host_buffer = Buffer(
+            self.host_func, self.disk_func, memory_limit, weight=weight
+        )
 
         self.device_func = dict()
         self.device_host_func = Func(
-            _serialize_if_device, _deserialize_if_device, self.host
+            _serialize_if_device, _deserialize_if_device, self.host_buffer
         )
-        self.device = Buffer(
+        self.device_buffer = Buffer(
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
 
-        self.fast = self.host.fast
+        self.device = self.device_buffer.fast
+        self.host = self.host_buffer.fast
+        self.disk = self.host_buffer.slow
 
     def __setitem__(self, key, value):
         if _is_device_object(value):
-            self.device[key] = value
+            self.device_buffer[key] = value
         else:
-            self.host[key] = value
+            self.host_buffer[key] = value
 
     def __getitem__(self, key):
-        if key in self.host:
-            obj = self.host[key]
-            del self.host[key]
-            self.device[key] = _deserialize_if_device(obj)
+        if key in self.host_buffer:
+            obj = self.host_buffer[key]
+            del self.host_buffer[key]
+            self.device_buffer[key] = _deserialize_if_device(obj)
 
-        if key in self.device:
-            return self.device[key]
+        if key in self.device_buffer:
+            return self.device_buffer[key]
         else:
             raise KeyError
 
     def __len__(self):
-        return len(self.device)
+        return len(self.device_buffer)
 
     def __iter__(self):
-        return iter(self.device)
+        return iter(self.device_buffer)
 
     def __delitem__(self, i):
-        del self.device[i]
+        del self.device_buffer[i]

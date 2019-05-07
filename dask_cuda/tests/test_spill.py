@@ -65,8 +65,8 @@ def test_device_spill(params, device_limit):
 
         assert_dhf_size(worker.data, x.nbytes, 1024)
         if params["spills_to_disk"]:
-            assert len(worker.data.host.slow) > 0
+            assert len(worker.data.disk) > 0
         else:
-            assert len(worker.data.host.slow) == 0
+            assert len(worker.data.disk) == 0
 
     test_device_spill()

@@ -42,9 +42,9 @@ def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_r
         assert_array_equal(i[1], dhf[i[0]])
         del dhf[i[0]]
 
-    assert set(dhf.device.fast.keys()) == set()
-    assert set(dhf.host.fast.keys()) == set()
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set()
+    assert set(dhf.disk.keys()) == set()
 
 
 def test_device_host_file_step_by_step():
@@ -60,54 +60,54 @@ def test_device_host_file_step_by_step():
 
     dhf["a1"] = a
 
-    assert set(dhf.device.fast.keys()) == set()
-    assert set(dhf.host.fast.keys()) == set(["a1"])
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set(["a1"])
+    assert set(dhf.disk.keys()) == set()
 
     dhf["b1"] = b
 
-    assert set(dhf.device.fast.keys()) == set(["b1"])
-    assert set(dhf.host.fast.keys()) == set(["a1"])
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set(["b1"])
+    assert set(dhf.host.keys()) == set(["a1"])
+    assert set(dhf.disk.keys()) == set()
 
     dhf["b2"] = b
-    assert set(dhf.device.fast.keys()) == set(["b1", "b2"])
-    assert set(dhf.host.fast.keys()) == set(["a1"])
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set(["b1", "b2"])
+    assert set(dhf.host.keys()) == set(["a1"])
+    assert set(dhf.disk.keys()) == set()
 
     dhf["b3"] = b
-    assert set(dhf.device.fast.keys()) == set(["b2", "b3"])
-    assert set(dhf.host.fast.keys()) == set(["a1", "b1"])
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set(["b2", "b3"])
+    assert set(dhf.host.keys()) == set(["a1", "b1"])
+    assert set(dhf.disk.keys()) == set()
 
     dhf["a2"] = a
-    assert set(dhf.device.fast.keys()) == set(["b2", "b3"])
-    assert set(dhf.host.fast.keys()) == set(["a2", "b1"])
-    assert set(dhf.host.slow.keys()) == set(["a1"])
+    assert set(dhf.device.keys()) == set(["b2", "b3"])
+    assert set(dhf.host.keys()) == set(["a2", "b1"])
+    assert set(dhf.disk.keys()) == set(["a1"])
 
     dhf["b4"] = b
-    assert set(dhf.device.fast.keys()) == set(["b3", "b4"])
-    assert set(dhf.host.fast.keys()) == set(["a2", "b2"])
-    assert set(dhf.host.slow.keys()) == set(["a1", "b1"])
+    assert set(dhf.device.keys()) == set(["b3", "b4"])
+    assert set(dhf.host.keys()) == set(["a2", "b2"])
+    assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
     dhf["b4"] = b
-    assert set(dhf.device.fast.keys()) == set(["b3", "b4"])
-    assert set(dhf.host.fast.keys()) == set(["a2", "b2"])
-    assert set(dhf.host.slow.keys()) == set(["a1", "b1"])
+    assert set(dhf.device.keys()) == set(["b3", "b4"])
+    assert set(dhf.host.keys()) == set(["a2", "b2"])
+    assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
     assert_array_equal(dhf["a1"], a)
-    del dhf.device["a1"]
+    del dhf.device_buffer["a1"]
     assert_array_equal(dhf["a2"], a)
-    del dhf.device["a2"]
+    del dhf.device_buffer["a2"]
     assert_array_equal(dhf["b1"], b)
-    del dhf.device["b1"]
+    del dhf.device_buffer["b1"]
     assert_array_equal(dhf["b2"], b)
-    del dhf.device["b2"]
+    del dhf.device_buffer["b2"]
     assert_array_equal(dhf["b3"], b)
-    del dhf.device["b3"]
+    del dhf.device_buffer["b3"]
     assert_array_equal(dhf["b4"], b)
-    del dhf.device["b4"]
+    del dhf.device_buffer["b4"]
 
-    assert set(dhf.device.fast.keys()) == set()
-    assert set(dhf.host.fast.keys()) == set()
-    assert set(dhf.host.slow.keys()) == set()
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set()
+    assert set(dhf.disk.keys()) == set()
