@@ -10,12 +10,13 @@ from cupy.testing import assert_array_equal
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
 @pytest.mark.parametrize("num_device_arrays", [1, 10, 100])
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
-def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_range):
-    import tempfile
-
-    tmpdir = tempfile.TemporaryDirectory()
+def test_device_host_file_short(
+    tmp_path, num_device_arrays, num_host_arrays, array_size_range
+):
+    tmpdir = tmp_path / "storage"
+    tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir.name
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir
     )
 
     host = [
@@ -46,12 +47,11 @@ def test_device_host_file_short(num_device_arrays, num_host_arrays, array_size_r
     assert set(dhf.disk.keys()) == set()
 
 
-def test_device_host_file_step_by_step():
-    import tempfile
-
-    tmpdir = tempfile.TemporaryDirectory()
+def test_device_host_file_step_by_step(tmp_path):
+    tmpdir = tmp_path / "storage"
+    tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir.name
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir
     )
 
     a = np.random.random(1000)

@@ -8,7 +8,6 @@ from dask.distributed import Client
 from distributed.worker import TOTAL_MEMORY
 from dask_cuda import LocalCUDACluster
 from dask_cuda import utils
-import pytest
 
 
 @gen_test(timeout=20)

@@ -106,7 +106,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "string (like 5GB or 5000M), "
     "'auto', or zero for no memory management. "
     "Note: this parameter is ignored when "
-    "--worker-class is not CUDAWorker."
+    "--worker-class is not CUDAWorker.",
 )
 @click.option(
     "--worker-class",
@@ -114,7 +114,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default="CUDAWorker",
     help="The Worker class to be used. "
     "Choosing a non-default worker may result in limited functionality, "
-    "such as no device memory spilling support."
+    "such as no device memory spilling support.",
 )
 @click.option(
     "--reconnect/--no-reconnect",

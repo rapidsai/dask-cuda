@@ -2,26 +2,24 @@ from __future__ import print_function, division, absolute_import
 
 import pytest
 
-pytest.importorskip("requests")
-
-import sys, os
+import os
 from time import sleep
-from toolz import first
 
 from distributed import Client
 from distributed.metrics import time
-from distributed.utils import sync, tmpfile
-from distributed.utils_test import popen, slow, terminate_process, wait_for_port
+from distributed.utils_test import popen
 from distributed.utils_test import loop  # noqa: F401
 
 from dask_cuda.utils import get_n_gpus
 from dask_cuda.local_cuda_cluster import cuda_visible_devices
 
+pytest.importorskip("requests")
 
-def test_cuda_visible_devices_worker(loop):
+
+def test_cuda_visible_devices_worker():
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]) as sched:
+        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
             with popen(
                 [
                     "dask-cuda-worker",
@@ -32,7 +30,7 @@ def test_cuda_visible_devices_worker(loop):
                     "--worker-class",
                     "Worker",
                 ]
-            ) as worker:
+            ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
                     start = time()
                     while True:
@@ -55,10 +53,10 @@ def test_cuda_visible_devices_worker(loop):
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-def test_cuda_visible_devices_cudaworker_single(loop):
+def test_cuda_visible_devices_cudaworker_single():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]) as sched:
+        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
             with popen(
                 [
                     "dask-cuda-worker",
@@ -67,7 +65,7 @@ def test_cuda_visible_devices_cudaworker_single(loop):
                     "127.0.0.1",
                     "--no-bokeh",
                 ]
-            ) as worker:
+            ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
                     start = time()
                     while True:
@@ -90,13 +88,13 @@ def test_cuda_visible_devices_cudaworker_single(loop):
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-def test_cuda_visible_devices_cudaworker(loop):
+def test_cuda_visible_devices_cudaworker():
     n_gpus = get_n_gpus()
     if n_gpus < 2:
         pytest.skip("More than 1 GPU required for test")
     os.environ["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices(0)
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]) as sched:
+        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
             with popen(
                 [
                     "dask-cuda-worker",
@@ -105,7 +103,7 @@ def test_cuda_visible_devices_cudaworker(loop):
                     "127.0.0.1",
                     "--no-bokeh",
                 ]
-            ) as worker:
+            ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
                     start = time()
                     while True:
