@@ -8,7 +8,7 @@ import click
 from distributed import Nanny
 from distributed.config import config
 from distributed.utils import get_ip_interface, parse_timedelta
-from distributed.worker import _ncores
+from distributed.worker import Worker, _ncores
 from distributed.security import Security
 from distributed.cli.utils import (
     check_python_3,
@@ -104,7 +104,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "This can be an integer (bytes), "
     "float (fraction of total device memory), "
     "string (like 5GB or 5000M), "
-    "'auto', or zero for no memory management",
+    "'auto', or zero for no memory management. "
+    "Note: this parameter is ignored when "
+    "--worker-class is not CUDAWorker."
+)
+@click.option(
+    "--worker-class",
+    type=str,
+    default="CUDAWorker",
+    help="The Worker class to be used. "
+    "Choosing a non-default worker may result in limited functionality, "
+    "such as no device memory spilling support."
 )
 @click.option(
     "--reconnect/--no-reconnect",
@@ -155,6 +165,7 @@ def main(
     name,
     memory_limit,
     device_memory_limit,
+    worker_class,
     pid_file,
     reconnect,
     resources,
@@ -243,6 +254,14 @@ def main(
     if death_timeout is not None:
         death_timeout = parse_timedelta(death_timeout, "s")
 
+    if worker_class == "Worker":
+        worker_class = Worker
+    elif worker_class == "CUDAWorker":
+        worker_class = CUDAWorker
+        kwargs["device_memory_limit"] = device_memory_limit
+    else:
+        raise ValueError("worker_class %s not recognized" % worker_class)
+
     nannies = [
         t(
             scheduler,
@@ -252,7 +271,6 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            device_memory_limit=device_memory_limit,
             reconnect=reconnect,
             local_dir=local_directory,
             death_timeout=death_timeout,
@@ -262,7 +280,7 @@ def main(
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
-            worker_class=CUDAWorker,
+            worker_class=worker_class,
             **kwargs
         )
         for i in range(nprocs)
