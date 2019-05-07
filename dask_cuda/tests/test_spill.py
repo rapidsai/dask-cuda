@@ -56,6 +56,7 @@ def test_device_spill(params, device_limit):
             "distributed.worker.memory.spill": params["host_spill"],
             "distributed.worker.device-memory.target": device_limit,
             "distributed.worker.device-memory.spill": device_limit,
+            "distributed.worker.device-memory.pause": 0.0,
         },
     )
     def test_device_spill(client, scheduler, worker):
