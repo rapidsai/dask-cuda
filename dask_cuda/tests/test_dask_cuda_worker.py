@@ -16,7 +16,7 @@ from dask_cuda.local_cuda_cluster import cuda_visible_devices
 pytest.importorskip("requests")
 
 
-def test_cuda_visible_devices_worker():
+def test_cuda_visible_devices_worker(loop):
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
@@ -53,7 +53,7 @@ def test_cuda_visible_devices_worker():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-def test_cuda_visible_devices_cudaworker_single():
+def test_cuda_visible_devices_cudaworker_single(loop):
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
@@ -88,7 +88,7 @@ def test_cuda_visible_devices_cudaworker_single():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-def test_cuda_visible_devices_cudaworker():
+def test_cuda_visible_devices_cudaworker(loop):
     n_gpus = get_n_gpus()
     if n_gpus < 2:
         pytest.skip("More than 1 GPU required for test")
