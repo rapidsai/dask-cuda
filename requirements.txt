@@ -1,2 +1,3 @@
 dask>=1.1.4
 distributed>=1.25.2
+click
