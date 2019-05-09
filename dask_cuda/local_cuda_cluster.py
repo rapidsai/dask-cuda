@@ -21,9 +21,10 @@ def cuda_visible_devices(i, visible=None):
     """
     if visible is None:
         try:
-            visible = list(map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(",")))
+            visible = map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(","))
         except KeyError:
-            visible = list(range(get_n_gpus()))
+            visible = range(get_n_gpus())
+    visible = list(visible)
 
     L = visible[i:] + visible[:i]
     return ",".join(map(str, L))
@@ -55,7 +56,7 @@ class LocalCUDACluster(LocalCluster):
         )
 
     @gen.coroutine
-    def _start(self, ip=None, n_workers=0):
+    def _start(self, host=None, n_workers=0):
         """
         Start all cluster services.
         """
@@ -65,16 +66,16 @@ class LocalCUDACluster(LocalCluster):
         if self.protocol == "inproc://":
             address = self.protocol
         else:
-            if ip is None:
+            if host is None:
                 if self.interface:
-                    ip = get_ip_interface(self.interface)
+                    host = get_ip_interface(self.interface)
                 else:
-                    ip = "127.0.0.1"
+                    host = "127.0.0.1"
 
-            if "://" in ip:
-                address = ip
+            if "://" in host:
+                address = host
             else:
-                address = self.protocol + ip
+                address = self.protocol + host
             if self.scheduler_port:
                 address += ":" + str(self.scheduler_port)
 
