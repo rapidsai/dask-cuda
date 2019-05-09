@@ -1,7 +1,8 @@
 import os
 
 from dask.distributed import Nanny, SpecCluster, Scheduler
-from distributed.bokeh.scheduler import BokehScheduler
+
+# from distributed.bokeh.scheduler import BokehScheduler
 
 from .local_cuda_cluster import cuda_visible_devices
 
@@ -21,7 +22,6 @@ def DGX(**kwargs):
                 },
                 "interface": "ib%d" % (i // 2),
                 "protocol": "ucx",
-                "local_dir": "/raid/mrocklin",
                 "ncores": 1,
                 "data": dict,
             },
@@ -34,7 +34,7 @@ def DGX(**kwargs):
         "options": {
             "interface": "ib0",
             "protocol": "ucx",
-            "services": {("bokeh", "10.33.227.165:8900"): BokehScheduler},
+            # "services": {("bokeh", "10.33.227.165:8900"): BokehScheduler},
         },
     }
 
