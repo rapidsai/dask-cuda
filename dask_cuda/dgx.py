@@ -1,6 +1,7 @@
 import os
 
 from dask.distributed import Nanny, SpecCluster, Scheduler
+from distributed.utils import get_ip_interface
 
 # from distributed.bokeh.scheduler import BokehScheduler
 
@@ -8,6 +9,7 @@ from .local_cuda_cluster import cuda_visible_devices
 
 
 def DGX(**kwargs):
+    ethernet_host = get_ip_interface("enp1s0f0")
     gpus = map(
         int, os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7").split(",")
     )
@@ -34,7 +36,7 @@ def DGX(**kwargs):
         "options": {
             "interface": "ib0",
             "protocol": "ucx",
-            # "services": {("bokeh", "10.33.227.165:8900"): BokehScheduler},
+            "dashboard_address": ethernet_host + ":8787",
         },
     }
 
