@@ -22,7 +22,7 @@ requirements:
   run:
     - python x.x
     - dask-core >=1.1.4
-    - distributed >=1.27.0
+    - distributed >=1.28.0
 
 test:
   imports:
