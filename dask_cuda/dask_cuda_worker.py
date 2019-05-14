@@ -23,6 +23,7 @@ from distributed.proctitle import (
     enable_proctitle_on_current,
 )
 
+from .device_host_file import DeviceHostFile
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import get_n_gpus
 
@@ -252,6 +253,7 @@ def main(
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
+            data=DeviceHostFile
             **kwargs
         )
         for i in range(nprocs)
