@@ -19,6 +19,10 @@ cd $WORKSPACE
 export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
 export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
 
+# Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
+# will possibly be enabled by default starting on 1.17)
+export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
+
 ################################################################################
 # SETUP - Check environment
 ################################################################################
@@ -37,6 +41,13 @@ conda list
 
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
+
+################################################################################
+# SETUP - Install additional packages
+################################################################################
+
+# Install CuPy for tests
+pip install cupy-cuda100==6.0.0rc1
 
 ################################################################################
 # TEST - Run tests
