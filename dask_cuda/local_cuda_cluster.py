@@ -4,8 +4,10 @@ import warnings
 from tornado import gen
 
 from dask.distributed import LocalCluster
+from distributed.diskutils import WorkSpace
 from distributed.nanny import Nanny
 from distributed.worker import Worker, TOTAL_MEMORY
+from distributed.utils import parse_bytes, warn_on_duration
 
 from .device_host_file import DeviceHostFile
 from .utils import get_n_gpus, get_device_total_memory
@@ -102,12 +104,27 @@ class LocalCUDACluster(LocalCluster):
         else:
             W = Worker
 
+        local_dir = kwargs.get("local_dir", "dask-worker-space")
+        with warn_on_duration(
+            "1s",
+            "Creating scratch directories is taking a surprisingly long time. "
+            "This is often due to running workers on a network file system. "
+            "Consider specifying a local-directory to point workers to write "
+            "scratch data to a local disk.",
+        ):
+            _workspace = WorkSpace(os.path.abspath(local_dir))
+            _workdir = _workspace.new_work_dir(prefix="worker-")
+            local_dir = _workdir.dir_path
+
         device_index = int(kwargs["env"]["CUDA_VISIBLE_DEVICES"].split(",")[0])
         if self.device_memory_limit is None:
             self.device_memory_limit = get_device_total_memory(device_index)
+        elif isinstance(self.device_memory_limit, str):
+            self.device_memory_limit = parse_bytes(self.device_memory_limit)
         data = DeviceHostFile(
             device_memory_limit=self.device_memory_limit,
             memory_limit=self.host_memory_limit,
+            local_dir=local_dir,
         )
 
         w = yield W(
