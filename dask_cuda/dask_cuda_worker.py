@@ -9,7 +9,7 @@ import click
 from distributed import Nanny, Worker
 from distributed.config import config
 from distributed.utils import get_ip_interface, parse_timedelta
-from distributed.worker import _ncores
+from distributed.worker import _ncores, parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import (
     check_python_3,
@@ -25,7 +25,7 @@ from distributed.proctitle import (
 
 from .device_host_file import DeviceHostFile
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import get_n_gpus
+from .utils import get_n_gpus, get_device_total_memory
 
 from toolz import valmap
 from tornado.ioloop import IOLoop, TimeoutError
@@ -176,7 +176,7 @@ def main(
         nprocs = get_n_gpus()
 
     if not nthreads:
-        nthreads = min(1, _ncores // nprocs )
+        nthreads = min(1, _ncores // nprocs)
 
     if pid_file:
         with open(pid_file, "w") as f:
@@ -253,7 +253,12 @@ def main(
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
-            data=DeviceHostFile
+            data=DeviceHostFile(
+                device_memory_limit=get_device_total_memory(index=i),
+                memory_limit=parse_memory_limit(
+                    memory_limit, nthreads, total_cores=nprocs
+                ),
+            ),
             **kwargs
         )
         for i in range(nprocs)
