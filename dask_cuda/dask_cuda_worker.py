@@ -8,7 +8,13 @@ from sys import exit
 import click
 from distributed import Nanny, Worker
 from distributed.config import config
-from distributed.utils import get_ip_interface, parse_timedelta, parse_bytes
+from distributed.diskutils import WorkSpace
+from distributed.utils import (
+    get_ip_interface,
+    parse_timedelta,
+    parse_bytes,
+    warn_on_duration,
+)
 from distributed.worker import _ncores, parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import (
@@ -246,6 +252,18 @@ def main(
     if death_timeout is not None:
         death_timeout = parse_timedelta(death_timeout, "s")
 
+    local_dir = kwargs.get("local_dir", "dask-worker-space")
+    with warn_on_duration(
+        "1s",
+        "Creating scratch directories is taking a surprisingly long time. "
+        "This is often due to running workers on a network file system. "
+        "Consider specifying a local-directory to point workers to write "
+        "scratch data to a local disk.",
+    ):
+        _workspace = WorkSpace(os.path.abspath(local_dir))
+        _workdir = _workspace.new_work_dir(prefix="worker-")
+        local_dir = _workdir.dir_path
+
     nannies = [
         t(
             scheduler,
@@ -264,15 +282,19 @@ def main(
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
-            data=DeviceHostFile(
-                device_memory_limit=get_device_total_memory(index=i)
-                if (device_memory_limit == "auto" or device_memory_limit == int(0))
-                else parse_bytes(device_memory_limit),
-                memory_limit=parse_memory_limit(
-                    memory_limit, nthreads, total_cores=nprocs
-                ),
+            data=(
+                DeviceHostFile,
+                {
+                    "device_memory_limit": get_device_total_memory(index=i)
+                    if (device_memory_limit == "auto" or device_memory_limit == int(0))
+                    else parse_bytes(device_memory_limit),
+                    "memory_limit": parse_memory_limit(
+                        memory_limit, nthreads, total_cores=nprocs
+                    ),
+                    "local_dir": local_dir,
+                },
             ),
-            **kwargs
+            **kwargs,
         )
         for i in range(nprocs)
     ]
