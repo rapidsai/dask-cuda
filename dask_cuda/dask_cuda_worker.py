@@ -8,7 +8,7 @@ from sys import exit
 import click
 from distributed import Nanny, Worker
 from distributed.config import config
-from distributed.utils import get_ip_interface, parse_timedelta
+from distributed.utils import get_ip_interface, parse_timedelta, parse_bytes
 from distributed.worker import _ncores, parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import (
@@ -100,6 +100,16 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "'auto', or zero for no memory management",
 )
 @click.option(
+    "--device-memory-limit",
+    default="auto",
+    help="Bytes of memory per CUDA device that the worker can use. "
+    "This can be an integer (bytes), "
+    "float (fraction of total device memory), "
+    "string (like 5GB or 5000M), "
+    "'auto', or zero for no memory management "
+    "(i.e., allow full device memory usage).",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -147,6 +157,7 @@ def main(
     nthreads,
     name,
     memory_limit,
+    device_memory_limit,
     pid_file,
     reconnect,
     resources,
@@ -254,7 +265,9 @@ def main(
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             data=DeviceHostFile(
-                device_memory_limit=get_device_total_memory(index=i),
+                device_memory_limit=get_device_total_memory(index=i)
+                if (device_memory_limit == "auto" or device_memory_limit == int(0))
+                else parse_bytes(device_memory_limit),
                 memory_limit=parse_memory_limit(
                     memory_limit, nthreads, total_cores=nprocs
                 ),
