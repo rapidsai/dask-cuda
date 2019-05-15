@@ -1,11 +1,14 @@
 import os
+import warnings
 
 from tornado import gen
 
 from dask.distributed import LocalCluster
-from distributed.worker import TOTAL_MEMORY
+from distributed.nanny import Nanny
+from distributed.worker import Worker, TOTAL_MEMORY
 
-from .utils import get_n_gpus
+from .device_host_file import DeviceHostFile
+from .utils import get_n_gpus, get_device_total_memory
 
 
 def cuda_visible_devices(i, visible=None):
@@ -35,7 +38,8 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit=None,
-        **kwargs
+        device_memory_limit=None,
+        **kwargs,
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
@@ -45,6 +49,9 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("Can not specify more processes than GPUs")
         if memory_limit is None:
             memory_limit = TOTAL_MEMORY / n_workers
+        self.host_memory_limit = memory_limit
+        self.device_memory_limit = device_memory_limit
+
         LocalCluster.__init__(
             self,
             n_workers=n_workers,
@@ -82,3 +89,43 @@ class LocalCUDACluster(LocalCluster):
         self.status = "running"
 
         raise gen.Return(self)
+
+    @gen.coroutine
+    def _start_worker(self, death_timeout=60, **kwargs):
+        if self.status and self.status.startswith("clos"):
+            warnings.warn("Tried to start a worker while status=='%s'" % self.status)
+            return
+
+        if self.processes:
+            W = Nanny
+            kwargs["quiet"] = True
+        else:
+            W = Worker
+
+        device_index = int(kwargs["env"]["CUDA_VISIBLE_DEVICES"].split(",")[0])
+        if self.device_memory_limit is None:
+            self.device_memory_limit = get_device_total_memory(device_index)
+        data = DeviceHostFile(
+            device_memory_limit=self.device_memory_limit,
+            memory_limit=self.host_memory_limit,
+        )
+
+        w = yield W(
+            self.scheduler.address,
+            loop=self.loop,
+            death_timeout=death_timeout,
+            silence_logs=self.silence_logs,
+            data=data,
+            **kwargs,
+        )
+
+        self.workers.append(w)
+
+        while w.status != "closed" and w.worker_address not in self.scheduler.workers:
+            yield gen.sleep(0.01)
+
+        if w.status == "closed" and self.scheduler.status == "running":
+            self.workers.remove(w)
+            raise gen.TimeoutError("Worker failed to start")
+
+        raise gen.Return(w)
