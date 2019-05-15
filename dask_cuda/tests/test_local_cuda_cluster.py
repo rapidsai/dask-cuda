@@ -11,7 +11,10 @@ from dask_cuda import utils
 @gen_test(timeout=20)
 async def test_local_cuda_cluster():
     async with LocalCUDACluster(
-        scheduler_port=0, asynchronous=True, diagnostics_port=None
+        scheduler_port=0,
+        asynchronous=True,
+        diagnostics_port=None,
+        device_memory_limit=1,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             assert len(cluster.workers) == utils.get_n_gpus()
@@ -37,7 +40,10 @@ async def test_with_subset_of_cuda_visible_devices():
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
         async with LocalCUDACluster(
-            scheduler_port=0, asynchronous=True, diagnostics_port=None
+            scheduler_port=0,
+            asynchronous=True,
+            diagnostics_port=None,
+            device_memory_limit=1,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 assert len(cluster.workers) == 4

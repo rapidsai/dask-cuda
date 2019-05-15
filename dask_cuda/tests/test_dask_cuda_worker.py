@@ -25,6 +25,8 @@ def test_cuda_visible_devices(loop):
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
+                    "--device-memory-limit",
+                    "1 MB",
                     "--no-bokeh",
                 ]
             ) as worker:
