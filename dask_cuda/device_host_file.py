@@ -77,6 +77,9 @@ class DeviceHostFile(ZictBase):
         self.host = self.host_buffer.fast.d
         self.disk = self.host_buffer.slow.d
 
+        # For Worker compatibility only, where `fast` is host memory buffer
+        self.fast = self.host_buffer.fast
+
     def __setitem__(self, key, value):
         if _is_device_object(value):
             self.device_buffer[key] = value
