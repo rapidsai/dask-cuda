@@ -47,7 +47,7 @@ conda config --set ssl_verify False
 ################################################################################
 
 # Install CuPy for tests
-pip install cupy-cuda100==6.0.0rc1
+pip install cupy-cuda100==6.0.0
 
 ################################################################################
 # TEST - Run tests
