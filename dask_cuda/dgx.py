@@ -10,8 +10,8 @@ from .local_cuda_cluster import cuda_visible_devices
 
 def DGX(**kwargs):
     ethernet_host = get_ip_interface("enp1s0f0")
-    gpus = map(
-        int, os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7").split(",")
+    gpus = list(
+        map(int, os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7").split(","))
     )
 
     spec = {
@@ -19,8 +19,9 @@ def DGX(**kwargs):
             "cls": Nanny,
             "options": {
                 "env": {
-                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(i, range(8)),
+                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(ii, gpus),
                     # 'UCX_NET_DEVICES': 'mlx5_%d:1' % (i // 2)
+                    # "UCX_TLS": "rc,cuda_copy",
                 },
                 "interface": "ib%d" % (i // 2),
                 "protocol": "ucx",
@@ -28,7 +29,7 @@ def DGX(**kwargs):
                 "data": dict,
             },
         }
-        for i in gpus
+        for ii, i in enumerate(gpus)
     }
 
     scheduler = {
