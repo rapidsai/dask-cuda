@@ -21,12 +21,13 @@ def DGX(**kwargs):
                 "env": {
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(ii, gpus),
                     # 'UCX_NET_DEVICES': 'mlx5_%d:1' % (i // 2)
-                    # "UCX_TLS": "rc,cuda_copy",
+                    "UCX_TLS": "rc,cuda_copy,cuda_ipc",
                 },
                 "interface": "ib%d" % (i // 2),
                 "protocol": "ucx",
                 "ncores": 1,
                 "data": dict,
+                "preload": ["dask_cuda.initialize_context"],
             },
         }
         for ii, i in enumerate(gpus)
