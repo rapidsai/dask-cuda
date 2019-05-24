@@ -25,7 +25,7 @@ affinity = {  # nvidia-smi topo -m
 }
 
 
-def DGX(interface="ib", **kwargs):
+def DGX(interface="ib", dashboard_address=":8787", threads_per_worker=1, **kwargs):
     gpus = list(
         map(int, os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7").split(","))
     )
@@ -41,7 +41,7 @@ def DGX(interface="ib", **kwargs):
                 },
                 "interface": interface + str(i // 2),
                 "protocol": "ucx",
-                "ncores": 1,
+                "ncores": threads_per_worker,
                 "data": dict,
                 "preload": ["dask_cuda.initialize_context"],
                 "dashboard_address": ":0",
@@ -56,7 +56,7 @@ def DGX(interface="ib", **kwargs):
         "options": {
             "interface": interface + str(gpus[0] // 2),
             "protocol": "ucx",
-            "dashboard_address": ":8787",
+            "dashboard_address": dashboard_address,
         },
     }
 
