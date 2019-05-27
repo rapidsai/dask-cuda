@@ -1,10 +1,7 @@
 import os
 
-from tornado import gen
-
-from dask.distributed import LocalCluster
+from dask.distributed import SpecCluster, Nanny, Scheduler
 from distributed.worker import TOTAL_MEMORY
-from distributed.utils import get_ip_interface
 
 from .utils import get_n_gpus
 
@@ -30,66 +27,60 @@ def cuda_visible_devices(i, visible=None):
     return ",".join(map(str, L))
 
 
-class LocalCUDACluster(LocalCluster):
-    def __init__(
-        self,
-        n_workers=None,
-        threads_per_worker=1,
-        processes=True,
-        memory_limit=None,
-        **kwargs,
-    ):
-        if n_workers is None:
-            n_workers = get_n_gpus()
-        if not processes:
-            raise NotImplementedError("Need processes to segment GPUs")
-        if n_workers > get_n_gpus():
-            raise ValueError("Can not specify more processes than GPUs")
-        if memory_limit is None:
-            memory_limit = TOTAL_MEMORY / n_workers
-        LocalCluster.__init__(
-            self,
-            n_workers=n_workers,
-            threads_per_worker=threads_per_worker,
-            memory_limit=memory_limit,
-            **kwargs,
-        )
+def LocalCUDACluster(
+    n_workers=None,
+    threads_per_worker=1,
+    processes=True,
+    memory_limit=None,
+    interface=None,
+    protocol=None,
+    data=None,
+    CUDA_VISIBLE_DEVICES=None,
+    silence_logs=True,
+    dashboard_address=":8787",
+    **kwargs,
+):
+    if n_workers is None:
+        n_workers = get_n_gpus()
+    if CUDA_VISIBLE_DEVICES is None:
+        CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
+    if isinstance(CUDA_VISIBLE_DEVICES, str):
+        CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
+    CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+    if memory_limit is None:
+        memory_limit = TOTAL_MEMORY / n_workers
 
-    @gen.coroutine
-    def _start(self, host=None, n_workers=0):
-        """
-        Start all cluster services.
-        """
-        if self.status == "running":
-            return
+    workers = {
+        i: {
+            "cls": Nanny,
+            "options": {
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
+                        ii, CUDA_VISIBLE_DEVICES
+                    )
+                },
+                "ncores": threads_per_worker,
+                "data": data,
+                "preload": ["dask_cuda.initialize_context"],
+                "dashboard_address": ":0",
+                "silence_logs": silence_logs,
+                "interface": interface,
+                "protocol": protocol,
+                "memory_limit": memory_limit,
+            },
+        }
+        for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
+    }
 
-        if self.protocol == "inproc://":
-            address = self.protocol
-        else:
-            if host is None:
-                if self.interface:
-                    host = get_ip_interface(self.interface)
-                else:
-                    host = "127.0.0.1"
+    scheduler = {
+        "cls": Scheduler,
+        "options": {
+            "dashboard_address": dashboard_address,
+            "interface": interface,
+            "protocol": protocol,
+        },
+    }
 
-            if "://" in host:
-                address = host
-            else:
-                address = self.protocol + host
-            if self.scheduler_port:
-                address += ":" + str(self.scheduler_port)
-
-        self.scheduler.start(address)
-
-        yield [
-            self._start_worker(
-                **self.worker_kwargs,
-                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                name="gpu-" + str(i),
-            )
-            for i in range(n_workers)
-        ]
-
-        self.status = "running"
-
-        raise gen.Return(self)
+    return SpecCluster(
+        workers=workers, scheduler=scheduler, silence_logs=silence_logs, **kwargs
+    )

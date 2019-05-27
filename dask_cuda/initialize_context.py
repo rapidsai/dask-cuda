@@ -17,4 +17,11 @@ about Dask configuration.
 """
 import numba.cuda
 
-numba.cuda.current_context()
+import logging
+
+logger = logging.getLogger(__name__)
+
+try:
+    numba.cuda.current_context()
+except Exception:
+    logger.error("Unable to start CUDA Context", exc_info=True)
