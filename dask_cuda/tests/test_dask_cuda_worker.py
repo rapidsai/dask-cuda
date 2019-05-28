@@ -16,14 +16,14 @@ pytest.importorskip("requests")
 def test_cuda_visible_devices(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]):
+        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
                 [
                     "dask-cuda-worker",
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
-                    "--no-bokeh",
+                    "--no-dashboard",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:

@@ -52,15 +52,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="private key file for TLS (in PEM format)",
 )
 @click.option(
-    "--bokeh-port", type=int, default=0, help="Bokeh port, defaults to random port"
+    "--dashboard-address", type=str, default=":0", help="dashboard address"
 )
 @click.option(
-    "--bokeh/--no-bokeh",
-    "bokeh",
+    "--dashboard/--no-dashboard",
+    "dashboard",
     default=True,
     show_default=True,
     required=False,
-    help="Launch Bokeh Web UI",
+    help="Launch dashboard",
 )
 @click.option(
     "--host",
@@ -144,8 +144,8 @@ def main(
     pid_file,
     reconnect,
     resources,
-    bokeh,
-    bokeh_port,
+    dashboard,
+    dashboard_address,
     local_directory,
     scheduler_file,
     interface,
@@ -184,9 +184,9 @@ def main(
 
     services = {}
 
-    if bokeh:
+    if dashboard:
         try:
-            from distributed.bokeh.worker import BokehWorker
+            from distributed.dashboard import BokehWorker
         except ImportError:
             pass
         else:
@@ -194,7 +194,7 @@ def main(
                 result = (BokehWorker, {"prefix": bokeh_prefix})
             else:
                 result = BokehWorker
-            services[("bokeh", bokeh_port)] = result
+            services[("dashboard", dashboard_address)] = result
 
     if resources:
         resources = resources.replace(",", " ").split()
