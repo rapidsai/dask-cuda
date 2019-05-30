@@ -7,7 +7,7 @@ from dask.distributed import LocalCluster
 from distributed.diskutils import WorkSpace
 from distributed.nanny import Nanny
 from distributed.worker import Worker, TOTAL_MEMORY
-from distributed.utils import parse_bytes, warn_on_duration
+from distributed.utils import parse_bytes, warn_on_duration,  get_ip_interface
 
 from .device_host_file import DeviceHostFile
 from .utils import get_n_gpus, get_device_total_memory
@@ -59,7 +59,7 @@ class LocalCUDACluster(LocalCluster):
             n_workers=n_workers,
             threads_per_worker=threads_per_worker,
             memory_limit=memory_limit,
-            **kwargs,
+            **kwargs
         )
 
     @gen.coroutine
@@ -69,21 +69,30 @@ class LocalCUDACluster(LocalCluster):
         """
         if self.status == "running":
             return
-        if (ip is None) and (not self.scheduler_port) and (not self.processes):
-            # Use inproc transport for optimization
-            scheduler_address = "inproc://"
-        elif ip is not None and ip.startswith("tls://"):
-            scheduler_address = "%s:%d" % (ip, self.scheduler_port)
+
+        if self.protocol == "inproc://":
+            address = self.protocol
         else:
             if ip is None:
-                ip = "127.0.0.1"
-            scheduler_address = (ip, self.scheduler_port)
-        self.scheduler.start(scheduler_address)
+                if self.interface:
+                    ip = get_ip_interface(self.interface)
+                else:
+                    ip = "127.0.0.1"
+
+            if "://" in ip:
+                address = ip
+            else:
+                address = self.protocol + ip
+            if self.scheduler_port:
+                address += ":" + str(self.scheduler_port)
+
+        self.scheduler.start(address)
 
         yield [
             self._start_worker(
                 **self.worker_kwargs,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+                name="gpu-" + str(i),
             )
             for i in range(n_workers)
         ]
