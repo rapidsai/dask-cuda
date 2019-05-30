@@ -8,6 +8,7 @@ function logger() {
 
 # Set path and build parallel level
 export PATH=/conda/bin:/usr/local/cuda/bin:$PATH
+export CUDA_REL=${CUDA//./}
 
 # Set home to the job's workspace
 export HOME=$WORKSPACE
@@ -47,7 +48,7 @@ conda config --set ssl_verify False
 ################################################################################
 
 # Install CuPy for tests
-pip install cupy-cuda100==6.0.0
+pip install cupy-cuda${CUDA_REL}==6.0.0
 
 ################################################################################
 # TEST - Run tests
