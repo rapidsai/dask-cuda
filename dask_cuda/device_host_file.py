@@ -22,9 +22,20 @@ def _is_device_object(obj):
             any([isinstance(obj, inst) for inst in _device_instances]))
 
 
+def _is_device_object_multi(obj):
+    """
+    Check if obj is a device object with _is_device_object(). If obj
+    is a list or tuple, check if at least one of them is a device object.
+    """
+    if isinstance(obj, list) or isinstance(obj, tuple):
+        return any([_is_device_object(o) for o in obj])
+    else:
+        return _is_device_object(obj)
+
+
 def _serialize_if_device(obj):
     """ Serialize an object if it's a device object """
-    if _is_device_object(obj):
+    if _is_device_object_multi(obj):
         return serialize_bytes(obj, on_error="raise")
     else:
         return obj
@@ -88,7 +99,7 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer.fast
 
     def __setitem__(self, key, value):
-        if _is_device_object(value):
+        if _is_device_object_multi(value):
             self.device_buffer[key] = value
         else:
             self.host_buffer[key] = value
