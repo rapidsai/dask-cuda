@@ -38,6 +38,7 @@ def LocalCUDACluster(
     CUDA_VISIBLE_DEVICES=None,
     silence_logs=True,
     dashboard_address=":8787",
+    scheduler_port=0,
     **kwargs,
 ):
     if n_workers is None:
@@ -78,6 +79,7 @@ def LocalCUDACluster(
             "dashboard_address": dashboard_address,
             "interface": interface,
             "protocol": protocol,
+            "port": scheduler_port,
         },
     }
 

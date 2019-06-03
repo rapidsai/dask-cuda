@@ -1,6 +1,7 @@
 import os
 
 from dask.distributed import Nanny, SpecCluster, Scheduler
+from distributed.worker import TOTAL_MEMORY
 
 from .local_cuda_cluster import cuda_visible_devices
 
@@ -71,6 +72,7 @@ def DGX(
     if isinstance(CUDA_VISIBLE_DEVICES, str):
         CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+    memory_limit = TOTAL_MEMORY / 8
 
     spec = {
         i: {
@@ -91,6 +93,7 @@ def DGX(
                 "dashboard_address": ":0",
                 "plugins": [CPUAffinity(affinity[i])],
                 "silence_logs": silence_logs,
+                "memory_limit": memory_limit,
             },
         }
         for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
