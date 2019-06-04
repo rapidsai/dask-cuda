@@ -1,3 +1,7 @@
+import pytest
+
+import os
+
 from distributed.utils_test import gen_cluster, loop, gen_test
 from distributed.worker import Worker
 from distributed import Client, get_worker, wait
@@ -5,9 +9,8 @@ from dask_cuda import LocalCUDACluster
 from dask_cuda.device_host_file import DeviceHostFile
 import dask.array as da
 import cupy
-import pytest
-import os
 from zict.file import _safe_key as safe_key
+from tornado.ioloop import IOLoop
 
 
 def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
@@ -105,16 +108,20 @@ def test_device_spill(params):
         },
     ],
 )
-def test_cluster_device_spill(loop, params):
-    @gen_test()
-    def test_cluster_device_spill():
+def test_cluster_device_spill(params):
+    @gen_test(timeout=30)
+    def test():
+        loop = IOLoop.current()
+
         cluster = yield LocalCUDACluster(
             1,
+            loop=loop,
             scheduler_port=0,
             processes=True,
             silence_logs=False,
             dashboard_address=None,
             asynchronous=True,
+            death_timeout=10,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
             memory_target_fraction=params["host_target"],
@@ -147,3 +154,13 @@ def test_cluster_device_spill(loop, params):
                 assert dc > 0
             else:
                 assert dc == 0
+
+        yield client.close()
+
+        # Ensure timeout is respected for workers
+        for w in cluster.workers:
+            yield w.close(timeout=10)
+
+        yield cluster.close()
+
+    test()
