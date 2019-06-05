@@ -10,7 +10,6 @@ from dask_cuda.device_host_file import DeviceHostFile
 import dask.array as da
 import cupy
 from zict.file import _safe_key as safe_key
-from tornado.ioloop import IOLoop
 
 
 def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
@@ -111,11 +110,8 @@ def test_device_spill(params):
 def test_cluster_device_spill(params):
     @gen_test(timeout=30)
     def test():
-        loop = IOLoop.current()
-
         cluster = yield LocalCUDACluster(
             1,
-            loop=loop,
             scheduler_port=0,
             processes=True,
             silence_logs=False,
