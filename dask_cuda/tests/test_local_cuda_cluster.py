@@ -34,6 +34,9 @@ async def test_local_cuda_cluster():
                 ident = devices[0]
                 assert int(ident) == cluster.scheduler.workers[w].name
 
+            with pytest.raises(ValueError):
+                cluster.scale(1000)
+
 
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():

@@ -1,6 +1,7 @@
+import copy
 import os
 
-from dask.distributed import SpecCluster, Nanny, Scheduler
+from dask.distributed import LocalCluster
 from distributed.worker import TOTAL_MEMORY
 
 from .utils import get_n_gpus
@@ -27,62 +28,73 @@ def cuda_visible_devices(i, visible=None):
     return ",".join(map(str, L))
 
 
-def LocalCUDACluster(
-    n_workers=None,
-    threads_per_worker=1,
-    processes=True,
-    memory_limit=None,
-    interface=None,
-    protocol=None,
-    data=None,
-    CUDA_VISIBLE_DEVICES=None,
-    silence_logs=True,
-    dashboard_address=":8787",
-    scheduler_port=0,
-    **kwargs,
-):
-    if n_workers is None:
-        n_workers = get_n_gpus()
-    if CUDA_VISIBLE_DEVICES is None:
-        CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
-    if isinstance(CUDA_VISIBLE_DEVICES, str):
-        CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-    CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
-    if memory_limit is None:
-        memory_limit = TOTAL_MEMORY / n_workers
+class LocalCUDACluster(LocalCluster):
+    """ A variant of LocalCluster that uses one GPU per process
 
-    workers = {
-        i: {
-            "cls": Nanny,
-            "options": {
+    This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
+    worker process.
+
+    See Also
+    --------
+    LocalCluster
+    """
+
+    def __init__(
+        self,
+        n_workers=None,
+        threads_per_worker=1,
+        processes=True,
+        memory_limit=None,
+        CUDA_VISIBLE_DEVICES=None,
+        **kwargs
+    ):
+        if n_workers is None:
+            n_workers = get_n_gpus()
+        if CUDA_VISIBLE_DEVICES is None:
+            CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
+        if isinstance(CUDA_VISIBLE_DEVICES, str):
+            CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
+        CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+        if memory_limit is None:
+            memory_limit = TOTAL_MEMORY / n_workers
+        if not processes:
+            raise ValueError(
+                "Processes are necessary in order to use multiple GPUs with Dask"
+            )
+
+        super().__init__(
+            n_workers=0,
+            threads_per_worker=threads_per_worker,
+            memory_limit=memory_limit,
+            processes=True,
+            **kwargs
+        )
+
+        self.new_spec["options"]["preload"] = self.new_spec["options"].get(
+            "preload", []
+        ) + ["dask_cuda.initialize_context"]
+
+        self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
+        self.scale(n_workers)
+
+    def new_worker_spec(self):
+        try:
+            name = min(set(self.cuda_visible_devices) - set(self.worker_spec))
+        except Exception:
+            raise ValueError(
+                "Can not scale beyond visible devices", self.cuda_visible_devices
+            )
+
+        spec = copy.deepcopy(self.new_spec)
+        ii = self.cuda_visible_devices.index(name)
+        spec["options"].update(
+            {
                 "env": {
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, CUDA_VISIBLE_DEVICES
+                        ii, self.cuda_visible_devices
                     )
-                },
-                "ncores": threads_per_worker,
-                "data": data,
-                "preload": ["dask_cuda.initialize_context"],
-                "dashboard_address": ":0",
-                "silence_logs": silence_logs,
-                "interface": interface,
-                "protocol": protocol,
-                "memory_limit": memory_limit,
-            },
-        }
-        for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
-    }
+                }
+            }
+        )
 
-    scheduler = {
-        "cls": Scheduler,
-        "options": {
-            "dashboard_address": dashboard_address,
-            "interface": interface,
-            "protocol": protocol,
-            "port": scheduler_port,
-        },
-    }
-
-    return SpecCluster(
-        workers=workers, scheduler=scheduler, silence_logs=silence_logs, **kwargs
-    )
+        return name, spec
