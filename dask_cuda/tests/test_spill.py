@@ -7,9 +7,12 @@ from distributed.worker import Worker
 from distributed import Client, get_worker, wait
 from dask_cuda import LocalCUDACluster
 from dask_cuda.device_host_file import DeviceHostFile
+from zict.file import _safe_key as safe_key
+
 import dask.array as da
 import cupy
-from zict.file import _safe_key as safe_key
+import cudf
+import dask_cudf
 
 
 def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
@@ -149,3 +152,74 @@ async def test_cluster_device_spill(loop, params):
                     assert dc > 0
                 else:
                     assert dc == 0
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 4e9,
+            "host_target": 0.6,
+            "host_spill": 0.7,
+            "spills_to_disk": False,
+        },
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 1e9,
+            "host_target": 0.3,
+            "host_spill": 0.3,
+            "spills_to_disk": True,
+        },
+    ],
+)
+def test_cudf_cluster_device_spill(loop, params):
+    async def test():
+        async with LocalCUDACluster(
+            1,
+            device_memory_limit=params["device_memory_limit"],
+            memory_limit=params["memory_limit"],
+            memory_target_fraction=params["host_target"],
+            memory_spill_fraction=params["host_spill"],
+            death_timeout=6000,
+            asynchronous=True
+        ) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
+
+                def get_data(total_size, chunk_overhead):
+                    assert_device_host_file_size(
+                            get_worker().data, total_size, chunk_overhead)
+
+                rows = int(80e6)
+
+                df = cudf.DataFrame([
+                    ('A', [8] * rows),
+                    ('B', [32] * rows),
+                ])
+
+                cdf = dask_cudf.from_cudf(df, npartitions=16)
+                await wait(cdf)
+
+                cdf2 = cdf.persist()
+                await wait(cdf2)
+
+                nbytes = df.as_gpu_matrix().nbytes
+                part = await client.compute(cdf.partitions[0])
+                part_index_nbytes = part.as_gpu_matrix().nbytes
+
+                del df
+                del cdf
+
+                await client.run(get_data, nbytes, 1024 + part_index_nbytes)
+                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+                for dc in disk_chunks.values():
+                    if params["spills_to_disk"]:
+                        assert dc > 0
+                    else:
+                        assert dc == 0
+
+                del cdf2
+
+                await client.run(get_data, 0, 0)
+
+    loop.run_sync(test)
