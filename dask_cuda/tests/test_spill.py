@@ -107,50 +107,45 @@ def test_device_spill(params):
         },
     ],
 )
-def test_cluster_device_spill(loop, params):
-    async def test():
-        async with LocalCUDACluster(
-            1,
-            scheduler_port=0,
-            processes=True,
-            silence_logs=False,
-            dashboard_address=None,
-            asynchronous=True,
-            death_timeout=10,
-            device_memory_limit=params["device_memory_limit"],
-            memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-        ) as cluster:
-            async with Client(cluster, asynchronous=True) as client:
+@pytest.mark.asyncio
+async def test_cluster_device_spill(loop, params):
+    async with LocalCUDACluster(
+        1,
+        scheduler_port=0,
+        processes=True,
+        silence_logs=False,
+        dashboard_address=None,
+        asynchronous=True,
+        death_timeout=10,
+        device_memory_limit=params["device_memory_limit"],
+        memory_limit=params["memory_limit"],
+        memory_target_fraction=params["host_target"],
+        memory_spill_fraction=params["host_spill"],
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
 
-                rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-                x = rs.random(int(250e6), chunks=10e6)
-                await wait(x)
+            rs = da.random.RandomState(RandomState=cupy.random.RandomState)
+            x = rs.random(int(250e6), chunks=10e6)
+            await wait(x)
 
-                xx = x.persist()
-                await wait(xx)
+            xx = x.persist()
+            await wait(xx)
 
-                def get_data(worker, total_size):
-                    assert_device_host_file_size(get_worker().data, total_size)
+            def get_data(worker, total_size):
+                assert_device_host_file_size(get_worker().data, total_size)
 
-                # Allow up to 1024 bytes overhead per chunk serialized
-                await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
+            # Allow up to 1024 bytes overhead per chunk serialized
+            await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
 
-                y = client.compute(x.sum())
-                res = await y
+            y = client.compute(x.sum())
+            res = await y
 
-                assert (abs(res / x.size) - 0.5) < 1e-3
+            assert (abs(res / x.size) - 0.5) < 1e-3
 
-                await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
-                for dc in disk_chunks.values():
-                    if params["spills_to_disk"]:
-                        assert dc > 0
-                    else:
-                        assert dc == 0
-
-                await client.close()
-                await cluster.close()
-
-    loop.run_sync(test)
+            await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
+            disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+            for dc in disk_chunks.values():
+                if params["spills_to_disk"]:
+                    assert dc > 0
+                else:
+                    assert dc == 0
