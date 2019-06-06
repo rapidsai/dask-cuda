@@ -57,5 +57,5 @@ pip install cupy-cuda${CUDA_REL}==6.0.0
 ################################################################################
 
 pip install -e .
-pip install pytest
+pip install pytest pytest-asyncio
 pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
