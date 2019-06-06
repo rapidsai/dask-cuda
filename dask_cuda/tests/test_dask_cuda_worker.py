@@ -1,33 +1,31 @@
 from __future__ import print_function, division, absolute_import
 
+import os
+from time import sleep
+
+from distributed import Client
+from distributed.metrics import time
+from distributed.utils_test import popen
+from distributed.utils_test import loop  # noqa: F401
+
 import pytest
 
 pytest.importorskip("requests")
 
-import sys, os
-from time import sleep
-from toolz import first
 
-from distributed import Client
-from distributed.metrics import time
-from distributed.utils import sync, tmpfile
-from distributed.utils_test import popen, slow, terminate_process, wait_for_port
-from distributed.utils_test import loop  # noqa: F401
-
-
-def test_cuda_visible_devices(loop):
+def test_cuda_visible_devices(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-bokeh"]) as sched:
+        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
                 [
                     "dask-cuda-worker",
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
-                    "--no-bokeh",
+                    "--no-dashboard",
                 ]
-            ) as worker:
+            ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
                     start = time()
                     while True:
