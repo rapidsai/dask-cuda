@@ -12,10 +12,7 @@ import pytest
 @gen_test(timeout=20)
 async def test_local_cuda_cluster():
     async with LocalCUDACluster(
-        scheduler_port=0,
-        asynchronous=True,
-        diagnostics_port=None,
-        device_memory_limit=1,
+        scheduler_port=0, asynchronous=True, device_memory_limit=1
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             assert len(cluster.workers) == utils.get_n_gpus()
@@ -33,11 +30,14 @@ async def test_local_cuda_cluster():
                 )
 
             # Use full memory
-            assert sum(w.memory_limit for w in cluster.workers) == TOTAL_MEMORY
+            assert sum(w.memory_limit for w in cluster.workers.values()) == TOTAL_MEMORY
 
             for w, devices in result.items():
                 ident = devices[0]
-                assert ident in cluster.scheduler.workers[w].name
+                assert int(ident) == cluster.scheduler.workers[w].name
+
+            with pytest.raises(ValueError):
+                cluster.scale(1000)
 
 
 @gen_test(timeout=20)
@@ -45,10 +45,7 @@ async def test_with_subset_of_cuda_visible_devices():
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
         async with LocalCUDACluster(
-            scheduler_port=0,
-            asynchronous=True,
-            diagnostics_port=None,
-            device_memory_limit=1,
+            scheduler_port=0, asynchronous=True, device_memory_limit=1
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 assert len(cluster.workers) == 4
@@ -75,12 +72,7 @@ async def test_with_subset_of_cuda_visible_devices():
 async def test_ucx_protocol():
     pytest.importorskip("distributed.comm.ucx")
     async with LocalCUDACluster(
-        protocol="ucx",
-        interface="ib0",
-        scheduler_port=0,
-        asynchronous=True,
-        dashboard_address=None,
-        data=dict,
+        protocol="ucx", interface="ib0", asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()

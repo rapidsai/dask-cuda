@@ -43,6 +43,8 @@ conda list
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
+pip install git+https://github.com/dask/distributed.git@master
+
 ################################################################################
 # SETUP - Install additional packages
 ################################################################################
@@ -55,5 +57,5 @@ pip install cupy-cuda${CUDA_REL}==6.0.0
 ################################################################################
 
 pip install -e .
-pip install pytest
+pip install pytest pytest-asyncio
 pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v

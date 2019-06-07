@@ -1,13 +1,10 @@
+import copy
 import os
-import warnings
 
-from tornado import gen
-
+import dask
 from dask.distributed import LocalCluster
-from distributed.diskutils import WorkSpace
-from distributed.nanny import Nanny
-from distributed.worker import Worker, TOTAL_MEMORY
-from distributed.utils import parse_bytes, warn_on_duration,  get_ip_interface
+from distributed.utils import parse_bytes
+from distributed.worker import TOTAL_MEMORY
 
 from .device_host_file import DeviceHostFile
 from .utils import get_n_gpus, get_device_total_memory
@@ -25,15 +22,26 @@ def cuda_visible_devices(i, visible=None):
     """
     if visible is None:
         try:
-            visible = list(map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(",")))
+            visible = map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(","))
         except KeyError:
-            visible = list(range(get_n_gpus()))
+            visible = range(get_n_gpus())
+    visible = list(visible)
 
     L = visible[i:] + visible[:i]
     return ",".join(map(str, L))
 
 
 class LocalCUDACluster(LocalCluster):
+    """ A variant of LocalCluster that uses one GPU per process
+
+    This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
+    worker process.
+
+    See Also
+    --------
+    LocalCluster
+    """
+
     def __init__(
         self,
         n_workers=None,
@@ -41,117 +49,80 @@ class LocalCUDACluster(LocalCluster):
         processes=True,
         memory_limit=None,
         device_memory_limit=None,
+        CUDA_VISIBLE_DEVICES=None,
+        data=None,
+        local_dir=None,
         **kwargs,
     ):
         if n_workers is None:
             n_workers = get_n_gpus()
-        if not processes:
-            raise NotImplementedError("Need processes to segment GPUs")
-        if n_workers > get_n_gpus():
-            raise ValueError("Can not specify more processes than GPUs")
+        if CUDA_VISIBLE_DEVICES is None:
+            CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
+        if isinstance(CUDA_VISIBLE_DEVICES, str):
+            CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
+        CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
         if memory_limit is None:
             memory_limit = TOTAL_MEMORY / n_workers
         self.host_memory_limit = memory_limit
         self.device_memory_limit = device_memory_limit
 
-        LocalCluster.__init__(
-            self,
-            n_workers=n_workers,
-            threads_per_worker=threads_per_worker,
-            memory_limit=memory_limit,
-            **kwargs
-        )
-
-    @gen.coroutine
-    def _start(self, ip=None, n_workers=0):
-        """
-        Start all cluster services.
-        """
-        if self.status == "running":
-            return
-
-        if self.protocol == "inproc://":
-            address = self.protocol
-        else:
-            if ip is None:
-                if self.interface:
-                    ip = get_ip_interface(self.interface)
-                else:
-                    ip = "127.0.0.1"
-
-            if "://" in ip:
-                address = ip
-            else:
-                address = self.protocol + ip
-            if self.scheduler_port:
-                address += ":" + str(self.scheduler_port)
-
-        self.scheduler.start(address)
-
-        yield [
-            self._start_worker(
-                **self.worker_kwargs,
-                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                name="gpu-" + str(i),
+        if not processes:
+            raise ValueError(
+                "Processes are necessary in order to use multiple GPUs with Dask"
             )
-            for i in range(n_workers)
-        ]
 
-        self.status = "running"
-
-        raise gen.Return(self)
-
-    @gen.coroutine
-    def _start_worker(self, death_timeout=60, **kwargs):
-        if self.status and self.status.startswith("clos"):
-            warnings.warn("Tried to start a worker while status=='%s'" % self.status)
-            return
-
-        if self.processes:
-            W = Nanny
-            kwargs["quiet"] = True
-        else:
-            W = Worker
-
-        local_dir = kwargs.get("local_dir", "dask-worker-space")
-        with warn_on_duration(
-            "1s",
-            "Creating scratch directories is taking a surprisingly long time. "
-            "This is often due to running workers on a network file system. "
-            "Consider specifying a local-directory to point workers to write "
-            "scratch data to a local disk.",
-        ):
-            _workspace = WorkSpace(os.path.abspath(local_dir))
-            _workdir = _workspace.new_work_dir(prefix="worker-")
-            local_dir = _workdir.dir_path
-
-        device_index = int(kwargs["env"]["CUDA_VISIBLE_DEVICES"].split(",")[0])
         if self.device_memory_limit is None:
-            self.device_memory_limit = get_device_total_memory(device_index)
+            self.device_memory_limit = get_device_total_memory(0)
         elif isinstance(self.device_memory_limit, str):
             self.device_memory_limit = parse_bytes(self.device_memory_limit)
-        data = DeviceHostFile(
-            device_memory_limit=self.device_memory_limit,
-            memory_limit=self.host_memory_limit,
-            local_dir=local_dir,
-        )
 
-        w = yield W(
-            self.scheduler.address,
-            loop=self.loop,
-            death_timeout=death_timeout,
-            silence_logs=self.silence_logs,
+        if data is None:
+            data = (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": self.device_memory_limit,
+                    "memory_limit": self.host_memory_limit,
+                    "local_dir": local_dir
+                    or dask.config.get("temporary-directory")
+                    or os.getcwd(),
+                },
+            )
+
+        super().__init__(
+            n_workers=0,
+            threads_per_worker=threads_per_worker,
+            memory_limit=memory_limit,
+            processes=True,
             data=data,
+            local_dir=local_dir,
             **kwargs,
         )
 
-        self.workers.append(w)
+        self.new_spec["options"]["preload"] = self.new_spec["options"].get(
+            "preload", []
+        ) + ["dask_cuda.initialize_context"]
 
-        while w.status != "closed" and w.worker_address not in self.scheduler.workers:
-            yield gen.sleep(0.01)
+        self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
+        self.scale(n_workers)
 
-        if w.status == "closed" and self.scheduler.status == "running":
-            self.workers.remove(w)
-            raise gen.TimeoutError("Worker failed to start")
+    def new_worker_spec(self):
+        try:
+            name = min(set(self.cuda_visible_devices) - set(self.worker_spec))
+        except Exception:
+            raise ValueError(
+                "Can not scale beyond visible devices", self.cuda_visible_devices
+            )
 
-        raise gen.Return(w)
+        spec = copy.deepcopy(self.new_spec)
+        ii = self.cuda_visible_devices.index(name)
+        spec["options"].update(
+            {
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
+                        ii, self.cuda_visible_devices
+                    )
+                }
+            }
+        )
+
+        return name, spec
