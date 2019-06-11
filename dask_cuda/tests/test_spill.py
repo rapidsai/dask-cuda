@@ -253,47 +253,45 @@ def test_cudf_device_spill(params):
         },
     ],
 )
-def test_cudf_cluster_device_spill(loop, params):
-    async def test():
-        async with LocalCUDACluster(
-            1,
-            device_memory_limit=params["device_memory_limit"],
-            memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            death_timeout=300,
-            asynchronous=True,
-        ) as cluster:
-            async with Client(cluster, asynchronous=True) as client:
+@pytest.mark.asyncio
+async def test_cudf_cluster_device_spill(loop, params):
+    async with LocalCUDACluster(
+        1,
+        device_memory_limit=params["device_memory_limit"],
+        memory_limit=params["memory_limit"],
+        memory_target_fraction=params["host_target"],
+        memory_spill_fraction=params["host_spill"],
+        death_timeout=300,
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
 
-                rows = int(20e6)
+            rows = int(20e6)
 
-                df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
+            df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
 
-                cdf = dask_cudf.from_cudf(df, npartitions=20)
+            cdf = dask_cudf.from_cudf(df, npartitions=20)
 
-                tasks = await asyncio.gather(
-                    *[client.compute(p) for p in cdf.partitions]
-                )
-                nbytes = sum(t.__sizeof__() for t in tasks)
-                part_index_nbytes = tasks[0]._index.__sizeof__()
+            tasks = await asyncio.gather(
+                *[client.compute(p) for p in cdf.partitions]
+            )
+            nbytes = sum(t.__sizeof__() for t in tasks)
+            part_index_nbytes = tasks[0]._index.__sizeof__()
 
-                cdf2 = cdf.persist()
-                await wait(cdf2)
+            cdf2 = cdf.persist()
+            await wait(cdf2)
 
-                del df
-                del cdf
+            del df
+            del cdf
 
-                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
-                for dc in disk_chunks.values():
-                    if params["spills_to_disk"]:
-                        assert dc > 0
-                    else:
-                        assert dc == 0
+            await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
+            disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+            for dc in disk_chunks.values():
+                if params["spills_to_disk"]:
+                    assert dc > 0
+                else:
+                    assert dc == 0
 
-                del cdf2
+            del cdf2
 
-                await client.run(worker_assert, 0, 0, 0)
-
-    loop.run_sync(test)
+            await client.run(worker_assert, 0, 0, 0)
