@@ -38,10 +38,12 @@ logger "Check versions..."
 python --version
 gcc --version
 g++ --version
-conda list
 
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
+
+conda install -c rapidsai/label/cuda$CUDA_REL -c rapidsai-nightly/label/cuda$CUDA_REL -c nvidia/label/cuda$CUDA_REL -c conda-forge \
+    'cudf=0.8'
 
 pip install git+https://github.com/dask/distributed.git@master
 
@@ -58,4 +60,7 @@ pip install cupy-cuda${CUDA_REL}==6.0.0
 
 pip install -e .
 pip install pytest pytest-asyncio
+
+conda list
+
 pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
