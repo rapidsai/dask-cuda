@@ -168,15 +168,15 @@ async def test_cupy_cluster_device_spill(loop, params):
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 2e9,
+            "memory_limit": 4e9,
             "host_target": 0.6,
             "host_spill": 0.7,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 250e6,
-            "memory_limit": 250e6,
+            "device_memory_limit": 1e9,
+            "memory_limit": 1e9,
             "host_target": 0.3,
             "host_spill": 0.3,
             "spills_to_disk": True,
@@ -203,11 +203,11 @@ def test_cudf_device_spill(params):
     )
     def test_device_spill(client, scheduler, worker):
 
-        rows = int(20e6)
+        rows = int(80e6)
 
         df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
 
-        cdf = dask_cudf.from_cudf(df, npartitions=20)
+        cdf = dask_cudf.from_cudf(df, npartitions=80)
 
         tasks = yield [client.compute(p) for p in cdf.partitions]
         nbytes = sum(t.__sizeof__() for t in tasks)
@@ -238,15 +238,15 @@ def test_cudf_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 2e9,
+            "memory_limit": 4e9,
             "host_target": 0.6,
             "host_spill": 0.7,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 250e6,
-            "memory_limit": 250e6,
+            "device_memory_limit": 1e9,
+            "memory_limit": 1e9,
             "host_target": 0.3,
             "host_spill": 0.3,
             "spills_to_disk": True,
@@ -266,11 +266,11 @@ async def test_cudf_cluster_device_spill(loop, params):
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
 
-            rows = int(20e6)
+            rows = int(80e6)
 
             df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
 
-            cdf = dask_cudf.from_cudf(df, npartitions=20)
+            cdf = dask_cudf.from_cudf(df, npartitions=80)
 
             tasks = await asyncio.gather(
                 *[client.compute(p) for p in cdf.partitions]
