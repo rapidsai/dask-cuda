@@ -183,6 +183,76 @@ async def test_cluster_device_spill(loop, params):
         },
     ],
 )
+def test_cudf_device_spill(params):
+    @gen_cluster(
+        client=True,
+        ncores=[("127.0.0.1", 1)],
+        Worker=Worker,
+        timeout=300,
+        worker_kwargs={
+            "memory_limit": params["memory_limit"],
+            "data": DeviceHostFile(
+                device_memory_limit=params["device_memory_limit"],
+                memory_limit=params["memory_limit"],
+            ),
+        },
+        config={
+            "distributed.worker.memory.target": params["host_target"],
+            "distributed.worker.memory.spill": params["host_spill"],
+        },
+    )
+    def test_device_spill(client, scheduler, worker):
+
+        rows = int(20e6)
+
+        df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
+
+        cdf = dask_cudf.from_cudf(df, npartitions=20)
+
+        tasks = yield [client.compute(p) for p in cdf.partitions]
+        nbytes = sum(t.__sizeof__() for t in tasks)
+        part_index_nbytes = tasks[0]._index.__sizeof__()
+
+        cdf2 = cdf.persist()
+        yield wait(cdf2)
+
+        del df
+        del cdf
+
+        yield client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
+        disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
+        for dc in disk_chunks.values():
+            if params["spills_to_disk"]:
+                assert dc > 0
+            else:
+                assert dc == 0
+
+        del cdf2
+
+        yield client.run(worker_assert, 0, 0, 0)
+
+    test_device_spill()
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 1e9,
+            "host_target": 0.6,
+            "host_spill": 0.7,
+            "spills_to_disk": False,
+        },
+        {
+            "device_memory_limit": 250e6,
+            "memory_limit": 250e6,
+            "host_target": 0.3,
+            "host_spill": 0.3,
+            "spills_to_disk": True,
+        },
+    ],
+)
 def test_cudf_cluster_device_spill(loop, params):
     async def test():
         async with LocalCUDACluster(
