@@ -1,6 +1,7 @@
 import pytest
 
 import os
+import asyncio
 
 from distributed.utils_test import gen_cluster, loop, gen_test
 from distributed.worker import Worker
@@ -15,18 +16,27 @@ import cudf
 import dask_cudf
 
 
-def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
+def assert_device_host_file_size(
+    dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
+):
     byte_sum = dhf.device_buffer.fast.total_weight + dhf.host_buffer.fast.total_weight
     file_path = [os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()]
     file_size = [os.path.getsize(f) for f in file_path]
     byte_sum += sum(file_size)
 
     # Allow up to chunk_overhead bytes overhead per chunk on disk
-    host_overhead = len(dhf.host) * chunk_overhead
-    disk_overhead = len(dhf.disk) * chunk_overhead
+    device_overhead = len(dhf.device) * device_chunk_overhead
+    host_overhead = len(dhf.host) * serialized_chunk_overhead
+    disk_overhead = len(dhf.disk) * serialized_chunk_overhead
     assert (
         byte_sum >= total_bytes
-        and byte_sum <= total_bytes + host_overhead + disk_overhead
+        and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead
+    )
+
+
+def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+    assert_device_host_file_size(
+        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
@@ -159,14 +169,14 @@ async def test_cluster_device_spill(loop, params):
     [
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 4e9,
+            "memory_limit": 1e9,
             "host_target": 0.6,
             "host_spill": 0.7,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 250e6,
+            "memory_limit": 250e6,
             "host_target": 0.3,
             "host_spill": 0.3,
             "spills_to_disk": True,
@@ -181,36 +191,30 @@ def test_cudf_cluster_device_spill(loop, params):
             memory_limit=params["memory_limit"],
             memory_target_fraction=params["host_target"],
             memory_spill_fraction=params["host_spill"],
-            death_timeout=6000,
-            asynchronous=True
+            death_timeout=300,
+            asynchronous=True,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
-                def get_data(total_size, chunk_overhead):
-                    assert_device_host_file_size(
-                            get_worker().data, total_size, chunk_overhead)
+                rows = int(20e6)
 
-                rows = int(80e6)
+                df = cudf.DataFrame([("A", [8] * rows), ("B", [32] * rows)])
 
-                df = cudf.DataFrame([
-                    ('A', [8] * rows),
-                    ('B', [32] * rows),
-                ])
+                cdf = dask_cudf.from_cudf(df, npartitions=20)
 
-                cdf = dask_cudf.from_cudf(df, npartitions=16)
-                await wait(cdf)
+                tasks = await asyncio.gather(
+                    *[client.compute(p) for p in cdf.partitions]
+                )
+                nbytes = sum(t.__sizeof__() for t in tasks)
+                part_index_nbytes = tasks[0]._index.__sizeof__()
 
                 cdf2 = cdf.persist()
                 await wait(cdf2)
 
-                nbytes = df.as_gpu_matrix().nbytes
-                part = await client.compute(cdf.partitions[0])
-                part_index_nbytes = part.as_gpu_matrix().nbytes
-
                 del df
                 del cdf
 
-                await client.run(get_data, nbytes, 1024 + part_index_nbytes)
+                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
                 disk_chunks = await client.run(lambda: len(get_worker().data.disk))
                 for dc in disk_chunks.values():
                     if params["spills_to_disk"]:
@@ -220,6 +224,6 @@ def test_cudf_cluster_device_spill(loop, params):
 
                 del cdf2
 
-                await client.run(get_data, 0, 0)
+                await client.run(worker_assert, 0, 0, 0)
 
     loop.run_sync(test)
