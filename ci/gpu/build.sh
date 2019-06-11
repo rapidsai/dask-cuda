@@ -43,7 +43,8 @@ g++ --version
 conda config --set ssl_verify False
 
 conda install -c rapidsai/label/cuda$CUDA_REL -c rapidsai-nightly/label/cuda$CUDA_REL -c nvidia/label/cuda$CUDA_REL -c conda-forge \
-    'cudf=0.8'
+    'cudf=0.8' \
+    'dask-cudf=0.8'
 
 pip install git+https://github.com/dask/distributed.git@master
 
