@@ -59,7 +59,7 @@ def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
         },
     ],
 )
-def test_device_spill(params):
+def test_cupy_device_spill(params):
     @gen_cluster(
         client=True,
         ncores=[("127.0.0.1", 1)],
@@ -121,7 +121,7 @@ def test_device_spill(params):
     ],
 )
 @pytest.mark.asyncio
-async def test_cluster_device_spill(loop, params):
+async def test_cupy_cluster_device_spill(loop, params):
     async with LocalCUDACluster(
         1,
         scheduler_port=0,
