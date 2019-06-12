@@ -176,9 +176,9 @@ async def test_cupy_cluster_device_spill(loop, params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1.5e9,
-            "host_target": 0.8,
-            "host_spill": 0.8,
+            "memory_limit": 2e9,
+            "host_target": 0.5,
+            "host_spill": 0.5,
             "spills_to_disk": True,
         },
     ],
@@ -197,6 +197,7 @@ def test_cudf_device_spill(params):
             ),
         },
         config={
+            "distributed.comm.timeouts.connect": "20s",
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
         },
@@ -247,9 +248,9 @@ def test_cudf_device_spill(params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1.5e9,
-            "host_target": 0.8,
-            "host_spill": 0.8,
+            "memory_limit": 2e9,
+            "host_target": 0.5,
+            "host_spill": 0.5,
             "spills_to_disk": True,
         },
     ],
