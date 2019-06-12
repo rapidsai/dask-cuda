@@ -1,7 +1,6 @@
 import pytest
 
 import os
-import asyncio
 
 from distributed.utils_test import gen_cluster, loop, gen_test
 from distributed.worker import Worker
@@ -64,6 +63,7 @@ def test_cupy_device_spill(params):
         client=True,
         ncores=[("127.0.0.1", 1)],
         Worker=Worker,
+        timeout=300,
         worker_kwargs={
             "memory_limit": params["memory_limit"],
             "data": DeviceHostFile(
@@ -129,7 +129,7 @@ async def test_cupy_cluster_device_spill(loop, params):
         silence_logs=False,
         dashboard_address=None,
         asynchronous=True,
-        death_timeout=10,
+        death_timeout=300,
         device_memory_limit=params["device_memory_limit"],
         memory_limit=params["memory_limit"],
         memory_target_fraction=params["host_target"],
@@ -176,9 +176,9 @@ async def test_cupy_cluster_device_spill(loop, params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
-            "host_target": 0.3,
-            "host_spill": 0.3,
+            "memory_limit": 1.5e9,
+            "host_target": 0.8,
+            "host_spill": 0.8,
             "spills_to_disk": True,
         },
     ],
@@ -204,12 +204,13 @@ def test_cudf_device_spill(params):
     def test_device_spill(client, scheduler, worker):
 
         cdf = dask.datasets.timeseries(
-            dtypes={"x": int, "y": float}, freq="50ms"
+            dtypes={"x": int, "y": float}, freq="30ms"
         ).map_partitions(cudf.from_pandas)
 
-        tasks = yield [client.compute(p) for p in cdf.partitions]
-        nbytes = sum(t.__sizeof__() for t in tasks)
-        part_index_nbytes = tasks[0]._index.__sizeof__()
+        sizes = yield client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
+        sizes = sizes.tolist()
+        nbytes = sum(sizes)
+        part_index_nbytes = (yield client.compute(cdf.partitions[0].index)).__sizeof__()
 
         cdf2 = cdf.persist()
         yield wait(cdf2)
@@ -217,6 +218,7 @@ def test_cudf_device_spill(params):
         del cdf
 
         yield client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
+
         host_chunks = yield client.run(lambda: len(get_worker().data.host))
         disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
         for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
@@ -245,9 +247,9 @@ def test_cudf_device_spill(params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
-            "host_target": 0.3,
-            "host_spill": 0.3,
+            "memory_limit": 1.5e9,
+            "host_target": 0.8,
+            "host_spill": 0.8,
             "spills_to_disk": True,
         },
     ],
@@ -266,12 +268,15 @@ async def test_cudf_cluster_device_spill(loop, params):
         async with Client(cluster, asynchronous=True) as client:
 
             cdf = dask.datasets.timeseries(
-                dtypes={"x": int, "y": float}, freq="50ms"
+                dtypes={"x": int, "y": float}, freq="30ms"
             ).map_partitions(cudf.from_pandas)
 
-            tasks = await asyncio.gather(*[client.compute(p) for p in cdf.partitions])
-            nbytes = sum(t.__sizeof__() for t in tasks)
-            part_index_nbytes = tasks[0]._index.__sizeof__()
+            sizes = await client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
+            sizes = sizes.tolist()
+            nbytes = sum(sizes)
+            part_index_nbytes = (
+                await client.compute(cdf.partitions[0].index)
+            ).__sizeof__()
 
             cdf2 = cdf.persist()
             await wait(cdf2)
