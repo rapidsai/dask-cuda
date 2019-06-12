@@ -43,7 +43,7 @@ def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
     "params",
     [
         {
-            "device_memory_limit": 2e9,
+            "device_memory_limit": 1e9,
             "memory_limit": 4e9,
             "host_target": 0.6,
             "host_spill": 0.7,
@@ -51,9 +51,9 @@ def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
-            "host_target": 0.3,
-            "host_spill": 0.3,
+            "memory_limit": 2e9,
+            "host_target": 0.6,
+            "host_spill": 0.6,
             "spills_to_disk": True,
         },
     ],
@@ -96,6 +96,7 @@ def test_cupy_device_spill(params):
         if params["spills_to_disk"]:
             assert len(worker.data.disk) > 0
         else:
+            assert len(worker.data.host) > 0
             assert len(worker.data.disk) == 0
 
     test_device_spill()
@@ -105,7 +106,7 @@ def test_cupy_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": 2e9,
+            "device_memory_limit": 1e9,
             "memory_limit": 4e9,
             "host_target": 0.6,
             "host_spill": 0.7,
@@ -113,9 +114,9 @@ def test_cupy_device_spill(params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
-            "host_target": 0.3,
-            "host_spill": 0.3,
+            "memory_limit": 2e9,
+            "host_target": 0.6,
+            "host_spill": 0.6,
             "spills_to_disk": True,
         },
     ],
@@ -156,11 +157,13 @@ async def test_cupy_cluster_device_spill(loop, params):
             assert (abs(res / x.size) - 0.5) < 1e-3
 
             await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
+            host_chunks = await client.run(lambda: len(get_worker().data.host))
             disk_chunks = await client.run(lambda: len(get_worker().data.disk))
-            for dc in disk_chunks.values():
+            for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                 if params["spills_to_disk"]:
                     assert dc > 0
                 else:
+                    assert hc > 0
                     assert dc == 0
 
 
@@ -177,8 +180,8 @@ async def test_cupy_cluster_device_spill(loop, params):
         {
             "device_memory_limit": 1e9,
             "memory_limit": 2e9,
-            "host_target": 0.5,
-            "host_spill": 0.5,
+            "host_target": 0.6,
+            "host_spill": 0.6,
             "spills_to_disk": True,
         },
     ],
@@ -249,8 +252,8 @@ def test_cudf_device_spill(params):
         {
             "device_memory_limit": 1e9,
             "memory_limit": 2e9,
-            "host_target": 0.5,
-            "host_spill": 0.5,
+            "host_target": 0.6,
+            "host_spill": 0.6,
             "spills_to_disk": True,
         },
     ],
