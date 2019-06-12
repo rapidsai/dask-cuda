@@ -58,4 +58,5 @@ pip install cupy-cuda${CUDA_REL}==6.0.0
 
 pip install -e .
 pip install pytest pytest-asyncio
-pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
+py.test --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml -v --cov-config=.coveragerc --cov=dask-cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term
+
