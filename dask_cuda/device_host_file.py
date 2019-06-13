@@ -7,19 +7,22 @@ from functools import partial
 import os
 
 
+_device_modules = [
+    "cudf.dataframe.dataframe",
+    "cudf.dataframe.series",
+    "cudf.dataframe.index",
+]
+
+
 def _is_device_object(obj):
     """
     Check if obj is a device object, by checking if it has a
-    __cuda_array_interface__ attribute or is instance of cudf.DataFrame
-    or cudf.Series.
+    __cuda_array_interface__ attribute or if it's a cudf module. If obj is
+    a list or tuple, returns True if any of them is a device object.
     """
-    try:
-        import cudf
-        _device_instances = [cudf.DataFrame, cudf.Series]
-    except ImportError:
-        _device_instances = []
-    return (hasattr(obj, "__cuda_array_interface__") or
-            any([isinstance(obj, inst) for inst in _device_instances]))
+    return hasattr(obj, "__cuda_array_interface__") or any(
+        [obj.__module__ == mod for mod in _device_modules]
+    )
 
 
 def _is_device_object_multi(obj):
