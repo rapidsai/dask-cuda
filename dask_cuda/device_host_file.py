@@ -20,25 +20,17 @@ def _is_device_object(obj):
     __cuda_array_interface__ attribute or if it's a cudf module. If obj is
     a list or tuple, returns True if any of them is a device object.
     """
-    return hasattr(obj, "__cuda_array_interface__") or any(
-        [obj.__module__ == mod for mod in _device_modules]
-    )
-
-
-def _is_device_object_multi(obj):
-    """
-    Check if obj is a device object with _is_device_object(). If obj
-    is a list or tuple, check if at least one of them is a device object.
-    """
-    if isinstance(obj, list) or isinstance(obj, tuple):
-        return any([_is_device_object(o) for o in obj])
+    if isinstance(obj, (list, tuple)):
+        return any(map(_is_device_object, obj))
     else:
-        return _is_device_object(obj)
+        return hasattr(obj, "__cuda_array_interface__") or any(
+            [getattr(obj, '__module__', None) for mod in _device_modules]
+        )
 
 
 def _serialize_if_device(obj):
     """ Serialize an object if it's a device object """
-    if _is_device_object_multi(obj):
+    if _is_device_object(obj):
         return serialize_bytes(obj, on_error="raise")
     else:
         return obj
@@ -102,7 +94,7 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer.fast
 
     def __setitem__(self, key, value):
-        if _is_device_object_multi(value):
+        if _is_device_object(value):
             self.device_buffer[key] = value
         else:
             self.host_buffer[key] = value
