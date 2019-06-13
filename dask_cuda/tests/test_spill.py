@@ -85,19 +85,22 @@ def test_cupy_device_spill(params):
         yield wait(xx)
 
         # Allow up to 1024 bytes overhead per chunk serialized
-        assert_device_host_file_size(worker.data, x.nbytes, 1024)
+        yield client.run(worker_assert, x.nbytes, 0, 1024)
 
         y = client.compute(x.sum())
         res = yield y
 
         assert (abs(res / x.size) - 0.5) < 1e-3
 
-        assert_device_host_file_size(worker.data, x.nbytes, 1024)
-        if params["spills_to_disk"]:
-            assert len(worker.data.disk) > 0
-        else:
-            assert len(worker.data.host) > 0
-            assert len(worker.data.disk) == 0
+        yield client.run(worker_assert, x.nbytes, 0, 1024)
+        host_chunks = yield client.run(lambda: len(get_worker().data.host))
+        disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
+        for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
+            if params["spills_to_disk"]:
+                assert dc > 0
+            else:
+                assert hc > 0
+                assert dc == 0
 
     test_device_spill()
 
@@ -145,18 +148,15 @@ async def test_cupy_cluster_device_spill(loop, params):
             xx = x.persist()
             await wait(xx)
 
-            def get_data(worker, total_size):
-                assert_device_host_file_size(get_worker().data, total_size)
-
             # Allow up to 1024 bytes overhead per chunk serialized
-            await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
+            await client.run(worker_assert, x.nbytes, 0, 1024)
 
             y = client.compute(x.sum())
             res = await y
 
             assert (abs(res / x.size) - 0.5) < 1e-3
 
-            await client.run(get_data, cluster.workers[0].Worker, x.nbytes)
+            await client.run(worker_assert, x.nbytes, 0, 1024)
             host_chunks = await client.run(lambda: len(get_worker().data.host))
             disk_chunks = await client.run(lambda: len(get_worker().data.disk))
             for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
