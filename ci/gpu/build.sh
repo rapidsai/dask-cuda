@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -e
+NUMARGS=$#
+ARGS=$*
 
 # Logger function for build status output
 function logger() {
   echo -e "\n>>>> $@\n"
+}
+
+# Arg parsing function
+function hasArg {
+    (( ${NUMARGS} != 0 )) && (echo " ${ARGS} " | grep -q " $1 ")
 }
 
 # Set path and build parallel level
@@ -48,6 +55,11 @@ pip install git+https://github.com/dask/distributed.git@master
 ################################################################################
 # SETUP - Install additional packages
 ################################################################################
+
+if hasArg --skip-tests; then
+    logger "Skipping Tests..."
+    exit 0
+fi
 
 # Install CuPy for tests
 pip install cupy-cuda${CUDA_REL}==6.0.0
