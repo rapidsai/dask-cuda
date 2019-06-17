@@ -6,31 +6,12 @@ from distributed.worker import weight
 from functools import partial
 import os
 
-
-_device_modules = [
-    "cudf.dataframe.dataframe",
-    "cudf.dataframe.series",
-    "cudf.dataframe.index",
-]
-
-
-def _is_device_object(obj):
-    """
-    Check if obj is a device object, by checking if it has a
-    __cuda_array_interface__ attribute or if it's a cudf module. If obj is
-    a list or tuple, returns True if any of them is a device object.
-    """
-    if isinstance(obj, (list, tuple)):
-        return any(map(_is_device_object, obj))
-    else:
-        return hasattr(obj, "__cuda_array_interface__") or any(
-            [getattr(obj, '__module__', None) for mod in _device_modules]
-        )
+from .is_device_object import is_device_object
 
 
 def _serialize_if_device(obj):
     """ Serialize an object if it's a device object """
-    if _is_device_object(obj):
+    if is_device_object(obj):
         return serialize_bytes(obj, on_error="raise")
     else:
         return obj
@@ -94,7 +75,7 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer.fast
 
     def __setitem__(self, key, value):
-        if _is_device_object(value):
+        if is_device_object(value):
             self.device_buffer[key] = value
         else:
             self.host_buffer[key] = value
