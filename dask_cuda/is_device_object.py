@@ -34,5 +34,5 @@ def register_cudf():
         return True
 
     @is_device_object.register(cudf.Index)
-    def is_device_object_cudf_series(s):
+    def is_device_object_cudf_index(s):
         return True
