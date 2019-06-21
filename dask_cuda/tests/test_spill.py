@@ -61,7 +61,7 @@ def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
 def test_cupy_device_spill(params):
     @gen_cluster(
         client=True,
-        ncores=[("127.0.0.1", 1)],
+        nthreads=[("127.0.0.1", 1)],
         Worker=Worker,
         timeout=300,
         worker_kwargs={
