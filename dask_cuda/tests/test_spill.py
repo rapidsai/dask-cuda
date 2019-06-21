@@ -49,7 +49,7 @@ def assert_device_host_file_size(dhf, total_bytes, chunk_overhead=1024):
 def test_device_spill(params):
     @gen_cluster(
         client=True,
-        ncores=[("127.0.0.1", 1)],
+        nthreads=[("127.0.0.1", 1)],
         Worker=Worker,
         worker_kwargs={
             "memory_limit": params["memory_limit"],
