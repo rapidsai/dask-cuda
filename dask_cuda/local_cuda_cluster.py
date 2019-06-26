@@ -104,6 +104,7 @@ class LocalCUDACluster(LocalCluster):
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)
+        self.sync(self._correct_state)
 
     def new_worker_spec(self):
         try:
