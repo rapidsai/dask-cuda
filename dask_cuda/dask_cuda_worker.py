@@ -2,35 +2,38 @@ from __future__ import print_function, division, absolute_import
 
 import atexit
 import logging
+import multiprocessing
 import os
-from sys import exit
 
 import click
-from distributed import Nanny, Worker
+from distributed import Nanny
 from distributed.config import config
-from distributed.utils import get_ip_interface, parse_timedelta
-from distributed.worker import _ncores
-from distributed.security import Security
-from distributed.cli.utils import (
-    check_python_3,
-    uri_from_host_port,
-    install_signal_handlers,
+from distributed.diskutils import WorkSpace
+from distributed.utils import (
+    get_ip_interface,
+    parse_timedelta,
+    parse_bytes,
+    warn_on_duration,
 )
-from distributed.comm import get_address_host_port
+from distributed.worker import parse_memory_limit
+from distributed.security import Security
+from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.comm.addressing import uri_from_host_port
 from distributed.preloading import validate_preload_argv
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
 
+from .device_host_file import DeviceHostFile
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import get_n_gpus
+from .utils import get_n_gpus, get_device_total_memory
 
 from toolz import valmap
 from tornado.ioloop import IOLoop, TimeoutError
 from tornado import gen
 
-logger = logging.getLogger("distributed.dask_worker")
+logger = logging.getLogger(__name__)
 
 
 pem_file_option_type = click.Path(exists=True, resolve_path=True)
@@ -56,16 +59,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     help="private key file for TLS (in PEM format)",
 )
+@click.option("--dashboard-address", type=str, default=":0", help="dashboard address")
 @click.option(
-    "--bokeh-port", type=int, default=0, help="Bokeh port, defaults to random port"
-)
-@click.option(
-    "--bokeh/--no-bokeh",
-    "bokeh",
+    "--dashboard/--no-dashboard",
+    "dashboard",
     default=True,
     show_default=True,
     required=False,
-    help="Launch Bokeh Web UI",
+    help="Launch dashboard",
 )
 @click.option(
     "--host",
@@ -84,7 +85,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--name",
     type=str,
-    default="",
+    default=None,
     help="A unique name for this worker like 'worker-1'. "
     "If used with --nprocs then the process number "
     "will be appended like name-0, name-1, name-2, ...",
@@ -97,6 +98,16 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "float (fraction of total system memory), "
     "string (like 5GB or 5000M), "
     "'auto', or zero for no memory management",
+)
+@click.option(
+    "--device-memory-limit",
+    default="auto",
+    help="Bytes of memory per CUDA device that the worker can use. "
+    "This can be an integer (bytes), "
+    "float (fraction of total device memory), "
+    "string (like 5GB or 5000M), "
+    "'auto', or zero for no memory management "
+    "(i.e., allow full device memory usage).",
 )
 @click.option(
     "--reconnect/--no-reconnect",
@@ -146,11 +157,12 @@ def main(
     nthreads,
     name,
     memory_limit,
+    device_memory_limit,
     pid_file,
     reconnect,
     resources,
-    bokeh,
-    bokeh_port,
+    dashboard,
+    dashboard_address,
     local_directory,
     scheduler_file,
     interface,
@@ -175,7 +187,7 @@ def main(
         nprocs = get_n_gpus()
 
     if not nthreads:
-        nthreads = min(1, _ncores // nprocs )
+        nthreads = min(1, multiprocessing.cpu_count() // nprocs)
 
     if pid_file:
         with open(pid_file, "w") as f:
@@ -189,9 +201,9 @@ def main(
 
     services = {}
 
-    if bokeh:
+    if dashboard:
         try:
-            from distributed.bokeh.worker import BokehWorker
+            from distributed.dashboard import BokehWorker
         except ImportError:
             pass
         else:
@@ -199,7 +211,7 @@ def main(
                 result = (BokehWorker, {"prefix": bokeh_prefix})
             else:
                 result = BokehWorker
-            services[("bokeh", bokeh_port)] = result
+            services[("dashboard", dashboard_address)] = result
 
     if resources:
         resources = resources.replace(",", " ").split()
@@ -234,11 +246,23 @@ def main(
     if death_timeout is not None:
         death_timeout = parse_timedelta(death_timeout, "s")
 
+    local_dir = kwargs.get("local_dir", "dask-worker-space")
+    with warn_on_duration(
+        "1s",
+        "Creating scratch directories is taking a surprisingly long time. "
+        "This is often due to running workers on a network file system. "
+        "Consider specifying a local-directory to point workers to write "
+        "scratch data to a local disk.",
+    ):
+        _workspace = WorkSpace(os.path.abspath(local_dir))
+        _workdir = _workspace.new_work_dir(prefix="worker-")
+        local_dir = _workdir.dir_path
+
     nannies = [
         t(
             scheduler,
             scheduler_file=scheduler_file,
-            ncores=nthreads,
+            nthreads=nthreads,
             services=services,
             loop=loop,
             resources=resources,
@@ -246,13 +270,25 @@ def main(
             reconnect=reconnect,
             local_dir=local_directory,
             death_timeout=death_timeout,
-            preload=preload,
+            preload=(preload or []) + ["dask_cuda.initialize_context"],
             preload_argv=preload_argv,
             security=sec,
             contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
-            **kwargs
+            data=(
+                DeviceHostFile,
+                {
+                    "device_memory_limit": get_device_total_memory(index=i)
+                    if (device_memory_limit == "auto" or device_memory_limit == int(0))
+                    else parse_bytes(device_memory_limit),
+                    "memory_limit": parse_memory_limit(
+                        memory_limit, nthreads, total_cores=nprocs
+                    ),
+                    "local_dir": local_dir,
+                },
+            ),
+            **kwargs,
         )
         for i in range(nprocs)
     ]

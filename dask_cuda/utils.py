@@ -1,5 +1,6 @@
 import toolz
 import os
+from numba import cuda
 
 
 def get_n_gpus():
@@ -12,3 +13,11 @@ def get_n_gpus():
 @toolz.memoize
 def _n_gpus_from_nvidia_smi():
     return len(os.popen("nvidia-smi -L").read().strip().split("\n"))
+
+
+def get_device_total_memory(index=0):
+    """
+    Return total memory of CUDA device with index
+    """
+    with cuda.gpus[index]:
+        return cuda.current_context().get_memory_info()[1]
