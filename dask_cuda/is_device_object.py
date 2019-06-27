@@ -5,7 +5,7 @@ import sys
 from dask.utils import Dispatch
 
 
-is_device_object = Dispatch(name='is_device_object')
+is_device_object = Dispatch(name="is_device_object")
 
 
 @is_device_object.register(object)

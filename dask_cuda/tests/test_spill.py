@@ -30,8 +30,11 @@ def device_host_file_size_matches(
     host_overhead = len(dhf.host) * serialized_chunk_overhead
     disk_overhead = len(dhf.disk) * serialized_chunk_overhead
 
-    return (byte_sum >= total_bytes
-            and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead)
+    return (
+        byte_sum >= total_bytes
+        and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead
+    )
+
 
 def assert_device_host_file_size(
     dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
@@ -55,7 +58,10 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         sleep(0.01)
         if time() < start + 3:
             assert_device_host_file_size(
-                get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+                get_worker().data,
+                total_size,
+                device_chunk_overhead,
+                serialized_chunk_overhead,
             )
 
 
