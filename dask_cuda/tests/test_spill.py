@@ -1,7 +1,9 @@
 import pytest
 
 import os
+from time import sleep
 
+from distributed.metrics import time
 from distributed.utils_test import gen_cluster, loop, gen_test
 from distributed.worker import Worker
 from distributed import Client, get_worker, wait
@@ -15,7 +17,7 @@ import cupy
 import cudf
 
 
-def assert_device_host_file_size(
+def device_host_file_size_matches(
     dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
 ):
     byte_sum = dhf.device_buffer.fast.total_weight + dhf.host_buffer.fast.total_weight
@@ -27,9 +29,15 @@ def assert_device_host_file_size(
     device_overhead = len(dhf.device) * device_chunk_overhead
     host_overhead = len(dhf.host) * serialized_chunk_overhead
     disk_overhead = len(dhf.disk) * serialized_chunk_overhead
-    assert (
-        byte_sum >= total_bytes
-        and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead
+
+    return (byte_sum >= total_bytes
+            and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead)
+
+def assert_device_host_file_size(
+    dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
+):
+    assert device_host_file_size_matches(
+        dhf, total_bytes, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
@@ -37,6 +45,18 @@ def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
     assert_device_host_file_size(
         get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
     )
+
+
+def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+    start = time()
+    while not device_host_file_size_matches(
+        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+    ):
+        sleep(0.01)
+        if time() < start + 3:
+            assert_device_host_file_size(
+                get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+            )
 
 
 @pytest.mark.parametrize(
@@ -234,7 +254,7 @@ def test_cudf_device_spill(params):
 
         del cdf2
 
-        yield client.run(worker_assert, 0, 0, 0)
+        yield client.run(delayed_worker_assert, 0, 0, 0)
 
     test_device_spill()
 
@@ -300,4 +320,4 @@ async def test_cudf_cluster_device_spill(loop, params):
 
             del cdf2
 
-            await client.run(worker_assert, 0, 0, 0)
+            await client.run(delayed_worker_assert, 0, 0, 0)
