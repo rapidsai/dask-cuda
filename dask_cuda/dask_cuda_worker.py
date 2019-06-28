@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 import atexit
 import logging
+import multiprocessing
 import os
 
 import click
@@ -14,6 +15,7 @@ from distributed.utils import (
     parse_bytes,
     warn_on_duration,
 )
+
 import multiprocessing
 from distributed.worker import parse_memory_limit
 from distributed.security import Security
@@ -262,7 +264,7 @@ def main(
         t(
             scheduler,
             scheduler_file=scheduler_file,
-            ncores=nthreads,
+            nthreads=nthreads,
             services=services,
             loop=loop,
             resources=resources,
