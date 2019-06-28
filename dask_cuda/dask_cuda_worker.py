@@ -14,7 +14,8 @@ from distributed.utils import (
     parse_bytes,
     warn_on_duration,
 )
-from distributed.worker import _ncores, parse_memory_limit
+import multiprocessing
+from distributed.worker import parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import check_python_3, install_signal_handlers
 from distributed.comm.addressing import uri_from_host_port
@@ -186,7 +187,7 @@ def main(
         nprocs = get_n_gpus()
 
     if not nthreads:
-        nthreads = min(1, _ncores // nprocs)
+        nthreads = min(1, multiprocessing.cpu_count() // nprocs)
 
     if pid_file:
         with open(pid_file, "w") as f:
