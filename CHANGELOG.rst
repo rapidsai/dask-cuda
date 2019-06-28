@@ -9,6 +9,7 @@
 -  Replace use of ncores= keywords with nthreads= (#75) `Matthew Rocklin`_
 -  Fix device memory spilling with cuDF (#65) `Peter Andreas Entschev`_
 -  LocalCUDACluster calls _correct_state() to ensure workers started (#78) `Peter Andreas Entschev`_
+-  Delay some of spilling test assertions (#80) `Peter Andreas Entschev`_
 
 .. _`Peter Andreas Entschev`: https://github.com/pentschev
 .. _`Matthew Rocklin`: https://github.com/mrocklin
