@@ -16,7 +16,6 @@ from distributed.utils import (
     warn_on_duration,
 )
 
-import multiprocessing
 from distributed.worker import parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import check_python_3, install_signal_handlers
