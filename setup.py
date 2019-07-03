@@ -1,5 +1,6 @@
 import os
 from codecs import open
+import versioneer
 
 from setuptools import find_packages, setup
 
@@ -7,10 +8,10 @@ from setuptools import find_packages, setup
 with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
     long_description = f.read()
 
-version = os.environ.get("GIT_DESCRIBE_TAG", "0.0.0.dev0").lstrip("v")
 setup(
     name="dask-cuda",
-    version=version,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description="Utilities for Dask and CUDA interactions",
     long_description=long_description,
     long_description_content_type="text/markdown",
