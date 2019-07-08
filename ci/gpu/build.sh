@@ -61,19 +61,19 @@ pip install git+https://github.com/dask/distributed.git@master
 
 if hasArg --skip-tests; then
     logger "Skipping Tests..."
-    exit 0
+else
+    # Install CuPy for tests
+    pip install cupy-cuda${CUDA_REL}==6.0.0
+
+    ################################################################################
+    # TEST - Run tests
+    ################################################################################
+
+    pip install -e .
+    pip install pytest pytest-asyncio
+    py.test --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml -v --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term
+
+
+    conda install codecov
+    codecov -t $CODECOV_TOKEN
 fi
-
-# Install CuPy for tests
-pip install cupy-cuda${CUDA_REL}==6.0.0
-
-################################################################################
-# TEST - Run tests
-################################################################################
-
-pip install -e .
-pip install pytest pytest-asyncio
-
-conda list
-
-pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
