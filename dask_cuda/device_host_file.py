@@ -6,18 +6,12 @@ from distributed.worker import weight
 from functools import partial
 import os
 
-
-def _is_device_object(obj):
-    """
-    Check if obj is a device object, by checking if it has a
-    __cuda_array_interface__ attributed
-    """
-    return hasattr(obj, "__cuda_array_interface__")
+from .is_device_object import is_device_object
 
 
 def _serialize_if_device(obj):
     """ Serialize an object if it's a device object """
-    if _is_device_object(obj):
+    if is_device_object(obj):
         return serialize_bytes(obj, on_error="raise")
     else:
         return obj
@@ -81,7 +75,7 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer.fast
 
     def __setitem__(self, key, value):
-        if _is_device_object(value):
+        if is_device_object(value):
             self.device_buffer[key] = value
         else:
             self.host_buffer[key] = value
