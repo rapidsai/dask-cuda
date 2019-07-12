@@ -18,12 +18,12 @@ build:
 
 requirements:
   build:
-    - python x.x
+    - python
     - setuptools
   run:
-    - python x.x
-    - dask-core >=1.2.1
-    - distributed >=1.28.0
+    - python
+    - dask-core >=2.0.0
+    - distributed >=2.0.1
     - numpy >=1.16.0
     - numba >=0.40.1
 
