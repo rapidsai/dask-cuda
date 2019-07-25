@@ -13,14 +13,6 @@ def is_device_object_default(o):
     return hasattr(o, "__cuda_array_interface__")
 
 
-@is_device_object.register(list)
-@is_device_object.register(tuple)
-@is_device_object.register(set)
-@is_device_object.register(frozenset)
-def is_device_object_python_collection(seq):
-    return any([is_device_object(s) for s in seq])
-
-
 @is_device_object.register_lazy("cudf")
 def register_cudf():
     import cudf
