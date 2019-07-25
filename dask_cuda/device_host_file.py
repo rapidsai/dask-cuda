@@ -1,28 +1,39 @@
 from zict import Buffer, File, Func
 from zict.common import ZictBase
-from distributed.protocol import deserialize_bytes, serialize_bytes
+from distributed.protocol import (
+    deserialize,
+    deserialize_bytes,
+    serialize,
+    serialize_bytes,
+)
 from distributed.worker import weight
 
 from functools import partial
 import os
 
 from .is_device_object import is_device_object
+from .utils import move_frames_to_device, move_frames_to_host
 
 
-def _serialize_if_device(obj):
-    """ Serialize an object if it's a device object """
-    if is_device_object(obj):
-        return serialize_bytes(obj, on_error="raise")
-    else:
+def _serialize(obj):
+    """ Serialize an object and moves frames to host if it's a device object """
+    header, frames = serialize(
+        obj, serializers=["cuda", "dask", "pickle"], on_error="raise"
+    )
+    if header["serializer"] == "cuda":
+        frames = move_frames_to_host(frames)
+    return header, frames
+
+
+def _deserialize(obj):
+    """ Deserialize an object if it's a serialized object, thus assumes it's a tuple of
+    length 2, and moves frames to device if the serialized object is a CUDA object """
+    if not isinstance(obj, tuple):
         return obj
-
-
-def _deserialize_if_device(obj):
-    """ Deserialize an object if it's an instance of bytes """
-    if isinstance(obj, bytes):
-        return deserialize_bytes(obj)
-    else:
-        return obj
+    header, frames = obj
+    if header["serializer"] == "cuda" and isinstance(frames, list):
+        frames = move_frames_to_device(frames)
+    return deserialize(header, frames)
 
 
 class DeviceHostFile(ZictBase):
@@ -60,9 +71,7 @@ class DeviceHostFile(ZictBase):
         )
 
         self.device_func = dict()
-        self.device_host_func = Func(
-            _serialize_if_device, _deserialize_if_device, self.host_buffer
-        )
+        self.device_host_func = Func(_serialize, _deserialize, self.host_buffer)
         self.device_buffer = Buffer(
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
@@ -84,7 +93,7 @@ class DeviceHostFile(ZictBase):
         if key in self.host_buffer:
             obj = self.host_buffer[key]
             del self.host_buffer[key]
-            self.device_buffer[key] = _deserialize_if_device(obj)
+            self.device_buffer[key] = _deserialize(obj)
 
         if key in self.device_buffer:
             return self.device_buffer[key]
