@@ -111,14 +111,14 @@ def test_cupy_device_spill(params):
         yield wait(xx)
 
         # Allow up to 1024 bytes overhead per chunk serialized
-        yield client.run(worker_assert, x.nbytes, 0, 1024)
+        yield client.run(worker_assert, x.nbytes, 1024, 1024)
 
         y = client.compute(x.sum())
         res = yield y
 
         assert (abs(res / x.size) - 0.5) < 1e-3
 
-        yield client.run(worker_assert, x.nbytes, 0, 1024)
+        yield client.run(worker_assert, x.nbytes, 1024, 1024)
         host_chunks = yield client.run(lambda: len(get_worker().data.host))
         disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
         for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
@@ -175,14 +175,14 @@ async def test_cupy_cluster_device_spill(loop, params):
             await wait(xx)
 
             # Allow up to 1024 bytes overhead per chunk serialized
-            await client.run(worker_assert, x.nbytes, 0, 1024)
+            await client.run(worker_assert, x.nbytes, 1024, 1024)
 
             y = client.compute(x.sum())
             res = await y
 
             assert (abs(res / x.size) - 0.5) < 1e-3
 
-            await client.run(worker_assert, x.nbytes, 0, 1024)
+            await client.run(worker_assert, x.nbytes, 1024, 1024)
             host_chunks = await client.run(lambda: len(get_worker().data.host))
             disk_chunks = await client.run(lambda: len(get_worker().data.disk))
             for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
