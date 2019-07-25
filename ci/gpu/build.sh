@@ -50,10 +50,8 @@ g++ --version
 conda config --set ssl_verify False
 
 conda install \
-    'cudf=0.8' \
-    'dask-cudf=0.8'
-
-pip install git+https://github.com/dask/distributed.git@master
+    'cudf=0.9' \
+    'dask-cudf=0.9'
 
 ################################################################################
 # SETUP - Install additional packages
