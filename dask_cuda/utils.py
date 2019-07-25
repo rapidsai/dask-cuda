@@ -25,12 +25,10 @@ def get_device_total_memory(index=0):
 
 
 def convert_frames_to_numba(frames):
-    try:
-        import cupy
-    except ImportError:
-        return frames
-
-    return [cuda.as_cuda_array(f) if isinstance(f, cupy.ndarray) else f for f in frames]
+    return [
+        cuda.as_cuda_array(f) if hasattr(f, "__cuda_array_interface__") else f
+        for f in frames
+    ]
 
 
 def move_frames_to_host(frames):
@@ -38,8 +36,10 @@ def move_frames_to_host(frames):
     # serialization process in dask/distributed
     frames = convert_frames_to_numba(frames)
 
-    return [f.copy_to_host() if isinstance(f, cuda.cudadrv.devicearray.DeviceNDArray)
-            else f for f in frames]
+    return [
+        f.copy_to_host() if isinstance(f, cuda.cudadrv.devicearray.DeviceNDArray) else f
+        for f in frames
+    ]
 
 
 def move_frames_to_device(frames):
