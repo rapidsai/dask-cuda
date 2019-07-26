@@ -23,9 +23,9 @@ export HOME=$WORKSPACE
 # Switch to project root; also root of repo checkout
 cd $WORKSPACE
 
-# Get latest tag and number of commits since tag
-export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
-export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
+# Parse git describe
+export GIT_DESCRIBE_TAG=`git describe --tags`
+export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
 # will possibly be enabled by default starting on 1.17)
@@ -50,10 +50,8 @@ g++ --version
 conda config --set ssl_verify False
 
 conda install \
-    'cudf=0.8' \
-    'dask-cudf=0.8'
-
-pip install git+https://github.com/dask/distributed.git@master
+    "cudf=$MINOR_VERSION.*" \
+    "dask-cudf=$MINOR_VERSION.*"
 
 ################################################################################
 # SETUP - Install additional packages
