@@ -4,16 +4,18 @@ from distributed.protocol import (
     deserialize,
     deserialize_bytes,
     serialize,
-    serialize_bytes,
+    serialize_bytelist,
+    Serialized,
 )
 from dask.sizeof import sizeof
+from distributed.utils import nbytes
 from distributed.worker import weight
 
 from functools import partial
+from numba import cuda
 import os
 
 from .is_device_object import is_device_object
-from .utils import move_frames_to_device, move_frames_to_host
 
 
 # Register sizeof for Numba DeviceNDArray while Dask doesn't add it
@@ -28,40 +30,30 @@ if not hasattr(sizeof, "register_numba"):
             return int(x.nbytes)
 
 
-def _device_serialize(obj):
-    """ Serialize a device object, returning a tuple of header and frames. """
-    header, frames = serialize(obj, serializers=["cuda"], on_error="raise")
-    return header, frames
+# Register sizeof for Serialized while Dask doesn't add it
+if not hasattr(sizeof, "register_serialized"):
+
+    @sizeof.register(Serialized)
+    def register_serialized(obj):
+        return sum(map(nbytes, obj.frames))
 
 
-def _device_deserialize(header, frames):
-    """ Deserialize a tuple of header and frames containing a device object, returning
-    the device object. """
-    return deserialize(header, frames)
+def device_to_host(obj: object) -> Serialized:
+    header, frames = serialize(obj, serializers=["cuda"])
+    is_cuda = [hasattr(f, "__cuda_array_interface__") for f in frames]
+    frames = [
+        cuda.as_cuda_array(f).copy_to_host() if ic else f
+        for ic, f in zip(is_cuda, frames)
+    ]
+    header = {"sub-header": header, "is-cuda": is_cuda}
+    return Serialized(header, frames)
 
 
-def _host_serialize(obj):
-    """ Serialize host objects or move an already serialized device object to host
-    memory. Always returns a tuple of header and frames.
-    """
-    if isinstance(obj, tuple):
-        header, frames = obj
-        frames = move_frames_to_host(frames)
-        return header, frames
-    else:
-        return serialize(obj, serializers=["dask", "pickle"], on_error="raise")
-
-
-def _host_deserialize(header, frames):
-    """ Deserialize an object if it's a host object returning the object, or move
-    frames to device memory if the serialized header identifies "cuda" serializer,
-    returning then a tuple of header and frames.
-    """
-    if header["serializer"] == "cuda":
-        frames = move_frames_to_device(frames)
-        return header, frames
-    else:
-        return deserialize(header, frames)
+def host_to_device(s: Serialized) -> object:
+    is_cuda = s.header["is-cuda"]
+    header = s.header["sub-header"]
+    frames = [cuda.to_device(f) if ic else f for ic, f in zip(is_cuda, s.frames)]
+    return deserialize(header, frames, serializers=["cuda"])
 
 
 class DeviceHostFile(ZictBase):
@@ -92,18 +84,15 @@ class DeviceHostFile(ZictBase):
 
         self.host_func = dict()
         self.disk_func = Func(
-            partial(serialize_bytes, on_error="raise"), deserialize_bytes, File(path)
+            partial(serialize_bytelist, on_error="raise"), deserialize_bytes, File(path)
         )
         self.host_buffer = Buffer(
             self.host_func, self.disk_func, memory_limit, weight=weight
         )
 
         self.device_func = dict()
-        self.device_host_func = Func(
-            _host_serialize, _host_deserialize, self.host_buffer
-        )
         self.device_buffer = Buffer(
-            self.device_func, self.device_host_func, device_memory_limit, weight=weight
+            self.device_func, self.host_buffer, device_memory_limit, weight=weight
         )
 
         self.device = self.device_buffer.fast.d
@@ -115,22 +104,21 @@ class DeviceHostFile(ZictBase):
 
     def __setitem__(self, key, value):
         if is_device_object(value):
-            self.device_buffer[key] = _device_serialize(value)
+            self.device_buffer[key] = value
         else:
-            self.host_buffer[key] = _host_serialize(value)
+            self.host_buffer[key] = value
 
     def __getitem__(self, key):
         if key in self.host_buffer:
             obj = self.host_buffer[key]
-            header, frames = obj
-            if header["serializer"] == "cuda":
+            if isinstance(obj, Serialized):
                 del self.host_buffer[key]
-                self.device_buffer[key] = _host_deserialize(header, frames)
+                self.device_buffer[key] = host_to_device(obj)
             else:
-                return _host_deserialize(header, frames)
+                return obj
 
         if key in self.device_buffer:
-            return _device_deserialize(*self.device_buffer[key])
+            return self.device_buffer[key]
         else:
             raise KeyError
 
