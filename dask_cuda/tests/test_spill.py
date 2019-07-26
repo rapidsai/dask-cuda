@@ -77,7 +77,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 2e9,
+            "memory_limit": 1e9,
             "host_target": 0.6,
             "host_spill": 0.6,
             "spills_to_disk": True,
@@ -143,7 +143,7 @@ def test_cupy_device_spill(params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 2e9,
+            "memory_limit": 1e9,
             "host_target": 0.6,
             "host_spill": 0.6,
             "spills_to_disk": True,
@@ -205,7 +205,7 @@ async def test_cupy_cluster_device_spill(loop, params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 2e9,
+            "memory_limit": 1e9,
             "host_target": 0.6,
             "host_spill": 0.6,
             "spills_to_disk": True,
@@ -277,7 +277,7 @@ def test_cudf_device_spill(params):
         },
         {
             "device_memory_limit": 1e9,
-            "memory_limit": 2e9,
+            "memory_limit": 1e9,
             "host_target": 0.6,
             "host_spill": 0.6,
             "spills_to_disk": True,
