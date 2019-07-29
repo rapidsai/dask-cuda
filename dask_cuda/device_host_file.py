@@ -11,7 +11,6 @@ from dask.sizeof import sizeof
 from distributed.utils import nbytes
 from distributed.worker import weight
 
-from functools import partial
 from numba import cuda
 import os
 
@@ -53,7 +52,7 @@ def host_to_device(s: Serialized) -> object:
     is_cuda = s.header["is-cuda"]
     header = s.header["sub-header"]
     frames = [cuda.to_device(f) if ic else f for ic, f in zip(is_cuda, s.frames)]
-    return deserialize(header, frames, serializers=["cuda"])
+    return deserialize(header, frames)
 
 
 def _serialize_if_device(obj):
@@ -68,6 +67,21 @@ def _deserialize_if_device(obj):
         return host_to_device(obj)
     else:
         return obj
+
+
+def _serialize_bytelist(obj):
+    if isinstance(obj, Serialized):
+        obj = serialize(obj)
+    return serialize_bytelist(obj)
+
+
+def _deserialize_bytes(b):
+    obj = deserialize_bytes(b)
+    if isinstance(obj, tuple) and len(obj) == 2:
+        header, frames = obj
+        if isinstance(header, dict) and "sub-header" in header:
+            return Serialized(header, frames)
+    return obj
 
 
 class DeviceHostFile(ZictBase):
@@ -98,7 +112,7 @@ class DeviceHostFile(ZictBase):
 
         self.host_func = dict()
         self.disk_func = Func(
-            partial(serialize_bytelist, on_error="raise"), deserialize_bytes, File(path)
+            _serialize_bytelist, _deserialize_bytes, File(path)
         )
         self.host_buffer = Buffer(
             self.host_func, self.disk_func, memory_limit, weight=weight
@@ -127,9 +141,17 @@ class DeviceHostFile(ZictBase):
 
     def __getitem__(self, key):
         if key in self.host_buffer:
-            return self.host_buffer[key]
-        else:
+            obj = self.host_buffer[key]
+            if isinstance(obj, Serialized):
+                del self.host_buffer[key]
+                self.device_buffer[key] = host_to_device(obj)
+            else:
+                return obj
+
+        if key in self.device_buffer:
             return self.device_buffer[key]
+        else:
+            raise KeyError
 
     def __len__(self):
         return len(self.device_buffer)
