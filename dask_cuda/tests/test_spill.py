@@ -71,15 +71,15 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         {
             "device_memory_limit": 1e9,
             "memory_limit": 4e9,
-            "host_target": 0.6,
-            "host_spill": 0.7,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": 1e9,
             "memory_limit": 1e9,
-            "host_target": 0.6,
-            "host_spill": 0.6,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": True,
         },
     ],
@@ -137,15 +137,15 @@ def test_cupy_device_spill(params):
         {
             "device_memory_limit": 1e9,
             "memory_limit": 4e9,
-            "host_target": 0.6,
-            "host_spill": 0.7,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": 1e9,
             "memory_limit": 1e9,
-            "host_target": 0.6,
-            "host_spill": 0.6,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": True,
         },
     ],
@@ -199,15 +199,15 @@ async def test_cupy_cluster_device_spill(loop, params):
         {
             "device_memory_limit": 1e9,
             "memory_limit": 4e9,
-            "host_target": 0.6,
-            "host_spill": 0.7,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": 1e9,
             "memory_limit": 1e9,
-            "host_target": 0.6,
-            "host_spill": 0.6,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": True,
         },
     ],
@@ -233,9 +233,12 @@ def test_cudf_device_spill(params):
     )
     def test_device_spill(client, scheduler, worker):
 
+        # There's a known issue with datetime64:
+        # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
+        # The same error above happens when spilling datetime64 to disk
         cdf = dask.datasets.timeseries(
             dtypes={"x": int, "y": float}, freq="30ms"
-        ).map_partitions(cudf.from_pandas)
+        ).reset_index(drop=True).map_partitions(cudf.from_pandas)
 
         sizes = yield client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
         sizes = sizes.tolist()
@@ -271,15 +274,15 @@ def test_cudf_device_spill(params):
         {
             "device_memory_limit": 1e9,
             "memory_limit": 4e9,
-            "host_target": 0.6,
-            "host_spill": 0.7,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": 1e9,
             "memory_limit": 1e9,
-            "host_target": 0.6,
-            "host_spill": 0.6,
+            "host_target": 0.0,
+            "host_spill": 0.0,
             "spills_to_disk": True,
         },
     ],
@@ -297,9 +300,12 @@ async def test_cudf_cluster_device_spill(loop, params):
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
 
+            # There's a known issue with datetime64:
+            # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
+            # The same error above happens when spilling datetime64 to disk
             cdf = dask.datasets.timeseries(
                 dtypes={"x": int, "y": float}, freq="30ms"
-            ).map_partitions(cudf.from_pandas)
+            ).reset_index(drop=True).map_partitions(cudf.from_pandas)
 
             sizes = await client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
             sizes = sizes.tolist()
