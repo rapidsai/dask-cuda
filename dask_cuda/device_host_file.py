@@ -56,6 +56,20 @@ def host_to_device(s: Serialized) -> object:
     return deserialize(header, frames, serializers=["cuda"])
 
 
+def _serialize_if_device(obj):
+    if is_device_object(obj):
+        return device_to_host(obj)
+    else:
+        return obj
+
+
+def _deserialize_if_device(obj):
+    if isinstance(obj, Serialized):
+        return host_to_device(obj)
+    else:
+        return obj
+
+
 class DeviceHostFile(ZictBase):
     """ Manages serialization/deserialization of objects.
 
@@ -91,8 +105,11 @@ class DeviceHostFile(ZictBase):
         )
 
         self.device_func = dict()
+        self.device_host_func = Func(
+            _serialize_if_device, _deserialize_if_device, self.host_buffer
+        )
         self.device_buffer = Buffer(
-            self.device_func, self.host_buffer, device_memory_limit, weight=weight
+            self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
 
         self.device = self.device_buffer.fast.d
@@ -110,17 +127,9 @@ class DeviceHostFile(ZictBase):
 
     def __getitem__(self, key):
         if key in self.host_buffer:
-            obj = self.host_buffer[key]
-            if isinstance(obj, Serialized):
-                del self.host_buffer[key]
-                self.device_buffer[key] = host_to_device(obj)
-            else:
-                return obj
-
-        if key in self.device_buffer:
-            return self.device_buffer[key]
+            return self.host_buffer[key]
         else:
-            raise KeyError
+            return self.device_buffer[key]
 
     def __len__(self):
         return len(self.device_buffer)
