@@ -4,7 +4,7 @@ import os
 from time import sleep
 
 from distributed.metrics import time
-from distributed.utils_test import gen_cluster, loop, gen_test
+from distributed.utils_test import gen_cluster, loop, gen_test  # noqa: F401
 from distributed.worker import Worker
 from distributed import Client, get_worker, wait
 from dask_cuda import LocalCUDACluster
@@ -96,6 +96,7 @@ def test_cupy_device_spill(params):
                 device_memory_limit=params["device_memory_limit"],
                 memory_limit=params["memory_limit"],
             ),
+            "memory_pause_fraction": None,
         },
         config={
             "distributed.worker.memory.target": params["host_target"],
@@ -105,7 +106,6 @@ def test_cupy_device_spill(params):
     def test_device_spill(client, scheduler, worker):
         rs = da.random.RandomState(RandomState=cupy.random.RandomState)
         x = rs.random(int(250e6), chunks=10e6)
-        yield wait(x)
 
         xx = x.persist()
         yield wait(xx)
@@ -146,51 +146,54 @@ def test_cupy_device_spill(params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "memory_pause_fraction": None,
             "spills_to_disk": True,
         },
     ],
 )
 @pytest.mark.asyncio
 async def test_cupy_cluster_device_spill(loop, params):
-    async with LocalCUDACluster(
-        1,
-        scheduler_port=0,
-        processes=True,
-        silence_logs=False,
-        dashboard_address=None,
-        asynchronous=True,
-        death_timeout=300,
-        device_memory_limit=params["device_memory_limit"],
-        memory_limit=params["memory_limit"],
-        memory_target_fraction=params["host_target"],
-        memory_spill_fraction=params["host_spill"],
-    ) as cluster:
-        async with Client(cluster, asynchronous=True) as client:
+    with dask.config.set({"distributed.worker.memory.terminate": False}):
+        async with LocalCUDACluster(
+            1,
+            scheduler_port=0,
+            processes=True,
+            silence_logs=False,
+            dashboard_address=None,
+            asynchronous=True,
+            death_timeout=300,
+            device_memory_limit=params["device_memory_limit"],
+            memory_limit=params["memory_limit"],
+            memory_target_fraction=params["host_target"],
+            memory_spill_fraction=params["host_spill"],
+            memory_pause_fraction=False,
+        ) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
 
-            rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-            x = rs.random(int(250e6), chunks=10e6)
-            await wait(x)
+                rs = da.random.RandomState(RandomState=cupy.random.RandomState)
+                x = rs.random(int(250e6), chunks=10e6)
+                await wait(x)
 
-            xx = x.persist()
-            await wait(xx)
+                xx = x.persist()
+                await wait(xx)
 
-            # Allow up to 1024 bytes overhead per chunk serialized
-            await client.run(worker_assert, x.nbytes, 1024, 1024)
+                # Allow up to 1024 bytes overhead per chunk serialized
+                await client.run(worker_assert, x.nbytes, 1024, 1024)
 
-            y = client.compute(x.sum())
-            res = await y
+                y = client.compute(x.sum())
+                res = await y
 
-            assert (abs(res / x.size) - 0.5) < 1e-3
+                assert (abs(res / x.size) - 0.5) < 1e-3
 
-            await client.run(worker_assert, x.nbytes, 1024, 1024)
-            host_chunks = await client.run(lambda: len(get_worker().data.host))
-            disk_chunks = await client.run(lambda: len(get_worker().data.disk))
-            for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
-                if params["spills_to_disk"]:
-                    assert dc > 0
-                else:
-                    assert hc > 0
-                    assert dc == 0
+                await client.run(worker_assert, x.nbytes, 1024, 1024)
+                host_chunks = await client.run(lambda: len(get_worker().data.host))
+                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+                for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
+                    if params["spills_to_disk"]:
+                        assert dc > 0
+                    else:
+                        assert hc > 0
+                        assert dc == 0
 
 
 @pytest.mark.parametrize(
@@ -208,6 +211,7 @@ async def test_cupy_cluster_device_spill(loop, params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "memory_pause_fraction": None,
             "spills_to_disk": True,
         },
     ],
@@ -236,9 +240,11 @@ def test_cudf_device_spill(params):
         # There's a known issue with datetime64:
         # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
         # The same error above happens when spilling datetime64 to disk
-        cdf = dask.datasets.timeseries(
-            dtypes={"x": int, "y": float}, freq="30ms"
-        ).reset_index(drop=True).map_partitions(cudf.from_pandas)
+        cdf = (
+            dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="30ms")
+            .reset_index(drop=True)
+            .map_partitions(cudf.from_pandas)
+        )
 
         sizes = yield client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
         sizes = sizes.tolist()
@@ -283,6 +289,7 @@ def test_cudf_device_spill(params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "memory_pause_fraction": None,
             "spills_to_disk": True,
         },
     ],
@@ -303,9 +310,11 @@ async def test_cudf_cluster_device_spill(loop, params):
             # There's a known issue with datetime64:
             # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
             # The same error above happens when spilling datetime64 to disk
-            cdf = dask.datasets.timeseries(
-                dtypes={"x": int, "y": float}, freq="30ms"
-            ).reset_index(drop=True).map_partitions(cudf.from_pandas)
+            cdf = (
+                dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="30ms")
+                .reset_index(drop=True)
+                .map_partitions(cudf.from_pandas)
+            )
 
             sizes = await client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
             sizes = sizes.tolist()
