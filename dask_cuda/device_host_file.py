@@ -5,7 +5,8 @@ from distributed.protocol import (
     deserialize_bytes,
     serialize,
     serialize_bytelist,
-    register_generic,
+    dask_serialize,
+    dask_deserialize,
 )
 from dask.sizeof import sizeof
 from distributed.utils import nbytes
@@ -40,15 +41,39 @@ class DeviceSerialized:
         which are typically NumPy arrays
     """
 
-    def __init__(self, header, parts):
+    def __init__(self, header, parts, is_cuda):
         self.header = header
         self.parts = parts
+        self.is_cuda = is_cuda
 
     def __sizeof__(self):
         return sum(map(nbytes, self.parts))
 
 
-register_generic(DeviceSerialized)
+@dask_serialize.register(DeviceSerialized)
+def _(obj):
+    headers = []
+    all_frames = []
+    for part in obj.parts:
+        header, frames = serialize(part)
+        header["frame-start-stop"] = [len(all_frames), len(all_frames) + len(frames)]
+        headers.append(header)
+        all_frames.extend(frames)
+
+    header = {"sub-headers": headers, "is-cuda": obj.is_cuda, "main-header": obj.header}
+
+    return header, frames
+
+
+@dask_deserialize.register(DeviceSerialized)
+def _(header, frames):
+    parts = []
+    for sub_header in header["sub-headers"]:
+        start, stop = sub_header.pop("frame-start-stop")
+        part = deserialize(sub_header, frames[start:stop])
+        parts.append(part)
+
+    return DeviceSerialized(header["main-header"], parts, header["is-cuda"])
 
 
 def device_to_host(obj: object) -> DeviceSerialized:
@@ -58,15 +83,12 @@ def device_to_host(obj: object) -> DeviceSerialized:
         cuda.as_cuda_array(f).copy_to_host() if ic else f
         for ic, f in zip(is_cuda, frames)
     ]
-    header = {"sub-header": header, "is-cuda": is_cuda}
-    return DeviceSerialized(header, frames)
+    return DeviceSerialized(header, frames, is_cuda)
 
 
 def host_to_device(s: DeviceSerialized) -> object:
-    is_cuda = s.header["is-cuda"]
-    header = s.header["sub-header"]
-    frames = [cuda.to_device(f) if ic else f for ic, f in zip(is_cuda, s.parts)]
-    return deserialize(header, frames)
+    frames = [cuda.to_device(f) if ic else f for ic, f in zip(s.is_cuda, s.parts)]
+    return deserialize(s.header, frames)
 
 
 class DeviceHostFile(ZictBase):
