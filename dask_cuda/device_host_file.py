@@ -62,7 +62,7 @@ def _(obj):
 
     header = {"sub-headers": headers, "is-cuda": obj.is_cuda, "main-header": obj.header}
 
-    return header, frames
+    return header, all_frames
 
 
 @dask_deserialize.register(DeviceSerialized)
