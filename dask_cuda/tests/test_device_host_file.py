@@ -1,6 +1,7 @@
 import numpy as np
 import cupy
 from dask_cuda.device_host_file import DeviceHostFile, host_to_device, device_to_host
+from distributed.protocol import deserialize_bytes, serialize_bytelist
 from random import randint
 import dask.array as da
 
@@ -115,9 +116,13 @@ def test_device_host_file_step_by_step(tmp_path):
 
 def test_serialize_cupy():
     x = cupy.arange(10)
+
     obj = device_to_host(x)
     assert all(isinstance(part, (bytes, memoryview, np.ndarray)) for part in obj.parts)
-    y = host_to_device(obj)
+    btslst = serialize_bytelist(obj)
+
+    bts = deserialize_bytes(b"".join(btslst))
+    y = host_to_device(bts)
 
     da.assert_eq(x, y)
 
@@ -127,8 +132,12 @@ def test_serialize_cudf():
     dd = pytest.importorskip("dask.dataframe")
 
     df = cudf.DataFrame({"x": [1, 2, 3], "y": [4.0, 5.0, 6.0]})
+
     obj = device_to_host(df)
     assert all(isinstance(part, (bytes, memoryview, np.ndarray)) for part in obj.parts)
-    df2 = host_to_device(obj)
+    btslst = serialize_bytelist(obj)
+
+    bts = deserialize_bytes(b"".join(btslst))
+    df2 = host_to_device(bts)
 
     dd.assert_eq(df, df2)
