@@ -73,6 +73,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             "memory_limit": 4e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "host_pause": None,
             "spills_to_disk": False,
         },
         {
@@ -80,6 +81,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "host_pause": None,
             "spills_to_disk": True,
         },
     ],
@@ -89,18 +91,18 @@ def test_cupy_device_spill(params):
         client=True,
         nthreads=[("127.0.0.1", 1)],
         Worker=Worker,
-        timeout=300,
+        timeout=60,
         worker_kwargs={
             "memory_limit": params["memory_limit"],
             "data": DeviceHostFile(
                 device_memory_limit=params["device_memory_limit"],
                 memory_limit=params["memory_limit"],
             ),
-            "memory_pause_fraction": None,
         },
         config={
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.pause": params["host_pause"],
         },
     )
     def test_device_spill(client, scheduler, worker):
@@ -139,6 +141,7 @@ def test_cupy_device_spill(params):
             "memory_limit": 4e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "host_pause": None,
             "spills_to_disk": False,
         },
         {
@@ -146,7 +149,7 @@ def test_cupy_device_spill(params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
-            "memory_pause_fraction": None,
+            "host_pause": None,
             "spills_to_disk": True,
         },
     ],
@@ -161,12 +164,12 @@ async def test_cupy_cluster_device_spill(loop, params):
             silence_logs=False,
             dashboard_address=None,
             asynchronous=True,
-            death_timeout=300,
+            death_timeout=60,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
             memory_target_fraction=params["host_target"],
             memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=False,
+            memory_pause_fraction=params["host_pause"],
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
@@ -204,6 +207,7 @@ async def test_cupy_cluster_device_spill(loop, params):
             "memory_limit": 4e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "host_pause": None,
             "spills_to_disk": False,
         },
         {
@@ -211,7 +215,7 @@ async def test_cupy_cluster_device_spill(loop, params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
-            "memory_pause_fraction": None,
+            "host_pause": None,
             "spills_to_disk": True,
         },
     ],
@@ -221,7 +225,7 @@ def test_cudf_device_spill(params):
         client=True,
         ncores=[("127.0.0.1", 1)],
         Worker=Worker,
-        timeout=300,
+        timeout=60,
         worker_kwargs={
             "memory_limit": params["memory_limit"],
             "data": DeviceHostFile(
@@ -233,6 +237,7 @@ def test_cudf_device_spill(params):
             "distributed.comm.timeouts.connect": "20s",
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.pause": params["host_pause"],
         },
     )
     def test_device_spill(client, scheduler, worker):
@@ -282,6 +287,7 @@ def test_cudf_device_spill(params):
             "memory_limit": 4e9,
             "host_target": 0.0,
             "host_spill": 0.0,
+            "host_pause": None,
             "spills_to_disk": False,
         },
         {
@@ -289,7 +295,7 @@ def test_cudf_device_spill(params):
             "memory_limit": 1e9,
             "host_target": 0.0,
             "host_spill": 0.0,
-            "memory_pause_fraction": None,
+            "host_pause": None,
             "spills_to_disk": True,
         },
     ],
@@ -302,7 +308,8 @@ async def test_cudf_cluster_device_spill(loop, params):
         memory_limit=params["memory_limit"],
         memory_target_fraction=params["host_target"],
         memory_spill_fraction=params["host_spill"],
-        death_timeout=300,
+        memory_pause_fraction=params["host_pause"],
+        death_timeout=60,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
