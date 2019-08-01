@@ -324,7 +324,9 @@ async def test_cudf_cluster_device_spill(loop, params):
                     .map_partitions(cudf.from_pandas)
                 )
 
-                sizes = await client.compute(cdf.map_partitions(lambda df: df.__sizeof__()))
+                sizes = await client.compute(
+                    cdf.map_partitions(lambda df: df.__sizeof__())
+                )
                 sizes = sizes.tolist()
                 nbytes = sum(sizes)
                 part_index_nbytes = (
