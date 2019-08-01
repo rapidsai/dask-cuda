@@ -51,7 +51,7 @@ class LocalCUDACluster(LocalCluster):
         device_memory_limit=None,
         CUDA_VISIBLE_DEVICES=None,
         data=None,
-        local_dir=None,
+        local_directory=None,
         **kwargs,
     ):
         if n_workers is None:
@@ -82,7 +82,7 @@ class LocalCUDACluster(LocalCluster):
                 {
                     "device_memory_limit": self.device_memory_limit,
                     "memory_limit": self.host_memory_limit,
-                    "local_dir": local_dir
+                    "local_directory": local_directory
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
                 },
@@ -94,7 +94,7 @@ class LocalCUDACluster(LocalCluster):
             memory_limit=memory_limit,
             processes=True,
             data=data,
-            local_dir=local_dir,
+            local_directory=local_directory,
             **kwargs,
         )
 

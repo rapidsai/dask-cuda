@@ -68,7 +68,7 @@ else
     ################################################################################
 
     pip install -e .
-    pip install pytest pytest-asyncio
+    pip install pytest pytest-asyncio fsspec
     py.test --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml -v --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term
 
 

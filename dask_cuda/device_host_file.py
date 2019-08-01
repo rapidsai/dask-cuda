@@ -42,14 +42,17 @@ class DeviceHostFile(ZictBase):
     memory_limit: int
         Number of bytes of host memory for host LRU cache, spills to
         disk once filled.
-    local_dir: path
+    local_directory: path
         Path where to store serialized objects on disk
     """
 
     def __init__(
-        self, device_memory_limit=None, memory_limit=None, local_dir="dask-worker-space"
+        self,
+        device_memory_limit=None,
+        memory_limit=None,
+        local_directory="dask-worker-space",
     ):
-        path = os.path.join(local_dir, "storage")
+        path = os.path.join(local_directory, "storage")
 
         self.host_func = dict()
         self.disk_func = Func(
