@@ -21,3 +21,7 @@ def get_device_total_memory(index=0):
     """
     with cuda.gpus[index]:
         return cuda.current_context().get_memory_info()[1]
+
+
+def close_cuda_context():
+    return cuda.close()

@@ -7,7 +7,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import TOTAL_MEMORY
 
 from .device_host_file import DeviceHostFile
-from .utils import get_n_gpus, get_device_total_memory
+from .utils import close_cuda_context, get_n_gpus, get_device_total_memory
 
 
 def cuda_visible_devices(i, visible=None):
@@ -125,5 +125,9 @@ class LocalCUDACluster(LocalCluster):
                 }
             }
         )
+
+        # Close CUDA context to prevent main (parent) process from unnecessarily
+        # consuming memory from all GPUs
+        close_cuda_context()
 
         return name, spec
