@@ -87,7 +87,7 @@ def DGX(
                 },
                 "interface": interface + str(i // 2),
                 "protocol": "ucx",
-                "ncores": threads_per_worker,
+                "nthreads": threads_per_worker,
                 "data": dict,
                 "preload": ["dask_cuda.initialize_context"],
                 "dashboard_address": ":0",
