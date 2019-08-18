@@ -1,3 +1,8 @@
+0.9
+---
+
+- Fix serialization of collections and bump dask to 2.3.0 (#118) `Peter Andreas Entschev`_
+
 0.8
 ---
 
