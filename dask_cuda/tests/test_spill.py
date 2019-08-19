@@ -223,7 +223,7 @@ async def test_cupy_cluster_device_spill(loop, params):
 def test_cudf_device_spill(params):
     @gen_cluster(
         client=True,
-        ncores=[("127.0.0.1", 1)],
+        nthreads=[("127.0.0.1", 1)],
         Worker=Worker,
         timeout=60,
         worker_kwargs={
