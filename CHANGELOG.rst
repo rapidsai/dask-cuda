@@ -1,6 +1,7 @@
 0.9
 ---
 
+- Fix serialization of collections and bump dask to 2.3.0 (#118) `Peter Andreas Entschev`_
 - Add versioneer (#88) `Matthieu Bulte`_
 - Python CodeCov Integration (#91) `Dillon Cullinan`_
 - Update cudf, dask, dask-cudf, distributed version requirements (#97) `Peter Andreas Entschev`_
