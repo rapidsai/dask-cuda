@@ -1,3 +1,22 @@
+0.9
+---
+
+- Add versioneer (#88) `Matthieu Bulte`_
+- Python CodeCov Integration (#91) `Dillon Cullinan`_
+- Update cudf, dask, dask-cudf, distributed version requirements (#97) `Peter Andreas Entschev`_
+- Improve device memory spilling performance (#98) `Peter Andreas Entschev`_
+- Update dask-cuda for dask 2.2 (#101) `Matthew Rocklin`_
+- Streamline CUDA_REL environment variable (#102) `Olli Koskinen`_
+- Replace ncores= parameter with nthreads= (#101) `Matthew Rocklin`_
+- Fix remove CodeCov upload from build script (#115) `Dillon Cullinan`_
+- Remove CodeCov upload (#116) `Dillon Cullinan`_
+
+.. _`Matthieu Bulte`: https://github.com/matthieubulte
+.. _`Dillon Cullinan`: https://github.com/dillon-cullinan
+.. _`Peter Andreas Entschev`: https://github.com/pentschev
+.. _`Matthew Rocklin`: https://github.com/mrocklin
+.. _`Olli Koskinen`: https://github.com/okoskinen
+
 0.8
 ---
 
