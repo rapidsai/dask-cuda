@@ -8,17 +8,10 @@ import os
 import click
 from distributed import Nanny
 from distributed.config import config
-from distributed.diskutils import WorkSpace
-from distributed.utils import (
-    get_ip_interface,
-    parse_timedelta,
-    parse_bytes,
-    warn_on_duration,
-)
+from distributed.utils import get_ip_interface, parse_bytes
 from distributed.worker import parse_memory_limit
 from distributed.security import Security
 from distributed.cli.utils import check_python_3, install_signal_handlers
-from distributed.comm.addressing import uri_from_host_port
 from distributed.preloading import validate_preload_argv
 from distributed.proctitle import (
     enable_proctitle_on_children,
@@ -139,7 +132,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     help="Seconds to wait for a scheduler before closing",
 )
-@click.option("--bokeh-prefix", type=str, default=None, help="Prefix for the bokeh app")
+@click.option(
+    "--dashboard-prefix", type=str, default=None, help="Prefix for the Dashboard"
+)
 @click.option(
     "--preload",
     type=str,
@@ -159,7 +154,6 @@ def main(
     memory_limit,
     device_memory_limit,
     pid_file,
-    reconnect,
     resources,
     dashboard,
     dashboard_address,
@@ -168,11 +162,11 @@ def main(
     interface,
     death_timeout,
     preload,
-    preload_argv,
-    bokeh_prefix,
+    dashboard_prefix,
     tls_ca_file,
     tls_cert,
     tls_key,
+    **kwargs,
 ):
     enable_proctitle_on_current()
     enable_proctitle_on_children()
@@ -207,8 +201,8 @@ def main(
         except ImportError:
             pass
         else:
-            if bokeh_prefix:
-                result = (BokehWorker, {"prefix": bokeh_prefix})
+            if dashboard_prefix:
+                result = (BokehWorker, {"prefix": dashboard_prefix})
             else:
                 result = BokehWorker
             services[("dashboard", dashboard_address)] = result
@@ -237,27 +231,6 @@ def main(
         else:
             host = get_ip_interface(interface)
 
-    if host:
-        addr = uri_from_host_port(host, 0, 0)
-    else:
-        # Choose appropriate address for scheduler
-        addr = None
-
-    if death_timeout is not None:
-        death_timeout = parse_timedelta(death_timeout, "s")
-
-    local_dir = kwargs.get("local_dir", "dask-worker-space")
-    with warn_on_duration(
-        "1s",
-        "Creating scratch directories is taking a surprisingly long time. "
-        "This is often due to running workers on a network file system. "
-        "Consider specifying a local-directory to point workers to write "
-        "scratch data to a local disk.",
-    ):
-        _workspace = WorkSpace(os.path.abspath(local_dir))
-        _workdir = _workspace.new_work_dir(prefix="worker-")
-        local_dir = _workdir.dir_path
-
     nannies = [
         t(
             scheduler,
@@ -267,13 +240,9 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            reconnect=reconnect,
-            local_dir=local_directory,
-            death_timeout=death_timeout,
+            host=host,
             preload=(preload or []) + ["dask_cuda.initialize_context"],
-            preload_argv=preload_argv,
             security=sec,
-            contact_address=None,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             data=(
@@ -285,7 +254,7 @@ def main(
                     "memory_limit": parse_memory_limit(
                         memory_limit, nthreads, total_cores=nprocs
                     ),
-                    "local_dir": local_dir,
+                    "local_directory": local_directory,
                 },
             ),
             **kwargs,
@@ -304,9 +273,8 @@ def main(
 
     @gen.coroutine
     def run():
-        yield [n._start(addr) for n in nannies]
-        while all(n.status != "closed" for n in nannies):
-            yield gen.sleep(0.2)
+        yield nannies
+        yield [n.finished() for n in nannies]
 
     install_signal_handlers(loop, cleanup=on_signal)
 

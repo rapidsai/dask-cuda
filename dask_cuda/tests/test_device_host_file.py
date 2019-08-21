@@ -1,10 +1,11 @@
 import numpy as np
 import cupy
-from dask_cuda.device_host_file import DeviceHostFile
+from dask_cuda.device_host_file import DeviceHostFile, host_to_device, device_to_host
+from distributed.protocol import deserialize_bytes, serialize_bytelist
 from random import randint
+import dask.array as da
 
 import pytest
-from cupy.testing import assert_array_equal
 
 
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
@@ -16,7 +17,7 @@ def test_device_host_file_short(
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
     )
 
     host = [
@@ -33,14 +34,15 @@ def test_device_host_file_short(
     full = host + device
     random.shuffle(full)
 
-    for i in full:
-        dhf[i[0]] = i[1]
+    for k, v in full:
+        dhf[k] = v
 
     random.shuffle(full)
 
-    for i in full:
-        assert_array_equal(i[1], dhf[i[0]])
-        del dhf[i[0]]
+    for k, original in full:
+        acquired = dhf[k]
+        da.assert_eq(original, acquired)
+        del dhf[k]
 
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
@@ -51,7 +53,7 @@ def test_device_host_file_step_by_step(tmp_path):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_dir=tmpdir
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
     )
 
     a = np.random.random(1000)
@@ -94,19 +96,63 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
-    assert_array_equal(dhf["a1"], a)
+    da.assert_eq(dhf["a1"], a)
     del dhf["a1"]
-    assert_array_equal(dhf["a2"], a)
+    da.assert_eq(dhf["a2"], a)
     del dhf["a2"]
-    assert_array_equal(dhf["b1"], b)
+    da.assert_eq(dhf["b1"], b)
     del dhf["b1"]
-    assert_array_equal(dhf["b2"], b)
+    da.assert_eq(dhf["b2"], b)
     del dhf["b2"]
-    assert_array_equal(dhf["b3"], b)
+    da.assert_eq(dhf["b3"], b)
     del dhf["b3"]
-    assert_array_equal(dhf["b4"], b)
+    da.assert_eq(dhf["b4"], b)
     del dhf["b4"]
 
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+
+
+@pytest.mark.parametrize("collection", [dict, list, tuple])
+@pytest.mark.parametrize("length", [0, 1, 3, 6])
+@pytest.mark.parametrize("value", [10, {"x": [1, 2, 3], "y": [4.0, 5.0, 6.0]}])
+def test_serialize_cupy_collection(collection, length, value):
+    # Avoid running test for length 0 (no collection) multiple times
+    if length == 0 and collection is not list:
+        return
+
+    if isinstance(value, dict):
+        cudf = pytest.importorskip("cudf")
+        dd = pytest.importorskip("dask.dataframe")
+        x = cudf.DataFrame(value)
+        assert_func = dd.assert_eq
+    else:
+        x = cupy.arange(10)
+        assert_func = da.assert_eq
+
+    if length == 0:
+        obj = device_to_host(x)
+    elif collection is dict:
+        obj = device_to_host(dict(zip(range(length), (x,) * length)))
+    else:
+        obj = device_to_host(collection((x,) * length))
+
+    if length > 5:
+        assert obj.header["serializer"] == "pickle"
+    elif length > 0:
+        assert all([h["serializer"] == "cuda" for h in obj.header["sub-headers"]])
+    else:
+        assert obj.header["serializer"] == "cuda"
+
+    btslst = serialize_bytelist(obj)
+
+    bts = deserialize_bytes(b"".join(btslst))
+    res = host_to_device(bts)
+
+    if length == 0:
+        assert_func(res, x)
+    else:
+        assert isinstance(res, collection)
+        values = res.values() if collection is dict else res
+        [assert_func(v, x) for v in values]

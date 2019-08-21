@@ -23,9 +23,9 @@ export HOME=$WORKSPACE
 # Switch to project root; also root of repo checkout
 cd $WORKSPACE
 
-# Get latest tag and number of commits since tag
-export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
-export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
+# Parse git describe
+export GIT_DESCRIBE_TAG=`git describe --tags`
+export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
 # will possibly be enabled by default starting on 1.17)
@@ -50,10 +50,8 @@ g++ --version
 conda config --set ssl_verify False
 
 conda install \
-    'cudf=0.8' \
-    'dask-cudf=0.8'
-
-pip install git+https://github.com/dask/distributed.git@master
+    "cudf=$MINOR_VERSION.*" \
+    "dask-cudf=$MINOR_VERSION.*"
 
 ################################################################################
 # SETUP - Install additional packages
@@ -61,19 +59,15 @@ pip install git+https://github.com/dask/distributed.git@master
 
 if hasArg --skip-tests; then
     logger "Skipping Tests..."
-    exit 0
+else
+    # Install CuPy for tests
+    pip install cupy-cuda${CUDA_REL}==6.0.0
+
+    ################################################################################
+    # TEST - Run tests
+    ################################################################################
+
+    pip install -e .
+    pip install pytest pytest-asyncio fsspec
+    py.test --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml -v --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term
 fi
-
-# Install CuPy for tests
-pip install cupy-cuda${CUDA_REL}==6.0.0
-
-################################################################################
-# TEST - Run tests
-################################################################################
-
-pip install -e .
-pip install pytest pytest-asyncio
-
-conda list
-
-pytest --cache-clear --junitxml=${WORKSPACE}/junit-libgdf.xml -v
