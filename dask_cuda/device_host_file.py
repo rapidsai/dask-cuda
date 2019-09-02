@@ -77,7 +77,7 @@ def _(header, frames):
 
 
 def device_to_host(obj: object) -> DeviceSerialized:
-    header, frames = serialize(obj, serializers=["cuda"])
+    header, frames = serialize(obj, serializers=["cuda", "pickle"])
     is_cuda = [hasattr(f, "__cuda_array_interface__") for f in frames]
     frames = [
         cuda.as_cuda_array(f).copy_to_host() if ic else f
