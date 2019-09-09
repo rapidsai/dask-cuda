@@ -127,4 +127,3 @@ class LocalCUDACluster(LocalCluster):
         )
 
         return name, spec
-        #return {name: spec}
