@@ -114,30 +114,45 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.disk.keys()) == set()
 
 
-def test_serialize_cupy():
-    x = cupy.arange(10)
+@pytest.mark.parametrize("collection", [dict, list, tuple])
+@pytest.mark.parametrize("length", [0, 1, 3, 6])
+@pytest.mark.parametrize("value", [10, {"x": [1, 2, 3], "y": [4.0, 5.0, 6.0]}])
+def test_serialize_cupy_collection(collection, length, value):
+    # Avoid running test for length 0 (no collection) multiple times
+    if length == 0 and collection is not list:
+        return
 
-    obj = device_to_host(x)
-    assert all(isinstance(part, (bytes, memoryview, np.ndarray)) for part in obj.parts)
+    if isinstance(value, dict):
+        cudf = pytest.importorskip("cudf")
+        dd = pytest.importorskip("dask.dataframe")
+        x = cudf.DataFrame(value)
+        assert_func = dd.assert_eq
+    else:
+        x = cupy.arange(10)
+        assert_func = da.assert_eq
+
+    if length == 0:
+        obj = device_to_host(x)
+    elif collection is dict:
+        obj = device_to_host(dict(zip(range(length), (x,) * length)))
+    else:
+        obj = device_to_host(collection((x,) * length))
+
+    if length > 5:
+        assert obj.header["serializer"] == "pickle"
+    elif length > 0:
+        assert all([h["serializer"] == "cuda" for h in obj.header["sub-headers"]])
+    else:
+        assert obj.header["serializer"] == "cuda"
+
     btslst = serialize_bytelist(obj)
 
     bts = deserialize_bytes(b"".join(btslst))
-    y = host_to_device(bts)
+    res = host_to_device(bts)
 
-    da.assert_eq(x, y)
-
-
-def test_serialize_cudf():
-    cudf = pytest.importorskip("cudf")
-    dd = pytest.importorskip("dask.dataframe")
-
-    df = cudf.DataFrame({"x": [1, 2, 3], "y": [4.0, 5.0, 6.0]})
-
-    obj = device_to_host(df)
-    assert all(isinstance(part, (bytes, memoryview, np.ndarray)) for part in obj.parts)
-    btslst = serialize_bytelist(obj)
-
-    bts = deserialize_bytes(b"".join(btslst))
-    df2 = host_to_device(bts)
-
-    dd.assert_eq(df, df2)
+    if length == 0:
+        assert_func(res, x)
+    else:
+        assert isinstance(res, collection)
+        values = res.values() if collection is dict else res
+        [assert_func(v, x) for v in values]
