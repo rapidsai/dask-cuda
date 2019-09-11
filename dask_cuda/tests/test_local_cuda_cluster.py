@@ -3,7 +3,7 @@ from distributed.utils_test import gen_test
 import os
 
 from dask.distributed import Client
-from distributed.worker import TOTAL_MEMORY
+from distributed.system import MEMORY_LIMIT
 from dask_cuda import LocalCUDACluster
 from dask_cuda import utils
 import pytest
@@ -30,7 +30,7 @@ async def test_local_cuda_cluster():
                 )
 
             # Use full memory
-            assert sum(w.memory_limit for w in cluster.workers.values()) == TOTAL_MEMORY
+            assert sum(w.memory_limit for w in cluster.workers.values()) == MEMORY_LIMIT
 
             for w, devices in result.items():
                 ident = devices[0]
