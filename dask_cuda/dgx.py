@@ -1,7 +1,7 @@
 import os
 
 from dask.distributed import Nanny, SpecCluster, Scheduler
-from distributed.worker import TOTAL_MEMORY
+from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
 
@@ -72,7 +72,7 @@ def DGX(
     if isinstance(CUDA_VISIBLE_DEVICES, str):
         CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
-    memory_limit = TOTAL_MEMORY / 8
+    memory_limit = MEMORY_LIMIT / 8
 
     spec = {
         i: {

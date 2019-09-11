@@ -4,7 +4,7 @@ import os
 import dask
 from dask.distributed import LocalCluster
 from distributed.utils import parse_bytes
-from distributed.worker import TOTAL_MEMORY
+from distributed.system import MEMORY_LIMIT
 
 from .device_host_file import DeviceHostFile
 from .utils import get_n_gpus, get_device_total_memory
@@ -62,7 +62,7 @@ class LocalCUDACluster(LocalCluster):
             CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
         CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
         if memory_limit is None:
-            memory_limit = TOTAL_MEMORY / n_workers
+            memory_limit = MEMORY_LIMIT / n_workers
         self.host_memory_limit = memory_limit
         self.device_memory_limit = device_memory_limit
 
