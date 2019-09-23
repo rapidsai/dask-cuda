@@ -1,6 +1,10 @@
 0.10
 ----
 
+- Use YYMMDD tag in nightly build
+
+.. _`Markku Luukkainen`: https://github.com/mluukkainen
+
 0.9
 ---
 
