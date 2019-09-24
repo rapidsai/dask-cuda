@@ -20,12 +20,7 @@ from distributed.proctitle import (
 
 from .device_host_file import DeviceHostFile
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import (
-    CPUAffinity,
-    get_cpu_affinity,
-    get_n_gpus,
-    get_device_total_memory,
-)
+from .utils import CPUAffinity, get_cpu_affinity, get_n_gpus, get_device_total_memory
 
 from toolz import valmap
 from tornado.ioloop import IOLoop, TimeoutError

@@ -1,10 +1,18 @@
 import toolz
 import os
 import math
+import warnings
+
 import numpy as np
+
 from multiprocessing import cpu_count
 from numba import cuda
-from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetCpuAffinity
+from pynvml import (
+    nvmlInit,
+    nvmlDeviceGetHandleByIndex,
+    nvmlDeviceGetCpuAffinity,
+    NVMLError,
+)
 
 
 class CPUAffinity:
@@ -69,7 +77,7 @@ def get_cpu_affinity(device_index):
     Parameters
     ----------
     device_index: int
-        Device index of the GPU
+        Index of the GPU device
 
     Examples
     --------
@@ -80,14 +88,27 @@ def get_cpu_affinity(device_index):
     >>> get_cpu_affinity(5)  # DGX-1 has GPUs 5-7 connected to CPUs [20-39, 60-79]
     [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
      60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    >>> get_cpu_affinity(1000)  # DGX-1 has no device on index 1000
+    dask_cuda/utils.py:96: UserWarning: Cannot get CPU affinity for device with index 1000, setting default affinity
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+     40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+     60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     """
     nvmlInit()
 
-    # Result is a list of 64-bit integers, thus ceil(CPU_COUNT / 64)
-    affinity = nvmlDeviceGetCpuAffinity(
-        nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
-    )
-    return unpack_bitmask(affinity)
+    try:
+        # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
+        affinity = nvmlDeviceGetCpuAffinity(
+            nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
+        )
+        return unpack_bitmask(affinity)
+    except NVMLError:
+        warnings.warn(
+            "Cannot get CPU affinity for device with index %d, setting default affinity"
+            % device_index
+        )
+        return list(range(get_cpu_count()))
 
 
 def get_n_gpus():
