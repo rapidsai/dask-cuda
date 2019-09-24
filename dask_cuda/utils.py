@@ -1,6 +1,47 @@
 import toolz
 import os
+import math
+import numpy as np
+from multiprocessing import cpu_count
 from numba import cuda
+from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetCpuAffinity
+
+
+def bitmask_to_list(x, mask_bits=64):
+    res = []
+
+    for i, mask in enumerate(x):
+        if not isinstance(mask, int):
+            raise TypeError("All elements of the list `x` must be integers")
+
+        cpu_offset = i * mask_bits
+
+        bytestr = np.frombuffer(
+            bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
+        )
+        mask = np.flip(bytestr - ord("0")).astype(np.bool)
+        affinity = np.where(
+            mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
+        )
+
+        res += affinity[(affinity >= 0)].tolist()
+
+    return res
+
+
+@toolz.memoize
+def get_cpu_count():
+    return cpu_count()
+
+
+def get_cpu_affinity_list(device_index):
+    nvmlInit()
+
+    # Result is a list of 64-bit integers, thus ceil(CPU_COUNT / 64)
+    affinity = nvmlDeviceGetCpuAffinity(
+        nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
+    )
+    return bitmask_to_list(affinity)
 
 
 def get_n_gpus():
