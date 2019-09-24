@@ -2,7 +2,14 @@ import pytest
 
 import os
 
-from dask_cuda.utils import get_cpu_affinity, get_n_gpus, unpack_bitmask
+from numba import cuda
+
+from dask_cuda.utils import (
+    get_cpu_affinity,
+    get_device_total_memory,
+    get_n_gpus,
+    unpack_bitmask,
+)
 
 
 def test_get_n_gpus():
@@ -34,8 +41,22 @@ def test_unpack_bitmask(params):
     assert unpack_bitmask(params["input"]) == params["output"]
 
 
+def test_unpack_bitmask_single_value():
+    with pytest.raises(TypeError):
+        unpack_bitmask(1)
+
+
 def test_cpu_affinity():
     for i in range(get_n_gpus()):
         affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
         assert list(os.sched_getaffinity(0)) == affinity
+
+
+def test_get_device_total_memory():
+    for i in range(get_n_gpus()):
+        with cuda.gpus[i]:
+            assert (
+                get_device_total_memory(i)
+                == cuda.current_context().get_memory_info()[1]
+            )
