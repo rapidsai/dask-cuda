@@ -2,7 +2,7 @@ import pytest
 
 import os
 
-from dask_cuda.utils import get_cpu_affinity_list, get_n_gpus, unpack_bitmask
+from dask_cuda.utils import get_cpu_affinity, get_n_gpus, unpack_bitmask
 
 
 def test_get_n_gpus():
@@ -36,6 +36,6 @@ def test_unpack_bitmask(params):
 
 def test_cpu_affinity():
     for i in range(get_n_gpus()):
-        affinity = get_cpu_affinity_list(i)
+        affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
         assert list(os.sched_getaffinity(0)) == affinity

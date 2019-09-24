@@ -4,7 +4,7 @@ from dask.distributed import Nanny, SpecCluster, Scheduler
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity_list
+from .utils import CPUAffinity, get_cpu_affinity
 
 
 def DGX(
@@ -72,7 +72,7 @@ def DGX(
                 "data": dict,
                 "preload": ["dask_cuda.initialize_context"],
                 "dashboard_address": ":0",
-                "plugins": [CPUAffinity(get_cpu_affinity_list(i))],
+                "plugins": [CPUAffinity(get_cpu_affinity(i))],
                 "silence_logs": silence_logs,
                 "memory_limit": memory_limit,
             },

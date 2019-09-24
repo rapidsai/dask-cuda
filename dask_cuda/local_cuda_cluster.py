@@ -9,7 +9,7 @@ from distributed.system import MEMORY_LIMIT
 from .device_host_file import DeviceHostFile
 from .utils import (
     CPUAffinity,
-    get_cpu_affinity_list,
+    get_cpu_affinity,
     get_n_gpus,
     get_device_total_memory,
 )
@@ -128,7 +128,7 @@ class LocalCUDACluster(LocalCluster):
                         ii, self.cuda_visible_devices
                     )
                 },
-                "plugins": {CPUAffinity(get_cpu_affinity_list(ii))},
+                "plugins": {CPUAffinity(get_cpu_affinity(ii))},
             }
         )
 
