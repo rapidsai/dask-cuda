@@ -7,7 +7,12 @@ from distributed.utils import parse_bytes
 from distributed.system import MEMORY_LIMIT
 
 from .device_host_file import DeviceHostFile
-from .utils import get_n_gpus, get_device_total_memory
+from .utils import (
+    CPUAffinity,
+    get_cpu_affinity,
+    get_n_gpus,
+    get_device_total_memory,
+)
 
 
 def cuda_visible_devices(i, visible=None):
@@ -122,7 +127,8 @@ class LocalCUDACluster(LocalCluster):
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
                         ii, self.cuda_visible_devices
                     )
-                }
+                },
+                "plugins": {CPUAffinity(get_cpu_affinity(ii))},
             }
         )
 
