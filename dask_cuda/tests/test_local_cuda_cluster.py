@@ -29,8 +29,10 @@ async def test_local_cuda_cluster():
                     range(utils.get_n_gpus())
                 )
 
-            # Use full memory
-            assert sum(w.memory_limit for w in cluster.workers.values()) == MEMORY_LIMIT
+            # Check workers use equal portion of full memory, ignoring FP rounding difference
+            per_worker_memory = round(MEMORY_LIMIT/utils.get_n_gpus())
+            for i in range(utils.get_n_gpus()):
+                assert cluster.workers[i].memory_limit == per_worker_memory
 
             for w, devices in result.items():
                 ident = devices[0]
