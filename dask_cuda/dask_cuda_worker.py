@@ -20,7 +20,12 @@ from distributed.proctitle import (
 
 from .device_host_file import DeviceHostFile
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import get_n_gpus, get_device_total_memory
+from .utils import (
+    CPUAffinity,
+    get_cpu_affinity_list,
+    get_n_gpus,
+    get_device_total_memory,
+)
 
 from toolz import valmap
 from tornado.ioloop import IOLoop, TimeoutError
@@ -244,6 +249,7 @@ def main(
             preload=(preload or []) + ["dask_cuda.initialize_context"],
             security=sec,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+            plugins={CPUAffinity(get_cpu_affinity_list(i))},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             data=(
                 DeviceHostFile,
