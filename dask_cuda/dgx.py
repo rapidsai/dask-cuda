@@ -4,15 +4,7 @@ from dask.distributed import Nanny, SpecCluster, Scheduler
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import get_cpu_affinity_list
-
-
-class CPUAffinity:
-    def __init__(self, cores):
-        self.cores = cores
-
-    def setup(self, worker=None):
-        os.sched_setaffinity(0, self.cores)
+from .utils import CPUAffinity, get_cpu_affinity_list
 
 
 def DGX(

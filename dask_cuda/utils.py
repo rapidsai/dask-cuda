@@ -7,6 +7,16 @@ from numba import cuda
 from pynvml import nvmlInit, nvmlDeviceGetHandleByIndex, nvmlDeviceGetCpuAffinity
 
 
+class CPUAffinity:
+    def __init__(self, cores):
+        self.cores = cores
+
+    def setup(self, worker=None):
+        print("before", os.sched_getaffinity(0))
+        os.sched_setaffinity(0, self.cores)
+        print("after ", os.sched_getaffinity(0))
+
+
 def bitmask_to_list(x, mask_bits=64):
     res = []
 
