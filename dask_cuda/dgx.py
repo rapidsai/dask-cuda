@@ -4,6 +4,7 @@ from dask.distributed import Nanny, SpecCluster, Scheduler
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
+from .utils import get_cpu_affinity_list
 
 
 class CPUAffinity:
@@ -12,18 +13,6 @@ class CPUAffinity:
 
     def setup(self, worker=None):
         os.sched_setaffinity(0, self.cores)
-
-
-affinity = {  # nvidia-smi topo -m
-    0: list(range(0, 20)) + list(range(40, 60)),
-    1: list(range(0, 20)) + list(range(40, 60)),
-    2: list(range(0, 20)) + list(range(40, 60)),
-    3: list(range(0, 20)) + list(range(40, 60)),
-    4: list(range(20, 40)) + list(range(60, 79)),
-    5: list(range(20, 40)) + list(range(60, 79)),
-    6: list(range(20, 40)) + list(range(60, 79)),
-    7: list(range(20, 40)) + list(range(60, 79)),
-}
 
 
 def DGX(
@@ -91,7 +80,7 @@ def DGX(
                 "data": dict,
                 "preload": ["dask_cuda.initialize_context"],
                 "dashboard_address": ":0",
-                "plugins": [CPUAffinity(affinity[i])],
+                "plugins": [CPUAffinity(get_cpu_affinity_list(i))],
                 "silence_logs": silence_logs,
                 "memory_limit": memory_limit,
             },
