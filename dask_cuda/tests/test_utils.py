@@ -2,7 +2,7 @@ import pytest
 
 import os
 
-from dask_cuda.utils import bitmask_to_list, get_cpu_affinity_list, get_n_gpus
+from dask_cuda.utils import get_cpu_affinity_list, get_n_gpus, unpack_bitmask
 
 
 def test_get_n_gpus():
@@ -30,8 +30,8 @@ def test_get_n_gpus():
         {"input": [0, 18446744073709551615], "output": [i + 64 for i in range(64)]},
     ],
 )
-def test_bitmask_to_list(params):
-    assert bitmask_to_list(params["input"]) == params["output"]
+def test_unpack_bitmask(params):
+    assert unpack_bitmask(params["input"]) == params["output"]
 
 
 def test_cpu_affinity():
