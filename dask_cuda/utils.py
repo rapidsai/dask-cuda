@@ -6,11 +6,11 @@ import warnings
 import numpy as np
 
 from multiprocessing import cpu_count
-from numba import cuda
 from pynvml import (
     nvmlInit,
-    nvmlDeviceGetHandleByIndex,
     nvmlDeviceGetCpuAffinity,
+    nvmlDeviceGetHandleByIndex,
+    nvmlDeviceGetMemoryInfo,
     NVMLError,
 )
 
@@ -127,5 +127,5 @@ def get_device_total_memory(index=0):
     """
     Return total memory of CUDA device with index
     """
-    with cuda.gpus[index]:
-        return cuda.current_context().get_memory_info()[1]
+    nvmlInit()
+    return nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(index)).total
