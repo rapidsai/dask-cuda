@@ -246,6 +246,7 @@ def main(
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             plugins={CPUAffinity(get_cpu_affinity(i))},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
+            local_directory=local_directory,
             data=(
                 DeviceHostFile,
                 {
