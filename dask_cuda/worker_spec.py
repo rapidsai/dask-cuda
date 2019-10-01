@@ -4,16 +4,17 @@ from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity
+from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
 
 
 def worker_spec(
-    interface="enp1s0f0",
+    interface=None,
     dashboard_address=":8787",
     threads_per_worker=1,
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
     enable_infiniband=False,
+    ucx_net_devices="",
     enable_nvlink=False,
     **kwargs
 ):
@@ -37,6 +38,10 @@ def worker_spec(
         different GPUs
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support
+    ucx_net_device: str or callable
+        A string with the interface name to be used for all devices (empty
+        string means use default), or a callable function taking an integer
+        identifying the GPU index.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support
 
@@ -70,17 +75,18 @@ def worker_spec(
        'memory_limit': 135263611392.0}}}
     """
     if CUDA_VISIBLE_DEVICES is None:
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7")
+        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", list(range(get_gpu_count())))
     if isinstance(CUDA_VISIBLE_DEVICES, str):
         CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
-    memory_limit = MEMORY_LIMIT / 8
+    memory_limit = MEMORY_LIMIT / get_gpu_count()
 
     ucx_env = {}
     if enable_infiniband:
         ucx_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
         ucx_env["UCX_TLS"] = "rc,tcp,sockcm"
         ucx_env["UCXPY_IFNAME"] = interface
+        ucx_devices = [ucx_net_devices(i) for i in range(CUDA_VISIBLE_DEVICES)]
     if enable_nvlink:
         ucx_tls = "cuda_copy,cuda_ipc"
         if "UCX_TLS" in ucx_env:
@@ -96,7 +102,7 @@ def worker_spec(
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
                         ii, CUDA_VISIBLE_DEVICES
                     ),
-                    "UCX_NET_DEVICES": "mlx5_%d:1" % (i // 2),
+                    "UCX_NET_DEVICES": ucx_device if isinstance(ucx_device, str) else ucx_device(i),
                     **ucx_env,
                 },
                 "interface": interface,

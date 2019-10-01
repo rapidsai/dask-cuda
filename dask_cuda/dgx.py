@@ -61,6 +61,7 @@ def DGX(
         silence_logs=silence_logs,
         CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
         enable_infiniband=enable_infiniband,
+        ucx_net_device=lambda i: "mlx5_%d:1" % (i // 2),
         enable_nvlink=enable_nvlink,
         **kwargs,
     )
