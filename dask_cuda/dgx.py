@@ -1,18 +1,18 @@
 import os
 
-from dask.distributed import Nanny, SpecCluster, Scheduler
-from distributed.system import MEMORY_LIMIT
+from dask.distributed import SpecCluster, Scheduler
 
-from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity
+from .worker_spec import worker_spec
 
 
 def DGX(
-    interface="ib",
+    interface="enp1s0f0",
     dashboard_address=":8787",
     threads_per_worker=1,
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
+    enable_infiniband=True,
+    enable_nvlink=True,
     **kwargs
 ):
     """ A Local Cluster for a DGX 1 machine
@@ -32,14 +32,20 @@ def DGX(
     Parameters
     ----------
     interface: str
-        The interface prefix for the infiniband networking cards.  This is
-        often "ib"` or "bond".  We will add the numeric suffix 0,1,2,3 as
-        appropriate.  Defaults to "ib".
+        The external interface used to connect to the scheduler.
     dashboard_address: str
         The address for the scheduler dashboard.  Defaults to ":8787".
+    threads_per_worker: int
+        Number of threads to be used for each CUDA worker process.
+    silence_logs: bool
+        Disable logging for all worker processes
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
+    enable_infiniband: bool
+        Set environment variables to enable UCX InfiniBand support
+    enable_nvlink: bool
+        Set environment variables to enable UCX NVLink support
 
     Examples
     --------
@@ -48,42 +54,21 @@ def DGX(
     >>> cluster = DGX(interface='ib')
     >>> client = Client(cluster)
     """
-    if CUDA_VISIBLE_DEVICES is None:
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7")
-    if isinstance(CUDA_VISIBLE_DEVICES, str):
-        CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-    CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
-    memory_limit = MEMORY_LIMIT / 8
-
-    spec = {
-        i: {
-            "cls": Nanny,
-            "options": {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, CUDA_VISIBLE_DEVICES
-                    ),
-                    # 'UCX_NET_DEVICES': 'mlx5_%d:1' % (i // 2)
-                    "UCX_TLS": "rc,cuda_copy,cuda_ipc",
-                },
-                "interface": interface + str(i // 2),
-                "protocol": "ucx",
-                "nthreads": threads_per_worker,
-                "data": dict,
-                "preload": ["dask_cuda.initialize_context"],
-                "dashboard_address": ":0",
-                "plugins": [CPUAffinity(get_cpu_affinity(i))],
-                "silence_logs": silence_logs,
-                "memory_limit": memory_limit,
-            },
-        }
-        for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
-    }
+    spec = worker_spec(
+        interface=interface,
+        dashboard_address=dashboard_address,
+        threads_per_worker=threads_per_worker,
+        silence_logs=silence_logs,
+        CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        **kwargs,
+    )
 
     scheduler = {
         "cls": Scheduler,
         "options": {
-            "interface": interface + str(CUDA_VISIBLE_DEVICES[0] // 2),
+            "interface": interface,
             "protocol": "ucx",
             "dashboard_address": dashboard_address,
         },
