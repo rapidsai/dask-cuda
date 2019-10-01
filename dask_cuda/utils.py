@@ -66,7 +66,7 @@ def get_cpu_count():
 
 
 @toolz.memoize
-def get_cpu_count():
+def get_gpu_count():
     pynvml.nvmlInit()
     return pynvml.nvmlDeviceGetCount()
 
