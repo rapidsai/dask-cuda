@@ -51,31 +51,32 @@ def worker_spec(
     Examples
     --------
     >>> from dask_cuda.worker_spec import worker_spec
-    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 1])
+    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2], ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
     {0: {'cls': distributed.nanny.Nanny,
-      'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,1',
+      'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2',
         'UCX_NET_DEVICES': 'mlx5_0:1'},
        'interface': 'enp1s0f0',
-       'protocol': 'ucx',
+       'protocol': None,
        'nthreads': 1,
        'data': dict,
        'preload': ['dask_cuda.initialize_context'],
-       'dashboard_address': ':0',
-       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f2d6c16ed90>],
+       'dashboard_address': ':8787',
+       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f3350a737d0>],
        'silence_logs': True,
        'memory_limit': 135263611392.0}},
-     1: {'cls': distributed.nanny.Nanny,
-      'options': {'env': {'CUDA_VISIBLE_DEVICES': '1,0',
-        'UCX_NET_DEVICES': 'mlx5_0:1'},
+     2: {'cls': distributed.nanny.Nanny,
+      'options': {'env': {'CUDA_VISIBLE_DEVICES': '2,0',
+        'UCX_NET_DEVICES': 'mlx5_1:1'},
        'interface': 'enp1s0f0',
-       'protocol': 'ucx',
+       'protocol': None,
        'nthreads': 1,
        'data': dict,
        'preload': ['dask_cuda.initialize_context'],
-       'dashboard_address': ':0',
-       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f2d47f9fc50>],
+       'dashboard_address': ':8787',
+       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f3350a73850>],
        'silence_logs': True,
        'memory_limit': 135263611392.0}}}
+
     """
     if CUDA_VISIBLE_DEVICES is None:
         CUDA_VISIBLE_DEVICES = os.environ.get(
