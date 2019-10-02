@@ -6,13 +6,7 @@ import warnings
 import numpy as np
 
 from multiprocessing import cpu_count
-from pynvml import (
-    nvmlInit,
-    nvmlDeviceGetCpuAffinity,
-    nvmlDeviceGetHandleByIndex,
-    nvmlDeviceGetMemoryInfo,
-    NVMLError,
-)
+import pynvml
 
 
 class CPUAffinity:
@@ -71,6 +65,12 @@ def get_cpu_count():
     return cpu_count()
 
 
+@toolz.memoize
+def get_gpu_count():
+    pynvml.nvmlInit()
+    return pynvml.nvmlDeviceGetCount()
+
+
 def get_cpu_affinity(device_index):
     """Get a list containing the CPU indices to which a GPU is directly connected.
 
@@ -95,15 +95,15 @@ def get_cpu_affinity(device_index):
      40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
      60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     """
-    nvmlInit()
+    pynvml.nvmlInit()
 
     try:
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
-        affinity = nvmlDeviceGetCpuAffinity(
-            nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
+        affinity = pynvml.nvmlDeviceGetCpuAffinity(
+            pynvml.nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
         )
         return unpack_bitmask(affinity)
-    except NVMLError:
+    except pynvml.NVMLError:
         warnings.warn(
             "Cannot get CPU affinity for device with index %d, setting default affinity"
             % device_index
@@ -115,17 +115,12 @@ def get_n_gpus():
     try:
         return len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
     except KeyError:
-        return _n_gpus_from_nvidia_smi()
-
-
-@toolz.memoize
-def _n_gpus_from_nvidia_smi():
-    return len(os.popen("nvidia-smi -L").read().strip().split("\n"))
+        return get_gpu_count()
 
 
 def get_device_total_memory(index=0):
     """
     Return total memory of CUDA device with index
     """
-    nvmlInit()
-    return nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(index)).total
+    pynvml.nvmlInit()
+    return pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(index)).total
