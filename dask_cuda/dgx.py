@@ -6,7 +6,7 @@ from .worker_spec import worker_spec
 
 
 def DGX(
-    interface="enp1s0f0",
+    interface=None,
     dashboard_address=":8787",
     threads_per_worker=1,
     silence_logs=True,
@@ -32,7 +32,8 @@ def DGX(
     Parameters
     ----------
     interface: str
-        The external interface used to connect to the scheduler.
+        The external interface used to connect to the scheduler, usually
+        the ethernet interface is used for connection (not the InfiniBand!).
     dashboard_address: str
         The address for the scheduler dashboard.  Defaults to ":8787".
     threads_per_worker: int
