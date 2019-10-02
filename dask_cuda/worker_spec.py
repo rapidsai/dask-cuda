@@ -9,6 +9,7 @@ from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
 
 def worker_spec(
     interface=None,
+    protocol=None,
     dashboard_address=":8787",
     threads_per_worker=1,
     silence_logs=True,
@@ -27,6 +28,8 @@ def worker_spec(
     ----------
     interface: str
         The external interface used to connect to the scheduler.
+    protocol: str
+        The protocol to used for data transfer, e.g., "tcp" or "ucx".
     dashboard_address: str
         The address for the scheduler dashboard.  Defaults to ":8787".
     threads_per_worker: int
@@ -75,7 +78,9 @@ def worker_spec(
        'memory_limit': 135263611392.0}}}
     """
     if CUDA_VISIBLE_DEVICES is None:
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", list(range(get_gpu_count())))
+        CUDA_VISIBLE_DEVICES = os.environ.get(
+            "CUDA_VISIBLE_DEVICES", list(range(get_gpu_count()))
+        )
     if isinstance(CUDA_VISIBLE_DEVICES, str):
         CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
@@ -85,8 +90,7 @@ def worker_spec(
     if enable_infiniband:
         ucx_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
         ucx_env["UCX_TLS"] = "rc,tcp,sockcm"
-        ucx_env["UCXPY_IFNAME"] = interface
-        ucx_devices = [ucx_net_devices(i) for i in range(CUDA_VISIBLE_DEVICES)]
+        ucx_env["UCXPY_IFNAME"] = interface or ""
     if enable_nvlink:
         ucx_tls = "cuda_copy,cuda_ipc"
         if "UCX_TLS" in ucx_env:
@@ -102,15 +106,17 @@ def worker_spec(
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
                         ii, CUDA_VISIBLE_DEVICES
                     ),
-                    "UCX_NET_DEVICES": ucx_device if isinstance(ucx_device, str) else ucx_device(i),
+                    "UCX_NET_DEVICES": ucx_net_devices
+                    if isinstance(ucx_net_devices, str)
+                    else ucx_net_devices(i),
                     **ucx_env,
                 },
                 "interface": interface,
-                "protocol": "ucx",
+                "protocol": protocol,
                 "nthreads": threads_per_worker,
                 "data": dict,
                 "preload": ["dask_cuda.initialize_context"],
-                "dashboard_address": ":0",
+                "dashboard_address": dashboard_address,
                 "plugins": [CPUAffinity(get_cpu_affinity(i))],
                 "silence_logs": silence_logs,
                 "memory_limit": memory_limit,
