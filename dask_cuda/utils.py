@@ -156,12 +156,13 @@ def get_ucx_env(enable_infiniband=False, interface=None, enable_nvlink=False):
     ucx_env = {}
     if enable_infiniband:
         if interface is None or interface == "":
-            raise TypeError(
-                "Enabling InfiniBand requires a network interface for connection"
+            warnings.warn(
+                "InfiniBand requested but not interface specified, this may cause issues "
+                "for UCX."
             )
         ucx_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
         ucx_env["UCX_TLS"] = "rc,tcp,sockcm"
-        ucx_env["UCXPY_IFNAME"] = interface
+        ucx_env["UCXPY_IFNAME"] = interface or ""
     if enable_nvlink:
         ucx_tls = "cuda_copy,cuda_ipc"
         if "UCX_TLS" in ucx_env:
