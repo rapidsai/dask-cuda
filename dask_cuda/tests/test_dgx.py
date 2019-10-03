@@ -7,6 +7,7 @@ from distributed.utils_test import gen_test
 from dask.distributed import Client
 
 from dask_cuda import DGX
+from dask_cuda.utils import get_ucx_env
 
 
 @pytest.mark.skipif(
@@ -14,7 +15,9 @@ from dask_cuda import DGX
 )
 @gen_test(timeout=20)
 async def test_dgx():
-    async with DGX(enable_infiniband=False, enable_nvlink=False, asynchronous=True) as cluster:
+    async with DGX(
+        enable_infiniband=False, enable_nvlink=False, asynchronous=True
+    ) as cluster:
         async with Client(cluster, asynchronous=True):
             pass
 
@@ -25,12 +28,15 @@ async def test_dgx():
 @gen_test(timeout=20)
 async def test_dgx_ucx():
     ucp = pytest.importorskip("ucp")
-    ucx_env = {
-        "UCX_TLS": "rc,tcp,sockcm,cuda_copy,cuda_ipc",
-        "UCX_SOCKADDR_TLS_PRIORITY": "sockcm",
-    }
-    os.environ.update(ucx_env)
+    with pytest.warns(UserWarning):
+        ucx_env = get_ucx_env(enable_infiniband=True, enable_nvlink=True)
+        os.environ.update(ucx_env)
 
-    async with DGX(protocol="ucx", asynchronous=True) as cluster:
-        async with Client(cluster, asynchronous=True):
-            pass
+        async with DGX(
+            protocol="ucx",
+            enable_infiniband=True,
+            enable_nvlink=True,
+            asynchronous=True,
+        ) as cluster:
+            async with Client(cluster, asynchronous=True):
+                pass
