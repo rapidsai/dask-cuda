@@ -100,7 +100,8 @@ def get_cpu_affinity(device_index):
     try:
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
         affinity = pynvml.nvmlDeviceGetCpuAffinity(
-            pynvml.nvmlDeviceGetHandleByIndex(device_index), math.ceil(get_cpu_count() / 64)
+            pynvml.nvmlDeviceGetHandleByIndex(device_index),
+            math.ceil(get_cpu_count() / 64),
         )
         return unpack_bitmask(affinity)
     except pynvml.NVMLError:
@@ -123,4 +124,49 @@ def get_device_total_memory(index=0):
     Return total memory of CUDA device with index
     """
     pynvml.nvmlInit()
-    return pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(index)).total
+    return pynvml.nvmlDeviceGetMemoryInfo(
+        pynvml.nvmlDeviceGetHandleByIndex(index)
+    ).total
+
+
+def get_ucx_env(enable_infiniband=False, interface=None, enable_nvlink=False):
+    """
+    Return a dictionary with the environment variables that UCX requires to enable
+    InfiniBand and/or NVLink communication.
+
+    Parameters
+    ----------
+    enable_infiniband: bool
+        Set environment variables to enable UCX InfiniBand support, requires
+        interface to be specified.
+    interface: str
+        Network interface that UCX-Py will use to establish connections, usually
+        between Dask scheduler and worker.
+    enable_nvlink: bool
+        Set environment variables to enable UCX NVLink support.
+
+    Example
+    -------
+    >>> from dask_cuda.utils import get_ucx_env
+    >>> get_ucx_env(interface="enp1s0f0", enable_infiniband=True, enable_nvlink=True)
+    {'UCX_SOCKADDR_TLS_PRIORITY': 'sockcm',
+     'UCX_TLS': 'rc,tcp,sockcm,cuda_copy,cuda_ipc',
+     'UCXPY_IFNAME': 'enp1s0f0'}
+    """
+    ucx_env = {}
+    if enable_infiniband:
+        if interface is None or interface == "":
+            raise TypeError(
+                "Enabling InfiniBand requires a network interface for connection"
+            )
+        ucx_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
+        ucx_env["UCX_TLS"] = "rc,tcp,sockcm"
+        ucx_env["UCXPY_IFNAME"] = interface
+    if enable_nvlink:
+        ucx_tls = "cuda_copy,cuda_ipc"
+        if "UCX_TLS" in ucx_env:
+            ucx_env["UCX_TLS"] = ucx_env["UCX_TLS"] + "," + ucx_tls
+        else:
+            ucx_env["UCX_TLS"] = ucx_tls
+
+    return ucx_env
