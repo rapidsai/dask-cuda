@@ -1,7 +1,9 @@
 import os
 
-from dask.distributed import SpecCluster, Scheduler
+from dask.distributed import SpecCluster
 
+from .scheduler import Scheduler
+from .utils import get_ucx_env
 from .worker_spec import worker_spec
 
 
@@ -11,9 +13,10 @@ def DGX(
     threads_per_worker=1,
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
-    enable_infiniband=True,
-    enable_nvlink=True,
-    **kwargs
+    protocol=None,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    **kwargs,
 ):
     """ A Local Cluster for a DGX 1 machine
 
@@ -23,6 +26,8 @@ def DGX(
 
     It creates one Dask worker process per GPU, and assigns each worker process
     the correct CPU cores and Network interface cards to maximize performance.
+    If UCX and UCX-Py are also available, it's possible to use InfiniBand and
+    NVLink connections for optimal data transfer performance.
 
     That being said, things aren't perfect.  Today a DGX has very high
     performance between certain sets of GPUs and not others.  A Dask DGX
@@ -43,18 +48,30 @@ def DGX(
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
+    protocol: str
+        Protocol to use for communication, e.g., "tcp" or "ucx"
     enable_infiniband: bool
-        Set environment variables to enable UCX InfiniBand support
+        Set environment variables to enable UCX InfiniBand support, requires
+        protocol='ucx'
     enable_nvlink: bool
-        Set environment variables to enable UCX NVLink support
+        Set environment variables to enable UCX NVLink support, requires
+        protocol='ucx'
+
+    Raises
+    ------
+    TypeError
+        If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
 
     Examples
     --------
     >>> from dask_cuda import DGX
     >>> from dask.distributed import Client
-    >>> cluster = DGX(interface='ib')
+    >>> cluster = DGX()
     >>> client = Client(cluster)
     """
+    if (enable_infiniband or enable_nvlink) and protocol != "ucx":
+        raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+
     spec = worker_spec(
         interface=interface,
         dashboard_address=dashboard_address,
@@ -62,17 +79,25 @@ def DGX(
         silence_logs=silence_logs,
         CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
         enable_infiniband=enable_infiniband,
-        ucx_net_device=lambda i: "mlx5_%d:1" % (i // 2),
+        ucx_net_devices=lambda i: "mlx5_%d:1" % (i // 2),
         enable_nvlink=enable_nvlink,
+        protocol=protocol,
         **kwargs,
+    )
+
+    ucx_env = get_ucx_env(
+        interface=interface,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
     )
 
     scheduler = {
         "cls": Scheduler,
         "options": {
             "interface": interface,
-            "protocol": "ucx",
+            "protocol": protocol,
             "dashboard_address": dashboard_address,
+            "env": {**ucx_env},
         },
     }
 
