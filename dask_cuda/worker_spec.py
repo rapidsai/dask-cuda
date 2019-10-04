@@ -4,7 +4,7 @@ from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
+from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count, get_ucx_env
 
 
 def worker_spec(
@@ -14,6 +14,7 @@ def worker_spec(
     threads_per_worker=1,
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
+    enable_tcp_over_ucx=False,
     enable_infiniband=False,
     ucx_net_devices="",
     enable_nvlink=False,
@@ -39,14 +40,19 @@ def worker_spec(
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
+    enable_tcp_over_ucx: bool
+        Set environment variables to enable TCP over UCX, even if InfiniBand
+        and NVLink are not supported or disabled.
     enable_infiniband: bool
-        Set environment variables to enable UCX InfiniBand support
+        Set environment variables to enable UCX InfiniBand support. Implies
+        enable_tcp_over_ucx=True.
     ucx_net_device: str or callable
         A string with the interface name to be used for all devices (empty
         string means use default), or a callable function taking an integer
         identifying the GPU index.
     enable_nvlink: bool
-        Set environment variables to enable UCX NVLink support
+        Set environment variables to enable UCX NVLink support. Implies
+        enable_tcp_over_ucx=True.
 
     Examples
     --------
@@ -87,17 +93,12 @@ def worker_spec(
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
     memory_limit = MEMORY_LIMIT / get_gpu_count()
 
-    ucx_env = {}
-    if enable_infiniband:
-        ucx_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
-        ucx_env["UCX_TLS"] = "rc,tcp,sockcm"
-        ucx_env["UCXPY_IFNAME"] = interface or ""
-    if enable_nvlink:
-        ucx_tls = "cuda_copy,cuda_ipc"
-        if "UCX_TLS" in ucx_env:
-            ucx_env["UCX_TLS"] = ucx_env["UCX_TLS"] + "," + ucx_tls
-        else:
-            ucx_env["UCX_TLS"] = ucx_tls
+    ucx_env = get_ucx_env(
+        enable_tcp=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        interface=interface,
+        enable_nvlink=enable_nvlink,
+    )
 
     spec = {
         i: {
