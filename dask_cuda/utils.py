@@ -174,7 +174,7 @@ def get_ucx_env(
     if enable_infiniband:
         if interface is None or interface == "":
             warnings.warn(
-                "InfiniBand requested but not interface specified, this may cause issues "
+                "InfiniBand requested but no interface specified, this may cause issues "
                 "for UCX."
             )
         tls = "rc," + tls

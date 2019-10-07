@@ -76,6 +76,10 @@ def DGX(
     if (enable_infiniband or enable_nvlink) and protocol != "ucx":
         raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
+    ucx_net_devices = ""
+    if enable_infiniband:
+        ucx_net_devices = lambda i: "mlx5_%d:1" % (i // 2)
+
     spec = worker_spec(
         interface=interface,
         dashboard_address=dashboard_address,
@@ -84,7 +88,7 @@ def DGX(
         CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
-        ucx_net_devices=lambda i: "mlx5_%d:1" % (i // 2),
+        ucx_net_devices=ucx_net_devices,
         enable_nvlink=enable_nvlink,
         protocol=protocol,
         **kwargs,

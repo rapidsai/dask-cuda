@@ -100,6 +100,14 @@ def worker_spec(
         enable_nvlink=enable_nvlink,
     )
 
+    def ucx_net_devices_func(i):
+        v = None
+        if callable(ucx_net_devices):
+            v = ucx_net_devices(i)
+        elif ucx_net_devices != "":
+            v = ucx_net_devices
+        return {} if v is None else {"UCX_NET_DEVICES": v}
+
     spec = {
         i: {
             "cls": Nanny,
@@ -108,9 +116,7 @@ def worker_spec(
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
                         ii, CUDA_VISIBLE_DEVICES
                     ),
-                    "UCX_NET_DEVICES": ucx_net_devices
-                    if isinstance(ucx_net_devices, str)
-                    else ucx_net_devices(i),
+                    **ucx_net_devices_func(i),
                     **ucx_env,
                 },
                 "interface": interface,
