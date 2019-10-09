@@ -182,8 +182,41 @@ def get_ucx_env(
     if enable_nvlink:
         tls = tls + ",cuda_ipc"
 
-    return {
-        "UCXPY_IFNAME": ifname,
-        "UCX_TLS": tls,
-        "UCX_SOCKADDR_TLS_PRIORITY": tls_priority,
-    }
+    return {"UCX_TLS": tls, "UCX_SOCKADDR_TLS_PRIORITY": tls_priority}
+
+
+def get_preload_options(
+    protocol=None,
+    create_cuda_context=False,
+    enable_tcp_over_ucx=False,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    ucx_net_devices="",
+    cuda_device_index=0,
+):
+    preload_options = {"preload": ["dask_cuda.initialize"], "preload_argv": []}
+
+    if create_cuda_context:
+        preload_options["preload_argv"].append("--create-cuda-context")
+
+    def _ucx_net_devices(i):
+        dev = None
+        if callable(ucx_net_devices):
+            dev = ucx_net_devices(i)
+        elif ucx_net_devices != "":
+            dev = ucx_net_devices
+        return [] if dev is None else ["--net-devices=" + dev]
+
+    if protocol == "ucx":
+        initialize_ucx_argv = []
+        if enable_tcp_over_ucx:
+            initialize_ucx_argv.append("--enable-tcp")
+        if enable_infiniband:
+            initialize_ucx_argv.append("--enable-infiniband")
+        if enable_nvlink:
+            initialize_ucx_argv.append("--enable-nvlink")
+
+        preload_options["preload_argv"].extend(initialize_ucx_argv)
+        preload_options["preload_argv"].extend(_ucx_net_devices(cuda_device_index))
+
+    return preload_options
