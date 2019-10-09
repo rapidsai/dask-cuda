@@ -14,6 +14,7 @@ def DGX(
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
     protocol=None,
+    enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
     **kwargs,
@@ -50,12 +51,15 @@ def DGX(
         different GPUs
     protocol: str
         Protocol to use for communication, e.g., "tcp" or "ucx"
+    enable_tcp_over_ucx: bool
+        Set environment variables to enable TCP over UCX, even if InfiniBand
+        and NVLink are not supported or disabled.
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support, requires
-        protocol='ucx'
+        protocol='ucx' and implies enable_tcp_over_ucx=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support, requires
-        protocol='ucx'
+        protocol='ucx' and implies enable_tcp_over_ucx=True.
 
     Raises
     ------
@@ -72,14 +76,19 @@ def DGX(
     if (enable_infiniband or enable_nvlink) and protocol != "ucx":
         raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
+    ucx_net_devices = ""
+    if enable_infiniband:
+        ucx_net_devices = lambda i: "mlx5_%d:1" % (i // 2)
+
     spec = worker_spec(
         interface=interface,
         dashboard_address=dashboard_address,
         threads_per_worker=threads_per_worker,
         silence_logs=silence_logs,
         CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
-        ucx_net_devices=lambda i: "mlx5_%d:1" % (i // 2),
+        ucx_net_devices=ucx_net_devices,
         enable_nvlink=enable_nvlink,
         protocol=protocol,
         **kwargs,
@@ -87,6 +96,7 @@ def DGX(
 
     ucx_env = get_ucx_env(
         interface=interface,
+        enable_tcp=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
     )
