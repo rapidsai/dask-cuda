@@ -10,8 +10,8 @@ from distributed.utils_test import gen_test
 from dask.distributed import Client
 
 from dask_cuda import DGX
-from dask_cuda.utils import get_ucx_env
 from dask_cuda.initialize import initialize
+from dask_cuda.utils import get_ucx_env
 
 
 @pytest.mark.skipif(
