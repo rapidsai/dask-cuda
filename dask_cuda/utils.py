@@ -210,7 +210,7 @@ def get_preload_options(
     if protocol == "ucx":
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
-            initialize_ucx_argv.append("--enable-tcp")
+            initialize_ucx_argv.append("--enable-tcp-over-ucx")
         if enable_infiniband:
             initialize_ucx_argv.append("--enable-infiniband")
         if enable_nvlink:

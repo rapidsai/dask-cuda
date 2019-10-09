@@ -25,12 +25,65 @@ about Dask configuration.
 """
 import click
 import logging
+import os
 import warnings
 
 import numba.cuda
 
 
 logger = logging.getLogger(__name__)
+
+
+def initialize(
+    create_cuda_context=True,
+    enable_tcp_over_ucx=False,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    net_devices="",
+):
+    if create_cuda_context:
+        try:
+            numba.cuda.current_context()
+        except Exception:
+            logger.error("Unable to start CUDA Context", exc_info=True)
+
+    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+        try:
+            import ucp
+        except ImportError:
+            logger.error(
+                "UCX protocol requested but ucp module is not available", exc_info=True
+            )
+        else:
+            options = {}
+            if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+                tls = "tcp,sockcm,cuda_copy"
+                tls_priority = "sockcm"
+
+                if enable_infiniband:
+                    tls = "rc," + tls
+                if enable_nvlink:
+                    tls = tls + ",cuda_ipc"
+
+                options = {"TLS": tls, "SOCKADDR_TLS_PRIORITY": tls_priority}
+
+                if net_devices is not None and net_devices != "":
+                    options["NET_DEVICES"] = net_devices
+
+            print("Initialize UCP", options)
+
+            ucp.reset()
+            ucp.init(options=options)
+
+            ucx_env = {}
+            for k, v in ucp.get_config().items():
+                # Skip values that aren't actual environment variables (i.e., not strings)
+                if isinstance(v, str):
+                    ucx_env["UCX_" + k] = v
+
+            # Set also UCX environment variables: required by Dask client. It may be best ti
+            # to have the client asking the scheduler for the proper variables.
+            os.environ.update(ucx_env)
 
 
 @click.command()
@@ -40,7 +93,9 @@ logger = logging.getLogger(__name__)
     help="Create CUDA context",
 )
 @click.option(
-    "--enable-tcp/--disable-tcp", default=True, help="Enable TCP communication over UCX"
+    "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
+    default=True,
+    help="Enable TCP communication over UCX",
 )
 @click.option(
     "--enable-infiniband/--disable-infiniband",
@@ -62,44 +117,15 @@ logger = logging.getLogger(__name__)
 def dask_setup(
     service,
     create_cuda_context,
-    enable_tcp,
+    enable_tcp_over_ucx,
     enable_infiniband,
     enable_nvlink,
     net_devices,
 ):
-    if create_cuda_context:
-        try:
-            numba.cuda.current_context()
-        except Exception:
-            logger.error("Unable to start CUDA Context", exc_info=True)
-
-    if enable_tcp or enable_infiniband or enable_nvlink:
-        try:
-            import ucp
-        except ImportError:
-            logger.error(
-                "UCX protocol requested but ucp module is not available",
-                exc_info=True,
-            )
-        else:
-            print("UCP ELSE")
-            options = {}
-            if enable_tcp or enable_infiniband or enable_nvlink:
-                tls = "tcp,sockcm,cuda_copy"
-                tls_priority = "sockcm"
-
-                if enable_infiniband:
-                    tls = "rc," + tls
-                if enable_nvlink:
-                    tls = tls + ",cuda_ipc"
-
-                options = {"TLS": tls, "SOCKADDR_TLS_PRIORITY": tls_priority}
-
-                if net_devices is not None and net_devices != "":
-                    options["NET_DEVICES"] = net_devices
-
-            print("NET_DEVICES:", net_devices)
-            print(options)
-
-            ucp.reset()
-            ucp.init(options=options)
+    initialize(
+        create_cuda_context=create_cuda_context,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        net_devices=net_devices,
+    )
