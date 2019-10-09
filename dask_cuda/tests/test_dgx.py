@@ -11,6 +11,7 @@ from dask.distributed import Client
 
 from dask_cuda import DGX
 from dask_cuda.utils import get_ucx_env
+from dask_cuda.initialize import initialize
 
 
 @pytest.mark.skipif(
@@ -42,9 +43,6 @@ async def test_dgx_tcp_over_ucx():
             pass
 
 
-from distributed.utils_test import loop  # noqa: F401
-
-
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
@@ -63,13 +61,8 @@ async def test_dgx_ucx_infiniband_nvlink(params):
     enable_infiniband = params["enable_infiniband"]
     enable_nvlink = params["enable_nvlink"]
 
-    ucx_env = get_ucx_env(
-        interface="enp1s0f0",
-        enable_tcp=enable_tcp,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-    )
-    os.environ.update(ucx_env)
+    initialize(create_cuda_context=True, enable_tcp_over_ucx=enable_tcp,
+               enable_infiniband=enable_infiniband, enable_nvlink=enable_nvlink)
 
     async with DGX(
         interface="enp1s0f0",
@@ -80,7 +73,6 @@ async def test_dgx_ucx_infiniband_nvlink(params):
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
-            pass
             rs = da.random.RandomState(RandomState=cupy.random.RandomState)
             a = rs.normal(10, 1, (int(1e4), int(1e4)), chunks=(int(2.5e3), int(2.5e3)))
             x = a + a.T
