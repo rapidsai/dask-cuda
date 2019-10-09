@@ -48,8 +48,8 @@ def test_worker_spec(num_devices, cls, interface, protocol, dashboard_address,
     _check_option(spec, "silence_logs", silence_logs)
 
     _check_env_key(spec, "UCX_TLS", enable_infiniband or enable_nvlink)
-    _check_env_key(spec, "UCX_SOCKADDR_TLS_PRIORITY", enable_infiniband)
-    _check_env_key(spec, "UCXPY_IFNAME", enable_infiniband)
+    _check_env_key(spec, "UCX_SOCKADDR_TLS_PRIORITY", enable_infiniband or enable_nvlink)
+    _check_env_key(spec, "UCXPY_IFNAME", enable_infiniband or enable_nvlink)
 
     if enable_infiniband:
         _check_env_value(spec, "UCX_SOCKADDR_TLS_PRIORITY", "sockcm")
