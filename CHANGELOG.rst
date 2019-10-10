@@ -1,9 +1,18 @@
 0.10
 ----
 
-- Use YYMMDD tag in nightly build
+- Change the updated new_worker_spec API for upstream (#128) `Matthew Rocklin`_
+- Update TOTAL_MEMORY to match new distributed MEMORY_LIMIT (#131) `Peter Andreas Entschev`_
+- Bum Dask requirement to 2.4 (#133) `Matthew Rocklin`_
+- Use YYMMDD tag in nightly build (#134) `Markku Luukkainen`_
+- Automatically determine CPU affinity (#138) `Peter Andreas Entschev`_
+- Fix full memory use check testcase (#139) `Sangeeth Keeriyadath`_
+- Use pynvml to get memory info without creating CUDA context (#140) `Peter Andreas Entschev`_
+- Pass missing local_directory to Nanny from dask-cuda-worker (#141) `Peter Andreas Entschev`_
+- New worker_spec function for worker recipes (#147) `Peter Andreas Entschev`_
+- Add new Scheduler class supporting environment variables (#149) `Peter Andreas Entschev`_
+- Support for TCP over UCX (#152) `Peter Andreas Entschev`_
 
-.. _`Markku Luukkainen`: https://github.com/mluukkainen
 
 0.9
 ---
@@ -19,11 +28,6 @@
 - Fix remove CodeCov upload from build script (#115) `Dillon Cullinan`_
 - Remove CodeCov upload (#116) `Dillon Cullinan`_
 
-.. _`Matthieu Bulte`: https://github.com/matthieubulte
-.. _`Dillon Cullinan`: https://github.com/dillon-cullinan
-.. _`Peter Andreas Entschev`: https://github.com/pentschev
-.. _`Matthew Rocklin`: https://github.com/mrocklin
-.. _`Olli Koskinen`: https://github.com/okoskinen
 
 0.8
 ---
@@ -38,6 +42,11 @@
 -  LocalCUDACluster calls _correct_state() to ensure workers started (#78) `Peter Andreas Entschev`_
 -  Delay some of spilling test assertions (#80) `Peter Andreas Entschev`_
 
+
 .. _`Peter Andreas Entschev`: https://github.com/pentschev
 .. _`Matthew Rocklin`: https://github.com/mrocklin
 .. _`Dillon Cullinan`: https://github.com/dillon-cullinan
+.. _`Matthieu Bulte`: https://github.com/matthieubulte
+.. _`Olli Koskinen`: https://github.com/okoskinen
+.. _`Markku Luukkainen`: https://github.com/mluukkainen
+.. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
