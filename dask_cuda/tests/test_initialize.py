@@ -26,6 +26,9 @@ def test_initialize_ucx_tcp():
     assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"] and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
 
 
+@pytest.mark.skipif(
+    "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
+)
 def test_initialize_ucx_infiniband():
     ucp = pytest.importorskip("ucp")
 
