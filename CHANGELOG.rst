@@ -13,10 +13,6 @@
 - Add new Scheduler class supporting environment variables (#149) `Peter Andreas Entschev`_
 - Support for TCP over UCX (#152) `Peter Andreas Entschev`_
 
-.. _`Matthew Rocklin`: https://github.com/mrocklin
-.. _`Peter Andreas Entschev`: https://github.com/pentschev
-.. _`Markku Luukkainen`: https://github.com/mluukkainen
-.. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
 
 0.9
 ---
@@ -32,11 +28,6 @@
 - Fix remove CodeCov upload from build script (#115) `Dillon Cullinan`_
 - Remove CodeCov upload (#116) `Dillon Cullinan`_
 
-.. _`Matthieu Bulte`: https://github.com/matthieubulte
-.. _`Dillon Cullinan`: https://github.com/dillon-cullinan
-.. _`Peter Andreas Entschev`: https://github.com/pentschev
-.. _`Matthew Rocklin`: https://github.com/mrocklin
-.. _`Olli Koskinen`: https://github.com/okoskinen
 
 0.8
 ---
@@ -51,6 +42,11 @@
 -  LocalCUDACluster calls _correct_state() to ensure workers started (#78) `Peter Andreas Entschev`_
 -  Delay some of spilling test assertions (#80) `Peter Andreas Entschev`_
 
+
 .. _`Peter Andreas Entschev`: https://github.com/pentschev
 .. _`Matthew Rocklin`: https://github.com/mrocklin
 .. _`Dillon Cullinan`: https://github.com/dillon-cullinan
+.. _`Matthieu Bulte`: https://github.com/matthieubulte
+.. _`Olli Koskinen`: https://github.com/okoskinen
+.. _`Markku Luukkainen`: https://github.com/mluukkainen
+.. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
