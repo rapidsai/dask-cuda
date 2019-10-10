@@ -1,6 +1,7 @@
 import pytest
 
 import os
+import psutil
 
 from dask_cuda.initialize import initialize
 
