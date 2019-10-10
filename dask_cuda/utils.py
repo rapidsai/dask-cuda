@@ -184,6 +184,48 @@ def get_preload_options(
     ucx_net_devices="",
     cuda_device_index=0,
 ):
+    """
+    Return a dictionary with the preload and preload_argv options required to
+    create CUDA context and enabling UCX communication.
+
+    Parameters
+    ----------
+    protocol: None or str
+        If "ucx", options related to UCX (enable_tcp_over_ucx, enable_infiniband,
+        enable_nvlink and ucx_net_devices) are added to preload_argv.
+    create_cuda_context: bool
+        Ensure the CUDA context gets created at initialization, generally
+        needed by Dask workers.
+    enable_tcp: bool
+        Set environment variables to enable TCP over UCX, even when InfiniBand or
+        NVLink support are disabled.
+    enable_infiniband: bool
+        Set environment variables to enable UCX InfiniBand support. Implies
+        enable_tcp=True.
+    enable_nvlink: bool
+        Set environment variables to enable UCX NVLink support. Implies
+        enable_tcp=True.
+    ucx_net_devices: str or callable
+        A string with the interface name to be used for all devices (empty
+        string means use default), or a callable function taking an integer
+        identifying the GPU index.
+    cuda_device_index: int
+        The index identifying the CUDA device used by this worker, only used
+        when ucx_net_devices is callable.
+
+    Example
+    -------
+    >>> from dask_cuda.utils import get_preload_options
+    >>> get_preload_options()
+    {'preload': ['dask_cuda.initialize'], 'preload_argv': []}
+    >>> get_preload_options(protocol="ucx", create_cuda_context=True,
+    ...                     enable_infiniband=True, cuda_device_index=5,
+    ...                     ucx_net_devices=lambda i: "mlx5_%d:1" % (i // 2))
+    {'preload': ['dask_cuda.initialize'],
+     'preload_argv': ['--create-cuda-context',
+      '--enable-infiniband',
+      '--net-devices=mlx5_2:1']}
+    """
     preload_options = {"preload": ["dask_cuda.initialize"], "preload_argv": []}
 
     if create_cuda_context:
