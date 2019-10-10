@@ -70,8 +70,6 @@ def initialize(
                 if net_devices is not None and net_devices != "":
                     options["NET_DEVICES"] = net_devices
 
-            print("Initialize UCP", options)
-
             ucp.reset()
             ucp.init(options=options)
 
@@ -94,7 +92,7 @@ def initialize(
 )
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=True,
+    default=False,
     help="Enable TCP communication over UCX",
 )
 @click.option(
