@@ -3,7 +3,7 @@ import os
 from dask.distributed import SpecCluster
 
 from .scheduler import Scheduler
-from .utils import get_ucx_env
+from .utils import get_preload_options
 from .worker_spec import worker_spec
 
 
@@ -73,7 +73,9 @@ def DGX(
     >>> cluster = DGX()
     >>> client = Client(cluster)
     """
-    if (enable_infiniband or enable_nvlink) and protocol != "ucx":
+    if (
+        enable_tcp_over_ucx or enable_infiniband or enable_nvlink
+    ) and protocol != "ucx":
         raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
     ucx_net_devices = ""
@@ -94,20 +96,18 @@ def DGX(
         **kwargs,
     )
 
-    ucx_env = get_ucx_env(
-        interface=interface,
-        enable_tcp=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-    )
-
     scheduler = {
         "cls": Scheduler,
         "options": {
             "interface": interface,
             "protocol": protocol,
             "dashboard_address": dashboard_address,
-            "env": {**ucx_env},
+            **get_preload_options(
+                protocol=protocol,
+                enable_tcp_over_ucx=enable_tcp_over_ucx,
+                enable_infiniband=enable_infiniband,
+                enable_nvlink=enable_nvlink,
+            ),
         },
     }
 

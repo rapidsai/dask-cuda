@@ -4,7 +4,12 @@ from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count, get_ucx_env
+from .utils import (
+    CPUAffinity,
+    get_cpu_affinity,
+    get_gpu_count,
+    get_preload_options,
+)
 
 
 def worker_spec(
@@ -59,29 +64,29 @@ def worker_spec(
     >>> from dask_cuda.worker_spec import worker_spec
     >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2], ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
     {0: {'cls': distributed.nanny.Nanny,
-      'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2',
-        'UCX_NET_DEVICES': 'mlx5_0:1'},
+      'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2'},
        'interface': 'enp1s0f0',
        'protocol': None,
        'nthreads': 1,
        'data': dict,
-       'preload': ['dask_cuda.initialize_context'],
        'dashboard_address': ':8787',
-       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f3350a737d0>],
+       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7fbb8748a860>],
        'silence_logs': True,
-       'memory_limit': 135263611392.0}},
+       'memory_limit': 135263611392.0,
+       'preload': ['dask_cuda.initialize'],
+       'preload_argv': ['--create-cuda-context']}},
      2: {'cls': distributed.nanny.Nanny,
-      'options': {'env': {'CUDA_VISIBLE_DEVICES': '2,0',
-        'UCX_NET_DEVICES': 'mlx5_1:1'},
+      'options': {'env': {'CUDA_VISIBLE_DEVICES': '2,0'},
        'interface': 'enp1s0f0',
        'protocol': None,
        'nthreads': 1,
        'data': dict,
-       'preload': ['dask_cuda.initialize_context'],
        'dashboard_address': ':8787',
-       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7f3350a73850>],
+       'plugins': [<dask_cuda.utils.CPUAffinity at 0x7fbb8748a0f0>],
        'silence_logs': True,
-       'memory_limit': 135263611392.0}}}
+       'memory_limit': 135263611392.0,
+       'preload': ['dask_cuda.initialize'],
+       'preload_argv': ['--create-cuda-context']}}}
 
     """
     if CUDA_VISIBLE_DEVICES is None:
@@ -93,21 +98,6 @@ def worker_spec(
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
     memory_limit = MEMORY_LIMIT / get_gpu_count()
 
-    ucx_env = get_ucx_env(
-        enable_tcp=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        interface=interface,
-        enable_nvlink=enable_nvlink,
-    )
-
-    def ucx_net_devices_func(i):
-        v = None
-        if callable(ucx_net_devices):
-            v = ucx_net_devices(i)
-        elif ucx_net_devices != "":
-            v = ucx_net_devices
-        return {} if v is None else {"UCX_NET_DEVICES": v}
-
     spec = {
         i: {
             "cls": Nanny,
@@ -115,19 +105,25 @@ def worker_spec(
                 "env": {
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
                         ii, CUDA_VISIBLE_DEVICES
-                    ),
-                    **ucx_net_devices_func(i),
-                    **ucx_env,
+                    )
                 },
                 "interface": interface,
                 "protocol": protocol,
                 "nthreads": threads_per_worker,
                 "data": dict,
-                "preload": ["dask_cuda.initialize_context"],
                 "dashboard_address": dashboard_address,
                 "plugins": [CPUAffinity(get_cpu_affinity(i))],
                 "silence_logs": silence_logs,
                 "memory_limit": memory_limit,
+                **get_preload_options(
+                    protocol=protocol,
+                    create_cuda_context=True,
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_infiniband=enable_infiniband,
+                    enable_nvlink=enable_nvlink,
+                    ucx_net_devices=ucx_net_devices,
+                    cuda_device_index=i,
+                ),
             },
         }
         for ii, i in enumerate(CUDA_VISIBLE_DEVICES)

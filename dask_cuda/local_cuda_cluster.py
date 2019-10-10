@@ -105,7 +105,10 @@ class LocalCUDACluster(LocalCluster):
 
         self.new_spec["options"]["preload"] = self.new_spec["options"].get(
             "preload", []
-        ) + ["dask_cuda.initialize_context"]
+        ) + ["dask_cuda.initialize"]
+        self.new_spec["options"]["preload_argv"] = self.new_spec["options"].get(
+            "preload_argv", []
+        ) + ["--create-cuda-context"]
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)
