@@ -47,13 +47,7 @@ def test_worker_spec(num_devices, cls, interface, protocol, dashboard_address,
     _check_option(spec, "nthreads", threads_per_worker)
     _check_option(spec, "silence_logs", silence_logs)
 
-    _check_env_key(spec, "UCX_TLS", enable_infiniband or enable_nvlink)
-    _check_env_key(spec, "UCX_SOCKADDR_TLS_PRIORITY", enable_infiniband or enable_nvlink)
-    _check_env_key(spec, "UCXPY_IFNAME", enable_infiniband or enable_nvlink)
-
-    if enable_infiniband:
-        _check_env_value(spec, "UCX_SOCKADDR_TLS_PRIORITY", "sockcm")
-        _check_env_value(spec, "UCX_TLS", ["rc", "tcp", "sockcm"])
-        _check_env_value(spec, "UCXPY_IFNAME", interface or "")
-    if enable_nvlink:
-        _check_env_value(spec, "UCX_TLS", ["cuda_copy", "cuda_ipc"])
+    if enable_infiniband and protocol == "ucx":
+        assert all(["--enable-infiniband" in s["options"]["preload_argv"] for s in spec.values()])
+    if enable_nvlink and protocol == "ucx":
+        assert all(["--enable-nvlink" in s["options"]["preload_argv"] for s in spec.values()])

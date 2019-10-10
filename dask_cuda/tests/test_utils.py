@@ -8,6 +8,7 @@ from dask_cuda.utils import (
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_preload_options,
     get_ucx_env,
     unpack_bitmask,
 )
@@ -64,33 +65,19 @@ def test_get_device_total_memory():
 
 
 @pytest.mark.parametrize("enable_tcp", [True, False])
-@pytest.mark.parametrize(
-    "enable_infiniband_interface", [(True, "eth0"), (True, ""), (False, "")]
-)
+@pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("enable_nvlink", [True, False])
-def test_get_ucx_env(enable_tcp, enable_infiniband_interface, enable_nvlink):
-    enable_infiniband, interface = enable_infiniband_interface
+def test_get_ucx_env(enable_tcp, enable_infiniband, enable_nvlink):
 
-    if enable_infiniband and interface == "":
-        with pytest.warns(UserWarning):
-            env = get_ucx_env(
-                enable_tcp=enable_tcp,
-                enable_infiniband=enable_infiniband,
-                interface=interface,
-                enable_nvlink=enable_nvlink,
-            )
-    else:
-        env = get_ucx_env(
-            enable_tcp=enable_tcp,
-            enable_infiniband=enable_infiniband,
-            interface=interface,
-            enable_nvlink=enable_nvlink,
-        )
+    env = get_ucx_env(
+        enable_tcp=enable_tcp,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+    )
 
     if enable_tcp or enable_infiniband or enable_nvlink:
         assert "UCX_TLS" in env
         assert "UCX_SOCKADDR_TLS_PRIORITY" in env
-        assert "UCXPY_IFNAME" in env
     else:
         assert env == {}
         return
@@ -104,3 +91,40 @@ def test_get_ucx_env(enable_tcp, enable_infiniband_interface, enable_nvlink):
         assert "rc" in env["UCX_TLS"]
     if enable_nvlink:
         assert "cuda_ipc" in env["UCX_TLS"]
+
+
+@pytest.mark.parametrize("enable_tcp", [True, False])
+@pytest.mark.parametrize(
+    "enable_infiniband_netdev",
+    [(True, lambda i: "mlx5_%d:1" % (i // 2)), (True, "eth0"), (True, ""), (False, "")],
+)
+@pytest.mark.parametrize("enable_nvlink", [True, False])
+def test_get_preload_options(enable_tcp, enable_infiniband_netdev, enable_nvlink):
+    enable_infiniband, net_devices = enable_infiniband_netdev
+
+    opts = get_preload_options(
+        protocol="ucx",
+        create_cuda_context=True,
+        enable_tcp_over_ucx=enable_tcp,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        ucx_net_devices=net_devices,
+        cuda_device_index=5,
+    )
+
+    assert "preload" in opts
+    assert opts["preload"] == ["dask_cuda.initialize"]
+    assert "preload_argv" in opts
+    assert "--create-cuda-context" in opts["preload_argv"]
+
+    if enable_tcp:
+        assert "--enable-tcp-over-ucx" in opts["preload_argv"]
+    if enable_infiniband:
+        assert "--enable-infiniband" in opts["preload_argv"]
+        if callable(net_devices):
+            dev = net_devices(5)
+            assert str("--net-devices=" + dev) in opts["preload_argv"]
+        elif isinstance(net_devices, str) and net_devices != "":
+            assert str("--net-devices=" + net_devices) in opts["preload_argv"]
+    if enable_nvlink:
+        assert "--enable-nvlink" in opts["preload_argv"]
