@@ -9,7 +9,7 @@ CUDA_REL=${CUDA_VERSION%.*}
 
 SOURCE_BRANCH=master
 
-LABEL_OPTION="--label main --label cuda9.2 --label cuda10.0"
+LABEL_OPTION="--label main"
 echo "LABEL_OPTION=${LABEL_OPTION}"
 
 # Restrict uploads to master branch
