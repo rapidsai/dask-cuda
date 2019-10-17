@@ -2,7 +2,7 @@
 
 # Usage:
 #   conda build -c conda-forge -c defaults .
-{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
 {% set py_version=environ.get('CONDA_PY', 36) %}
 package:
@@ -15,6 +15,8 @@ source:
 build:
   number: {{ git_revision_count }}
   string: py{{ py_version }}_{{ git_revision_count }}
+  script_env:
+    - VERSION_SUFFIX
 
 requirements:
   build:
@@ -22,8 +24,9 @@ requirements:
     - setuptools
   run:
     - python x.x
-    - dask-core >=2.3.0
-    - distributed >=2.3.1
+    - dask-core >=2.4.0
+    - distributed >=2.4.0
+    - pynvml >=8.0.3
     - numpy >=1.16.0
     - numba >=0.40.1
 

@@ -1,38 +1,23 @@
 import os
 
-from dask.distributed import Nanny, SpecCluster, Scheduler
-from distributed.worker import TOTAL_MEMORY
+from dask.distributed import SpecCluster
 
-from .local_cuda_cluster import cuda_visible_devices
-
-
-class CPUAffinity:
-    def __init__(self, cores):
-        self.cores = cores
-
-    def setup(self, worker=None):
-        os.sched_setaffinity(0, self.cores)
-
-
-affinity = {  # nvidia-smi topo -m
-    0: list(range(0, 20)) + list(range(40, 60)),
-    1: list(range(0, 20)) + list(range(40, 60)),
-    2: list(range(0, 20)) + list(range(40, 60)),
-    3: list(range(0, 20)) + list(range(40, 60)),
-    4: list(range(20, 40)) + list(range(60, 79)),
-    5: list(range(20, 40)) + list(range(60, 79)),
-    6: list(range(20, 40)) + list(range(60, 79)),
-    7: list(range(20, 40)) + list(range(60, 79)),
-}
+from .scheduler import Scheduler
+from .utils import get_preload_options
+from .worker_spec import worker_spec
 
 
 def DGX(
-    interface="ib",
+    interface=None,
     dashboard_address=":8787",
     threads_per_worker=1,
     silence_logs=True,
     CUDA_VISIBLE_DEVICES=None,
-    **kwargs
+    protocol=None,
+    enable_tcp_over_ucx=False,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    **kwargs,
 ):
     """ A Local Cluster for a DGX 1 machine
 
@@ -42,6 +27,8 @@ def DGX(
 
     It creates one Dask worker process per GPU, and assigns each worker process
     the correct CPU cores and Network interface cards to maximize performance.
+    If UCX and UCX-Py are also available, it's possible to use InfiniBand and
+    NVLink connections for optimal data transfer performance.
 
     That being said, things aren't perfect.  Today a DGX has very high
     performance between certain sets of GPUs and not others.  A Dask DGX
@@ -51,60 +38,76 @@ def DGX(
     Parameters
     ----------
     interface: str
-        The interface prefix for the infiniband networking cards.  This is
-        often "ib"` or "bond".  We will add the numeric suffix 0,1,2,3 as
-        appropriate.  Defaults to "ib".
+        The external interface used to connect to the scheduler, usually
+        the ethernet interface is used for connection (not the InfiniBand!).
     dashboard_address: str
         The address for the scheduler dashboard.  Defaults to ":8787".
+    threads_per_worker: int
+        Number of threads to be used for each CUDA worker process.
+    silence_logs: bool
+        Disable logging for all worker processes
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
+    protocol: str
+        Protocol to use for communication, e.g., "tcp" or "ucx"
+    enable_tcp_over_ucx: bool
+        Set environment variables to enable TCP over UCX, even if InfiniBand
+        and NVLink are not supported or disabled.
+    enable_infiniband: bool
+        Set environment variables to enable UCX InfiniBand support, requires
+        protocol='ucx' and implies enable_tcp_over_ucx=True.
+    enable_nvlink: bool
+        Set environment variables to enable UCX NVLink support, requires
+        protocol='ucx' and implies enable_tcp_over_ucx=True.
+
+    Raises
+    ------
+    TypeError
+        If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
 
     Examples
     --------
     >>> from dask_cuda import DGX
     >>> from dask.distributed import Client
-    >>> cluster = DGX(interface='ib')
+    >>> cluster = DGX()
     >>> client = Client(cluster)
     """
-    if CUDA_VISIBLE_DEVICES is None:
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", "0,1,2,3,4,5,6,7")
-    if isinstance(CUDA_VISIBLE_DEVICES, str):
-        CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-    CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
-    memory_limit = TOTAL_MEMORY / 8
+    if (
+        enable_tcp_over_ucx or enable_infiniband or enable_nvlink
+    ) and protocol != "ucx":
+        raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
-    spec = {
-        i: {
-            "cls": Nanny,
-            "options": {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, CUDA_VISIBLE_DEVICES
-                    ),
-                    # 'UCX_NET_DEVICES': 'mlx5_%d:1' % (i // 2)
-                    "UCX_TLS": "rc,cuda_copy,cuda_ipc",
-                },
-                "interface": interface + str(i // 2),
-                "protocol": "ucx",
-                "nthreads": threads_per_worker,
-                "data": dict,
-                "preload": ["dask_cuda.initialize_context"],
-                "dashboard_address": ":0",
-                "plugins": [CPUAffinity(affinity[i])],
-                "silence_logs": silence_logs,
-                "memory_limit": memory_limit,
-            },
-        }
-        for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
-    }
+    ucx_net_devices = ""
+    if enable_infiniband:
+        ucx_net_devices = lambda i: "mlx5_%d:1" % (i // 2)
+
+    spec = worker_spec(
+        interface=interface,
+        dashboard_address=dashboard_address,
+        threads_per_worker=threads_per_worker,
+        silence_logs=silence_logs,
+        CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        ucx_net_devices=ucx_net_devices,
+        enable_nvlink=enable_nvlink,
+        protocol=protocol,
+        **kwargs,
+    )
 
     scheduler = {
         "cls": Scheduler,
         "options": {
-            "interface": interface + str(CUDA_VISIBLE_DEVICES[0] // 2),
-            "protocol": "ucx",
+            "interface": interface,
+            "protocol": protocol,
             "dashboard_address": dashboard_address,
+            **get_preload_options(
+                protocol=protocol,
+                enable_tcp_over_ucx=enable_tcp_over_ucx,
+                enable_infiniband=enable_infiniband,
+                enable_nvlink=enable_nvlink,
+            ),
         },
     }
 

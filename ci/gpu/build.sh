@@ -63,6 +63,9 @@ else
     # Install CuPy for tests
     pip install cupy-cuda${CUDA_REL}==6.0.0
 
+    # Install distributed@master (temporarily required due to issues with 2.3.2)
+    # pip install git+https://github.com/dask/distributed.git@master
+
     ################################################################################
     # TEST - Run tests
     ################################################################################

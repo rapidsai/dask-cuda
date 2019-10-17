@@ -261,8 +261,6 @@ def test_cudf_device_spill(params):
 
         del cdf
 
-        yield client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
-
         host_chunks = yield client.run(lambda: len(get_worker().data.host))
         disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
         for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
@@ -271,6 +269,8 @@ def test_cudf_device_spill(params):
             else:
                 assert hc > 0
                 assert dc == 0
+
+        yield client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
 
         del cdf2
 
@@ -338,8 +338,6 @@ async def test_cudf_cluster_device_spill(loop, params):
 
                 del cdf
 
-                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
-
                 host_chunks = await client.run(lambda: len(get_worker().data.host))
                 disk_chunks = await client.run(lambda: len(get_worker().data.disk))
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
@@ -348,6 +346,8 @@ async def test_cudf_cluster_device_spill(loop, params):
                     else:
                         assert hc > 0
                         assert dc == 0
+
+                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
 
                 del cdf2
 
