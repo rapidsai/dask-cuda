@@ -218,13 +218,21 @@ def main(
 
     preload_argv = kwargs.get("preload_argv", [])
     kwargs = {"worker_port": None, "listen_address": None}
-    t = Nanny
+    protocol = None
 
     if not scheduler and not scheduler_file and "scheduler-address" not in config:
         raise ValueError(
             "Need to provide scheduler address like\n"
             "dask-worker SCHEDULER_ADDRESS:8786"
         )
+    elif scheduler or "scheduler-address" in config:
+        if scheduler:
+            addr = scheduler
+        else:
+            addr = config["scheduler-address"]
+        protocol_address = addr.split("://")
+        if len(protocol_address) == 2:
+            protocol = protocol_address[0]
 
     if interface:
         if host:
@@ -233,9 +241,10 @@ def main(
             host = get_ip_interface(interface)
 
     nannies = [
-        t(
+        Nanny(
             scheduler,
             scheduler_file=scheduler_file,
+            protocol=protocol,
             nthreads=nthreads,
             services=services,
             loop=loop,
