@@ -199,6 +199,7 @@ async def test_cupy_cluster_device_spill(loop, params):
                         assert dc == 0
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
