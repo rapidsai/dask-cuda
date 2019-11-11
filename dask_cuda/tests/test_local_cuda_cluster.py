@@ -69,6 +69,7 @@ async def test_with_subset_of_cuda_visible_devices():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/168")
 @gen_test(timeout=20)
 async def test_ucx_protocol():
     pytest.importorskip("distributed.comm.ucx")
