@@ -225,6 +225,8 @@ async def test_cupy_cluster_device_spill(loop, params):
         },
     ],
 )
+
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 def test_cudf_device_spill(params):
     @gen_cluster(
         client=True,
@@ -284,6 +286,7 @@ def test_cudf_device_spill(params):
     test_device_spill()
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 @pytest.mark.parametrize(
     "params",
     [
