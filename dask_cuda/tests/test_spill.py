@@ -13,8 +13,9 @@ from zict.file import _safe_key as safe_key
 
 import dask
 import dask.array as da
-import cupy
-import cudf
+
+cupy = pytest.importorskip("cupy")
+cudf = pytest.importorskip("cudf")
 
 
 if utils.get_device_total_memory() < 1e10:
