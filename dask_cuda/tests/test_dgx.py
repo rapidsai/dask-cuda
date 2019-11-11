@@ -3,7 +3,6 @@ import pytest
 import psutil
 import os
 
-import cupy
 import dask.array as da
 
 from distributed.utils_test import gen_test
@@ -13,6 +12,7 @@ from dask_cuda import DGX
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_env
 
+cupy = pytest.importorskip("cupy")
 
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"

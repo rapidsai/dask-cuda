@@ -1,11 +1,11 @@
 import numpy as np
-import cupy
 from dask_cuda.device_host_file import DeviceHostFile, host_to_device, device_to_host
 from distributed.protocol import deserialize_bytes, serialize_bytelist
 from random import randint
 import dask.array as da
 
 import pytest
+cupy = pytest.importorskip("cupy")
 
 
 @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
