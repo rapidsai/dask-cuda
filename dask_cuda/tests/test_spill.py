@@ -7,7 +7,7 @@ from distributed.metrics import time
 from distributed.utils_test import gen_cluster, loop, gen_test  # noqa: F401
 from distributed.worker import Worker
 from distributed import Client, get_worker, wait
-from dask_cuda import LocalCUDACluster
+from dask_cuda import LocalCUDACluster, utils
 from dask_cuda.device_host_file import DeviceHostFile
 from zict.file import _safe_key as safe_key
 
@@ -15,6 +15,10 @@ import dask
 import dask.array as da
 import cupy
 import cudf
+
+
+if utils.get_device_total_memory() < 1e10:
+    pytest.skip("Not enough GPU memory", allow_module_level=True)
 
 
 def device_host_file_size_matches(

@@ -40,7 +40,7 @@ async def test_local_cuda_cluster():
             with pytest.raises(ValueError):
                 cluster.scale(1000)
 
-
+@pytest.mark.skipif(utils.get_gpu_count() < 8, reason="Requires 8 GPUs")
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
