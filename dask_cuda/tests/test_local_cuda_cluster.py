@@ -73,7 +73,7 @@ async def test_with_subset_of_cuda_visible_devices():
 async def test_ucx_protocol():
     pytest.importorskip("distributed.comm.ucx")
     async with LocalCUDACluster(
-        protocol="ucx", interface="ib0", asynchronous=True, data=dict
+        protocol="ucx", asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
