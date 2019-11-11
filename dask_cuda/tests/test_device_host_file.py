@@ -5,6 +5,7 @@ from random import randint
 import dask.array as da
 
 import pytest
+
 cupy = pytest.importorskip("cupy")
 
 

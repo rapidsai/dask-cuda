@@ -14,6 +14,7 @@ from dask_cuda.utils import get_ucx_env
 
 cupy = pytest.importorskip("cupy")
 
+
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
@@ -61,8 +62,12 @@ async def test_dgx_ucx_infiniband_nvlink(params):
     enable_infiniband = params["enable_infiniband"]
     enable_nvlink = params["enable_nvlink"]
 
-    initialize(create_cuda_context=True, enable_tcp_over_ucx=enable_tcp,
-               enable_infiniband=enable_infiniband, enable_nvlink=enable_nvlink)
+    initialize(
+        create_cuda_context=True,
+        enable_tcp_over_ucx=enable_tcp,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+    )
 
     async with DGX(
         interface="enp1s0f0",

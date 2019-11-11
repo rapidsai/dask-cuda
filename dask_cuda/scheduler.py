@@ -152,13 +152,10 @@ class Scheduler(ProcessInterface):
 
         try:
             if self.process is not None:
-                #await self.kill()
+                # await self.kill()
                 process = self.process
                 self.child_info_stop_q.put(
-                    {
-                        "op": "stop",
-                        "timeout": max(0, deadline - loop.time()) * 0.8,
-                    }
+                    {"op": "stop", "timeout": max(0, deadline - loop.time()) * 0.8}
                 )
                 self.child_info_stop_q.close()
                 self.parent_info_q.close()
@@ -168,7 +165,8 @@ class Scheduler(ProcessInterface):
 
                 if process.is_alive():
                     logger.warning(
-                        "Scheduler process still alive after %d seconds, killing", timeout
+                        "Scheduler process still alive after %d seconds, killing",
+                        timeout,
                     )
                     try:
                         await process.terminate()

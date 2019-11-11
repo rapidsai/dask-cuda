@@ -9,6 +9,7 @@ from dask_cuda.initialize import initialize
 def test_initialize_cuda_context():
     initialize(create_cuda_context=True)
 
+
 def test_initialize_ucx_tcp():
     ucp = pytest.importorskip("ucp")
 
@@ -24,7 +25,10 @@ def test_initialize_ucx_tcp():
     assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
     assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
 
-    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"] and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    assert (
+        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    )
 
 
 @pytest.mark.skipif(
@@ -46,7 +50,10 @@ def test_initialize_ucx_infiniband():
     assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
     assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
 
-    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"] and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    assert (
+        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    )
 
     assert conf["NET_DEVICES"] == "ib0" and env["UCX_NET_DEVICES"] == "ib0"
 
@@ -67,4 +74,7 @@ def test_initialize_ucx_nvlink():
     assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
     assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
 
-    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"] and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    assert (
+        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
+    )

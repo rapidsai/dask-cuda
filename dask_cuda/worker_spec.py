@@ -4,12 +4,7 @@ from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import (
-    CPUAffinity,
-    get_cpu_affinity,
-    get_gpu_count,
-    get_preload_options,
-)
+from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count, get_preload_options
 
 
 def worker_spec(
