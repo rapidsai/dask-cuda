@@ -119,6 +119,6 @@ if hasArg --skip-tests; then
 else
     logger "Python py.test for dask-cuda..."
     cd $WORKSPACE
-
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml -v --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
+    ls dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
 fi
