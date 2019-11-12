@@ -41,10 +41,11 @@ async def test_local_cuda_cluster():
                 cluster.scale(1000)
 
 
-@pytest.mark.skipif(utils.get_gpu_count() < 8, reason="Requires 8 GPUs")
+# Notice, this test might raise errors when the number of available GPUs is less
+# than 8 but as long as the test passes the errors can be ignored.
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,6,7"
     try:
         async with LocalCUDACluster(
             scheduler_port=0, asynchronous=True, device_memory_limit=1
@@ -63,8 +64,8 @@ async def test_with_subset_of_cuda_visible_devices():
                     assert {int(v.split(",")[i]) for v in result.values()} == {
                         2,
                         3,
+                        6,
                         7,
-                        8,
                     }
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]
