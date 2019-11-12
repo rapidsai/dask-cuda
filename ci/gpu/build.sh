@@ -94,7 +94,15 @@ cd $WORKSPACE
 
 
 ################################################################################
-# BUILD - Build ucx-py
+# Installing ucx-py
+################################################################################
+
+logger "pip install git+https://github.com/rapidsai/ucx-py.git --upgrade"
+pip install "git+https://github.com/rapidsai/ucx-py.git" --upgrade
+
+
+################################################################################
+# BUILD - Build dask-cuda
 ################################################################################
 
 logger "Build dask-cuda..."
