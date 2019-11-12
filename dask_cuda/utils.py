@@ -129,9 +129,7 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_env(
-    enable_tcp=True, enable_infiniband=False, enable_nvlink=False
-):
+def get_ucx_env(enable_tcp=True, enable_infiniband=False, enable_nvlink=False):
     """
     Return a dictionary with the environment variables that UCX requires to enable
     InfiniBand and/or NVLink communication.

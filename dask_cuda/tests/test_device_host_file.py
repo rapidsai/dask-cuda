@@ -1,5 +1,4 @@
 import numpy as np
-import cupy
 from dask_cuda.device_host_file import DeviceHostFile, host_to_device, device_to_host
 from distributed.protocol import deserialize_bytes, serialize_bytelist
 from random import randint
@@ -7,7 +6,10 @@ import dask.array as da
 
 import pytest
 
+cupy = pytest.importorskip("cupy")
 
+
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
 @pytest.mark.parametrize("num_device_arrays", [1, 10, 100])
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
@@ -121,6 +123,9 @@ def test_serialize_cupy_collection(collection, length, value):
     # Avoid running test for length 0 (no collection) multiple times
     if length == 0 and collection is not list:
         return
+
+    if length == 3 and value == 10:
+        pytest.xfail("https://github.com/rapidsai/dask-cuda/pull/171")
 
     if isinstance(value, dict):
         cudf = pytest.importorskip("cudf")

@@ -7,14 +7,16 @@ from distributed.metrics import time
 from distributed.utils_test import gen_cluster, loop, gen_test  # noqa: F401
 from distributed.worker import Worker
 from distributed import Client, get_worker, wait
-from dask_cuda import LocalCUDACluster
+from dask_cuda import LocalCUDACluster, utils
 from dask_cuda.device_host_file import DeviceHostFile
 from zict.file import _safe_key as safe_key
 
 import dask
 import dask.array as da
-import cupy
-import cudf
+
+
+if utils.get_device_total_memory() < 1e10:
+    pytest.skip("Not enough GPU memory", allow_module_level=True)
 
 
 def device_host_file_size_matches(
@@ -106,6 +108,7 @@ def test_cupy_device_spill(params):
         },
     )
     def test_device_spill(client, scheduler, worker):
+        cupy = pytest.importorskip("cupy")
         rs = da.random.RandomState(RandomState=cupy.random.RandomState)
         x = rs.random(int(250e6), chunks=10e6)
 
@@ -156,6 +159,7 @@ def test_cupy_device_spill(params):
 )
 @pytest.mark.asyncio
 async def test_cupy_cluster_device_spill(loop, params):
+    cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with LocalCUDACluster(
             1,
@@ -199,6 +203,7 @@ async def test_cupy_cluster_device_spill(loop, params):
                         assert dc == 0
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
@@ -220,6 +225,7 @@ async def test_cupy_cluster_device_spill(loop, params):
         },
     ],
 )
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 def test_cudf_device_spill(params):
     @gen_cluster(
         client=True,
@@ -241,7 +247,7 @@ def test_cudf_device_spill(params):
         },
     )
     def test_device_spill(client, scheduler, worker):
-
+        cudf = pytest.importorskip("cudf")
         # There's a known issue with datetime64:
         # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
         # The same error above happens when spilling datetime64 to disk
@@ -279,6 +285,7 @@ def test_cudf_device_spill(params):
     test_device_spill()
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 @pytest.mark.parametrize(
     "params",
     [
@@ -302,6 +309,7 @@ def test_cudf_device_spill(params):
 )
 @pytest.mark.asyncio
 async def test_cudf_cluster_device_spill(loop, params):
+    cudf = pytest.importorskip("cudf")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with LocalCUDACluster(
             1,
