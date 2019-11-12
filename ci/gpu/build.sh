@@ -83,6 +83,7 @@ conda list
 logger "Build ucx"
 git clone https://github.com/openucx/ucx
 cd ucx
+git checkout v1.7.x
 ls
 ./autogen.sh
 mkdir build
@@ -108,10 +109,6 @@ python -m pip install -e .
 if hasArg --skip-tests; then
     logger "Skipping Tests..."
 else
-    logger "Check NICs"
-    awk 'END{print $1}' /etc/hosts
-    cat /etc/hosts
-
     logger "Python py.test for dask-cuda..."
     cd $WORKSPACE
 
