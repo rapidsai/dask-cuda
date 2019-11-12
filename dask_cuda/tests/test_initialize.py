@@ -1,80 +1,104 @@
-import pytest
-
 import os
 import psutil
+import pytest
+import dask.array as da
 
 from dask_cuda.initialize import initialize
+from distributed.deploy.local import LocalCluster
+from distributed import Client
+from multiprocessing import Process
 
-
-def test_initialize_cuda_context():
-    initialize(create_cuda_context=True)
+ucp = pytest.importorskip("ucp")
+cupy = pytest.importorskip("cupy")
 
 
 def test_initialize_ucx_tcp():
-    ucp = pytest.importorskip("ucp")
+    def test():
+        initialize(enable_tcp_over_ucx=True)
+        with LocalCluster(
+            protocol="ucx",
+            dashboard_address=None,
+            n_workers=1,
+            threads_per_worker=1,
+            processes=True,
+        ) as cluster:
+            with Client(cluster):
+                res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+                res = res.sum().compute()
+                assert res == 49995000
 
-    initialize(enable_tcp_over_ucx=True)
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
 
-    conf = ucp.get_config()
-    env = os.environ
+    # We run in process to avoid using the UCX options from the other tests
+    p = Process(target=test)
+    p.start()
+    p.join()
+    assert not p.exitcode
 
-    assert "TLS" in conf
-    assert "UCX_TLS" in env
 
-    assert "tcp" in conf["TLS"] and "tcp" in env["UCX_TLS"]
-    assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
-    assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
+def test_initialize_ucx_nvlink():
+    def test():
+        initialize(enable_nvlink=True)
+        with LocalCluster(
+            protocol="ucx",
+            dashboard_address=None,
+            n_workers=1,
+            threads_per_worker=1,
+            processes=True,
+        ) as cluster:
+            with Client(cluster):
+                res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+                res = res.sum().compute()
+                assert res == 49995000
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "cuda_ipc" in conf["TLS"]
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
 
-    assert (
-        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
-    )
+    # We run in process to avoid using the UCX options from the other tests
+    p = Process(target=test)
+    p.start()
+    p.join()
+    assert not p.exitcode
 
 
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
 def test_initialize_ucx_infiniband():
-    ucp = pytest.importorskip("ucp")
-
     initialize(enable_infiniband=True, net_devices="ib0")
 
-    conf = ucp.get_config()
-    env = os.environ
+    def test():
+        with LocalCluster(
+            protocol="ucx",
+            dashboard_address=None,
+            n_workers=1,
+            threads_per_worker=1,
+            processes=True,
+        ) as cluster:
+            with Client(cluster):
+                res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+                res = res.sum().compute()
+                assert res == 49995000
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "rc" in conf["TLS"]
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                assert conf["NET_DEVICES"] == "ib0"
 
-    assert "TLS" in conf
-    assert "UCX_TLS" in env
-
-    assert "rc" in conf["TLS"] and "rc" in env["UCX_TLS"]
-    assert "tcp" in conf["TLS"] and "tcp" in env["UCX_TLS"]
-    assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
-    assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
-
-    assert (
-        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
-    )
-
-    assert conf["NET_DEVICES"] == "ib0" and env["UCX_NET_DEVICES"] == "ib0"
-
-
-def test_initialize_ucx_nvlink():
-    ucp = pytest.importorskip("ucp")
-
-    initialize(enable_nvlink=True)
-
-    conf = ucp.get_config()
-    env = os.environ
-
-    assert "TLS" in conf
-    assert "UCX_TLS" in env
-
-    assert "cuda_ipc" in conf["TLS"] and "cuda_ipc" in env["UCX_TLS"]
-    assert "tcp" in conf["TLS"] and "tcp" in env["UCX_TLS"]
-    assert "sockcm" in conf["TLS"] and "sockcm" in env["UCX_TLS"]
-    assert "cuda_copy" in conf["TLS"] and "cuda_copy" in env["UCX_TLS"]
-
-    assert (
-        "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-        and "sockcm" in env["UCX_SOCKADDR_TLS_PRIORITY"]
-    )
+    # We run in process to avoid using the UCX options from the other tests
+    p = Process(target=test)
+    p.start()
+    p.join()
+    assert not p.exitcode
