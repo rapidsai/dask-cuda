@@ -12,6 +12,7 @@ ucp = pytest.importorskip("ucp")
 cupy = pytest.importorskip("cupy")
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/168")
 def test_initialize_ucx_tcp():
     def test():
         initialize(enable_tcp_over_ucx=True)
@@ -41,6 +42,7 @@ def test_initialize_ucx_tcp():
     assert not p.exitcode
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/168")
 def test_initialize_ucx_nvlink():
     def test():
         initialize(enable_nvlink=True)
@@ -70,6 +72,7 @@ def test_initialize_ucx_nvlink():
     assert not p.exitcode
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/168")
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
