@@ -10,6 +10,11 @@ from distributed import Client
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
 
+# Notice, all of the following tests is executed in a new process such
+# that UCX options of the different tests doesn't conflict.
+# Furthermore, all tests do some computation to trigger initialization
+# of UCX before retrieving the current config.
+
 
 def _test_global_option(seg_size):
     """Test setting UCX options through dask's global config"""
