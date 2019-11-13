@@ -81,3 +81,8 @@ async def test_ucx_protocol():
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
         )
+
+
+def test_n_workers():
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES="0,1")
+    assert len(cluster.worker_spec) == 2

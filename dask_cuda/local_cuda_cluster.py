@@ -54,13 +54,13 @@ class LocalCUDACluster(LocalCluster):
         local_directory=None,
         **kwargs,
     ):
-        if n_workers is None:
-            n_workers = get_n_gpus()
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
             CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
         CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+        if n_workers is None:
+            n_workers = len(CUDA_VISIBLE_DEVICES)
         if memory_limit is None:
             memory_limit = MEMORY_LIMIT / n_workers
         self.host_memory_limit = memory_limit
