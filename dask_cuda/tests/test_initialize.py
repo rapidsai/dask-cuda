@@ -27,16 +27,21 @@ def _test_initialize_ucx_tcp():
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster):
+        with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
             res = res.sum().compute()
             assert res == 49995000
-            conf = ucp.get_config()
-            assert "TLS" in conf
-            assert "tcp" in conf["TLS"]
-            assert "sockcm" in conf["TLS"]
-            assert "cuda_copy" in conf["TLS"]
-            assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                return True
+
+            assert all(client.run(check_ucx_options).values())
 
 
 def test_initialize_ucx_tcp():
@@ -55,17 +60,22 @@ def _test_initialize_ucx_nvlink():
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster):
+        with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
             res = res.sum().compute()
             assert res == 49995000
-            conf = ucp.get_config()
-            assert "TLS" in conf
-            assert "cuda_ipc" in conf["TLS"]
-            assert "tcp" in conf["TLS"]
-            assert "sockcm" in conf["TLS"]
-            assert "cuda_copy" in conf["TLS"]
-            assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "cuda_ipc" in conf["TLS"]
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                return True
+
+            assert all(client.run(check_ucx_options).values())
 
 
 def test_initialize_ucx_nvlink():
@@ -84,18 +94,23 @@ def _test_initialize_ucx_infiniband():
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster):
+        with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
             res = res.sum().compute()
             assert res == 49995000
-            conf = ucp.get_config()
-            assert "TLS" in conf
-            assert "rc" in conf["TLS"]
-            assert "tcp" in conf["TLS"]
-            assert "sockcm" in conf["TLS"]
-            assert "cuda_copy" in conf["TLS"]
-            assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-            assert conf["NET_DEVICES"] == "ib0"
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "rc" in conf["TLS"]
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                assert conf["NET_DEVICES"] == "ib0"
+                return True
+
+            assert all(client.run(check_ucx_options).values())
 
 
 @pytest.mark.skipif(
