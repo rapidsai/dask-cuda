@@ -110,10 +110,8 @@ def dask_setup(
     enable_nvlink,
     net_devices,
 ):
-    initialize(
-        create_cuda_context=create_cuda_context,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        net_devices=net_devices,
-    )
+    if create_cuda_context:
+        try:
+            numba.cuda.current_context()
+        except Exception:
+            logger.error("Unable to start CUDA Context", exc_info=True)
