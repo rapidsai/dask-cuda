@@ -129,50 +129,6 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_env(enable_tcp=True, enable_infiniband=False, enable_nvlink=False):
-    """
-    Return a dictionary with the environment variables that UCX requires to enable
-    InfiniBand and/or NVLink communication.
-
-    Parameters
-    ----------
-    enable_tcp: bool
-        Set environment variables to enable TCP over UCX, even when InfiniBand or
-        NVLink support are disabled.
-    enable_infiniband: bool
-        Set environment variables to enable UCX InfiniBand support. Implies
-        enable_tcp=True.
-    enable_nvlink: bool
-        Set environment variables to enable UCX NVLink support. Implies
-        enable_tcp=True.
-
-    Example
-    -------
-    >>> from dask_cuda.utils import get_ucx_env
-    >>> get_ucx_env()
-    {'UCX_TLS': 'tcp,sockcm,cuda_copy',
-     'UCX_SOCKADDR_TLS_PRIORITY': 'sockcm'}
-    >>> get_ucx_env(enable_tcp=False)
-    {}
-    >>> get_ucx_env(enable_infiniband=True, enable_nvlink=True)
-    {'UCX_SOCKADDR_TLS_PRIORITY': 'sockcm',
-     'UCX_TLS': 'rc,tcp,sockcm,cuda_copy,cuda_ipc'}
-    """
-    if not enable_tcp and not enable_infiniband and not enable_nvlink:
-        return {}
-
-    tls = "tcp,sockcm,cuda_copy"
-    tls_priority = "sockcm"
-    ifname = ""
-
-    if enable_infiniband:
-        tls = "rc," + tls
-    if enable_nvlink:
-        tls = tls + ",cuda_ipc"
-
-    return {"UCX_TLS": tls, "UCX_SOCKADDR_TLS_PRIORITY": tls_priority}
-
-
 def get_preload_options(
     protocol=None,
     create_cuda_context=False,

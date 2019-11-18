@@ -44,18 +44,27 @@ def test_worker_spec(
     enable_infiniband,
     enable_nvlink,
 ):
+    def _test():
+        return worker_spec(
+            CUDA_VISIBLE_DEVICES=list(range(num_devices)),
+            cls=cls,
+            interface=interface,
+            protocol=protocol,
+            dashboard_address=dashboard_address,
+            threads_per_worker=threads_per_worker,
+            silence_logs=silence_logs,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+        )
 
-    spec = worker_spec(
-        CUDA_VISIBLE_DEVICES=list(range(num_devices)),
-        cls=cls,
-        interface=interface,
-        protocol=protocol,
-        dashboard_address=dashboard_address,
-        threads_per_worker=threads_per_worker,
-        silence_logs=silence_logs,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-    )
+    if (enable_infiniband or enable_nvlink) and protocol != "ucx":
+        with pytest.raises(
+            TypeError, match="Enabling InfiniBand or NVLink requires protocol='ucx'"
+        ):
+            _test()
+        return
+    else:
+        spec = _test()
 
     assert len(spec) == num_devices
     assert all([s["cls"] == cls for s in spec.values()])
@@ -65,15 +74,3 @@ def test_worker_spec(
     _check_option(spec, "dashboard_address", dashboard_address)
     _check_option(spec, "nthreads", threads_per_worker)
     _check_option(spec, "silence_logs", silence_logs)
-
-    if enable_infiniband and protocol == "ucx":
-        assert all(
-            [
-                "--enable-infiniband" in s["options"]["preload_argv"]
-                for s in spec.values()
-            ]
-        )
-    if enable_nvlink and protocol == "ucx":
-        assert all(
-            ["--enable-nvlink" in s["options"]["preload_argv"] for s in spec.values()]
-        )
