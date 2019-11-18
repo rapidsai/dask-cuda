@@ -12,7 +12,7 @@ class DGX(LocalCUDACluster):
         threads_per_worker=1,
         silence_logs=True,
         CUDA_VISIBLE_DEVICES=None,
-        protocol="tcp",
+        protocol=None,
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
@@ -72,10 +72,11 @@ class DGX(LocalCUDACluster):
         >>> cluster = DGX()
         >>> client = Client(cluster)
         """
-        if (
-            enable_tcp_over_ucx or enable_infiniband or enable_nvlink
-        ) and protocol != "ucx":
-            raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+        if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+            if protocol is None:
+                protocol = "ucx"
+            elif protocol != "ucx":
+                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         initialize(
             enable_tcp_over_ucx=enable_tcp_over_ucx,
