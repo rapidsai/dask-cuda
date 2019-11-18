@@ -1,10 +1,5 @@
 import os
 
-from dask.distributed import SpecCluster
-
-from .scheduler import Scheduler
-from .utils import get_preload_options
-from .worker_spec import worker_spec
 from .initialize import initialize
 from .local_cuda_cluster import LocalCUDACluster
 
