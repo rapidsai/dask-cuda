@@ -1,6 +1,5 @@
 from .local_cuda_cluster import LocalCUDACluster
 from .dgx import DGX
-from .scheduler import Scheduler
 
 from ._version import get_versions
 
