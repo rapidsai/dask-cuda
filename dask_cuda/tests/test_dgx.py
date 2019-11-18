@@ -1,85 +1,122 @@
-import pytest
-
-import psutil
 import os
-
+import multiprocessing as mp
+import pytest
+import numpy
 import dask.array as da
 
-from distributed.utils_test import gen_test
-from dask.distributed import Client
-
 from dask_cuda import DGX
-from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_env
+from distributed import Client
 
-cupy = pytest.importorskip("cupy")
+mp = mp.get_context("spawn")
+ucp = pytest.importorskip("ucp")
+psutil = pytest.importorskip("psutil")
+
+if "ib0" not in psutil.net_if_addrs():
+    pytest.skip("Infiniband interface ib0 not found", allow_module_level=True)
 
 
-@pytest.mark.skipif(
-    "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
-)
-@gen_test(timeout=20)
-async def test_dgx():
-    async with DGX(
-        enable_infiniband=False, enable_nvlink=False, asynchronous=True
+# Notice, all of the following tests is executed in a new process such
+# that UCX options of the different tests doesn't conflict.
+# Furthermore, all tests do some computation to trigger initialization
+# of UCX before retrieving the current config.
+
+
+def _test_default():
+    with DGX() as cluster:
+        with Client(cluster):
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
+
+
+def test_default():
+    p = mp.Process(target=_test_default)
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_tcp_over_ucx():
+    with DGX(enable_tcp_over_ucx=True) as cluster:
+        with Client(cluster) as client:
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                return True
+
+            assert all(client.run(check_ucx_options).values())
+
+
+def test_tcp_over_ucx():
+    p = mp.Process(target=_test_tcp_over_ucx)
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_tcp_only():
+    with DGX(protocol="tcp") as cluster:
+        with Client(cluster):
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
+
+
+def test_tcp_only():
+    p = mp.Process(target=_test_tcp_only)
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
+    cupy = pytest.importorskip("cupy")
+    with DGX(
+        enable_tcp_over_ucx=True,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
     ) as cluster:
-        async with Client(cluster, asynchronous=True):
-            pass
+        with Client(cluster) as client:
+            res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+            res = res.sum().compute()
+            assert res == 49995000
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                if enable_nvlink:
+                    assert "cuda_ipc" in conf["TLS"]
+                if enable_infiniband:
+                    assert "rc" in conf["TLS"]
+                return True
+
+            assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.skipif(
-    "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
-)
-@gen_test(timeout=20)
-async def test_dgx_tcp_over_ucx():
-    ucx_env = get_ucx_env(enable_tcp=True)
-    os.environ.update(ucx_env)
-
-    ucp = pytest.importorskip("ucp")
-
-    async with DGX(
-        protocol="ucx", enable_tcp_over_ucx=True, asynchronous=True
-    ) as cluster:
-        async with Client(cluster, asynchronous=True):
-            pass
-
-
-@pytest.mark.skipif(
-    "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
-)
 @pytest.mark.parametrize(
     "params",
     [
-        {"enable_tcp": True, "enable_infiniband": False, "enable_nvlink": False},
-        {"enable_tcp": True, "enable_infiniband": True, "enable_nvlink": True},
+        {"enable_infiniband": False, "enable_nvlink": False},
+        {"enable_infiniband": True, "enable_nvlink": True},
     ],
 )
-@pytest.mark.asyncio
-async def test_dgx_ucx_infiniband_nvlink(params):
-    ucp = pytest.importorskip("ucp")
-
-    enable_tcp = params["enable_tcp"]
-    enable_infiniband = params["enable_infiniband"]
-    enable_nvlink = params["enable_nvlink"]
-
-    initialize(
-        create_cuda_context=True,
-        enable_tcp_over_ucx=enable_tcp,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
+def test_ucx_infiniband_nvlink(params):
+    p = mp.Process(
+        target=_test_ucx_infiniband_nvlink,
+        args=(params["enable_infiniband"], params["enable_nvlink"]),
     )
-
-    async with DGX(
-        interface="enp1s0f0",
-        protocol="ucx",
-        enable_tcp_over_ucx=enable_tcp,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        asynchronous=True,
-    ) as cluster:
-        async with Client(cluster, asynchronous=True) as client:
-            rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-            a = rs.normal(10, 1, (int(1e4), int(1e4)), chunks=(int(2.5e3), int(2.5e3)))
-            x = a + a.T
-
-            res = await client.compute(x)
+    p.start()
+    p.join()
+    assert not p.exitcode
