@@ -12,7 +12,7 @@ class DGX(LocalCUDACluster):
         threads_per_worker=1,
         silence_logs=True,
         CUDA_VISIBLE_DEVICES=None,
-        protocol="ucx",
+        protocol="tcp",
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
