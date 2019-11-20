@@ -102,6 +102,7 @@ def test_cupy_device_spill(params):
             ),
         },
         config={
+            "distributed.comm.timeouts.connect": "20s",
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
             "distributed.worker.memory.pause": params["host_pause"],
