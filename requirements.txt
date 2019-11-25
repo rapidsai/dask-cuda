@@ -3,3 +3,4 @@ distributed>=2.4.0
 pynvml>=8.0.3
 numpy>=1.16.0
 numba>=0.40.1
+tornado==5
