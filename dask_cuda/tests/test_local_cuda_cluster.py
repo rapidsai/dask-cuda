@@ -73,7 +73,7 @@ async def test_with_subset_of_cuda_visible_devices():
 async def test_ucx_protocol():
     pytest.importorskip("distributed.comm.ucx")
 
-    initialize()
+    initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
         protocol="ucx", asynchronous=True, data=dict
     ) as cluster:
