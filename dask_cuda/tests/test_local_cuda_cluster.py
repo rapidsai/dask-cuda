@@ -1,12 +1,10 @@
-from distributed.utils_test import gen_test
-
 import os
-
-from dask.distributed import Client
-from distributed.system import MEMORY_LIMIT
-from dask_cuda import LocalCUDACluster
-from dask_cuda import utils
 import pytest
+from distributed.utils_test import gen_test
+from distributed.system import MEMORY_LIMIT
+from dask.distributed import Client
+from dask_cuda import LocalCUDACluster, utils
+from dask_cuda.initialize import initialize
 
 
 @gen_test(timeout=20)
@@ -71,10 +69,11 @@ async def test_with_subset_of_cuda_visible_devices():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/168")
 @gen_test(timeout=20)
 async def test_ucx_protocol():
     pytest.importorskip("distributed.comm.ucx")
+
+    initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
         protocol="ucx", asynchronous=True, data=dict
     ) as cluster:

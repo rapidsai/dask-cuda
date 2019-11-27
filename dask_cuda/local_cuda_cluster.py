@@ -37,6 +37,12 @@ class LocalCUDACluster(LocalCluster):
     This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
     worker process.
 
+    Parameters
+    ----------
+    CUDA_VISIBLE_DEVICES: str
+        String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
+        different GPUs
+
     See Also
     --------
     LocalCluster

@@ -28,6 +28,7 @@ import logging
 import os
 import warnings
 
+import dask
 import numba.cuda
 
 
@@ -70,18 +71,7 @@ def initialize(
                 if net_devices is not None and net_devices != "":
                     options["NET_DEVICES"] = net_devices
 
-            ucp.reset()
-            ucp.init(options=options)
-
-            ucx_env = {}
-            for k, v in ucp.get_config().items():
-                # Skip values that aren't actual environment variables (i.e., not strings)
-                if isinstance(v, str):
-                    ucx_env["UCX_" + k] = v
-
-            # Set also UCX environment variables: required by Dask client. It may be best ti
-            # to have the client asking the scheduler for the proper variables.
-            os.environ.update(ucx_env)
+            dask.config.set({"ucx": options})
 
 
 @click.command()
@@ -120,10 +110,8 @@ def dask_setup(
     enable_nvlink,
     net_devices,
 ):
-    initialize(
-        create_cuda_context=create_cuda_context,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        net_devices=net_devices,
-    )
+    if create_cuda_context:
+        try:
+            numba.cuda.current_context()
+        except Exception:
+            logger.error("Unable to start CUDA Context", exc_info=True)
