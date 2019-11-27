@@ -46,9 +46,11 @@ async def run(args):
                 (
                     cluster.scheduler.workers[w1].name,
                     cluster.scheduler.workers[w2].name,
-                ): ["%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])]
+                ): [
+                    "%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])
+                ]
                 for (w1, w2), v in bandwidths.items()
-            }        
+            }
             total_nbytes = {
                 (
                     cluster.scheduler.workers[w1].name,
@@ -67,11 +69,14 @@ async def run(args):
             print(f"npartitions | {x.npartitions}")
             print("==========================")
             print(f"Total time  | {format_time(took)}")
-            print("==========================")            
+            print("==========================")
             print("(w1,w2)     | 25% 50% 75% (total nbytes)")
             print("--------------------------")
             for (d1, d2), bw in sorted(bandwidths.items()):
-                print("(%02d,%02d)     | %s %s %s (%s)" % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+                print(
+                    "(%02d,%02d)     | %s %s %s (%s)"
+                    % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
+                )
 
 
 def parse_args():
