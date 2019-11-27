@@ -104,9 +104,9 @@ def main(args):
     client = Client(cluster)
 
     if args.no_pool_allocator:
-        client.run(lambda: cudf.set_allocator("default", pool=False))
+        client.run(cudf.set_allocator, "default", pool=False)
     else:
-        client.run(lambda: cudf.set_allocator("default", pool=True))
+        client.run(cudf.set_allocator, "default", pool=True)
 
     # Generate random Dask dataframes
     ddf_base = get_random_ddf(
@@ -120,7 +120,7 @@ def main(args):
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
 
     t1 = clock()
-    wait(ddf_join.compute())
+    wait(ddf_join.persist())
     took = clock() - t1
 
     # Collect, aggregate, and print peer-to-peer bandwidths
