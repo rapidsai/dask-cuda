@@ -17,6 +17,9 @@ from dask_cuda import LocalCUDACluster
 
 
 def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
+    # Setting a seed that triggers max amount of comm in the two-GPU case.
+    cupy.random.seed(17561648246761420848)
+
     chunk_type = chunk_type or "build"
     frac_match = frac_match or 1.0
     if chunk_type == "build":
@@ -203,9 +206,7 @@ def parse_args():
         help="Fraction of rows that matches (default 0.3)",
     )
     parser.add_argument(
-        "--no-pool-allocator",
-        action="store_true",
-        help="Disable the RMM memory pool",
+        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool",
     )
 
     args = parser.parse_args()
