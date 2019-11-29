@@ -1,11 +1,11 @@
-import os
 import multiprocessing as mp
-import pytest
-import numpy
-import dask.array as da
 
+import dask.array as da
 from dask_cuda import DGX
 from distributed import Client
+
+import numpy
+import pytest
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

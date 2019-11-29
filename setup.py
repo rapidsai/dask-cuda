@@ -1,7 +1,7 @@
 import os
 from codecs import open
-import versioneer
 
+import versioneer
 from setuptools import find_packages, setup
 
 # Get the long description from the README file
