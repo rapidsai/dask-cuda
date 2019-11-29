@@ -1,10 +1,12 @@
 import os
-import pytest
-from distributed.utils_test import gen_test
-from distributed.system import MEMORY_LIMIT
+
 from dask.distributed import Client
 from dask_cuda import LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
+from distributed.system import MEMORY_LIMIT
+from distributed.utils_test import gen_test
+
+import pytest
 
 
 @gen_test(timeout=20)

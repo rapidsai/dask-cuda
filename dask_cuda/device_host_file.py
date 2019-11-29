@@ -1,22 +1,22 @@
-from zict import Buffer, File, Func
-from zict.common import ZictBase
+import os
+
+from dask.sizeof import sizeof
 from distributed.protocol import (
+    dask_deserialize,
+    dask_serialize,
     deserialize,
     deserialize_bytes,
     serialize,
     serialize_bytelist,
-    dask_serialize,
-    dask_deserialize,
 )
-from dask.sizeof import sizeof
 from distributed.utils import nbytes
 from distributed.worker import weight
 
 from numba import cuda
-import os
+from zict import Buffer, File, Func
+from zict.common import ZictBase
 
 from .is_device_object import is_device_object
-
 
 # Register sizeof for Numba DeviceNDArray while Dask doesn't add it
 if not hasattr(sizeof, "register_numba"):

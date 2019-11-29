@@ -1,31 +1,36 @@
-from __future__ import print_function, division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 import atexit
 import logging
 import multiprocessing
 import os
 
-import click
 from distributed import Nanny
-from distributed.config import config
-from distributed.utils import get_ip_interface, parse_bytes
-from distributed.worker import parse_memory_limit
-from distributed.security import Security
 from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.config import config
 from distributed.preloading import validate_preload_argv
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.security import Security
+from distributed.utils import get_ip_interface, parse_bytes
+from distributed.worker import parse_memory_limit
 
-from .initialize import initialize
-from .device_host_file import DeviceHostFile
-from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity, get_n_gpus, get_device_total_memory
-
+import click
 from toolz import valmap
-from tornado.ioloop import IOLoop, TimeoutError
 from tornado import gen
+from tornado.ioloop import IOLoop, TimeoutError
+
+from .device_host_file import DeviceHostFile
+from .initialize import initialize
+from .local_cuda_cluster import cuda_visible_devices
+from .utils import (
+    CPUAffinity,
+    get_cpu_affinity,
+    get_device_total_memory,
+    get_n_gpus,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,7 @@
-import pytest
-
+from dask_cuda.worker_spec import worker_spec
 from distributed import Nanny
 
-from dask_cuda.worker_spec import worker_spec
+import pytest
 
 
 def _check_option(spec, k, v):

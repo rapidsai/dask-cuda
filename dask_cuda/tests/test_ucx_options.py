@@ -1,11 +1,12 @@
-import os
 import multiprocessing as mp
+
+import dask
+import dask.array as da
+from distributed import Client
+from distributed.deploy.local import LocalCluster
+
 import numpy
 import pytest
-import dask.array as da
-import dask
-from distributed.deploy.local import LocalCluster
-from distributed import Client
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

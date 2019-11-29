@@ -1,5 +1,3 @@
-import os
-
 from .initialize import initialize
 from .local_cuda_cluster import LocalCUDACluster
 
