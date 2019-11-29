@@ -40,7 +40,7 @@ else
   echo -e "\n\n>>>> PASSED: black style check\n\n"
 fi
 
-if [ "$FLAKE" != "" ]; then
+if [ "$FLAKE" != "0" ]; then
   echo -e "\n\n>>>> FAILED: flake8 style check; begin output\n\n"
   echo -e "$FLAKE"
   echo -e "\n\n>>>> FAILED: flake8 style check; end output\n\n"
