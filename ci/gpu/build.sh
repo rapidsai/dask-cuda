@@ -55,7 +55,7 @@ conda list
 conda install "cudatoolkit=$CUDA_REL" \
               "cupy>=6.5.0" "numpy=1.16.4" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "dask>=2.3.0" "distributed>=2.3.2" \
+              "dask>=2.3.0" "distributed>=2.3.2"
 
 # needed for asynccontextmanager in py36
 conda install -c conda-forge "async_generator" "automake" "libtool" \
