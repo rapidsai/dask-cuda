@@ -88,3 +88,4 @@ async def test_n_workers():
         CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
     ) as cluster:
         assert len(cluster.workers) == 2
+        assert len(cluster.worker_spec) == 2
