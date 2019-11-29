@@ -100,6 +100,7 @@ def test_cupy_device_spill(params):
             ),
         },
         config={
+            "distributed.comm.timeouts.connect": "20s",
             "distributed.worker.memory.target": params["host_target"],
             "distributed.worker.memory.spill": params["host_spill"],
             "distributed.worker.memory.pause": params["host_pause"],
@@ -223,7 +224,6 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
 def test_cudf_device_spill(params):
     @gen_cluster(
         client=True,
@@ -283,7 +283,7 @@ def test_cudf_device_spill(params):
     test_device_spill()
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/pull/171")
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
