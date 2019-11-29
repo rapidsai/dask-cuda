@@ -23,14 +23,12 @@ You can add it to your global config with the following yaml
 See https://docs.dask.org/en/latest/configuration.html for more information
 about Dask configuration.
 """
-import click
 import logging
-import os
-import warnings
 
 import dask
-import numba.cuda
 
+import click
+import numba.cuda
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +48,7 @@ def initialize(
 
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         try:
-            import ucp
+            import ucp  # noqa
         except ImportError:
             logger.error(
                 "UCX protocol requested but ucp module is not available", exc_info=True

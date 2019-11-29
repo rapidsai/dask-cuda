@@ -1,9 +1,6 @@
-from __future__ import print_function, division, absolute_import
-
-import sys
+from __future__ import absolute_import, division, print_function
 
 from dask.utils import Dispatch
-
 
 is_device_object = Dispatch(name="is_device_object")
 

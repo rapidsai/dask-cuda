@@ -3,8 +3,8 @@ import os
 from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
-from .local_cuda_cluster import cuda_visible_devices
 from .initialize import initialize
+from .local_cuda_cluster import cuda_visible_devices
 from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
 
 
@@ -58,7 +58,8 @@ def worker_spec(
     Examples
     --------
     >>> from dask_cuda.worker_spec import worker_spec
-    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2], ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
+    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2],
+                    ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
     {0: {'cls': distributed.nanny.Nanny,
       'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2'},
        'interface': 'enp1s0f0',
