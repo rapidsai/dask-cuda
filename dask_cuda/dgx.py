@@ -105,7 +105,7 @@ class DGX(LocalCUDACluster):
 
                 td = TopologicalDistance()
                 dist = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-                net_dev = dist[0]["name"]
+                net_dev = dist[0]["name"] + ":1"
             except ImportError:
                 net_dev = "mlx5_%d:1" % (dev // 2)
 
