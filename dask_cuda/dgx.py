@@ -98,6 +98,17 @@ class DGX(LocalCUDACluster):
         spec = super().new_worker_spec()
         first_spec = next(iter(spec.values()))
         dev = int(first_spec["options"]["env"]["CUDA_VISIBLE_DEVICES"].split(",")[0])
+
         if self.set_ucx_net_devices:
-            first_spec["options"]["env"]["UCX_NET_DEVICES"] = "mlx5_%d:1" % (dev // 2)
+            try:
+                from ucp._libs.topological_distance import TopologicalDistance
+
+                td = TopologicalDistance()
+                dist = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+                net_dev = dist[0]["name"]
+            except ImportError:
+                net_dev = "mlx5_%d:1" % (dev // 2)
+
+            first_spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
+
         return spec
