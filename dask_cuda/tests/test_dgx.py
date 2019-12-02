@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import os
 
 import dask.array as da
 from dask_cuda import DGX
@@ -11,8 +12,25 @@ mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
-if "ib0" not in psutil.net_if_addrs():
-    pytest.skip("Infiniband interface ib0 not found", allow_module_level=True)
+
+def _check_dgx_version():
+    if not os.path.isfile("/etc/dgx-release"):
+        pytest.skip("This test can only be executed on an NVIDIA DGX Server")
+
+    dgx_server = None
+    for line in open("/etc/dgx-release"):
+        if line.startswith("DGX_PLATFORM"):
+            if "DGX Server for DGX-1" in line:
+                dgx_server = 1
+            elif "DGX Server for DGX-2" in line:
+                dgx_server = 2
+            break
+
+    return dgx_server
+
+
+if _check_dgx_version() is None:
+    pytest.skip("Not a DGX server", allow_module_level=True)
 
 
 # Notice, all of the following tests is executed in a new process such
@@ -79,6 +97,38 @@ def test_tcp_only():
 
 def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
     cupy = pytest.importorskip("cupy")
+
+    if _check_dgx_version() == 1:
+        net_devices = [
+            "mlx5_0:1",
+            "mlx5_0:1",
+            "mlx5_1:1",
+            "mlx5_1:1",
+            "mlx5_2:1",
+            "mlx5_2:1",
+            "mlx5_3:1",
+            "mlx5_3:1",
+        ]
+    elif _check_dgx_version() == 2:
+        net_devices = [
+            "mlx5_0:1",
+            "mlx5_0:1",
+            "mlx5_1:1",
+            "mlx5_1:1",
+            "mlx5_2:1",
+            "mlx5_2:1",
+            "mlx5_3:1",
+            "mlx5_3:1",
+            "mlx5_6:1",
+            "mlx5_6:1",
+            "mlx5_7:1",
+            "mlx5_7:1",
+            "mlx5_8:1",
+            "mlx5_8:1",
+            "mlx5_9:1",
+            "mlx5_9:1",
+        ]
+
     with DGX(
         enable_tcp_over_ucx=True,
         enable_infiniband=enable_infiniband,
@@ -101,6 +151,15 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
                 if enable_infiniband:
                     assert "rc" in conf["TLS"]
                 return True
+
+            if enable_infiniband:
+                assert all(
+                    [
+                        cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
+                        == net_devices[k]
+                        for k in cluster.worker_spec.keys()
+                    ]
+                )
 
             assert all(client.run(check_ucx_options).values())
 
