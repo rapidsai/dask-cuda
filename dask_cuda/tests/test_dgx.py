@@ -14,10 +14,11 @@ psutil = pytest.importorskip("psutil")
 
 
 def _check_dgx_version():
-    if not os.path.isfile("/etc/dgx-release"):
-        pytest.skip("This test can only be executed on an NVIDIA DGX Server")
-
     dgx_server = None
+
+    if not os.path.isfile("/etc/dgx-release"):
+        return dgx_server
+
     for line in open("/etc/dgx-release"):
         if line.startswith("DGX_PLATFORM"):
             if "DGX Server for DGX-1" in line:
