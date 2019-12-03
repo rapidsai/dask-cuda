@@ -36,6 +36,10 @@ export UCX_PATH=$CONDA_PREFIX
 # will possibly be enabled by default starting on 1.17)
 export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
+# Install dask and distributed from master branch. Usually needed during
+# development time and disabled before a new dask-cuda release.
+export INSTALL_DASK_MASTER=0
+
 ################################################################################
 # SETUP - Check environment
 ################################################################################
@@ -55,19 +59,23 @@ conda list
 conda install "cudatoolkit=$CUDA_REL" \
               "cupy>=6.5.0" "numpy=1.16.4" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "dask>=2.3.0" "distributed>=2.3.2" "libhwloc"
+              "dask>=2.8.1" "distributed>=2.8.1"
 
-# needed for asynccontextmanager in py36
-conda install -c conda-forge "async_generator" "automake" "libtool" \
-                              "cmake" "automake" "autoconf" "cython" \
-                              "pytest" "pkg-config" "pytest-asyncio"
+# needed for async tests
+conda install -c conda-forge "pytest" "pytest-asyncio"
+
+# Use nightly build of ucx-py for now
+conda install -c rapidsai-nightly "ucx-py"
+
 conda list
 
 # Install the master version of dask and distributed
-logger "pip install git+https://github.com/dask/distributed.git --upgrade"
-pip install "git+https://github.com/dask/distributed.git" --upgrade
-logger "pip install git+https://github.com/dask/dask.git --upgrade"
-pip install "git+https://github.com/dask/dask.git" --upgrade
+if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
+    logger "pip install git+https://github.com/dask/distributed.git --upgrade"
+    pip install "git+https://github.com/dask/distributed.git" --upgrade
+    logger "pip install git+https://github.com/dask/dask.git --upgrade"
+    pip install "git+https://github.com/dask/dask.git" --upgrade
+fi
 
 logger "Check versions..."
 python --version
@@ -76,38 +84,12 @@ $CXX --version
 conda list
 
 ################################################################################
-# BUILD - Build ucx
-################################################################################
-
-logger "Build ucx"
-git clone https://github.com/openucx/ucx
-cd ucx
-git checkout v1.7.x
-ls
-./autogen.sh
-mkdir build
-cd build
-../configure --prefix=$CONDA_PREFIX --enable-debug --with-cuda=$CUDA_HOME --enable-mt CPPFLAGS="-I//$CUDA_HOME/include"
-make -j install
-cd $WORKSPACE
-
-
-################################################################################
-# Installing ucx-py
-################################################################################
-
-logger "pip install git+https://github.com/rapidsai/ucx-py.git --upgrade"
-pip install "git+https://github.com/rapidsai/ucx-py.git" --upgrade
-
-
-################################################################################
 # BUILD - Build dask-cuda
 ################################################################################
 
 logger "Build dask-cuda..."
 cd $WORKSPACE
 python -m pip install -e .
-
 
 ################################################################################
 # TEST - Run py.tests for ucx-py
