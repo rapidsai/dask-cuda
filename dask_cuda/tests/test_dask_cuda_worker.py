@@ -10,8 +10,6 @@ from distributed.utils_test import popen
 
 import pytest
 
-pytest.importorskip("requests")
-
 
 def test_cuda_visible_devices(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
