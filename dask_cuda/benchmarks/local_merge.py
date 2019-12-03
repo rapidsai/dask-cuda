@@ -5,7 +5,7 @@ import numpy
 import cudf
 import cupy
 import dask_cudf
-from dask.distributed import Client, wait
+from dask.distributed import Client, wait, performance_report
 from dask.dataframe.core import new_dd_object
 from dask.base import tokenize
 from dask.utils import format_time, format_bytes, parse_bytes
@@ -102,7 +102,7 @@ def main(args):
 
     # Set up workers on the local machine
     cluster = LocalCUDACluster(
-        protocol=args.protocol, n_workers=n_workers, CUDA_VISIBLE_DEVICES=args.devs,
+        protocol=args.protocol, n_workers=n_workers, CUDA_VISIBLE_DEVICES=args.devs
     )
     client = Client(cluster)
 
@@ -122,9 +122,16 @@ def main(args):
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
 
-    t1 = clock()
-    wait(ddf_join.persist())
-    took = clock() - t1
+    # Execute the operations to benchmark
+    if args.profile is not None:
+        with performance_report(filename=args.profile):
+            t1 = clock()
+            wait(ddf_join.persist())
+            took = clock() - t1
+    else:
+        t1 = clock()
+        wait(ddf_join.persist())
+        took = clock() - t1
 
     # Collect, aggregate, and print peer-to-peer bandwidths
     incoming_logs = client.run(lambda dask_worker: dask_worker.incoming_transfer_log)
@@ -208,7 +215,13 @@ def parse_args():
     parser.add_argument(
         "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool",
     )
-
+    parser.add_argument(
+        "--profile",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Write dask profile report (E.g. dask-report.html)",
+    )
     args = parser.parse_args()
     return args
 
