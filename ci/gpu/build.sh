@@ -36,6 +36,10 @@ export UCX_PATH=$CONDA_PREFIX
 # will possibly be enabled by default starting on 1.17)
 export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
+# Install dask and distributed from master branch. Usually needed during
+# development time and disabled before a new dask-cuda release.
+export INSTALL_DASK_MASTER=0
+
 ################################################################################
 # SETUP - Check environment
 ################################################################################
@@ -66,10 +70,12 @@ conda install -c rapidsai-nightly "ucx-py"
 conda list
 
 # Install the master version of dask and distributed
-logger "pip install git+https://github.com/dask/distributed.git --upgrade"
-pip install "git+https://github.com/dask/distributed.git" --upgrade
-logger "pip install git+https://github.com/dask/dask.git --upgrade"
-pip install "git+https://github.com/dask/dask.git" --upgrade
+if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
+    logger "pip install git+https://github.com/dask/distributed.git --upgrade"
+    pip install "git+https://github.com/dask/distributed.git" --upgrade
+    logger "pip install git+https://github.com/dask/dask.git --upgrade"
+    pip install "git+https://github.com/dask/dask.git" --upgrade
+fi
 
 logger "Check versions..."
 python --version
