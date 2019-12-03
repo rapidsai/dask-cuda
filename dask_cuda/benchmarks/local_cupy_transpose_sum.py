@@ -11,6 +11,28 @@ from dask.distributed import Client, wait, performance_report
 from dask.utils import format_time, format_bytes, parse_bytes
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
+try:
+    import cudf
+    from rmm._lib.device_buffer import DeviceBuffer
+
+    class RMMemory(cupy.cuda.memory.BaseMemory):
+        def __init__(self, size):
+            self.size = size
+            self.device_id = cupy.cuda.device.get_device_id()
+            if size > 0:
+                self.rmm_array = DeviceBuffer(size=size)
+                self.ptr = self.rmm_array.ptr
+            else:
+                self.rmm_array = None
+                self.ptr = 0
+
+    def rmm_mem_allocator(bsize):
+        return cupy.cuda.memory.MemoryPointer(RMMemory(bsize), 0)
+
+
+except ImportError:
+    pass
+
 
 async def run(args):
 
@@ -22,6 +44,10 @@ async def run(args):
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
+
+            if args.rmm:
+                await client.run(cudf.set_allocator, "default", pool=True)
+                await client.run(cupy.cuda.set_allocator, rmm_mem_allocator)
 
             # Create a simple random array
             rs = da.random.RandomState(RandomState=cupy.random.RandomState)
@@ -75,6 +101,7 @@ async def run(args):
             print(f"Protocol    | {args.protocol}")
             print(f"Device(s)   | {args.devs}")
             print(f"npartitions | {x.npartitions}")
+            print(f"rmm mpool   | {args.rmm}")
             print("==========================")
             print(f"Total time  | {format_time(took)}")
             print("==========================")
@@ -131,6 +158,9 @@ def parse_args():
         default=None,
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
+    )
+    parser.add_argument(
+        "--rmm", action="store_true", help="Enable RMM memory pool for cupy",
     )
     args = parser.parse_args()
     return args
