@@ -65,6 +65,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             )
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
