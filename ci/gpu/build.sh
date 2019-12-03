@@ -57,10 +57,8 @@ conda install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
               "dask>=2.8.1" "distributed>=2.8.1"
 
-# needed for asynccontextmanager in py36
-conda install -c conda-forge "async_generator" "automake" "libtool" \
-                              "cmake" "automake" "autoconf" "cython" \
-                              "pytest" "pkg-config" "pytest-asyncio"
+# needed for async tests
+conda install -c conda-forge "pytest" "pytest-asyncio"
 
 # Use nightly build of ucx-py for now
 conda install -c rapidsai-nightly "ucx-py"
@@ -79,7 +77,6 @@ $CC --version
 $CXX --version
 conda list
 
-
 ################################################################################
 # BUILD - Build dask-cuda
 ################################################################################
@@ -87,7 +84,6 @@ conda list
 logger "Build dask-cuda..."
 cd $WORKSPACE
 python -m pip install -e .
-
 
 ################################################################################
 # TEST - Run py.tests for ucx-py
