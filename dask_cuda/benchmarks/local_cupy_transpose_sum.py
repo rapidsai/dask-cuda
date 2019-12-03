@@ -7,7 +7,7 @@ from pprint import pprint
 import cupy
 
 import dask.array as da
-from dask.distributed import Client, wait
+from dask.distributed import Client, wait, performance_report
 from dask.utils import format_time, format_bytes, parse_bytes
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -27,9 +27,17 @@ async def run(args):
             rs = da.random.RandomState(RandomState=cupy.random.RandomState)
             x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
             await wait(x)
-            t1 = clock()
-            await client.compute((x + x.T).sum())
-            took = clock() - t1
+
+            # Execute the operations to benchmark
+            if args.profile is not None:
+                async with performance_report(filename=args.profile):
+                    t1 = clock()
+                    await client.compute((x + x.T).sum())
+                    took = clock() - t1
+            else:
+                t1 = clock()
+                await client.compute((x + x.T).sum())
+                took = clock() - t1
 
             # Collect, aggregate, and print peer-to-peer bandwidths
             incoming_logs = await client.run(
@@ -117,7 +125,13 @@ def parse_args():
         type=parse_bytes,
         help='Ignore messages smaller than this (default "1 MB")',
     )
-
+    parser.add_argument(
+        "--profile",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Write dask profile report (E.g. dask-report.html)",
+    )
     args = parser.parse_args()
     return args
 
