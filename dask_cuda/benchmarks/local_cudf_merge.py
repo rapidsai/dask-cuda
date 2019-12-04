@@ -1,16 +1,17 @@
 import argparse
+import math
 from collections import defaultdict
 from time import perf_counter as clock
-import numpy
+
+from dask.base import tokenize
+from dask.dataframe.core import new_dd_object
+from dask.distributed import Client, performance_report, wait
+from dask.utils import format_bytes, format_time, parse_bytes
+from dask_cuda import LocalCUDACluster
+
 import cudf
 import cupy
-import dask_cudf
-from dask.distributed import Client, wait, performance_report
-from dask.dataframe.core import new_dd_object
-from dask.base import tokenize
-from dask.utils import format_time, format_bytes, parse_bytes
-
-from dask_cuda import LocalCUDACluster
+import numpy
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
@@ -25,15 +26,22 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
     if chunk_type == "build":
         # Build dataframe
         #
-        # "key" column is a unique range
+        # "key" column is a unique sample within [0, local_size * num_chunks)
         #
         # "payload" column is a random permutation of the chunk_size
 
-        start = local_size * i_chunk
-        stop = start + local_size
+        sub_local_size = math.ceil(local_size / num_chunks)
+        arrays = []
+        for i in range(num_chunks):
+            bgn = (local_size * i) + (sub_local_size * i_chunk)
+            end = bgn + sub_local_size
+            ar = cupy.arange(bgn, stop=end, dtype="int64")
+            arrays.append(cupy.random.permutation(ar))
+        key_array_match = cupy.concatenate(tuple(arrays), axis=0)
+
         df = cudf.DataFrame(
             {
-                "key": cupy.arange(start, stop=stop, dtype="int64"),
+                "key": cupy.random.permutation(key_array_match[:local_size]),
                 "payload": cupy.random.permutation(
                     cupy.arange(local_size, dtype="int64")
                 ),
@@ -51,7 +59,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
 
         # Step 1. Choose values that DO match
         sub_local_size = local_size // num_chunks
-        sub_local_size_use = int(sub_local_size * frac_match)
+        sub_local_size_use = max(int(sub_local_size * frac_match), 1)
         arrays = []
         for i in range(num_chunks):
             bgn = (local_size * i) + (sub_local_size * i_chunk)
@@ -84,7 +92,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
 def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
 
     parts = [chunk_size for i in range(num_chunks)]
-    meta = generate_chunk(0, 4, None, None, None)
+    meta = generate_chunk(0, 4, 1, None, None)
     divisions = [None] * (len(parts) + 1)
 
     name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
@@ -121,6 +129,8 @@ def main(args):
 
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
+    if args.set_index:
+        ddf_join = ddf_join.set_index("key")
 
     # Execute the operations to benchmark
     if args.profile is not None:
@@ -143,7 +153,7 @@ def main(args):
                 bandwidths[k, d["who"]].append(d["bandwidth"])
                 total_nbytes[k, d["who"]].append(d["total"])
     bandwidths = {
-        (cluster.scheduler.workers[w1].name, cluster.scheduler.workers[w2].name,): [
+        (cluster.scheduler.workers[w1].name, cluster.scheduler.workers[w2].name): [
             "%s/s" % format_bytes(x) for x in numpy.quantile(v, [0.25, 0.50, 0.75])
         ]
         for (w1, w2), v in bandwidths.items()
@@ -213,7 +223,7 @@ def parse_args():
         help="Fraction of rows that matches (default 0.3)",
     )
     parser.add_argument(
-        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool",
+        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
         "--profile",
@@ -221,6 +231,12 @@ def parse_args():
         default=None,
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
+    )
+    parser.add_argument(
+        "-s",
+        "--set-index",
+        action="store_true",
+        help="Call set_index on the key column to sort the joined dataframe.",
     )
     args = parser.parse_args()
     return args
