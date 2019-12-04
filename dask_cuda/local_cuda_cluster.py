@@ -129,16 +129,29 @@ class LocalCUDACluster(LocalCluster):
             )
 
         spec = copy.deepcopy(self.new_spec)
-        ii = self.cuda_visible_devices.index(name)
+        worker_count = self.cuda_visible_devices.index(name)
+        visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, self.cuda_visible_devices
-                    )
-                },
-                "plugins": {CPUAffinity(get_cpu_affinity(ii))},
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
+                "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
+        # If TopologicalDistance from ucp is available, we set the UCX
+        # net device to the closest network device explicitly.
+        try:
+            from ucp._libs.topological_distance import TopologicalDistance
 
+            dev = int(visible_devices.split(",")[0])
+            net_dev = ""
+            td = TopologicalDistance()
+            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+            if len(ibs) > 0:
+                net_dev += ibs[0]["name"] + ":1,"
+            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+            if len(ifnames) > 0:
+                net_dev += ifnames[0]["name"]
+            spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
+        except ImportError:
+            pass
         return {name: spec}
