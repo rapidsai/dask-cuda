@@ -15,7 +15,7 @@ from .utils import (
 )
 
 
-def _ucx_net_devices(dev):
+def _ucx_net_devices(dev, ucx_net_devices):
     net_dev = None
     if callable(ucx_net_devices):
         net_dev = ucx_net_devices(dev)
@@ -86,7 +86,7 @@ class LocalCUDACluster(LocalCluster):
         CUDA_VISIBLE_DEVICES=None,
         data=None,
         local_directory=None,
-        ucx_net_devices=None
+        ucx_net_devices=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -125,13 +125,15 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import TopologicalDistance
-            except ImporError:
-                raise ValueError("ucx_net_devices set to 'auto' but UCX-Py is not "
-                                 "installed or it's compiled without hwloc support")
+                from ucp._libs.topological_distance import TopologicalDistance  # noqa
+            except ImportError:
+                raise ValueError(
+                    "ucx_net_devices set to 'auto' but UCX-Py is not "
+                    "installed or it's compiled without hwloc support"
+                )
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
-
+        self.ucx_net_devices = ucx_net_devices
 
         super().__init__(
             n_workers=0,
@@ -167,8 +169,12 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,
-                        "UCX_NET_DEVICES": _ucx_net_devices(visible_devices.split(",")[0])},
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": visible_devices,
+                    "UCX_NET_DEVICES": _ucx_net_devices(
+                        visible_devices.split(",")[0], self.ucx_net_devices
+                    ),
+                },
                 "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
