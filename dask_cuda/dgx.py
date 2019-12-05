@@ -14,6 +14,7 @@ class DGX(LocalCUDACluster):
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
+        ucx_net_devices=None,
         **kwargs,
     ):
         """ A Local Cluster for a DGX 1 machine
@@ -70,20 +71,6 @@ class DGX(LocalCUDACluster):
         >>> cluster = DGX()
         >>> client = Client(cluster)
         """
-        if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-            if protocol is None:
-                protocol = "ucx"
-            elif protocol != "ucx":
-                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
-
-        initialize(
-            enable_tcp_over_ucx=enable_tcp_over_ucx,
-            enable_infiniband=enable_infiniband,
-            enable_nvlink=enable_nvlink,
-        )
-
-        self.set_ucx_net_devices = enable_infiniband
-
         super().__init__(
             interface=interface,
             dashboard_address=dashboard_address,
@@ -91,24 +78,9 @@ class DGX(LocalCUDACluster):
             silence_logs=silence_logs,
             CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES,
             protocol=protocol,
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_nvlink=enable_nvlink,
+            enable_infiniband=enable_infiniband,
+            ucx_net_devices=ucx_net_devices,
             **kwargs,
         )
-
-    def new_worker_spec(self):
-        spec = super().new_worker_spec()
-        first_spec = next(iter(spec.values()))
-        dev = int(first_spec["options"]["env"]["CUDA_VISIBLE_DEVICES"].split(",")[0])
-
-        if self.set_ucx_net_devices:
-            try:
-                from ucp._libs.topological_distance import TopologicalDistance
-
-                td = TopologicalDistance()
-                dist = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-                net_dev = dist[0]["name"] + ":1"
-            except ImportError:
-                net_dev = "mlx5_%d:1" % (dev // 2)
-
-            first_spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
-
-        return spec
