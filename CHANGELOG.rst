@@ -20,6 +20,7 @@
 - Allow test_cupy_device_spill to xfail (#195) `Peter Andreas Entschev`_
 - Use ucx-py from rapidsai-nightly in CI (#196) `Peter Andreas Entschev`_
 - LocalCUDACluster sets closest network device (#200) `Mads R. B. Kristensen`_
+- Expand cudf-merge benchmark (#201) `Richard (Rick) Zamora`_
 - Added --runs to merge benchmark (#202) `Mads R. B. Kristensen`_
 - Move UCX code to LocalCUDACluster and deprecate DGX (#196) `Peter Andreas Entschev`_
 
@@ -87,3 +88,4 @@
 .. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
 .. _`Mike Wendt`: https://github.com/mike-wendt
 .. _`Mads R. B. Kristensen`: https://github.com/madsbk
+.. _`Richard (Rick) Zamora`: https://github.com/rjzamora
