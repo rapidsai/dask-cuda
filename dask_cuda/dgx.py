@@ -1,3 +1,5 @@
+import warnings
+
 from .initialize import initialize
 from .local_cuda_cluster import LocalCUDACluster
 
@@ -71,6 +73,10 @@ class DGX(LocalCUDACluster):
         >>> cluster = DGX()
         >>> client = Client(cluster)
         """
+        warnings.warn(
+            "DGX is deprecated, please switch to LocalCUDACluster", DeprecationWarning
+        )
+
         super().__init__(
             interface=interface,
             dashboard_address=dashboard_address,
