@@ -73,7 +73,9 @@ class DGX(LocalCUDACluster):
         >>> client = Client(cluster)
         """
         warnings.warn(
-            "DGX is deprecated, please switch to LocalCUDACluster", DeprecationWarning
+            "DGX is deprecated and will be removed in the next release, please switch "
+            "to LocalCUDACluster",
+            DeprecationWarning,
         )
 
         super().__init__(
