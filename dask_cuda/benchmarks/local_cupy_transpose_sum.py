@@ -1,15 +1,15 @@
-from collections import defaultdict
 import argparse
 import asyncio
+from collections import defaultdict
 from time import perf_counter as clock
-import numpy as np
-from pprint import pprint
-import cupy
 
 import dask.array as da
-from dask.distributed import Client, wait, performance_report
-from dask.utils import format_time, format_bytes, parse_bytes
+from dask.distributed import Client, performance_report, wait
+from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
+
+import cupy
+import numpy as np
 
 
 async def run(args):
