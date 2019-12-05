@@ -1,4 +1,5 @@
 import argparse
+import math
 from collections import defaultdict
 from time import perf_counter as clock
 
@@ -25,15 +26,22 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
     if chunk_type == "build":
         # Build dataframe
         #
-        # "key" column is a unique range
+        # "key" column is a unique sample within [0, local_size * num_chunks)
         #
         # "payload" column is a random permutation of the chunk_size
 
-        start = local_size * i_chunk
-        stop = start + local_size
+        sub_local_size = math.ceil(local_size / num_chunks)
+        arrays = []
+        for i in range(num_chunks):
+            bgn = (local_size * i) + (sub_local_size * i_chunk)
+            end = bgn + sub_local_size
+            ar = cupy.arange(bgn, stop=end, dtype="int64")
+            arrays.append(cupy.random.permutation(ar))
+        key_array_match = cupy.concatenate(tuple(arrays), axis=0)
+
         df = cudf.DataFrame(
             {
-                "key": cupy.arange(start, stop=stop, dtype="int64"),
+                "key": cupy.random.permutation(key_array_match[:local_size]),
                 "payload": cupy.random.permutation(
                     cupy.arange(local_size, dtype="int64")
                 ),
@@ -51,7 +59,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
 
         # Step 1. Choose values that DO match
         sub_local_size = local_size // num_chunks
-        sub_local_size_use = int(sub_local_size * frac_match)
+        sub_local_size_use = max(int(sub_local_size * frac_match), 1)
         arrays = []
         for i in range(num_chunks):
             bgn = (local_size * i) + (sub_local_size * i_chunk)
@@ -84,7 +92,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
 def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
 
     parts = [chunk_size for i in range(num_chunks)]
-    meta = generate_chunk(0, 4, None, None, None)
+    meta = generate_chunk(0, 4, 1, None, None)
     divisions = [None] * (len(parts) + 1)
 
     name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
@@ -110,6 +118,8 @@ def run(args, write_profile=None):
 
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
+    if args.set_index:
+        ddf_join = ddf_join.set_index("key")
 
     # Execute the operations to benchmark
     if write_profile is not None:
@@ -191,6 +201,7 @@ def main(args):
     if args.markdown:
         print('```\n</details>\n')
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Merge (dask/cudf) on LocalCUDACluster benchmark"
@@ -241,6 +252,12 @@ def parse_args():
         "--markdown",
         action="store_true",
         help="Write output as markdown",
+    )
+    parser.add_argument(
+        "-s",
+        "--set-index",
+        action="store_true",
+        help="Call set_index on the key column to sort the joined dataframe.",
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     args = parser.parse_args()
