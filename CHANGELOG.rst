@@ -21,6 +21,7 @@
 - Use ucx-py from rapidsai-nightly in CI (#196) `Peter Andreas Entschev`_
 - LocalCUDACluster sets closest network device (#200) `Mads R. B. Kristensen`_
 - Added --runs to merge benchmark (#202) `Mads R. B. Kristensen`_
+- Move UCX code to LocalCUDACluster and deprecate DGX (#196) `Peter Andreas Entschev`_
 
 0.10
 ----
