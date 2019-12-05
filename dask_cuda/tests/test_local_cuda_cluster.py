@@ -71,17 +71,30 @@ async def test_with_subset_of_cuda_visible_devices():
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-@gen_test(timeout=20)
-async def test_ucx_protocol():
+@pytest.mark.parametrize("protocol", ["ucx", None])
+@pytest.mark.asyncio
+async def test_ucx_protocol(protocol):
     pytest.importorskip("distributed.comm.ucx")
 
     initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
-        protocol="ucx", asynchronous=True, data=dict
+        protocol=protocol, enable_tcp_over_ucx=True, asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
         )
+
+
+@pytest.mark.asyncio
+async def test_ucx_protocol_type_error():
+    pytest.importorskip("distributed.comm.ucx")
+
+    initialize(enable_tcp_over_ucx=True)
+    with pytest.raises(TypeError):
+        async with LocalCUDACluster(
+            protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict
+        ):
+            pass
 
 
 @gen_test(timeout=20)
