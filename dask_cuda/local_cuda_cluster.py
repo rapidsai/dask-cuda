@@ -15,6 +15,29 @@ from .utils import (
 )
 
 
+def _ucx_net_devices(dev, ucx_net_devices):
+    net_dev = None
+    if callable(ucx_net_devices):
+        net_dev = ucx_net_devices(dev)
+    elif isinstance(ucx_net_devices, str):
+        if ucx_net_devices == "auto":
+            # If TopologicalDistance from ucp is available, we set the UCX
+            # net device to the closest network device explicitly.
+            from ucp._libs.topological_distance import TopologicalDistance
+
+            net_dev = ""
+            td = TopologicalDistance()
+            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+            if len(ibs) > 0:
+                net_dev += ibs[0]["name"] + ":1,"
+            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+            if len(ifnames) > 0:
+                net_dev += ifnames[0]["name"]
+        else:
+            net_dev = ucx_net_devices
+    return net_dev
+
+
 def cuda_visible_devices(i, visible=None):
     """ Cycling values for CUDA_VISIBLE_DEVICES environment variable
 
@@ -63,6 +86,7 @@ class LocalCUDACluster(LocalCluster):
         CUDA_VISIBLE_DEVICES=None,
         data=None,
         local_directory=None,
+        ucx_net_devices=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -99,6 +123,18 @@ class LocalCUDACluster(LocalCluster):
                 },
             )
 
+        if ucx_net_devices == "auto":
+            try:
+                from ucp._libs.topological_distance import TopologicalDistance  # noqa
+            except ImportError:
+                raise ValueError(
+                    "ucx_net_devices set to 'auto' but UCX-Py is not "
+                    "installed or it's compiled without hwloc support"
+                )
+        elif ucx_net_devices == "":
+            raise ValueError("ucx_net_devices can not be an empty string")
+        self.ucx_net_devices = ucx_net_devices
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -129,16 +165,19 @@ class LocalCUDACluster(LocalCluster):
             )
 
         spec = copy.deepcopy(self.new_spec)
-        ii = self.cuda_visible_devices.index(name)
+        worker_count = self.cuda_visible_devices.index(name)
+        visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
                 "env": {
-                    "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, self.cuda_visible_devices
-                    )
+                    "CUDA_VISIBLE_DEVICES": visible_devices,
                 },
-                "plugins": {CPUAffinity(get_cpu_affinity(ii))},
+                "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
+
+        net_dev = _ucx_net_devices(visible_devices.split(",")[0], self.ucx_net_devices)
+        if net_dev is not None:
+            spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
 
         return {name: spec}
