@@ -97,33 +97,22 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
     return new_dd_object(graph, name, meta, divisions)
 
 
-def main(args):
-    n_workers = len(args.devs.split(","))
-
-    # Set up workers on the local machine
-    cluster = LocalCUDACluster(
-        protocol=args.protocol, n_workers=n_workers, CUDA_VISIBLE_DEVICES=args.devs
-    )
-    client = Client(cluster)
-
-    if args.no_pool_allocator:
-        client.run(cudf.set_allocator, "default", pool=False)
-    else:
-        client.run(cudf.set_allocator, "default", pool=True)
-
+def run(args, write_profile=None):
     # Generate random Dask dataframes
     ddf_base = get_random_ddf(
-        args.chunk_size, n_workers, args.frac_match, "build"
+        args.chunk_size, args.n_workers, args.frac_match, "build"
     ).persist()
     ddf_other = get_random_ddf(
-        args.chunk_size, n_workers, args.frac_match, "other"
+        args.chunk_size, args.n_workers, args.frac_match, "other"
     ).persist()
+    wait(ddf_base)
+    wait(ddf_other)
 
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
 
     # Execute the operations to benchmark
-    if args.profile is not None:
+    if write_profile is not None:
         with performance_report(filename=args.profile):
             t1 = clock()
             wait(ddf_join.persist())
@@ -132,6 +121,27 @@ def main(args):
         t1 = clock()
         wait(ddf_join.persist())
         took = clock() - t1
+    return took
+
+
+def main(args):
+    # Set up workers on the local machine
+    cluster = LocalCUDACluster(
+        protocol=args.protocol, n_workers=args.n_workers, CUDA_VISIBLE_DEVICES=args.devs
+    )
+    client = Client(cluster)
+
+    if args.no_pool_allocator:
+        client.run(cudf.set_allocator, "default", pool=False)
+    else:
+        client.run(cudf.set_allocator, "default", pool=True)
+
+    took_list = []
+    for _ in range(args.runs - 1):
+        took_list.append(run(args, write_profile=None))
+    took_list.append(
+        run(args, write_profile=args.profile)
+    )  # Only profiling the last run
 
     # Collect, aggregate, and print peer-to-peer bandwidths
     incoming_logs = client.run(lambda dask_worker: dask_worker.incoming_transfer_log)
@@ -143,7 +153,7 @@ def main(args):
                 bandwidths[k, d["who"]].append(d["bandwidth"])
                 total_nbytes[k, d["who"]].append(d["total"])
     bandwidths = {
-        (cluster.scheduler.workers[w1].name, cluster.scheduler.workers[w2].name,): [
+        (cluster.scheduler.workers[w1].name, cluster.scheduler.workers[w2].name): [
             "%s/s" % format_bytes(x) for x in numpy.quantile(v, [0.25, 0.50, 0.75])
         ]
         for (w1, w2), v in bandwidths.items()
@@ -163,9 +173,9 @@ def main(args):
     print(f"Ignore-size | {format_bytes(args.ignore_size)}")
     print(f"Protocol    | {args.protocol}")
     print(f"Device(s)   | {args.devs}")
-
     print("==========================")
-    print(f"Total time  | {format_time(took)}")
+    for took in took_list:
+        print(f"Total time  | {format_time(took)}")
     print("==========================")
     print("(w1,w2)     | 25% 50% 75% (total nbytes)")
     print("--------------------------")
@@ -213,7 +223,7 @@ def parse_args():
         help="Fraction of rows that matches (default 0.3)",
     )
     parser.add_argument(
-        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool",
+        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
         "--profile",
@@ -222,7 +232,9 @@ def parse_args():
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
     )
+    parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     args = parser.parse_args()
+    args.n_workers = len(args.devs.split(","))
     return args
 
 
