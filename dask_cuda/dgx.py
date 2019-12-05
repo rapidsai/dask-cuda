@@ -1,6 +1,5 @@
 import warnings
 
-from .initialize import initialize
 from .local_cuda_cluster import LocalCUDACluster
 
 

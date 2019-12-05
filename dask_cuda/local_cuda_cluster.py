@@ -248,16 +248,16 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": visible_devices,
-                },
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
 
         print(self.set_ucx_net_devices, self.ucx_net_devices)
         if self.set_ucx_net_devices:
-            net_dev = _ucx_net_devices(visible_devices.split(",")[0], self.ucx_net_devices)
+            net_dev = _ucx_net_devices(
+                visible_devices.split(",")[0], self.ucx_net_devices
+            )
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
 
