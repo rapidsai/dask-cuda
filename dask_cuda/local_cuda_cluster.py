@@ -253,7 +253,6 @@ class LocalCUDACluster(LocalCluster):
             }
         )
 
-        print(self.set_ucx_net_devices, self.ucx_net_devices)
         if self.set_ucx_net_devices:
             net_dev = _ucx_net_devices(
                 visible_devices.split(",")[0], self.ucx_net_devices
