@@ -171,12 +171,13 @@ class LocalCUDACluster(LocalCluster):
             {
                 "env": {
                     "CUDA_VISIBLE_DEVICES": visible_devices,
-                    "UCX_NET_DEVICES": _ucx_net_devices(
-                        visible_devices.split(",")[0], self.ucx_net_devices
-                    ),
                 },
                 "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
+
+        net_dev = _ucx_net_devices(visible_devices.split(",")[0], self.ucx_net_devices)
+        if net_dev is not None:
+            spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
 
         return {name: spec}
