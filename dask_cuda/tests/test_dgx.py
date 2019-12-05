@@ -101,39 +101,42 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
 
     if _check_dgx_version() == 1:
         net_devices = [
-            "mlx5_0:1",
-            "mlx5_0:1",
-            "mlx5_1:1",
-            "mlx5_1:1",
-            "mlx5_2:1",
-            "mlx5_2:1",
-            "mlx5_3:1",
-            "mlx5_3:1",
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
         ]
     elif _check_dgx_version() == 2:
         net_devices = [
-            "mlx5_0:1",
-            "mlx5_0:1",
-            "mlx5_1:1",
-            "mlx5_1:1",
-            "mlx5_2:1",
-            "mlx5_2:1",
-            "mlx5_3:1",
-            "mlx5_3:1",
-            "mlx5_6:1",
-            "mlx5_6:1",
-            "mlx5_7:1",
-            "mlx5_7:1",
-            "mlx5_8:1",
-            "mlx5_8:1",
-            "mlx5_9:1",
-            "mlx5_9:1",
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
+            "mlx5_6:1,ib4",
+            "mlx5_6:1,ib4",
+            "mlx5_7:1,ib5",
+            "mlx5_7:1,ib5",
+            "mlx5_8:1,ib6",
+            "mlx5_8:1,ib6",
+            "mlx5_9:1,ib7",
+            "mlx5_9:1,ib7",
         ]
+
+    ucx_net_devices = "auto" if enable_infiniband else None
 
     with DGX(
         enable_tcp_over_ucx=True,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
+        ucx_net_devices=ucx_net_devices,
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
