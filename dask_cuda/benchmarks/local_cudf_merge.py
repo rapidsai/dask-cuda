@@ -26,7 +26,9 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
     if chunk_type == "build":
         # Build dataframe
         #
-        # "key" column is a unique sample within [0, local_size * num_chunks)
+        # "key" column is a unique range
+        #
+        # "shuffle" column is a random selection of partitions (used for shuffle)
         #
         # "payload" column is a random permutation of the chunk_size
 
