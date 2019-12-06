@@ -30,18 +30,16 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
         #
         # "payload" column is a random permutation of the chunk_size
 
-        sub_local_size = math.ceil(local_size / num_chunks)
-        arrays = []
-        for i in range(num_chunks):
-            bgn = (local_size * i) + (sub_local_size * i_chunk)
-            end = bgn + sub_local_size
-            ar = cupy.arange(bgn, stop=end, dtype="int64")
-            arrays.append(cupy.random.permutation(ar))
-        key_array_match = cupy.concatenate(tuple(arrays), axis=0)
+        start = local_size * i_chunk
+        stop = start + local_size
+
+        parts_array = cupy.arange(num_chunks, dtype="int64")
+        suffle_array = cupy.repeat(parts_array, math.ceil(local_size / num_chunks))
 
         df = cudf.DataFrame(
             {
-                "key": cupy.random.permutation(key_array_match[:local_size]),
+                "key": cupy.arange(start, stop=stop, dtype="int64"),
+                "shuffle": cupy.random.permutation(suffle_array)[:local_size],
                 "payload": cupy.random.permutation(
                     cupy.arange(local_size, dtype="int64")
                 ),
@@ -89,10 +87,10 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
     return df
 
 
-def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
+def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
     parts = [chunk_size for i in range(num_chunks)]
-    meta = generate_chunk(0, 4, 1, None, None)
+    meta = generate_chunk(0, 4, 1, chunk_type, None)
     divisions = [None] * (len(parts) + 1)
 
     name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
@@ -102,24 +100,31 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
         for i, part in enumerate(parts)
     }
 
-    return new_dd_object(graph, name, meta, divisions)
+    ddf = new_dd_object(graph, name, meta, divisions)
+
+    if chunk_type == "build":
+        if args.shuffle:
+            divisions = [i for i in range(num_chunks)] + [num_chunks]
+            return ddf.set_index("shuffle", divisions=tuple(divisions))
+        else:
+            del ddf["shuffle"]
+
+    return ddf
 
 
 def run(args, write_profile=None):
     # Generate random Dask dataframes
     ddf_base = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "build"
+        args.chunk_size, args.n_workers, args.frac_match, "build", args
     ).persist()
     ddf_other = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "other"
+        args.chunk_size, args.n_workers, args.frac_match, "other", args
     ).persist()
     wait(ddf_base)
     wait(ddf_other)
 
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
-    if args.set_index:
-        ddf_join = ddf_join.set_index("key")
 
     # Execute the operations to benchmark
     if write_profile is not None:
@@ -244,9 +249,9 @@ def parse_args():
     )
     parser.add_argument(
         "-s",
-        "--set-index",
+        "--shuffle",
         action="store_true",
-        help="Call set_index on the key column to sort the joined dataframe.",
+        help="Shuffle the key sof the left (base) dataframe.",
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     args = parser.parse_args()
