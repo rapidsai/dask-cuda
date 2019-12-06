@@ -41,11 +41,12 @@ if _check_dgx_version() is None:
 
 
 def _test_default():
-    with DGX() as cluster:
-        with Client(cluster):
-            res = da.from_array(numpy.arange(10000), chunks=(1000,))
-            res = res.sum().compute()
-            assert res == 49995000
+    with pytest.warns(DeprecationWarning):
+        with DGX() as cluster:
+            with Client(cluster):
+                res = da.from_array(numpy.arange(10000), chunks=(1000,))
+                res = res.sum().compute()
+                assert res == 49995000
 
 
 def test_default():
@@ -56,22 +57,23 @@ def test_default():
 
 
 def _test_tcp_over_ucx():
-    with DGX(enable_tcp_over_ucx=True) as cluster:
-        with Client(cluster) as client:
-            res = da.from_array(numpy.arange(10000), chunks=(1000,))
-            res = res.sum().compute()
-            assert res == 49995000
+    with pytest.warns(DeprecationWarning):
+        with DGX(enable_tcp_over_ucx=True) as cluster:
+            with Client(cluster) as client:
+                res = da.from_array(numpy.arange(10000), chunks=(1000,))
+                res = res.sum().compute()
+                assert res == 49995000
 
-            def check_ucx_options():
-                conf = ucp.get_config()
-                assert "TLS" in conf
-                assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
-                assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                return True
+                def check_ucx_options():
+                    conf = ucp.get_config()
+                    assert "TLS" in conf
+                    assert "tcp" in conf["TLS"]
+                    assert "sockcm" in conf["TLS"]
+                    assert "cuda_copy" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                    return True
 
-            assert all(client.run(check_ucx_options).values())
+                assert all(client.run(check_ucx_options).values())
 
 
 def test_tcp_over_ucx():
@@ -82,11 +84,12 @@ def test_tcp_over_ucx():
 
 
 def _test_tcp_only():
-    with DGX(protocol="tcp") as cluster:
-        with Client(cluster):
-            res = da.from_array(numpy.arange(10000), chunks=(1000,))
-            res = res.sum().compute()
-            assert res == 49995000
+    with pytest.warns(DeprecationWarning):
+        with DGX(protocol="tcp") as cluster:
+            with Client(cluster):
+                res = da.from_array(numpy.arange(10000), chunks=(1000,))
+                res = res.sum().compute()
+                assert res == 49995000
 
 
 def test_tcp_only():
@@ -101,68 +104,72 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
 
     if _check_dgx_version() == 1:
         net_devices = [
-            "mlx5_0:1",
-            "mlx5_0:1",
-            "mlx5_1:1",
-            "mlx5_1:1",
-            "mlx5_2:1",
-            "mlx5_2:1",
-            "mlx5_3:1",
-            "mlx5_3:1",
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
         ]
     elif _check_dgx_version() == 2:
         net_devices = [
-            "mlx5_0:1",
-            "mlx5_0:1",
-            "mlx5_1:1",
-            "mlx5_1:1",
-            "mlx5_2:1",
-            "mlx5_2:1",
-            "mlx5_3:1",
-            "mlx5_3:1",
-            "mlx5_6:1",
-            "mlx5_6:1",
-            "mlx5_7:1",
-            "mlx5_7:1",
-            "mlx5_8:1",
-            "mlx5_8:1",
-            "mlx5_9:1",
-            "mlx5_9:1",
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
+            "mlx5_6:1,ib4",
+            "mlx5_6:1,ib4",
+            "mlx5_7:1,ib5",
+            "mlx5_7:1,ib5",
+            "mlx5_8:1,ib6",
+            "mlx5_8:1,ib6",
+            "mlx5_9:1,ib7",
+            "mlx5_9:1,ib7",
         ]
 
-    with DGX(
-        enable_tcp_over_ucx=True,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-    ) as cluster:
-        with Client(cluster) as client:
-            res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
-            res = res.sum().compute()
-            assert res == 49995000
+    ucx_net_devices = "auto" if enable_infiniband else None
 
-            def check_ucx_options():
-                conf = ucp.get_config()
-                assert "TLS" in conf
-                assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
-                assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                if enable_nvlink:
-                    assert "cuda_ipc" in conf["TLS"]
+    with pytest.warns(DeprecationWarning):
+        with DGX(
+            enable_tcp_over_ucx=True,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+            ucx_net_devices=ucx_net_devices,
+        ) as cluster:
+            with Client(cluster) as client:
+                res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+                res = res.sum().compute()
+                assert res == 49995000
+
+                def check_ucx_options():
+                    conf = ucp.get_config()
+                    assert "TLS" in conf
+                    assert "tcp" in conf["TLS"]
+                    assert "sockcm" in conf["TLS"]
+                    assert "cuda_copy" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                    if enable_nvlink:
+                        assert "cuda_ipc" in conf["TLS"]
+                    if enable_infiniband:
+                        assert "rc" in conf["TLS"]
+                    return True
+
                 if enable_infiniband:
-                    assert "rc" in conf["TLS"]
-                return True
+                    assert all(
+                        [
+                            cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
+                            == net_devices[k]
+                            for k in cluster.worker_spec.keys()
+                        ]
+                    )
 
-            if enable_infiniband:
-                assert all(
-                    [
-                        cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
-                        == net_devices[k]
-                        for k in cluster.worker_spec.keys()
-                    ]
-                )
-
-            assert all(client.run(check_ucx_options).values())
+                assert all(client.run(check_ucx_options).values())
 
 
 @pytest.mark.parametrize(

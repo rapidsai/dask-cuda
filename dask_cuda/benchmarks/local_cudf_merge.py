@@ -181,6 +181,8 @@ def main(args):
         for (w1, w2), nb in total_nbytes.items()
     }
 
+    if args.markdown:
+        print("```")
     print("Merge benchmark")
     print("--------------------------")
     print(f"Chunk-size  | {args.chunk_size}")
@@ -192,6 +194,10 @@ def main(args):
     for took in took_list:
         print(f"Total time  | {format_time(took)}")
     print("==========================")
+    if args.markdown:
+        print(
+            "\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
+        )
     print("(w1,w2)     | 25% 50% 75% (total nbytes)")
     print("--------------------------")
     for (d1, d2), bw in sorted(bandwidths.items()):
@@ -199,6 +205,8 @@ def main(args):
             "(%02d,%02d)     | %s %s %s (%s)"
             % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
         )
+    if args.markdown:
+        print("```\n</details>\n")
 
 
 def parse_args():
@@ -252,6 +260,9 @@ def parse_args():
         "--shuffle",
         action="store_true",
         help="Shuffle the key sof the left (base) dataframe.",
+    )
+    parser.add_argument(
+        "--markdown", action="store_true", help="Write output as markdown"
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     args = parser.parse_args()

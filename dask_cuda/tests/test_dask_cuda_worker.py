@@ -8,8 +8,6 @@ from distributed.metrics import time
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
 
-import pytest
-
 
 def test_cuda_visible_devices(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"

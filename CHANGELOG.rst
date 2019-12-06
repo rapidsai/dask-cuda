@@ -1,3 +1,28 @@
+0.11
+----
+
+- Use UCX-Py initialization API (#152) `Peter Andreas Entschev`_
+- Remove all CUDA labels (#160) `Mike Wendt`_
+- Setting UCX options through dask global config (#168) `Mads R. B. Kristensen`_
+- Make test_cudf_device_spill xfail (#170) `Peter Andreas Entschev`_
+- Updated CI, cleanup tests and reformat Python files (#171) `Mads R. B. Kristensen`_
+- Fix GPU dependency versions (#173) `Dillon Cullinan`_
+- Set LocalCUDACluster n_workers equal to the length of CUDA_VISIBLE_DEVICES (#174) `Matthew Rocklin`_
+- Simplify dask-cuda code (#175) `Mads R. B. Kristensen`_
+- DGX inherit from LocalCUDACluster (#177) `Mads R. B. Kristensen`_
+- Single-node CUDA benchmarks (#179) `Mads R. B. Kristensen`_
+- Set TCP for UCX tests (#180) `Peter Andreas Entschev`_
+- Single-node cuDF merge benchmarks (#183) `Mads R. B. Kristensen`_
+- Add black and isort checks in CI (#185) `Peter Andreas Entschev`_
+- Remove outdated xfail/importorskip test entries (#188) `Peter Andreas Entschev`_
+- Use UCX-Py's TopologicalDistance to determine IB interfaces in DGX (#189) `Peter Andreas Entschev`_
+- Dask Performance Report (#192) `Mads R. B. Kristensen`_
+- Allow test_cupy_device_spill to xfail (#195) `Peter Andreas Entschev`_
+- Use ucx-py from rapidsai-nightly in CI (#196) `Peter Andreas Entschev`_
+- LocalCUDACluster sets closest network device (#200) `Mads R. B. Kristensen`_
+- Added --runs to merge benchmark (#202) `Mads R. B. Kristensen`_
+- Move UCX code to LocalCUDACluster and deprecate DGX (#196) `Peter Andreas Entschev`_
+
 0.10
 ----
 
@@ -60,3 +85,5 @@
 .. _`Olli Koskinen`: https://github.com/okoskinen
 .. _`Markku Luukkainen`: https://github.com/mluukkainen
 .. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
+.. _`Mike Wendt`: https://github.com/mike-wendt
+.. _`Mads R. B. Kristensen`: https://github.com/madsbk
