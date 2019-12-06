@@ -105,7 +105,7 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
     ddf = new_dd_object(graph, name, meta, divisions)
 
     if chunk_type == "build":
-        if args.shuffle:
+        if not args.no_shuffle:
             divisions = [i for i in range(num_chunks)] + [num_chunks]
             return ddf.set_index("shuffle", divisions=tuple(divisions))
         else:
@@ -258,10 +258,9 @@ def parse_args():
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "-s",
-        "--shuffle",
+        "--no-shuffle",
         action="store_true",
-        help="Shuffle the key sof the left (base) dataframe.",
+        help="Don't shuffle the keys of the left (base) dataframe.",
     )
     parser.add_argument(
         "--markdown", action="store_true", help="Write output as markdown"
