@@ -152,8 +152,8 @@ def main(args):
         )
     else:
         enable_infiniband = not args.no_ib
-        enable_nvlink = True
-        enable_tcp_over_ucx = False
+        enable_nvlink = not args.no_nvlink
+        enable_tcp_over_ucx = not args.no_tcp
         cluster = LocalCUDACluster(
             protocol=args.protocol,
             n_workers=args.n_workers,
@@ -290,7 +290,11 @@ def parse_args():
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     parser.add_argument(
-        "--no-ib", action="store_true", help="Disable infiniband for ucx."
+        "--no-ib", action="store_true", help="Disable infiniband over ucx."
+    )
+    parser.add_argument("--no-tcp", action="store_true", help="Disable tcp over ucx.")
+    parser.add_argument(
+        "--no-nvlink", action="store_true", help="Disable NVLink over ucx."
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
