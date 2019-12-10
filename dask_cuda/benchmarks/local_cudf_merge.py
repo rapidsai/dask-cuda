@@ -8,6 +8,7 @@ from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
 
 import cudf
 import cupy
@@ -143,9 +144,31 @@ def run(args, write_profile=None):
 
 def main(args):
     # Set up workers on the local machine
-    cluster = LocalCUDACluster(
-        protocol=args.protocol, n_workers=args.n_workers, CUDA_VISIBLE_DEVICES=args.devs
-    )
+    if args.protocol == "tcp":
+        cluster = LocalCUDACluster(
+            protocol=args.protocol,
+            n_workers=args.n_workers,
+            CUDA_VISIBLE_DEVICES=args.devs,
+        )
+    else:
+        enable_infiniband = not args.no_ib
+        enable_nvlink = True
+        enable_tcp_over_ucx = False
+        cluster = LocalCUDACluster(
+            protocol=args.protocol,
+            n_workers=args.n_workers,
+            CUDA_VISIBLE_DEVICES=args.devs,
+            ucx_net_devices="auto",
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+        )
+        initialize(
+            create_cuda_context=True,
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+        )
     client = Client(cluster)
 
     if args.no_pool_allocator:
@@ -266,6 +289,9 @@ def parse_args():
         "--markdown", action="store_true", help="Write output as markdown"
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
+    parser.add_argument(
+        "--no-ib", action="store_true", help="Disable infiniband for ucx."
+    )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
     return args
