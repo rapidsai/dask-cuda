@@ -3,13 +3,9 @@ import os
 from dask.distributed import Nanny
 from distributed.system import MEMORY_LIMIT
 
+from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import (
-    CPUAffinity,
-    get_cpu_affinity,
-    get_gpu_count,
-    get_preload_options,
-)
+from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
 
 
 def worker_spec(
@@ -62,7 +58,8 @@ def worker_spec(
     Examples
     --------
     >>> from dask_cuda.worker_spec import worker_spec
-    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2], ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
+    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2],
+                    ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
     {0: {'cls': distributed.nanny.Nanny,
       'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2'},
        'interface': 'enp1s0f0',
@@ -89,6 +86,11 @@ def worker_spec(
        'preload_argv': ['--create-cuda-context']}}}
 
     """
+    if (
+        enable_tcp_over_ucx or enable_infiniband or enable_nvlink
+    ) and protocol != "ucx":
+        raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+
     if CUDA_VISIBLE_DEVICES is None:
         CUDA_VISIBLE_DEVICES = os.environ.get(
             "CUDA_VISIBLE_DEVICES", list(range(get_gpu_count()))
@@ -98,13 +100,20 @@ def worker_spec(
     CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
     memory_limit = MEMORY_LIMIT / get_gpu_count()
 
-    spec = {
-        i: {
+    initialize(
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+    )
+
+    spec = {}
+    for i, dev in enumerate(CUDA_VISIBLE_DEVICES):
+        spec[dev] = {
             "cls": Nanny,
             "options": {
                 "env": {
                     "CUDA_VISIBLE_DEVICES": cuda_visible_devices(
-                        ii, CUDA_VISIBLE_DEVICES
+                        i, CUDA_VISIBLE_DEVICES
                     )
                 },
                 "interface": interface,
@@ -112,21 +121,16 @@ def worker_spec(
                 "nthreads": threads_per_worker,
                 "data": dict,
                 "dashboard_address": dashboard_address,
-                "plugins": [CPUAffinity(get_cpu_affinity(i))],
+                "plugins": [CPUAffinity(get_cpu_affinity(dev))],
                 "silence_logs": silence_logs,
                 "memory_limit": memory_limit,
-                **get_preload_options(
-                    protocol=protocol,
-                    create_cuda_context=True,
-                    enable_tcp_over_ucx=enable_tcp_over_ucx,
-                    enable_infiniband=enable_infiniband,
-                    enable_nvlink=enable_nvlink,
-                    ucx_net_devices=ucx_net_devices,
-                    cuda_device_index=i,
-                ),
+                "preload": "dask_cuda.initialize",
+                "preload_argv": "--create-cuda-context",
             },
         }
-        for ii, i in enumerate(CUDA_VISIBLE_DEVICES)
-    }
-
+        if ucx_net_devices is not None or ucx_net_devices != "":
+            if callable(ucx_net_devices):
+                spec[dev]["options"]["env"]["UCX_NET_DEVICES"] = ucx_net_devices(dev)
+            else:
+                spec[dev]["options"]["env"]["UCX_NET_DEVICES"] = ucx_net_devices
     return spec

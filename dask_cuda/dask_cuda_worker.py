@@ -1,30 +1,36 @@
-from __future__ import print_function, division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 import atexit
 import logging
 import multiprocessing
 import os
 
-import click
 from distributed import Nanny
-from distributed.config import config
-from distributed.utils import get_ip_interface, parse_bytes
-from distributed.worker import parse_memory_limit
-from distributed.security import Security
 from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.config import config
 from distributed.preloading import validate_preload_argv
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.security import Security
+from distributed.utils import get_ip_interface, parse_bytes
+from distributed.worker import parse_memory_limit
+
+import click
+from toolz import valmap
+from tornado import gen
+from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
+from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity, get_n_gpus, get_device_total_memory
-
-from toolz import valmap
-from tornado.ioloop import IOLoop, TimeoutError
-from tornado import gen
+from .utils import (
+    CPUAffinity,
+    get_cpu_affinity,
+    get_device_total_memory,
+    get_n_gpus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +152,28 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.argument(
     "preload_argv", nargs=-1, type=click.UNPROCESSED, callback=validate_preload_argv
 )
+@click.option(
+    "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
+    default=False,
+    help="Enable TCP communication over UCX",
+)
+@click.option(
+    "--enable-infiniband/--disable-infiniband",
+    default=False,
+    help="Enable InfiniBand communication",
+)
+@click.option(
+    "--enable-nvlink/--disable-nvlink",
+    default=False,
+    help="Enable NVLink communication",
+)
+@click.option(
+    "--net-devices",
+    type=str,
+    default=None,
+    help="Network interface to establish UCX connection, "
+    "usually the Ethernet interface, like 'eth0' or 'enp1s0f0'",
+)
 def main(
     scheduler,
     host,
@@ -166,6 +194,10 @@ def main(
     tls_ca_file,
     tls_cert,
     tls_key,
+    enable_tcp_over_ucx,
+    enable_infiniband,
+    enable_nvlink,
+    net_devices,
     **kwargs,
 ):
     enable_proctitle_on_current()
@@ -231,6 +263,14 @@ def main(
             raise ValueError("Can not specify both interface and host")
         else:
             host = get_ip_interface(interface)
+
+    initialize(
+        create_cuda_context=True,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        net_devices=net_devices,
+    )
 
     nannies = [
         t(

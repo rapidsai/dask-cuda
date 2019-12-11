@@ -23,13 +23,12 @@ You can add it to your global config with the following yaml
 See https://docs.dask.org/en/latest/configuration.html for more information
 about Dask configuration.
 """
-import click
 import logging
-import os
-import warnings
 
+import dask
+
+import click
 import numba.cuda
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ def initialize(
 
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         try:
-            import ucp
+            import ucp  # noqa
         except ImportError:
             logger.error(
                 "UCX protocol requested but ucp module is not available", exc_info=True
@@ -70,18 +69,7 @@ def initialize(
                 if net_devices is not None and net_devices != "":
                     options["NET_DEVICES"] = net_devices
 
-            ucp.reset()
-            ucp.init(options=options)
-
-            ucx_env = {}
-            for k, v in ucp.get_config().items():
-                # Skip values that aren't actual environment variables (i.e., not strings)
-                if isinstance(v, str):
-                    ucx_env["UCX_" + k] = v
-
-            # Set also UCX environment variables: required by Dask client. It may be best ti
-            # to have the client asking the scheduler for the proper variables.
-            os.environ.update(ucx_env)
+            dask.config.set({"ucx": options})
 
 
 @click.command()
@@ -120,10 +108,8 @@ def dask_setup(
     enable_nvlink,
     net_devices,
 ):
-    initialize(
-        create_cuda_context=create_cuda_context,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        net_devices=net_devices,
-    )
+    if create_cuda_context:
+        try:
+            numba.cuda.current_context()
+        except Exception:
+            logger.error("Unable to start CUDA Context", exc_info=True)

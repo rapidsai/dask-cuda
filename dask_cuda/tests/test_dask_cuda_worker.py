@@ -1,16 +1,12 @@
-from __future__ import print_function, division, absolute_import
+from __future__ import absolute_import, division, print_function
 
 import os
 from time import sleep
 
 from distributed import Client
 from distributed.metrics import time
-from distributed.utils_test import popen
 from distributed.utils_test import loop  # noqa: F401
-
-import pytest
-
-pytest.importorskip("requests")
+from distributed.utils_test import popen
 
 
 def test_cuda_visible_devices(loop):  # noqa: F811
