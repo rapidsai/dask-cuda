@@ -1,7 +1,6 @@
 import argparse
 import math
 from collections import defaultdict
-from distutils.util import strtobool
 from time import perf_counter as clock
 
 from dask.base import tokenize
@@ -154,9 +153,9 @@ def main(args):
             CUDA_VISIBLE_DEVICES=args.devs,
         )
     else:
-        enable_infiniband = bool(strtobool(args.enable_infiniband))
-        enable_nvlink = bool(strtobool(args.enable_nvlink))
-        enable_tcp_over_ucx = bool(strtobool(args.enable_tcp_over_ucx))
+        enable_infiniband = args.enable_infiniband
+        enable_nvlink = args.enable_nvlink
+        enable_tcp_over_ucx = args.enable_tcp_over_ucx
         cluster = LocalCUDACluster(
             protocol=args.protocol,
             n_workers=args.n_workers,
@@ -304,13 +303,43 @@ def parse_args():
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     parser.add_argument(
-        "--enable-tcp-over-ucx", default="True", help="Enable tcp over ucx."
+        "--enable-tcp-over-ucx",
+        action="store_true",
+        dest="enable_tcp_over_ucx",
+        help="Enable tcp over ucx.",
     )
     parser.add_argument(
-        "--enable-infiniband", default="True", help="Enable infiniband over ucx."
+        "--enable-infiniband",
+        action="store_true",
+        dest="enable_infiniband",
+        help="Enable infiniband over ucx.",
     )
     parser.add_argument(
-        "--enable-nvlink", default="True", help="Enable NVLink over ucx."
+        "--enable-nvlink",
+        action="store_true",
+        dest="enable_nvlink",
+        help="Enable NVLink over ucx.",
+    )
+    parser.add_argument(
+        "--disable-tcp-over-ucx",
+        action="store_false",
+        dest="enable_tcp_over_ucx",
+        help="Disable tcp over ucx.",
+    )
+    parser.add_argument(
+        "--disable-infiniband",
+        action="store_false",
+        dest="enable_infiniband",
+        help="Disable infiniband over ucx.",
+    )
+    parser.add_argument(
+        "--disable-nvlink",
+        action="store_false",
+        dest="enable_nvlink",
+        help="Disable NVLink over ucx.",
+    )
+    parser.set_defaults(
+        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
     )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
