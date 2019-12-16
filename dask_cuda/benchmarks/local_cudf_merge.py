@@ -8,6 +8,7 @@ from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
 
 import cudf
 import cupy
@@ -28,20 +29,20 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
         #
         # "key" column is a unique sample within [0, local_size * num_chunks)
         #
+        # "shuffle" column is a random selection of partitions (used for shuffle)
+        #
         # "payload" column is a random permutation of the chunk_size
 
-        sub_local_size = math.ceil(local_size / num_chunks)
-        arrays = []
-        for i in range(num_chunks):
-            bgn = (local_size * i) + (sub_local_size * i_chunk)
-            end = bgn + sub_local_size
-            ar = cupy.arange(bgn, stop=end, dtype="int64")
-            arrays.append(cupy.random.permutation(ar))
-        key_array_match = cupy.concatenate(tuple(arrays), axis=0)
+        start = local_size * i_chunk
+        stop = start + local_size
+
+        parts_array = cupy.arange(num_chunks, dtype="int64")
+        suffle_array = cupy.repeat(parts_array, math.ceil(local_size / num_chunks))
 
         df = cudf.DataFrame(
             {
-                "key": cupy.random.permutation(key_array_match[:local_size]),
+                "key": cupy.arange(start, stop=stop, dtype="int64"),
+                "shuffle": cupy.random.permutation(suffle_array)[:local_size],
                 "payload": cupy.random.permutation(
                     cupy.arange(local_size, dtype="int64")
                 ),
@@ -89,10 +90,10 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
     return df
 
 
-def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
+def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
     parts = [chunk_size for i in range(num_chunks)]
-    meta = generate_chunk(0, 4, 1, None, None)
+    meta = generate_chunk(0, 4, 1, chunk_type, None)
     divisions = [None] * (len(parts) + 1)
 
     name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
@@ -102,16 +103,25 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type):
         for i, part in enumerate(parts)
     }
 
-    return new_dd_object(graph, name, meta, divisions)
+    ddf = new_dd_object(graph, name, meta, divisions)
+
+    if chunk_type == "build":
+        if not args.no_shuffle:
+            divisions = [i for i in range(num_chunks)] + [num_chunks]
+            return ddf.set_index("shuffle", divisions=tuple(divisions))
+        else:
+            del ddf["shuffle"]
+
+    return ddf
 
 
 def run(args, write_profile=None):
     # Generate random Dask dataframes
     ddf_base = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "build"
+        args.chunk_size, args.n_workers, args.frac_match, "build", args
     ).persist()
     ddf_other = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "other"
+        args.chunk_size, args.n_workers, args.frac_match, "other", args
     ).persist()
     wait(ddf_base)
     wait(ddf_other)
@@ -136,9 +146,31 @@ def run(args, write_profile=None):
 
 def main(args):
     # Set up workers on the local machine
-    cluster = LocalCUDACluster(
-        protocol=args.protocol, n_workers=args.n_workers, CUDA_VISIBLE_DEVICES=args.devs
-    )
+    if args.protocol == "tcp":
+        cluster = LocalCUDACluster(
+            protocol=args.protocol,
+            n_workers=args.n_workers,
+            CUDA_VISIBLE_DEVICES=args.devs,
+        )
+    else:
+        enable_infiniband = args.enable_infiniband
+        enable_nvlink = args.enable_nvlink
+        enable_tcp_over_ucx = args.enable_tcp_over_ucx
+        cluster = LocalCUDACluster(
+            protocol=args.protocol,
+            n_workers=args.n_workers,
+            CUDA_VISIBLE_DEVICES=args.devs,
+            ucx_net_devices="auto",
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+        )
+        initialize(
+            create_cuda_context=True,
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+        )
     client = Client(cluster)
 
     if args.no_pool_allocator:
@@ -177,7 +209,7 @@ def main(args):
     }
 
     if args.markdown:
-        print('```')
+        print("```")
     print("Merge benchmark")
     print("--------------------------")
     print(f"Chunk-size  | {args.chunk_size}")
@@ -185,12 +217,19 @@ def main(args):
     print(f"Ignore-size | {format_bytes(args.ignore_size)}")
     print(f"Protocol    | {args.protocol}")
     print(f"Device(s)   | {args.devs}")
+    print(f"rmm-pool    | {(not args.no_pool_allocator)}")
+    if args.protocol == "ucx":
+        print(f"tcp         | {args.enable_tcp_over_ucx}")
+        print(f"ib          | {args.enable_infiniband}")
+        print(f"nvlink      | {args.enable_nvlink}")
     print("==========================")
     for took in took_list:
         print(f"Total time  | {format_time(took)}")
     print("==========================")
     if args.markdown:
-        print("\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
+        print(
+            "\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
+        )
     print("(w1,w2)     | 25% 50% 75% (total nbytes)")
     print("--------------------------")
     for (d1, d2), bw in sorted(bandwidths.items()):
@@ -199,7 +238,7 @@ def main(args):
             % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
         )
     if args.markdown:
-        print('```\n</details>\n')
+        print("```\n</details>\n")
 
 
 def parse_args():
@@ -249,9 +288,12 @@ def parse_args():
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--markdown",
+        "--no-shuffle",
         action="store_true",
-        help="Write output as markdown",
+        help="Don't shuffle the keys of the left (base) dataframe.",
+    )
+    parser.add_argument(
+        "--markdown", action="store_true", help="Write output as markdown"
     )
     parser.add_argument(
         "-s",
@@ -260,6 +302,45 @@ def parse_args():
         help="Call set_index on the key column to sort the joined dataframe.",
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
+    parser.add_argument(
+        "--enable-tcp-over-ucx",
+        action="store_true",
+        dest="enable_tcp_over_ucx",
+        help="Enable tcp over ucx.",
+    )
+    parser.add_argument(
+        "--enable-infiniband",
+        action="store_true",
+        dest="enable_infiniband",
+        help="Enable infiniband over ucx.",
+    )
+    parser.add_argument(
+        "--enable-nvlink",
+        action="store_true",
+        dest="enable_nvlink",
+        help="Enable NVLink over ucx.",
+    )
+    parser.add_argument(
+        "--disable-tcp-over-ucx",
+        action="store_false",
+        dest="enable_tcp_over_ucx",
+        help="Disable tcp over ucx.",
+    )
+    parser.add_argument(
+        "--disable-infiniband",
+        action="store_false",
+        dest="enable_infiniband",
+        help="Disable infiniband over ucx.",
+    )
+    parser.add_argument(
+        "--disable-nvlink",
+        action="store_false",
+        dest="enable_nvlink",
+        help="Disable NVLink over ucx.",
+    )
+    parser.set_defaults(
+        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
+    )
     args = parser.parse_args()
     args.n_workers = len(args.devs.split(","))
     return args
