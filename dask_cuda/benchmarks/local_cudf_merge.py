@@ -217,6 +217,11 @@ def main(args):
     print(f"Ignore-size | {format_bytes(args.ignore_size)}")
     print(f"Protocol    | {args.protocol}")
     print(f"Device(s)   | {args.devs}")
+    print(f"rmm-pool    | {(not args.no_pool_allocator)}")
+    if args.protocol == "ucx":
+        print(f"tcp         | {(not args.no_tcp)}")
+        print(f"ib          | {(not args.no_ib)}")
+        print(f"nvlink      | {(not args.no_nvlink)}")
     print("==========================")
     for took in took_list:
         print(f"Total time  | {format_time(took)}")
