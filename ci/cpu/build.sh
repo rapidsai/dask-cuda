@@ -50,14 +50,20 @@ if [[ "$BUILD_MODE" = "branch" && "$SOURCE_BRANCH" = branch-* ]] ; then
 fi
 
 ################################################################################
-# BUILD - Conda package build
+# BUILD - Package builds
 ################################################################################
 
 conda build conda/recipes/dask-cuda --python=${PYTHON}
 
+rm -rf dist/
+python setup.py sdist bdist_wheel
+
 ################################################################################
-# UPLOAD - Conda package
+# UPLOAD - Packages
 ################################################################################
 
 logger "Upload conda pkg..."
 source ci/cpu/upload-anaconda.sh
+
+logger "Upload pypi pkg..."
+source ci/cpu/upload-pypi.sh
