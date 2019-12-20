@@ -15,4 +15,4 @@ if [ -z "$TWINE_PASSWORD" ]; then
 fi
 
 echo "Upload pypi"
-twine upload -u ${TWINE_USERNAME:-rapidsai} dist/*
+twine upload --skip-existing -u ${TWINE_USERNAME:-rapidsai} dist/*
