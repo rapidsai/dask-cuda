@@ -173,10 +173,12 @@ def main(args):
         )
     client = Client(cluster)
 
-    if args.no_pool_allocator:
-        client.run(cudf.set_allocator, "default", pool=False)
-    else:
-        client.run(cudf.set_allocator, "default", pool=True)
+    def _worker_setup():
+        import rmm
+        rmm.reinitialize(pool_allocator=not args.no_rmm_pool, devices=0)
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+    client.run(_worker_setup)
 
     took_list = []
     for _ in range(args.runs - 1):
@@ -217,7 +219,7 @@ def main(args):
     print(f"Ignore-size | {format_bytes(args.ignore_size)}")
     print(f"Protocol    | {args.protocol}")
     print(f"Device(s)   | {args.devs}")
-    print(f"rmm-pool    | {(not args.no_pool_allocator)}")
+    print(f"rmm-pool    | {(not args.no_rmm_pool)}")
     if args.protocol == "ucx":
         print(f"tcp         | {args.enable_tcp_over_ucx}")
         print(f"ib          | {args.enable_infiniband}")
@@ -278,7 +280,7 @@ def parse_args():
         help="Fraction of rows that matches (default 0.3)",
     )
     parser.add_argument(
-        "--no-pool-allocator", action="store_true", help="Disable the RMM memory pool"
+        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
         "--profile",
