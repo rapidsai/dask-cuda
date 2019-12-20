@@ -23,6 +23,13 @@ async def run(args):
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
 
+            def _worker_setup():
+                import rmm
+                rmm.reinitialize(pool_allocator=not args.no_rmm_pool, devices=0)
+                cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+            await client.run(_worker_setup)
+
             # Create a simple random array
             rs = da.random.RandomState(RandomState=cupy.random.RandomState)
             x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
@@ -131,6 +138,9 @@ def parse_args():
         default=None,
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
+    )
+    parser.add_argument(
+        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     args = parser.parse_args()
     return args
