@@ -78,7 +78,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "See --interface.",
 )
 @click.option(
-    "--interface", type=str, default=None, help="Network interface like 'eth0' or 'ib0'"
+    "--interface",
+    type=str,
+    default=None,
+    help="The external interface used to connect to the scheduler, usually "
+    "the ethernet interface is used for connection, not the InfiniBand (if "
+    "one is available)."
 )
 @click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
 @click.option(
@@ -171,8 +176,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--net-devices",
     type=str,
     default=None,
-    help="Network interface to establish UCX connection, "
-    "usually the Ethernet interface, like 'eth0' or 'enp1s0f0'",
+    help="When None (default), 'UCX_NET_DEVICES' will be left to its default. "
+    "otherwise, it must be a non-empty string with the interface name. Normally "
+    "used only with --enable-infiniband to specify the interface to be used by "
+    "the worker, such as 'mlx5_0:1' or 'ib0'."
 )
 def main(
     scheduler,
