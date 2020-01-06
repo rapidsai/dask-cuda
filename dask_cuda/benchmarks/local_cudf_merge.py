@@ -75,7 +75,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
         stop = start + missing_size
         key_array_no_match = cupy.arange(start, stop=stop, dtype="int64")
 
-        # Step 3. Combine and create the fineal dataframe chunk (dask_cudf partition)
+        # Step 3. Combine and create the final dataframe chunk (dask_cudf partition)
         key_array_combine = cupy.concatenate(
             (key_array_match, key_array_no_match), axis=0
         )
@@ -126,6 +126,11 @@ def run(args, write_profile=None):
     wait(ddf_base)
     wait(ddf_other)
 
+    assert(len(ddf_base.dtypes) == 2)
+    assert(len(ddf_other.dtypes) == 2)
+    data_processed = len(ddf_base) * sum([t.itemsize for t in ddf_base.dtypes])
+    data_processed += len(ddf_other) * sum([t.itemsize for t in ddf_other.dtypes])
+
     # Lazy merge/join operation
     ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
     if args.set_index:
@@ -141,7 +146,7 @@ def run(args, write_profile=None):
         t1 = clock()
         wait(ddf_join.persist())
         took = clock() - t1
-    return took
+    return (data_processed, took)
 
 
 def main(args):
@@ -213,7 +218,7 @@ def main(args):
     if args.markdown:
         print("```")
     print("Merge benchmark")
-    print("--------------------------")
+    print("-------------------------------")
     print(f"Chunk-size  | {args.chunk_size}")
     print(f"Frac-match  | {args.frac_match}")
     print(f"Ignore-size | {format_bytes(args.ignore_size)}")
@@ -224,16 +229,19 @@ def main(args):
         print(f"tcp         | {args.enable_tcp_over_ucx}")
         print(f"ib          | {args.enable_infiniband}")
         print(f"nvlink      | {args.enable_nvlink}")
-    print("==========================")
-    for took in took_list:
-        print(f"Total time  | {format_time(took)}")
-    print("==========================")
+    print("===============================")
+    print("Wall-clock  | Throughput")
+    print("-------------------------------")
+    for data_processed, took in took_list:
+        throughput = int(data_processed / took)
+        print(f"{format_time(took)}      | {format_bytes(throughput)}/s")
+    print("===============================")
     if args.markdown:
         print(
             "\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
         )
     print("(w1,w2)     | 25% 50% 75% (total nbytes)")
-    print("--------------------------")
+    print("-------------------------------")
     for (d1, d2), bw in sorted(bandwidths.items()):
         print(
             "(%02d,%02d)     | %s %s %s (%s)"
