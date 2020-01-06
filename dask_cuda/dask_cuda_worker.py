@@ -82,8 +82,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="The external interface used to connect to the scheduler, usually "
-    "the ethernet interface is used for connection, not the InfiniBand (if "
-    "one is available)."
+    "an ethernet interface is used for connection, and not an InfiniBand "
+    "interface (if one is available)."
 )
 @click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
 @click.option(
@@ -177,7 +177,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="When None (default), 'UCX_NET_DEVICES' will be left to its default. "
-    "otherwise, it must be a non-empty string with the interface name. Normally "
+    "Otherwise, it must be a non-empty string with the interface name. Normally "
     "used only with --enable-infiniband to specify the interface to be used by "
     "the worker, such as 'mlx5_0:1' or 'ib0'."
 )
