@@ -179,7 +179,6 @@ class CommsContext:
                     df1_parts[worker],
                     df2_parts[worker],
                     random.random(),
-                    # key="%s-%s" % (key, i),
                 )
             )
         return to_dask_cudf(ret)
