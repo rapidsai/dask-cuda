@@ -83,12 +83,6 @@ async def distributed_join(n_chunks, rank, eps, left_table, right_table, timings
 
 
 async def _cudf_merge(s, df1_parts, df2_parts, r):
-    print(len(df1_parts), len(df2_parts))
-    for df in df1_parts:
-        print(df.shape)
-    for df in df2_parts:
-        print(df.shape)
-
     assert len(df1_parts) == 1
     assert len(df2_parts) == 1
     for _ in range(1):
