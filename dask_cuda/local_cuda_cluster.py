@@ -248,7 +248,7 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices},
                 "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
             }
         )
