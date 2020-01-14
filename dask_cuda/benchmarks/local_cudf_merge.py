@@ -238,32 +238,32 @@ def main(args):
         print("```")
     print("Merge benchmark")
     print("-------------------------------")
-    print(f"Backend     | {args.backend}")
-    print(f"Chunk-size  | {args.chunk_size}")
-    print(f"Frac-match  | {args.frac_match}")
-    print(f"Ignore-size | {format_bytes(args.ignore_size)}")
-    print(f"Protocol    | {args.protocol}")
-    print(f"Device(s)   | {args.devs}")
-    print(f"rmm-pool    | {(not args.no_rmm_pool)}")
+    print(f"backend        | {args.backend}")
+    print(f"rows-per-chunk | {args.chunk_size}")
+    print(f"protocol       | {args.protocol}")
+    print(f"device(s)      | {args.devs}")
+    print(f"rmm-pool       | {(not args.no_rmm_pool)}")
+    print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
-        print(f"tcp         | {args.enable_tcp_over_ucx}")
-        print(f"ib          | {args.enable_infiniband}")
-        print(f"nvlink      | {args.enable_nvlink}")
+        print(f"tcp            | {args.enable_tcp_over_ucx}")
+        print(f"ib             | {args.enable_infiniband}")
+        print(f"nvlink         | {args.enable_nvlink}")
+    print(f"data-processed | {format_bytes(took_list[0][0])}")
     print("===============================")
-    print("Wall-clock  | Throughput")
+    print("Wall-clock     | Throughput")
     print("-------------------------------")
     for data_processed, took in took_list:
         throughput = int(data_processed / took)
-        print(f"{format_time(took)}   | {format_bytes(throughput)}/s")
+        m = format_time(took)
+        m += " " * (15 - len(m))
+        print(f"{m}| {format_bytes(throughput)}/s")
     print("===============================")
     if args.markdown:
         print("\n```")
 
     if args.backend == "dask":
         if args.markdown:
-            print(
-                "<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
-            )
+            print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
         print("(w1,w2)     | 25% 50% 75% (total nbytes)")
         print("-------------------------------")
         for (d1, d2), bw in sorted(bandwidths.items()):
