@@ -257,18 +257,22 @@ def main(args):
         print(f"{format_time(took)}   | {format_bytes(throughput)}/s")
     print("===============================")
     if args.markdown:
-        print(
-            "\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
-        )
-    print("(w1,w2)     | 25% 50% 75% (total nbytes)")
-    print("-------------------------------")
-    for (d1, d2), bw in sorted(bandwidths.items()):
-        print(
-            "(%02d,%02d)     | %s %s %s (%s)"
-            % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
-        )
-    if args.markdown:
-        print("```\n</details>\n")
+        print("\n```")
+
+    if args.backend == "dask":
+        if args.markdown:
+            print(
+                "<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
+            )
+        print("(w1,w2)     | 25% 50% 75% (total nbytes)")
+        print("-------------------------------")
+        for (d1, d2), bw in sorted(bandwidths.items()):
+            print(
+                "(%02d,%02d)     | %s %s %s (%s)"
+                % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
+            )
+        if args.markdown:
+            print("```\n</details>\n")
 
 
 def parse_args():
