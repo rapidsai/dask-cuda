@@ -66,9 +66,12 @@ def _test_cudf_merge(protocol):
                 cudf.DataFrame.from_pandas(df2), npartitions=n_workers
             )
             ddf3 = cudf_merge(ddf1, ddf2).set_index("key")
-            pd.testing.assert_frame_equal(
-                ddf3.compute().to_pandas(), df1.merge(df2).set_index("key")
-            )
+
+            got = ddf3.compute().to_pandas()
+            got.index.names = ["key"]  # TODO: this shouldn't be needed
+            expected = df1.merge(df2).set_index("key")
+
+            pd.testing.assert_frame_equal(got, expected)
 
 
 def test_cudf_merge():
