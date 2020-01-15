@@ -61,24 +61,17 @@ async def recv_bins(eps, bins):
     bins.extend(await asyncio.gather(*futures))
 
 
-async def exchange_and_concat_bins(rank, eps, bins, timings=None):
+async def exchange_and_concat_bins(rank, eps, bins):
     ret = [bins[rank]]
-    if timings is not None:
-        t1 = clock()
     await asyncio.gather(recv_bins(eps, ret), send_bins(eps, bins))
-    if timings is not None:
-        t2 = clock()
-        timings.append(
-            (t2 - t1, sum([sys.getsizeof(b) for i, b in enumerate(bins) if i != rank]))
-        )
     return cudf.concat(ret)
 
 
-async def distributed_join(n_chunks, rank, eps, left_table, right_table, timings=None):
+async def distributed_join(n_chunks, rank, eps, left_table, right_table):
     left_bins = left_table.partition_by_hash(["key"], n_chunks)
     right_bins = right_table.partition_by_hash(["key"], n_chunks)
-    left_df = await exchange_and_concat_bins(rank, eps, left_bins, timings)
-    right_df = await exchange_and_concat_bins(rank, eps, right_bins, timings)
+    left_df = await exchange_and_concat_bins(rank, eps, left_bins)
+    right_df = await exchange_and_concat_bins(rank, eps, right_bins)
     return left_df.merge(right_df)
 
 
