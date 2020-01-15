@@ -18,6 +18,12 @@ from zict.common import ZictBase
 
 from .is_device_object import is_device_object
 
+try:
+    import rmm as cuda_memory_manager
+except ImportError:
+    import numba.cuda as cuda_memory_manager
+
+
 # Register sizeof for Numba DeviceNDArray while Dask doesn't add it
 if not hasattr(sizeof, "register_numba"):
 
@@ -87,7 +93,11 @@ def device_to_host(obj: object) -> DeviceSerialized:
 
 
 def host_to_device(s: DeviceSerialized) -> object:
-    frames = [cuda.to_device(f) if ic else f for ic, f in zip(s.is_cuda, s.parts)]
+    frames = [
+        cuda_memory_manager.to_device(f) if ic else f
+        for ic, f in zip(s.is_cuda, s.parts)
+    ]
+
     return deserialize(s.header, frames)
 
 
