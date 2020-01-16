@@ -1,50 +1,28 @@
 import asyncio
-import pickle
 import numpy as np
 
 import rmm
 import cudf
+from distributed.protocol import to_serialize
 
 from . import comms
 
 
 async def send_df(ep, df):
-    header, frames = df.serialize()
-    header["frame_ifaces"] = [f.__cuda_array_interface__ for f in frames]
-    header = pickle.dumps(header)
-    header_nbytes = np.array([len(header)], dtype=np.uint64)
-    await ep.send(header_nbytes)
-    await ep.send(header)
-    for frame in frames:
-        await ep.send(frame)
+    return await ep.write([to_serialize(df)])
 
 
 async def recv_df(ep):
-    header_nbytes = np.empty((1,), dtype=np.uint64)
-    await ep.recv(header_nbytes)
-    header = bytearray(header_nbytes[0])
-    await ep.recv(header)
-    header = pickle.loads(header)
-
-    frames = [
-        rmm.device_array(iface["shape"], dtype=np.dtype(iface["typestr"]))
-        for iface in header["frame_ifaces"]
-    ]
-    for frame in frames:
-        await ep.recv(frame)
-
-    cudf_typ = pickle.loads(header["type"])
-    return cudf_typ.deserialize(header, frames)
+    ret = await ep.read()
+    return ret[0]
 
 
 async def barrier(rank, eps):
     futures = []
-    dummy_send = np.zeros(1, dtype="u1")
-
     if rank == 0:
-        await asyncio.gather(*[ep.recv(np.empty(1, dtype="u1")) for ep in eps.values()])
+        await asyncio.gather(*[ep.read() for ep in eps.values()])
     else:
-        await eps[0].send(np.zeros(1, dtype="u1"))
+        await eps[0].send("dummy")
 
 
 async def send_bins(eps, bins):
