@@ -63,4 +63,4 @@ async def _cudf_merge(s, df1_parts, df2_parts, r):
 
 
 def cudf_merge(df1, df2):
-    return comms.default_comms().dataframe_operation(_cudf_merge, df1, df2)
+    return comms.default_comms().dataframe_operation(_cudf_merge, (df1, df2))

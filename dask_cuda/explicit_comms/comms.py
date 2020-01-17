@@ -159,21 +159,27 @@ class CommsContext:
             )
         return self.client.gather(ret)
 
-    def dataframe_operation(self, coroutine, df1, df2):
+    def dataframe_operation(self, coroutine, df_list):
         key = uuid.uuid1()
-        df1_fut = self.client.sync(extract_ddf_partitions, df1)
-        df2_fut = self.client.sync(extract_ddf_partitions, df2)
-        df1_parts = utils.workers_to_parts(df1_fut)
-        df2_parts = utils.workers_to_parts(df2_fut)
+        df_parts_list = []
+        for df in df_list:
+            df_parts_list.append(
+                utils.workers_to_parts(self.client.sync(extract_ddf_partitions, df))
+            )
+
+        # Find all workers that have some part of the input dataframes
+        workers = set()
+        for df_parts in df_parts_list:
+            for w in df_parts.keys():
+                workers.add(w)
 
         ret = []
-        for i, worker in enumerate(df1_parts.keys()):
+        for worker in workers:
             ret.append(
                 self.submit(
                     worker,
                     coroutine,
-                    df1_parts[worker],
-                    df2_parts[worker],
+                    *[df_parts[worker] for df_parts in df_parts_list],
                     random.random(),
                 )
             )
