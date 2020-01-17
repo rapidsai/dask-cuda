@@ -175,12 +175,8 @@ class CommsContext:
 
         ret = []
         for worker in workers:
-            ret.append(
-                self.submit(
-                    worker,
-                    coroutine,
-                    *[df_parts[worker] for df_parts in df_parts_list],
-                    random.random(),
-                )
-            )
+            dfs = []
+            for df_parts in df_parts_list:
+                dfs.append(df_parts.get(worker, []))
+            ret.append(self.submit(worker, coroutine, *dfs, random.random()))
         return to_dask_cudf(ret)

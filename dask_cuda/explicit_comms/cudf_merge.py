@@ -9,12 +9,18 @@ from . import comms
 
 
 async def send_df(ep, df):
-    return await ep.write([to_serialize(df)])
+    if df is None:
+        return await ep.write("empty")
+    else:
+        return await ep.write([to_serialize(df)])
 
 
 async def recv_df(ep):
     ret = await ep.read()
-    return ret[0]
+    if ret == "empty":
+        return None
+    else:
+        return ret[0]
 
 
 async def barrier(rank, eps):
@@ -42,24 +48,39 @@ async def recv_bins(eps, bins):
 async def exchange_and_concat_bins(rank, eps, bins):
     ret = [bins[rank]]
     await asyncio.gather(recv_bins(eps, ret), send_bins(eps, bins))
-    return cudf.concat(ret)
+    return cudf.concat([df for df in ret if df is not None])
+
+
+def partition_by_hash(df, keys, n_chunks):
+    if df is None:
+        return [None] * n_chunks
+    else:
+        return df.partition_by_hash(keys, n_chunks)
 
 
 async def distributed_join(n_chunks, rank, eps, left_table, right_table):
-    left_bins = left_table.partition_by_hash(["key"], n_chunks)
-    right_bins = right_table.partition_by_hash(["key"], n_chunks)
+    left_bins = partition_by_hash(left_table, ["key"], n_chunks)
     left_df = await exchange_and_concat_bins(rank, eps, left_bins)
+
+    right_bins = partition_by_hash(right_table, ["key"], n_chunks)
     right_df = await exchange_and_concat_bins(rank, eps, right_bins)
     return left_df.merge(right_df)
 
 
 async def _cudf_merge(s, df1_parts, df2_parts, r):
-    # TODO: handle cases where df1_parts and df2_parts consist of multiple parts
-    assert len(df1_parts) == 1
-    assert len(df2_parts) == 1
-    return await distributed_join(
-        s["nworkers"], s["rank"], s["eps"], df1_parts[0], df2_parts[0]
-    )
+    def df_concat(df_parts):
+        """Making sure df_parts is a single dataframe or None"""
+        if len(df_parts) == 0:
+            return None
+        elif len(df_parts) == 1:
+            return df_parts[0]
+        else:
+            return cudf.concat(df_parts)
+
+    df1 = df_concat(df1_parts)
+    df2 = df_concat(df2_parts)
+
+    return await distributed_join(s["nworkers"], s["rank"], s["eps"], df1, df2)
 
 
 def cudf_merge(df1, df2):
