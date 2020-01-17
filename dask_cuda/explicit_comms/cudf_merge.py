@@ -60,9 +60,9 @@ def partition_by_hash(df, keys, n_chunks):
 
 async def distributed_join(n_chunks, rank, eps, left_table, right_table):
     left_bins = partition_by_hash(left_table, ["key"], n_chunks)
-    left_df = await exchange_and_concat_bins(rank, eps, left_bins)
-
+    left_df = exchange_and_concat_bins(rank, eps, left_bins)
     right_bins = partition_by_hash(right_table, ["key"], n_chunks)
+    left_df = await left_df
     right_df = await exchange_and_concat_bins(rank, eps, right_bins)
     return left_df.merge(right_df)
 
