@@ -56,8 +56,14 @@ def _test_cudf_merge(protocol):
         with Client(cluster) as client:
             comms = CommsContext(client)
             nrows = n_workers * 10
+
+            # Let's make some dataframes that we can join on the "key" column
             df1 = pd.DataFrame({"key": np.arange(nrows), "payload1": np.arange(nrows)})
-            df2 = pd.DataFrame({"key": np.arange(nrows), "payload2": np.arange(nrows)})
+            key = np.arange(nrows)
+            np.random.shuffle(key)
+            df2 = pd.DataFrame(
+                {"key": key[nrows // 3 :], "payload2": np.arange(nrows)[nrows // 3 :]}
+            )
 
             ddf1 = dd.from_pandas(
                 cudf.DataFrame.from_pandas(df1), npartitions=n_workers
