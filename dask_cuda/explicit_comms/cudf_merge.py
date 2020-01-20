@@ -28,7 +28,7 @@ async def barrier(rank, eps):
     if rank == 0:
         await asyncio.gather(*[ep.read() for ep in eps.values()])
     else:
-        await eps[0].send("dummy")
+        await eps[0].write("dummy")
 
 
 async def send_bins(eps, bins):
