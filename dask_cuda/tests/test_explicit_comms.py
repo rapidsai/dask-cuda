@@ -3,7 +3,7 @@ import pytest
 
 from distributed import Client
 from distributed.deploy.local import LocalCluster
-from dask_cuda.explicit_comms import CommsContext, cudf_merge
+from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 
 import pandas as pd
 import dask.dataframe as dd
@@ -72,7 +72,7 @@ def _test_dataframe_merge(backend, protocol, n_workers=4):
 
             ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
             ddf2 = dd.from_pandas(df2, npartitions=n_workers - 1)
-            ddf3 = cudf_merge(ddf1, ddf2).set_index("key")
+            ddf3 = dataframe_merge(ddf1, ddf2).set_index("key")
             got = ddf3.compute()
 
             if backend == "cudf":

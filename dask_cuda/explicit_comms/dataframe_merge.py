@@ -101,7 +101,7 @@ async def distributed_join(n_chunks, rank, eps, left_table, right_table):
     return left_df.merge(right_df)
 
 
-async def _cudf_merge(s, df1_parts, df2_parts, r):
+async def _dataframe_merge(s, df1_parts, df2_parts, r):
     def df_concat(df_parts):
         """Making sure df_parts is a single dataframe or None"""
         if len(df_parts) == 0:
@@ -117,5 +117,5 @@ async def _cudf_merge(s, df1_parts, df2_parts, r):
     return await distributed_join(s["nworkers"], s["rank"], s["eps"], df1, df2)
 
 
-def cudf_merge(df1, df2):
-    return comms.default_comms().dataframe_operation(_cudf_merge, (df1, df2))
+def dataframe_merge(df1, df2):
+    return comms.default_comms().dataframe_operation(_dataframe_merge, (df1, df2))

@@ -1,2 +1,2 @@
 from .comms import *
-from .cudf_merge import cudf_merge
+from .dataframe_merge import dataframe_merge
