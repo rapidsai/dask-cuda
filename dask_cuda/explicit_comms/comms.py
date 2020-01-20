@@ -158,7 +158,7 @@ class CommsContext:
             )
         return self.client.gather(ret)
 
-    def dataframe_operation(self, coroutine, df_list):
+    def dataframe_operation(self, coroutine, df_list, extra_args=[]):
         key = uuid.uuid1()
         df_parts_list = []
         for df in df_list:
@@ -179,5 +179,7 @@ class CommsContext:
             dfs = []
             for df_parts in df_parts_list:
                 dfs.append(df_parts.get(worker, []))
-            ret.append(self.submit(worker, coroutine, *dfs, random.random()))
+            ret.append(
+                self.submit(worker, coroutine, *dfs, *extra_args, random.random())
+            )
         return utils.dataframes_to_dask_dataframe(ret)

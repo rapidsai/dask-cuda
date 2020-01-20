@@ -72,7 +72,7 @@ def _test_dataframe_merge(backend, protocol, n_workers=4):
 
             ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
             ddf2 = dd.from_pandas(df2, npartitions=n_workers - 1)
-            ddf3 = dataframe_merge(ddf1, ddf2).set_index("key")
+            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
             got = ddf3.compute()
 
             if backend == "cudf":

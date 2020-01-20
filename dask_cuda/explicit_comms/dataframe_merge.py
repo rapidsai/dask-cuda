@@ -91,16 +91,18 @@ def partition_by_hash(df, columns, n_chunks):
         return ret
 
 
-async def distributed_join(n_chunks, rank, eps, left_table, right_table):
-    left_bins = partition_by_hash(left_table, ["key"], n_chunks)
+async def distributed_join(
+    n_chunks, rank, eps, left_table, right_table, left_on, right_on
+):
+    left_bins = partition_by_hash(left_table, left_on, n_chunks)
     left_df = exchange_and_concat_bins(rank, eps, left_bins)
-    right_bins = partition_by_hash(right_table, ["key"], n_chunks)
+    right_bins = partition_by_hash(right_table, right_on, n_chunks)
     left_df = await left_df
     right_df = await exchange_and_concat_bins(rank, eps, right_bins)
-    return left_df.merge(right_df)
+    return left_df.merge(right_df, left_on=left_on, right_on=right_on)
 
 
-async def _dataframe_merge(s, df1_parts, df2_parts, r):
+async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on, r):
     def df_concat(df_parts):
         """Making sure df_parts is a single dataframe or None"""
         if len(df_parts) == 0:
@@ -113,8 +115,31 @@ async def _dataframe_merge(s, df1_parts, df2_parts, r):
     df1 = df_concat(df1_parts)
     df2 = df_concat(df2_parts)
 
-    return await distributed_join(s["nworkers"], s["rank"], s["eps"], df1, df2)
+    return await distributed_join(
+        s["nworkers"], s["rank"], s["eps"], df1, df2, left_on, right_on
+    )
 
 
-def dataframe_merge(df1, df2):
-    return comms.default_comms().dataframe_operation(_dataframe_merge, (df1, df2))
+def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None):
+
+    # Making sure that the "on" arguments are list of column names
+    if on:
+        on = [on] if isinstance(on, str) else list(on)
+    if left_on:
+        left_on = [left_on] if isinstance(left_on, str) else list(left_on)
+    if right_on:
+        right_on = [right_on] if isinstance(right_on, str) else list(right_on)
+
+    if left_on is None:
+        left_on = on
+    if right_on is None:
+        right_on = on
+
+    if not (left_on and right_on):
+        raise ValueError(
+            "Some combination of the on, left_on, and right_on arguments must be set"
+        )
+
+    return comms.default_comms().dataframe_operation(
+        _dataframe_merge, df_list=(df1, df2), extra_args=(left_on, right_on)
+    )
