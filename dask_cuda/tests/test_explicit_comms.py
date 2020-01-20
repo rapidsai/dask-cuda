@@ -45,7 +45,7 @@ def test_local_cluster(protocol):
     assert not p.exitcode
 
 
-def _test_cudf_merge(protocol, n_workers=4):
+def _test_dataframe_merge(backend, protocol, n_workers=4):
     with LocalCluster(
         protocol=protocol,
         dashboard_address=None,
@@ -64,25 +64,28 @@ def _test_cudf_merge(protocol, n_workers=4):
             df2 = pd.DataFrame(
                 {"key": key[nrows // 3 :], "payload2": np.arange(nrows)[nrows // 3 :]}
             )
-
-            ddf1 = dd.from_pandas(
-                cudf.DataFrame.from_pandas(df1), npartitions=n_workers + 1
-            )
-            ddf2 = dd.from_pandas(
-                cudf.DataFrame.from_pandas(df2), npartitions=n_workers - 1
-            )
-            ddf3 = cudf_merge(ddf1, ddf2).set_index("key")
-
-            got = ddf3.compute().to_pandas()
-            got.index.names = ["key"]  # TODO: this shouldn't be needed
             expected = df1.merge(df2).set_index("key")
+
+            if backend == "cudf":
+                df1 = cudf.DataFrame.from_pandas(df1)
+                df2 = cudf.DataFrame.from_pandas(df2)
+
+            ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
+            ddf2 = dd.from_pandas(df2, npartitions=n_workers - 1)
+            ddf3 = cudf_merge(ddf1, ddf2).set_index("key")
+            got = ddf3.compute()
+
+            if backend == "cudf":
+                got = got.to_pandas()
+                got.index.names = ["key"]  # TODO: this shouldn't be needed
 
             pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-def test_cudf_merge(protocol):
-    p = mp.Process(target=_test_cudf_merge, args=(protocol,))
+def test_dataframe_merge(backend, protocol):
+    p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol))
     p.start()
     p.join()
     assert not p.exitcode
