@@ -10,7 +10,6 @@ from distributed.comm.addressing import parse_host_port, parse_address, unparse_
 from distributed.protocol import to_serialize
 import distributed.comm
 
-from .dask_df_utils import extract_ddf_partitions, to_dask_cudf
 from . import utils
 
 
@@ -164,7 +163,9 @@ class CommsContext:
         df_parts_list = []
         for df in df_list:
             df_parts_list.append(
-                utils.workers_to_parts(self.client.sync(extract_ddf_partitions, df))
+                utils.workers_to_parts(
+                    self.client.sync(utils.extract_ddf_partitions, df)
+                )
             )
 
         # Find all workers that have some part of the input dataframes
@@ -179,4 +180,4 @@ class CommsContext:
             for df_parts in df_parts_list:
                 dfs.append(df_parts.get(worker, []))
             ret.append(self.submit(worker, coroutine, *dfs, random.random()))
-        return to_dask_cudf(ret)
+        return utils.dataframes_to_dask_dataframe(ret)

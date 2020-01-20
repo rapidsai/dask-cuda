@@ -7,8 +7,7 @@ import rmm
 import cudf
 from distributed.protocol import to_serialize
 
-from . import comms
-from . import dask_df_utils
+from . import comms, utils
 
 
 async def send_df(ep, df):
@@ -82,7 +81,7 @@ def partition_by_hash(df, columns, n_chunks):
             df_list[idx] = group
             del group[meta_col]
         del df[meta_col]
-        header = dask_df_utils.get_meta(df)
+        header = utils.get_meta(df)
         ret = []
         for df in df_list:
             if df is None:
