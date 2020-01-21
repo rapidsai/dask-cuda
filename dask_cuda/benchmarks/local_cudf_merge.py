@@ -137,7 +137,7 @@ def merge(args, ddf1, ddf2, write_profile):
 
 def merge_explicit_comms(args, ddf1, ddf2):
     t1 = clock()
-    wait(explicit_comms.cudf_merge(ddf1, ddf2).persist())
+    wait(explicit_comms.dataframe_merge(ddf1, ddf2, on="key").persist())
     took = clock() - t1
     return took
 
