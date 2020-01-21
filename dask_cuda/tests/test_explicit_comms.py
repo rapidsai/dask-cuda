@@ -45,7 +45,7 @@ def test_local_cluster(protocol):
     assert not p.exitcode
 
 
-def _test_dataframe_merge(backend, protocol, n_workers=4):
+def _test_dataframe_merge(backend, protocol, n_workers):
     with LocalCluster(
         protocol=protocol,
         dashboard_address=None,
@@ -71,7 +71,9 @@ def _test_dataframe_merge(backend, protocol, n_workers=4):
                 df2 = cudf.DataFrame.from_pandas(df2)
 
             ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
-            ddf2 = dd.from_pandas(df2, npartitions=n_workers - 1)
+            ddf2 = dd.from_pandas(
+                df2, npartitions=n_workers - 1 if n_workers > 1 else 1
+            )
             ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
             got = ddf3.compute()
 
@@ -82,10 +84,11 @@ def _test_dataframe_merge(backend, protocol, n_workers=4):
             pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.parametrize("nworkers", [1, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-def test_dataframe_merge(backend, protocol):
-    p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol))
+def test_dataframe_merge(backend, protocol, nworkers):
+    p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol, nworkers))
     p.start()
     p.join()
     assert not p.exitcode
