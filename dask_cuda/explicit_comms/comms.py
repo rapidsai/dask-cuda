@@ -170,11 +170,9 @@ class CommsContext:
         # Submit `coroutine` on each worker given the df_parts that
         # belong the specific worker as input
         ret = []
-        for worker in self.worker_addresses
+        for worker in self.worker_addresses:
             dfs = []
             for df_parts in df_parts_list:
                 dfs.append(df_parts.get(worker, []))
-            ret.append(
-                self.submit(worker, coroutine, *dfs, *extra_args)
-            )
+            ret.append(self.submit(worker, coroutine, *dfs, *extra_args))
         return utils.dataframes_to_dask_dataframe(ret)
