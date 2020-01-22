@@ -84,7 +84,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
             pd.testing.assert_frame_equal(got, expected)
 
 
-@pytest.mark.parametrize("nworkers", [1, 4])
+@pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_merge(backend, protocol, nworkers):

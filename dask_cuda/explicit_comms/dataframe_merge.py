@@ -1,10 +1,10 @@
 import asyncio
-import uuid
 import numpy as np
 import pandas
-
 import rmm
 import cudf
+
+from dask.dataframe.shuffle import shuffle_group, partitioning_index
 from distributed.protocol import to_serialize
 
 from . import comms, utils
@@ -63,32 +63,36 @@ def concat(df_list):
 
 
 def partition_by_hash(df, columns, n_chunks):
-    """Partition the dataframe by the hashed value of data in column.
-        Supports both Pandas and cuDF DataFrames
+    """ Splits dataframe into partitions
+
+    The partitions is determined by the hash value of the rows in `columns`.
+
+    Parameters
+    ----------
+    df: DataFrame
+    columns: label or list
+        Column names on which to split the dataframe
+    npartition: int
+        Number of partitions
+
+    Returns
+    -------
+    out: Dict[int, DataFrame]
+        A dictionary mapping integers in {0..npartition} to dataframes.
     """
     if df is None:
         return [None] * n_chunks
-    elif hasattr(df, "partition_by_hash"):
-        return df.partition_by_hash(columns, n_chunks)
-    else:
-        # Pandas doesn't have a partition_by_hash() method so we implement it here
-        meta_col = "_partition_by_hash_%s" % uuid.uuid1()
-        df[meta_col] = (
-            pandas.util.hash_pandas_object(df[columns], index=False) % n_chunks
-        )
-        df_list = [None] * n_chunks
-        for idx, group in df.groupby(meta_col):
-            df_list[idx] = group
-            del group[meta_col]
-        del df[meta_col]
-        header = utils.get_meta(df)
-        ret = []
-        for df in df_list:
-            if df is None:
-                ret.append(header)
-            else:
-                ret.append(df)
-        return ret
+
+    # Hashing `columns` in `df` and assing it to the "_partitions" column
+    df["_partitions"] = partitioning_index(df[columns], n_chunks)
+    # Split `df` based on the hash values in the "_partitions" column
+    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks)
+
+    # Let's remove the partition column and return the partitions
+    del df["_partitions"]
+    for df in ret.values():
+        del df["_partitions"]
+    return ret
 
 
 async def distributed_join(
