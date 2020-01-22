@@ -102,7 +102,7 @@ async def distributed_join(
     return left_df.merge(right_df, left_on=left_on, right_on=right_on)
 
 
-async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on, r):
+async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on):
     def df_concat(df_parts):
         """Making sure df_parts is a single dataframe or None"""
         if len(df_parts) == 0:

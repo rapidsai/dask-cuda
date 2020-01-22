@@ -1,6 +1,5 @@
 import time
 import uuid
-import random
 import asyncio
 import concurrent.futures
 
@@ -176,6 +175,6 @@ class CommsContext:
             for df_parts in df_parts_list:
                 dfs.append(df_parts.get(worker, []))
             ret.append(
-                self.submit(worker, coroutine, *dfs, *extra_args, random.random())
+                self.submit(worker, coroutine, *dfs, *extra_args)
             )
         return utils.dataframes_to_dask_dataframe(ret)
