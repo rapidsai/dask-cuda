@@ -6,7 +6,6 @@ import concurrent.futures
 import numpy as np
 from distributed import get_worker, default_client, wait
 from distributed.comm.addressing import parse_host_port, parse_address, unparse_address
-from distributed.protocol import to_serialize
 import distributed.comm
 
 from . import utils
