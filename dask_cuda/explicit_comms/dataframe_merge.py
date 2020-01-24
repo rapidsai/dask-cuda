@@ -124,7 +124,7 @@ async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on):
     )
 
 
-def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None):
+def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner"):
 
     # Making sure that the "on" arguments are list of column names
     if on:
@@ -143,6 +143,9 @@ def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None):
         raise ValueError(
             "Some combination of the on, left_on, and right_on arguments must be set"
         )
+
+    if how != "inner":
+        raise NotImplementedError('Only support `how="inner"`')
 
     return comms.default_comms().dataframe_operation(
         _dataframe_merge, df_list=(df1, df2), extra_args=(left_on, right_on)
