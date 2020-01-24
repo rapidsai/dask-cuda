@@ -132,6 +132,32 @@ async def single_partition_join(
 
 
 async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
+    """ Worker job that merge local DataFrames
+
+    Parameters
+    ----------
+    s: dict
+        Worker session state
+    dfs_nparts: list of dict
+        List of dict that for each worker rank specifices the
+        number of partitions that worker has. If the worker doesn't
+        have any partitions, it is excluded from the dict.
+        E.g. `dfs_nparts[0][1]` is how many partitions of the "left"
+        dataframe worker 1 has.
+    dfs_parts: list of lists of Dataframes
+        List of inputs, which in this case are two dataframe lists.
+    left_on : label or list, or array-like
+        Column to join on in the left DataFrame. Other than in pandas
+        arrays and lists are only support if their length is 1.
+    right_on : label or list, or array-like
+        Column to join on in the right DataFrame. Other than in pandas
+        arrays and lists are only support if their length is 1.
+
+    Returns
+    -------
+        merged_dataframe: DataFrame
+    """
+
     def df_concat(df_parts):
         """Making sure df_parts is a single dataframe or None"""
         if len(df_parts) == 0:
@@ -178,6 +204,64 @@ async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
 
 
 def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner"):
+    """Merge two Dask DataFrames
+
+    This will merge the two datasets, either on the indices, a certain column
+    in each dataset or the index in one dataset and the column in another.
+
+    Requires an activate client.
+
+    Parameters
+    ----------
+    left: dask.dataframe.DataFrame
+    right: dask.dataframe.DataFrame
+    how : {'left', 'right', 'outer', 'inner'}, default: 'inner'
+        How to handle the operation of the two objects:
+
+        - left: use calling frame's index (or column if on is specified)
+        - right: use other frame's index
+        - outer: form union of calling frame's index (or column if on is
+            specified) with other frame's index, and sort it
+            lexicographically
+        - inner: form intersection of calling frame's index (or column if
+            on is specified) with other frame's index, preserving the order
+            of the calling's one
+
+    on : label or list
+        Column or index level names to join on. These must be found in both
+        DataFrames. If on is None and not merging on indexes then this
+        defaults to the intersection of the columns in both DataFrames.
+    left_on : label or list, or array-like
+        Column to join on in the left DataFrame. Other than in pandas
+        arrays and lists are only support if their length is 1.
+    right_on : label or list, or array-like
+        Column to join on in the right DataFrame. Other than in pandas
+        arrays and lists are only support if their length is 1.
+    left_index : boolean, default False
+        Use the index from the left DataFrame as the join key.
+    right_index : boolean, default False
+        Use the index from the right DataFrame as the join key.
+    suffixes : 2-length sequence (tuple, list, ...)
+        Suffix to apply to overlapping column names in the left and
+        right side, respectively
+    indicator : boolean or string, default False
+        If True, adds a column to output DataFrame called "_merge" with
+        information on the source of each row. If string, column with
+        information on source of each row will be added to output DataFrame,
+        and column will be named value of string. Information column is
+        Categorical-type and takes on a value of "left_only" for observations
+        whose merge key only appears in `left` DataFrame, "right_only" for
+        observations whose merge key only appears in `right` DataFrame,
+        and "both" if the observation’s merge key is found in both.
+
+    Returns
+    -------
+        merged_dataframe: dask.dataframe.DataFrame
+
+    Notes
+    -----
+    This function submits jobs the each available worker explicitly
+    """
 
     # Making sure that the "on" arguments are list of column names
     if on:
