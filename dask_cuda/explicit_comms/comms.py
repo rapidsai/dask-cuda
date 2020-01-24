@@ -167,6 +167,17 @@ class CommsContext:
                 )
             )
 
+        # Let's create a dict for each dataframe that specifices the
+        # number of partitions each worker has
+        dfs_nparts = []
+        for df_parts in df_parts_list:
+            nparts = {}
+            for rank, worker in enumerate(self.worker_addresses):
+                npart = len(df_parts.get(worker, []))
+                if npart > 0:
+                    nparts[rank] = npart
+            dfs_nparts.append(nparts)
+
         # Submit `coroutine` on each worker given the df_parts that
         # belong the specific worker as input
         ret = []
@@ -174,5 +185,5 @@ class CommsContext:
             dfs = []
             for df_parts in df_parts_list:
                 dfs.append(df_parts.get(worker, []))
-            ret.append(self.submit(worker, coroutine, *dfs, *extra_args))
+            ret.append(self.submit(worker, coroutine, dfs_nparts, dfs, *extra_args))
         return utils.dataframes_to_dask_dataframe(ret)

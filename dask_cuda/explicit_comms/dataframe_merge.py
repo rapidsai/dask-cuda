@@ -26,11 +26,18 @@ async def recv_df(ep):
 
 
 async def barrier(rank, eps):
-    futures = []
     if rank == 0:
         await asyncio.gather(*[ep.read() for ep in eps.values()])
     else:
         await eps[0].write("dummy")
+
+
+async def broadcast(rank, root_rank, eps, df=None):
+    if rank == root_rank:
+        await asyncio.gather(*[send_df(ep, df) for ep in eps.values()])
+        return df
+    else:
+        return await recv_df(eps[root_rank])
 
 
 async def send_bins(eps, bins):
@@ -95,9 +102,7 @@ def partition_by_hash(df, columns, n_chunks):
     return ret
 
 
-async def distributed_join(
-    n_chunks, rank, eps, left_table, right_table, left_on, right_on
-):
+async def hash_join(n_chunks, rank, eps, left_table, right_table, left_on, right_on):
     left_bins = partition_by_hash(left_table, left_on, n_chunks)
     left_df = exchange_and_concat_bins(rank, eps, left_bins)
     right_bins = partition_by_hash(right_table, right_on, n_chunks)
@@ -106,7 +111,27 @@ async def distributed_join(
     return left_df.merge(right_df, left_on=left_on, right_on=right_on)
 
 
-async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on):
+async def single_partition_join(
+    n_chunks,
+    rank,
+    eps,
+    left_table,
+    right_table,
+    left_on,
+    right_on,
+    single_table,
+    single_rank,
+):
+    if single_table == "left":
+        left_table = await broadcast(rank, single_rank, eps, left_table)
+    else:
+        assert single_table == "right"
+        right_table = await broadcast(rank, single_rank, eps, right_table)
+
+    return left_table.merge(right_table, left_on=left_on, right_on=right_on)
+
+
+async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
     def df_concat(df_parts):
         """Making sure df_parts is a single dataframe or None"""
         if len(df_parts) == 0:
@@ -116,12 +141,40 @@ async def _dataframe_merge(s, df1_parts, df2_parts, left_on, right_on):
         else:
             return concat(df_parts)
 
-    df1 = df_concat(df1_parts)
-    df2 = df_concat(df2_parts)
+    df1 = df_concat(dfs_parts[0])
+    df2 = df_concat(dfs_parts[1])
 
-    return await distributed_join(
-        s["nworkers"], s["rank"], s["eps"], df1, df2, left_on, right_on
-    )
+    if len(dfs_nparts[0]) == 1 and len(dfs_nparts[1]) == 1:
+        return df1.merge(df2, left_on=left_on, right_on=right_on)
+
+    elif len(dfs_nparts[0]) == 1:
+        return await single_partition_join(
+            s["nworkers"],
+            s["rank"],
+            s["eps"],
+            df1,
+            df2,
+            left_on,
+            right_on,
+            "left",
+            next(iter(dfs_nparts[0])),  # Extracting the only key in `dfs_nparts[0]`
+        )
+    elif len(dfs_nparts[1]) == 1:
+        return await single_partition_join(
+            s["nworkers"],
+            s["rank"],
+            s["eps"],
+            df1,
+            df2,
+            left_on,
+            right_on,
+            "right",
+            next(iter(dfs_nparts[1])),  # Extracting the only key in `dfs_nparts[1]`
+        )
+    else:
+        return await hash_join(
+            s["nworkers"], s["rank"], s["eps"], df1, df2, left_on, right_on
+        )
 
 
 def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner"):
