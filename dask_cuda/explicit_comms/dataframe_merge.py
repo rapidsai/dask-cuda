@@ -260,7 +260,9 @@ def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner")
 
     Notes
     -----
-    This function submits jobs the each available worker explicitly
+    This function submits jobs the each available worker explicitly and the
+    number of partitions of `df1` and `df2` might change (typically to the
+    number of workers).
     """
 
     # Making sure that the "on" arguments are list of column names
