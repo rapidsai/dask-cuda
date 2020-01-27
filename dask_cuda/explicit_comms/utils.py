@@ -24,7 +24,7 @@ def workers_to_parts(futures):
 @gen.coroutine
 def extract_ddf_partitions(ddf, client=None, agg=True):
     """
-    Given a Dask cuDF, return an OrderedDict mapping
+    Given a Dask dataframe, return an OrderedDict mapping
     'worker -> [list of futures]' for each partition in ddf.
 
     :param ddf: Dask.dataframe split dataframe partitions into a list of
