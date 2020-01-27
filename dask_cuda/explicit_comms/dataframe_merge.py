@@ -203,7 +203,7 @@ async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
         )
 
 
-def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner"):
+def dataframe_merge(left, right, on=None, left_on=None, right_on=None, how="inner"):
     """Merge two Dask DataFrames
 
     This will merge the two datasets, either on the indices, a certain column
@@ -261,7 +261,7 @@ def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner")
     Notes
     -----
     This function submits jobs the each available worker explicitly and the
-    number of partitions of `df1` and `df2` might change (typically to the
+    number of partitions of `left` and `right` might change (typically to the
     number of workers).
     """
 
@@ -287,5 +287,5 @@ def dataframe_merge(df1, df2, on=None, left_on=None, right_on=None, how="inner")
         raise NotImplementedError('Only support `how="inner"`')
 
     return comms.default_comms().dataframe_operation(
-        _dataframe_merge, df_list=(df1, df2), extra_args=(left_on, right_on)
+        _dataframe_merge, df_list=(left, right), extra_args=(left_on, right_on)
     )
