@@ -63,7 +63,7 @@ async def exchange_and_concat_bins(rank, eps, bins):
 def concat(df_list):
     if len(df_list) == 0:
         return None
-    elif hasattr(df_list[0], "partition_by_hash"):
+    elif isinstance(df_list[0], (cudf.DataFrame, cudf.Series)):
         return cudf.concat(df_list)
     else:
         return pandas.concat(df_list)
