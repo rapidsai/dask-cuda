@@ -85,8 +85,8 @@ class LocalCUDACluster(LocalCluster):
     ----------
     interface: str
         The external interface used to connect to the scheduler, usually
-        the ethernet interface is used for connection, not the InfiniBand (if
-        one is available).
+        an ethernet interface is used for connection, and not an InfiniBand
+        interface (if one is available).
     threads_per_worker: int
         Number of threads to be used for each CUDA worker process.
     CUDA_VISIBLE_DEVICES: str or list

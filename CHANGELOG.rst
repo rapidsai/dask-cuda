@@ -1,3 +1,16 @@
+0.12
+----
+
+- Add ucx-py dependency to CI (#212) `Ray Douglass`_
+- Follow-up revision of local_cudf_merge benchmark (#213) `Richard (Rick) Zamora`_
+- Add codeowners file (#217) `Ray Douglass`_
+- Add pypi upload script (#218) `Ray Douglass`_
+- Skip existing on PyPi uploads (#219) `Ray Douglass`_
+- Make benchmarks use rmm_cupy_allocator (#220) `Mads R. B. Kristensen`_
+- cudf-merge-benchmark now reports throughput (#222) `Mads R. B. Kristensen`_
+- Fix dask-cuda-worker --interface/--net-devices docs (#223) `Peter Andreas Entschev`_
+- Use RMM for serialization when available (#227) `Peter Andreas Entschev`_
+
 0.11
 ----
 
@@ -22,7 +35,8 @@
 - LocalCUDACluster sets closest network device (#200) `Mads R. B. Kristensen`_
 - Expand cudf-merge benchmark (#201) `Richard (Rick) Zamora`_
 - Added --runs to merge benchmark (#202) `Mads R. B. Kristensen`_
-- Move UCX code to LocalCUDACluster and deprecate DGX (#196) `Peter Andreas Entschev`_
+- Move UCX code to LocalCUDACluster and deprecate DGX (#205) `Peter Andreas Entschev`_
+- Add markdown output option to cuDF merge benchmark (#208) `Benjamin Zaitlen`_
 
 0.10
 ----
@@ -89,3 +103,5 @@
 .. _`Mike Wendt`: https://github.com/mike-wendt
 .. _`Mads R. B. Kristensen`: https://github.com/madsbk
 .. _`Richard (Rick) Zamora`: https://github.com/rjzamora
+.. _`Benjamin Zaitlen`: https://github.com/quasiben
+.. _`Ray Douglass`: https://github.com/raydouglass
