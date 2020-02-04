@@ -1,3 +1,16 @@
+0.12
+----
+
+- Add ucx-py dependency to CI (#212) `Ray Douglass`_
+- Follow-up revision of local_cudf_merge benchmark (#213) `Richard (Rick) Zamora`_
+- Add codeowners file (#217) `Ray Douglass`_
+- Add pypi upload script (#218) `Ray Douglass`_
+- Skip existing on PyPi uploads (#219) `Ray Douglass`_
+- Make benchmarks use rmm_cupy_allocator (#220) `Mads R. B. Kristensen`_
+- cudf-merge-benchmark now reports throughput (#222) `Mads R. B. Kristensen`_
+- Fix dask-cuda-worker --interface/--net-devices docs (#223) `Peter Andreas Entschev`_
+- Use RMM for serialization when available (#227) `Peter Andreas Entschev`_
+
 0.11
 ----
 
@@ -91,3 +104,4 @@
 .. _`Mads R. B. Kristensen`: https://github.com/madsbk
 .. _`Richard (Rick) Zamora`: https://github.com/rjzamora
 .. _`Benjamin Zaitlen`: https://github.com/quasiben
+.. _`Ray Douglass`: https://github.com/raydouglass
