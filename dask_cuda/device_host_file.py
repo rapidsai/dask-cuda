@@ -19,7 +19,7 @@ from zict.common import ZictBase
 from .is_device_object import is_device_object
 
 try:
-    import rmm as cuda_memory_manager
+    from rmm import DeviceBuffer as cuda_memory_manager
 except ImportError:
     import numba.cuda as cuda_memory_manager
 
