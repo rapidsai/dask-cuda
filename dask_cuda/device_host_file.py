@@ -82,6 +82,13 @@ def _(header, frames):
     return DeviceSerialized(header["main-header"], parts, header["is-cuda"])
 
 
+def copy_to_host(ary):
+    if hasattr(ary, "copy_to_host"):
+        return ary.copy_to_host()
+    else:
+        return cuda.as_cuda_array(ary).copy_to_host()
+
+
 def device_to_host(obj: object) -> DeviceSerialized:
     header, frames = serialize(obj, serializers=["cuda", "pickle"])
     is_cuda = [hasattr(f, "__cuda_array_interface__") for f in frames]
