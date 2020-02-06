@@ -176,9 +176,10 @@ class LocalCUDACluster(LocalCluster):
             try:
                 import rmm
             except ImportError:
-                raise ImportError("RMM pool requested but module 'rmm' is not available")
+                raise ImportError(
+                    "RMM pool requested but module 'rmm' is not available"
+                )
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
-
 
         if not processes:
             raise ValueError(
@@ -263,11 +264,12 @@ class LocalCUDACluster(LocalCluster):
         spec["options"].update(
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
-                "plugins": {CPUAffinity(get_cpu_affinity(worker_count)),
-                            RMMPool(self.rmm_pool_size)},
+                "plugins": {
+                    CPUAffinity(get_cpu_affinity(worker_count)),
+                    RMMPool(self.rmm_pool_size),
+                },
             }
         )
-
 
         if self.set_ucx_net_devices:
             net_dev = _ucx_net_devices(
