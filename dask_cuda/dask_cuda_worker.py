@@ -27,6 +27,7 @@ from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
+    RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
@@ -114,6 +115,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "(i.e., allow full device memory usage).",
 )
 @click.option(
+    "--rmm-pool-size",
+    default=None,
+    help="Initialize each worker with an RMM pool of the given size. "
+    "This can be an integer (bytes) or string (like 5GB or 5000M)."
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -188,6 +195,7 @@ def main(
     name,
     memory_limit,
     device_memory_limit,
+    rmm_pool_size,
     pid_file,
     resources,
     dashboard,
@@ -271,6 +279,9 @@ def main(
         else:
             host = get_ip_interface(interface)
 
+    if rmm_pool_size is not None:
+        rmm_pool_size = parse_bytes(rmm_pool_size)
+
     initialize(
         create_cuda_context=True,
         enable_tcp_over_ucx=enable_tcp_over_ucx,
@@ -293,7 +304,7 @@ def main(
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-            plugins={CPUAffinity(get_cpu_affinity(i))},
+            plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             local_directory=local_directory,
             data=(
