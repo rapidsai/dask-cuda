@@ -16,6 +16,19 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
+class RMMPool:
+    def __init__(self, nbytes):
+        self.nbytes = nbytes
+
+    def setup(self, worker=None):
+        if self.nbytes is not None:
+            import rmm
+
+            rmm.reinitialize(
+                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+            )
+
+
 def unpack_bitmask(x, mask_bits=64):
     """Unpack a list of integers containing bitmasks.
 
