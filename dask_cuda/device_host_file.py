@@ -101,7 +101,7 @@ def device_to_host(obj: object) -> DeviceSerialized:
 
 def host_to_device(s: DeviceSerialized) -> object:
     frames = [
-        cuda_memory_manager.to_device(f) if ic else f
+        cuda_memory_manager.to_device(f.ravel().view("u1")) if ic else f
         for ic, f in zip(s.is_cuda, s.parts)
     ]
 
