@@ -176,9 +176,9 @@ class LocalCUDACluster(LocalCluster):
             try:
                 import rmm
             except ImportError:
-                raise ImportError(
+                raise ValueError(
                     "RMM pool requested but module 'rmm' is not available"
-                )
+                )  # pragma: no cover
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
         if not processes:
