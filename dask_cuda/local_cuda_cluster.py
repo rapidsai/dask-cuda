@@ -10,6 +10,7 @@ from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
+    RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
@@ -116,6 +117,9 @@ class LocalCUDACluster(LocalCluster):
         support, and it will always use the closest interface which may lead to
         unexpected errors if that interface is not properly configured or is
         disconnected.
+    rmm_pool: None, int or str
+        When None (default), no RMM pool is initialized. If a different value
+        is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
 
     Examples
     --------
@@ -152,6 +156,7 @@ class LocalCUDACluster(LocalCluster):
         enable_infiniband=False,
         enable_nvlink=False,
         ucx_net_devices=None,
+        rmm_pool_size=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -165,6 +170,15 @@ class LocalCUDACluster(LocalCluster):
             memory_limit = MEMORY_LIMIT / n_workers
         self.host_memory_limit = memory_limit
         self.device_memory_limit = device_memory_limit
+
+        self.rmm_pool_size = rmm_pool_size
+        if rmm_pool_size is not None:
+            try:
+                import rmm
+            except ImportError:
+                raise ImportError("RMM pool requested but module 'rmm' is not available")
+            self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+
 
         if not processes:
             raise ValueError(
@@ -249,9 +263,11 @@ class LocalCUDACluster(LocalCluster):
         spec["options"].update(
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
-                "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
+                "plugins": {CPUAffinity(get_cpu_affinity(worker_count)),
+                            RMMPool(self.rmm_pool_size)},
             }
         )
+
 
         if self.set_ucx_net_devices:
             net_dev = _ucx_net_devices(
