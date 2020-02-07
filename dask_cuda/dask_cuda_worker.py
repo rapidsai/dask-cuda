@@ -117,8 +117,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--rmm-pool-size",
     default=None,
-    help="Initialize each worker with an RMM pool of the given size. "
-    "This can be an integer (bytes) or string (like 5GB or 5000M)."
+    help="If specified, initialize each worker with an RMM pool of "
+    "the given size, otherwise no RMM pool is created. This can be "
+    "an integer (bytes) or string (like 5GB or 5000M)."
 )
 @click.option(
     "--reconnect/--no-reconnect",
@@ -280,6 +281,14 @@ def main(
             host = get_ip_interface(interface)
 
     if rmm_pool_size is not None:
+        try:
+            import rmm
+        except ImportError:
+            raise ValueError(
+                "RMM pool requested but module 'rmm' is not available. "
+                "For installation instructions, please see "
+                "https://github.com/rapidsai/rmm"
+            )  # pragma: no cover
         rmm_pool_size = parse_bytes(rmm_pool_size)
 
     initialize(

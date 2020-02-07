@@ -177,7 +177,9 @@ class LocalCUDACluster(LocalCluster):
                 import rmm
             except ImportError:
                 raise ValueError(
-                    "RMM pool requested but module 'rmm' is not available"
+                    "RMM pool requested but module 'rmm' is not available. "
+                    "For installation instructions, please see "
+                    "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
