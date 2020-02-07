@@ -19,7 +19,7 @@ from zict.common import ZictBase
 from .is_device_object import is_device_object
 
 try:
-    import rmm as cuda_memory_manager
+    from rmm import DeviceBuffer as cuda_memory_manager
 except ImportError:
     import numba.cuda as cuda_memory_manager
 
@@ -82,11 +82,18 @@ def _(header, frames):
     return DeviceSerialized(header["main-header"], parts, header["is-cuda"])
 
 
+def copy_to_host(ary):
+    if hasattr(ary, "copy_to_host"):
+        return ary.copy_to_host()
+    else:
+        return cuda.as_cuda_array(ary).copy_to_host()
+
+
 def device_to_host(obj: object) -> DeviceSerialized:
     header, frames = serialize(obj, serializers=["cuda", "pickle"])
     is_cuda = [hasattr(f, "__cuda_array_interface__") for f in frames]
     frames = [
-        cuda.as_cuda_array(f).copy_to_host() if ic else f
+        copy_to_host(f) if ic else f
         for ic, f in zip(is_cuda, frames)
     ]
     return DeviceSerialized(header, frames, is_cuda)
@@ -94,7 +101,7 @@ def device_to_host(obj: object) -> DeviceSerialized:
 
 def host_to_device(s: DeviceSerialized) -> object:
     frames = [
-        cuda_memory_manager.to_device(f) if ic else f
+        cuda_memory_manager.to_device(f.ravel().view("u1")) if ic else f
         for ic, f in zip(s.is_cuda, s.parts)
     ]
 
