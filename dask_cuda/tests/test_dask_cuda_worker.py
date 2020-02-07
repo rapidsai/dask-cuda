@@ -7,6 +7,9 @@ from distributed import Client
 from distributed.metrics import time
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
+from dask_cuda.utils import get_gpu_count
+
+import pytest
 
 
 def test_cuda_visible_devices(loop):  # noqa: F811
@@ -44,3 +47,31 @@ def test_cuda_visible_devices(loop):  # noqa: F811
                     assert len(expected) == 0
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]
+
+
+def test_rmm_pool(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9359",
+                "--host",
+                "127.0.0.1",
+                "--rmm-pool-size",
+                "2 GB",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9359", loop=loop) as client:
+                start = time()
+                while True:
+                    if len(client.scheduler_info()["workers"]) == get_gpu_count():
+                        break
+                    else:
+                        assert time() - start < 10
+                        sleep(0.1)
+
+                memory_info = client.run(rmm.get_info)
+                for v in memory_info.values():
+                    assert v.total == 2000000000
