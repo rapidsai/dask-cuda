@@ -222,14 +222,6 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    def _ucx_net_devices(i):
-        dev = None
-        if callable(ucx_net_devices):
-            dev = ucx_net_devices(i)
-        elif ucx_net_devices != "":
-            dev = ucx_net_devices
-        return [] if dev is None else ["--net-devices=" + dev]
-
     if protocol == "ucx":
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
@@ -238,8 +230,10 @@ def get_preload_options(
             initialize_ucx_argv.append("--enable-infiniband")
         if enable_nvlink:
             initialize_ucx_argv.append("--enable-nvlink")
+        if ucx_net_devices is not None and ucx_net_devices != "":
+            net_dev = get_ucx_net_devices(cuda_device_index, ucx_net_devices)
+            initialize_ucx_argv.append("--net-devices=%s" % net_dev)
 
         preload_options["preload_argv"].extend(initialize_ucx_argv)
-        preload_options["preload_argv"].extend(_ucx_net_devices(cuda_device_index))
 
     return preload_options
