@@ -14,31 +14,8 @@ from .utils import (
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_ucx_net_devices,
 )
-
-
-def _ucx_net_devices(dev, ucx_net_devices):
-    dev = int(dev)
-    net_dev = None
-    if callable(ucx_net_devices):
-        net_dev = ucx_net_devices(dev)
-    elif isinstance(ucx_net_devices, str):
-        if ucx_net_devices == "auto":
-            # If TopologicalDistance from ucp is available, we set the UCX
-            # net device to the closest network device explicitly.
-            from ucp._libs.topological_distance import TopologicalDistance
-
-            net_dev = ""
-            td = TopologicalDistance()
-            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-            if len(ibs) > 0:
-                net_dev += ibs[0]["name"] + ":1,"
-            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-            if len(ifnames) > 0:
-                net_dev += ifnames[0]["name"]
-        else:
-            net_dev = ucx_net_devices
-    return net_dev
 
 
 def cuda_visible_devices(i, visible=None):
@@ -274,7 +251,7 @@ class LocalCUDACluster(LocalCluster):
         )
 
         if self.set_ucx_net_devices:
-            net_dev = _ucx_net_devices(
+            net_dev = get_ucx_net_devices(
                 visible_devices.split(",")[0], self.ucx_net_devices
             )
             if net_dev is not None:
