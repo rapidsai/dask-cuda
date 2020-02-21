@@ -166,6 +166,39 @@ def get_ucx_net_devices(dev, ucx_net_devices):
     return net_dev
 
 
+def get_ucx_config(
+    enable_tcp_over_ucx=False,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    net_devices="",
+    cuda_device_index=0,
+):
+    ucx_config = {}
+    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+        try:
+            import ucp  # noqa
+        except ImportError:
+            logger.error(
+                "UCX protocol requested but ucp module is not available", exc_info=True
+            )
+        else:
+            if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+                tls = "tcp,sockcm,cuda_copy"
+                tls_priority = "sockcm"
+
+                if enable_infiniband:
+                    tls = "rc," + tls
+                if enable_nvlink:
+                    tls = tls + ",cuda_ipc"
+
+                ucx_config = {"TLS": tls, "SOCKADDR_TLS_PRIORITY": tls_priority}
+
+                if net_devices is not None and net_devices != "":
+                    ucx_config["NET_DEVICES"] = get_ucx_net_devices(cuda_device_index, net_devices)
+
+    return ucx_config
+
+
 def get_preload_options(
     protocol=None,
     create_cuda_context=False,
