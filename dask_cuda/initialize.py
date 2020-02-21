@@ -30,6 +30,8 @@ import dask
 import click
 import numba.cuda
 
+from .utils import get_ucx_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,7 @@ def initialize(
     enable_infiniband=False,
     enable_nvlink=False,
     net_devices="",
+    cuda_device_index=None,
 ):
     if create_cuda_context:
         try:
@@ -46,30 +49,15 @@ def initialize(
         except Exception:
             logger.error("Unable to start CUDA Context", exc_info=True)
 
-    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        try:
-            import ucp  # noqa
-        except ImportError:
-            logger.error(
-                "UCX protocol requested but ucp module is not available", exc_info=True
-            )
-        else:
-            options = {}
-            if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-                tls = "tcp,sockcm,cuda_copy"
-                tls_priority = "sockcm"
-
-                if enable_infiniband:
-                    tls = "rc," + tls
-                if enable_nvlink:
-                    tls = tls + ",cuda_ipc"
-
-                options = {"TLS": tls, "SOCKADDR_TLS_PRIORITY": tls_priority}
-
-                if net_devices is not None and net_devices != "":
-                    options["NET_DEVICES"] = net_devices
-
-            dask.config.set({"ucx": options})
+    ucx_config = get_ucx_config(
+        create_cuda_context=create_cuda_context,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        net_devices=net_devices,
+        cuda_device_index=cuda_device_index,
+    )
+    dask.config.set({"ucx": ucx_config})
 
 
 @click.command()
