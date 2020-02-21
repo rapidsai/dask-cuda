@@ -31,6 +31,7 @@ from .utils import (
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_ucx_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -291,13 +292,25 @@ def main(
             )  # pragma: no cover
         rmm_pool_size = parse_bytes(rmm_pool_size)
 
-    initialize(
-        create_cuda_context=True,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        net_devices=net_devices,
-    )
+    def _get_ucx_config(
+        enable_tcp_over_ucx,
+        enable_infiniband,
+        enable_nvlink,
+        net_devices,
+        cuda_device_index,
+    ):
+        ucx_config = config=get_ucx_config(
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+            net_devices=net_devices,
+            cuda_device_index=cuda_device_index,
+        )
+
+        if ucx_config == {}:
+            return ucx_config
+        else:
+            return {"ucx": ucx_config}
 
     nannies = [
         t(
@@ -316,6 +329,13 @@ def main(
             plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             local_directory=local_directory,
+            config=get_ucx_config(
+                enable_tcp_over_ucx=enable_tcp_over_ucx,
+                enable_infiniband=enable_infiniband,
+                enable_nvlink=enable_nvlink,
+                net_devices=net_devices,
+                cuda_device_index=i,
+            ),
             data=(
                 DeviceHostFile,
                 {
