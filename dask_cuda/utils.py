@@ -142,7 +142,10 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_net_devices(dev, ucx_net_devices):
+def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
+    if dev is None and (callable(ucx_net_devices) or ucx_net_devices == "auto"):
+        raise ValueError("A CUDA device index must be specified if the "
+                         "ucx_net_devices variable is either callable or 'auto'")
     dev = int(dev)
     net_dev = None
     if callable(ucx_net_devices):
@@ -171,7 +174,7 @@ def get_ucx_config(
     enable_infiniband=False,
     enable_nvlink=False,
     net_devices="",
-    cuda_device_index=0,
+    cuda_device_index=None,
 ):
     ucx_config = {}
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
