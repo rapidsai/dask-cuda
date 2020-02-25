@@ -50,14 +50,13 @@ def initialize(
             logger.error("Unable to start CUDA Context", exc_info=True)
 
     ucx_config = get_ucx_config(
-        create_cuda_context=create_cuda_context,
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         net_devices=net_devices,
         cuda_device_index=cuda_device_index,
     )
-    dask.config.set({"ucx": ucx_config})
+    dask.config.update(dask.config.global_config, {"ucx": ucx_config}, priority="new")
 
 
 @click.command()
