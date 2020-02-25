@@ -200,7 +200,6 @@ def get_ucx_config(
 
                 if net_devices is not None and net_devices != "":
                     ucx_config["NET_DEVICES"] = get_ucx_net_devices(cuda_device_index, net_devices)
-
     return ucx_config
 
 

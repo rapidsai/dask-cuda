@@ -56,7 +56,7 @@ def initialize(
         net_devices=net_devices,
         cuda_device_index=cuda_device_index,
     )
-    dask.config.set({"ucx": ucx_config})
+    dask.config.update(dask.config.global_config, {"ucx": ucx_config}, priority="new")
 
 
 @click.command()
