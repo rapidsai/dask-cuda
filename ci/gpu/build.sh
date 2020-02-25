@@ -57,7 +57,7 @@ conda list
 # Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
 conda install "cudatoolkit=$CUDA_REL" \
-              "cupy>=6.5.0" "numpy=1.16.4" \
+              "cupy>=6.5.0,<7.2.0a0,!=7.1.0" "numpy=1.16.4" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
               "dask>=2.8.1" "distributed>=2.8.1"
 

@@ -1,3 +1,7 @@
+0.13
+----
+- Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
+
 0.12
 ----
 
