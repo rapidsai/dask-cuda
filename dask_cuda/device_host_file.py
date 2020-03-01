@@ -138,8 +138,7 @@ class DeviceHostFile(ZictBase):
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
-            if not os.path.exists(local_directory):
-                os.mkdir(local_directory)
+            os.makedirs(local_directory, exist_ok=True)
             local_directory = os.path.join(local_directory, "dask-worker-space")
 
         self.disk_func_path = os.path.join(local_directory, "storage")
