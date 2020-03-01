@@ -1,5 +1,6 @@
 import os
 
+import dask
 from dask.sizeof import sizeof
 from distributed.protocol import (
     dask_deserialize,
@@ -133,12 +134,19 @@ class DeviceHostFile(ZictBase):
         self,
         device_memory_limit=None,
         memory_limit=None,
-        local_directory="dask-worker-space",
+        local_directory=None,
     ):
-        path = os.path.join(local_directory, "storage")
+        if local_directory is None:
+            local_directory = dask.config.get("temporary-directory") or os.getcwd()
+            os.makedirs(local_directory, exist_ok=True)
+            local_directory = os.path.join(local_directory, "dask-worker-space")
+
+        self.disk_func_path = os.path.join(local_directory, "storage")
 
         self.host_func = dict()
-        self.disk_func = Func(serialize_bytelist, deserialize_bytes, File(path))
+        self.disk_func = Func(
+            serialize_bytelist, deserialize_bytes, File(self.disk_func_path)
+        )
         self.host_buffer = Buffer(
             self.host_func, self.disk_func, memory_limit, weight=weight
         )

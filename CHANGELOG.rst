@@ -2,6 +2,7 @@
 ----
 - Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
+- Respect `temporary-directory` config for spilling (#247) `John Kirkham`_
 - Relax CuPy pin (#248) `John Kirkham`_
 
 0.12
