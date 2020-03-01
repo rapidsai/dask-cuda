@@ -1,3 +1,4 @@
+import os
 from random import randint
 
 import dask
@@ -19,6 +20,7 @@ def test_device_host_file_config(tmp_path):
     dhf_disk_path = str(tmp_path / "dask-worker-space" / "storage")
     with dask.config.set(temporary_directory=str(tmp_path)):
         dhf = DeviceHostFile()
+        assert os.path.exists(dhf_disk_path)
         assert dhf.disk_func_path == dhf_disk_path
 
 
