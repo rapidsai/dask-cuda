@@ -1,5 +1,6 @@
 from random import randint
 
+import dask
 import dask.array as da
 from dask_cuda.device_host_file import (
     DeviceHostFile,
@@ -12,6 +13,13 @@ import numpy as np
 import pytest
 
 cupy = pytest.importorskip("cupy")
+
+
+def test_device_host_file_config(tmp_path):
+    dhf_disk_path = str(tmp_path / "dask-worker-space" / "storage")
+    with dask.config.set(temporary_directory=str(tmp_path)):
+        dhf = DeviceHostFile()
+        assert dhf.disk_func.d.directory == dhf_disk_path
 
 
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
