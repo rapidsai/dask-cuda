@@ -143,9 +143,13 @@ def get_device_total_memory(index=0):
 
 
 def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
-    if cuda_device_index is None and (callable(ucx_net_devices) or ucx_net_devices == "auto"):
-        raise ValueError("A CUDA device index must be specified if the "
-                         "ucx_net_devices variable is either callable or 'auto'")
+    if cuda_device_index is None and (
+        callable(ucx_net_devices) or ucx_net_devices == "auto"
+    ):
+        raise ValueError(
+            "A CUDA device index must be specified if the "
+            "ucx_net_devices variable is either callable or 'auto'"
+        )
     elif cuda_device_index is not None:
         dev = int(cuda_device_index)
 

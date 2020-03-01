@@ -19,7 +19,7 @@ async def run(args):
         protocol=args.protocol,
         n_workers=len(args.devs.split(",")),
         CUDA_VISIBLE_DEVICES=args.devs,
-        ucx_net_devices='auto',
+        ucx_net_devices="auto",
         enable_infiniband=True,
         enable_nvlink=True,
         asynchronous=True,
@@ -28,8 +28,12 @@ async def run(args):
 
             def _worker_setup(size=None):
                 import rmm
-                rmm.reinitialize(pool_allocator=not args.no_rmm_pool,
-                        devices=0, initial_pool_size=size)
+
+                rmm.reinitialize(
+                    pool_allocator=not args.no_rmm_pool,
+                    devices=0,
+                    initial_pool_size=size,
+                )
                 cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
             await client.run(_worker_setup)

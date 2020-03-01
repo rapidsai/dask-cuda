@@ -199,8 +199,11 @@ def main(args):
     def _worker_setup(initial_pool_size=None):
         import rmm
 
-        rmm.reinitialize(pool_allocator=not args.no_rmm_pool,
-                devices=0,initial_pool_size=initial_pool_size)
+        rmm.reinitialize(
+            pool_allocator=not args.no_rmm_pool,
+            devices=0,
+            initial_pool_size=initial_pool_size,
+        )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
     client.run(_worker_setup, 24e9)
