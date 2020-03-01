@@ -1,5 +1,6 @@
 0.13
 ----
+- Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
 
 0.12
