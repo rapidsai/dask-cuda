@@ -1,6 +1,7 @@
 0.13
 ----
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
+- Relax CuPy pin (#248) `John Kirkham`_
 
 0.12
 ----
