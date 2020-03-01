@@ -1,5 +1,6 @@
 0.13
 ----
+- Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
 
 0.12
@@ -102,6 +103,7 @@
 .. _`Dillon Cullinan`: https://github.com/dillon-cullinan
 .. _`Matthieu Bulte`: https://github.com/matthieubulte
 .. _`Olli Koskinen`: https://github.com/okoskinen
+.. _`John Kirkham`: https://github.com/jakirkham
 .. _`Markku Luukkainen`: https://github.com/mluukkainen
 .. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
 .. _`Mike Wendt`: https://github.com/mike-wendt
