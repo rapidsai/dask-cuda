@@ -145,7 +145,9 @@ class DeviceHostFile(ZictBase):
         self.disk_func_path = os.path.join(local_directory, "storage")
 
         self.host_func = dict()
-        self.disk_func = Func(serialize_bytelist, deserialize_bytes, File(self.disk_func_path))
+        self.disk_func = Func(
+            serialize_bytelist, deserialize_bytes, File(self.disk_func_path)
+        )
         self.host_buffer = Buffer(
             self.host_func, self.disk_func, memory_limit, weight=weight
         )
