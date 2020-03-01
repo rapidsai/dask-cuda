@@ -1,6 +1,7 @@
 0.13
 ----
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
+- Respect `temporary-directory` config for spilling (#247) `John Kirkham`_
 
 0.12
 ----
