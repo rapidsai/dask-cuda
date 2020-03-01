@@ -1,5 +1,6 @@
 import os
 
+import dask
 from dask.sizeof import sizeof
 from distributed.protocol import (
     dask_deserialize,
@@ -133,8 +134,14 @@ class DeviceHostFile(ZictBase):
         self,
         device_memory_limit=None,
         memory_limit=None,
-        local_directory="dask-worker-space",
+        local_directory=None,
     ):
+        if local_directory is None:
+            local_directory = dask.config.get("temporary-directory") or os.getcwd()
+            if not os.path.exists(local_directory):
+                os.mkdir(local_directory)
+            local_directory = os.path.join(local_directory, "dask-worker-space")
+
         path = os.path.join(local_directory, "storage")
 
         self.host_func = dict()
