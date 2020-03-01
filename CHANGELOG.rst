@@ -102,6 +102,7 @@
 .. _`Dillon Cullinan`: https://github.com/dillon-cullinan
 .. _`Matthieu Bulte`: https://github.com/matthieubulte
 .. _`Olli Koskinen`: https://github.com/okoskinen
+.. _`John Kirkham`: https://github.com/jakirkham
 .. _`Markku Luukkainen`: https://github.com/mluukkainen
 .. _`Sangeeth Keeriyadath`: https://github.com/ksangeek
 .. _`Mike Wendt`: https://github.com/mike-wendt
