@@ -14,6 +14,7 @@ from .utils import (
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_ucx_config,
     get_ucx_net_devices,
 )
 
@@ -188,12 +189,6 @@ class LocalCUDACluster(LocalCluster):
             elif protocol != "ucx":
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
-            initialize(
-                enable_tcp_over_ucx=enable_tcp_over_ucx,
-                enable_infiniband=enable_infiniband,
-                enable_nvlink=enable_nvlink,
-            )
-
         if ucx_net_devices == "auto":
             try:
                 from ucp._libs.topological_distance import TopologicalDistance  # noqa
@@ -215,6 +210,13 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
+            config={
+                "ucx": get_ucx_config(
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_nvlink=enable_nvlink,
+                    enable_infiniband=enable_infiniband,
+                )
+            },
             **kwargs,
         )
 
