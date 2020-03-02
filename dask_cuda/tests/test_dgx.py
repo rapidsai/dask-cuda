@@ -220,7 +220,7 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
             "--host",
             "127.0.0.1",
             "--port",
-            "9359",
+            "9379",
             "--no-dashboard",
         ],
         env=sched_env,
@@ -231,7 +231,7 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
         with subprocess.Popen(
             [
                 "dask-cuda-worker",
-                "ucx://127.0.0.1:9359",
+                "ucx://127.0.0.1:9379",
                 "--host",
                 "127.0.0.1",
                 "--enable-infiniband",
@@ -240,7 +240,7 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
                 "--no-dashboard",
             ],
         ) as worker_proc:
-            with Client("ucx://127.0.0.1:9359", loop=loop) as client:
+            with Client("ucx://127.0.0.1:9379", loop=loop) as client:
 
                 start = time()
                 while True:
