@@ -309,13 +309,15 @@ def main(
             plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             local_directory=local_directory,
-            config=get_ucx_config(
-                enable_tcp_over_ucx=enable_tcp_over_ucx,
-                enable_infiniband=enable_infiniband,
-                enable_nvlink=enable_nvlink,
-                net_devices=net_devices,
-                cuda_device_index=i,
-            ),
+            config={
+                "ucx": get_ucx_config(
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_infiniband=enable_infiniband,
+                    enable_nvlink=enable_nvlink,
+                    net_devices=net_devices,
+                    cuda_device_index=i,
+                )
+            },
             data=(
                 DeviceHostFile,
                 {
