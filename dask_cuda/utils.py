@@ -182,25 +182,16 @@ def get_ucx_config(
     net_devices="",
     cuda_device_index=None,
 ):
-    ucx_config = {}
-    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        try:
-            import ucp  # noqa
-        except ImportError:
-            logger.error(
-                "UCX protocol requested but ucp module is not available", exc_info=True
-            )
-        else:
-            if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-                if enable_infiniband:
-                    ucx_config["infiniband"] = True
-                if enable_nvlink:
-                    ucx_config["nvlink"] = True
+    ucx_config = {"infiniband": None, "nvlink": None, "net-devices": None}
+    if enable_infiniband:
+        ucx_config["infiniband"] = True
+    if enable_nvlink:
+        ucx_config["nvlink"] = True
 
-                if net_devices is not None and net_devices != "":
-                    ucx_config["net-devices"] = get_ucx_net_devices(
-                        cuda_device_index, net_devices
-                    )
+    if net_devices is not None and net_devices != "":
+        ucx_config["net-devices"] = get_ucx_net_devices(
+            cuda_device_index, net_devices
+        )
     return ucx_config
 
 
