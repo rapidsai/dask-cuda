@@ -20,13 +20,15 @@ ucp = pytest.importorskip("ucp")
 
 
 def _test_initialize_ucx_tcp():
-    initialize(enable_tcp_over_ucx=True)
+    kwargs = {"enable_tcp_over_ucx": True}
+    initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        config={"ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
