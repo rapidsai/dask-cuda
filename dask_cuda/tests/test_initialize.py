@@ -37,7 +37,6 @@ def _test_initialize_ucx_tcp():
 
             def check_ucx_options():
                 conf = ucp.get_config()
-                #print(conf)
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
                 assert "sockcm" in conf["TLS"]
@@ -111,7 +110,6 @@ def _test_initialize_ucx_infiniband():
 
             def check_ucx_options():
                 conf = ucp.get_config()
-                print(conf)
                 assert "TLS" in conf
                 assert "rc" in conf["TLS"]
                 assert "tcp" in conf["TLS"]
