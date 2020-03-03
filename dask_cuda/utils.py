@@ -182,16 +182,25 @@ def get_ucx_config(
     net_devices="",
     cuda_device_index=None,
 ):
-    ucx_config = {"infiniband": None, "nvlink": None, "net-devices": None}
+    ucx_config = {
+        "tcp": None,
+        "infiniband": None,
+        "nvlink": None,
+        "net-devices": None,
+        "cuda_copy": None,
+    }
+    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+        ucx_config["cuda_copy"] = True
+    if enable_tcp_over_ucx:
+        ucx_config["tcp"] = True
     if enable_infiniband:
         ucx_config["infiniband"] = True
     if enable_nvlink:
         ucx_config["nvlink"] = True
 
     if net_devices is not None and net_devices != "":
-        ucx_config["net-devices"] = get_ucx_net_devices(
-            cuda_device_index, net_devices
-        )
+        ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
+    print("get_ucx_config", ucx_config)
     return ucx_config
 
 
