@@ -160,6 +160,9 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
     if net_devices == "eth0":
         assert ucx_config["net-devices"] == "eth0"
     elif net_devices == "auto":
-        assert ucx_config["net-devices"] != ""
+        # Since the actual device is system-dependent, we don't do any
+        # checks at the moment. If any InfiniBand devices are available,
+        # that will be the value of "net-devices", otherwise an empty string.
+        pass
     elif net_devices == "":
         assert "net-device" not in ucx_config
