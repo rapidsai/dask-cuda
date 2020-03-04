@@ -125,11 +125,10 @@ def test_get_ucx_net_devices_callable():
 
 def test_get_ucx_net_devices_auto():
     for idx in range(get_n_gpus()):
-        dev = get_ucx_net_devices(idx, "auto")
         # Since the actual device is system-dependent, we just check that
-        # it is not empty or None
-        assert dev != ""
-        assert dev != None
+        # this function call doesn't fail. If any InfiniBand devices are
+        # available, it will return that, otherwise an empty string.
+        dev = get_ucx_net_devices(idx, "auto")
 
 
 @pytest.mark.parametrize("enable_tcp_over_ucx", [True, False])
