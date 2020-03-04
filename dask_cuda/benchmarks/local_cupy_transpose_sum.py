@@ -37,6 +37,8 @@ async def run(args):
                 cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
             await client.run(_worker_setup)
+            # Create an RMM pool on the scheduler due to occasional deserialization
+            # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(_worker_setup, 1e9)
 
             # Create a simple random array

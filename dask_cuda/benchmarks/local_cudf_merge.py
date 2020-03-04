@@ -206,7 +206,9 @@ def main(args):
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
-    client.run(_worker_setup, 24e9)
+    client.run(_worker_setup)
+    # Create an RMM pool on the scheduler due to occasional deserialization
+    # of CUDA objects. May cause issues with InfiniBand otherwise.
     client.run_on_scheduler(_worker_setup, 1e9)
 
     took_list = []
