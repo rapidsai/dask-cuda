@@ -196,13 +196,20 @@ def main(args):
         )
     client = Client(cluster)
 
-    def _worker_setup():
+    def _worker_setup(initial_pool_size=None):
         import rmm
 
-        rmm.reinitialize(pool_allocator=not args.no_rmm_pool, devices=0)
+        rmm.reinitialize(
+            pool_allocator=not args.no_rmm_pool,
+            devices=0,
+            initial_pool_size=initial_pool_size,
+        )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
     client.run(_worker_setup)
+    # Create an RMM pool on the scheduler due to occasional deserialization
+    # of CUDA objects. May cause issues with InfiniBand otherwise.
+    client.run_on_scheduler(_worker_setup, 1e9)
 
     took_list = []
     for _ in range(args.runs - 1):

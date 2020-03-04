@@ -51,11 +51,11 @@ def test_cuda_visible_devices(loop):  # noqa: F811
 
 def test_rmm_pool(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
                 "dask-cuda-worker",
-                "127.0.0.1:9359",
+                "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
                 "--rmm-pool-size",
@@ -63,7 +63,7 @@ def test_rmm_pool(loop):  # noqa: F811
                 "--no-dashboard",
             ]
         ):
-            with Client("127.0.0.1:9359", loop=loop) as client:
+            with Client("127.0.0.1:9369", loop=loop) as client:
                 start = time()
                 while True:
                     if len(client.scheduler_info()["workers"]) == get_gpu_count():

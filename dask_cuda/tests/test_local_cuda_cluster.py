@@ -110,9 +110,7 @@ async def test_n_workers():
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(
-        rmm_pool_size="2GB", asynchronous=True
-    ) as cluster:
+    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_info = await client.run(rmm.get_info)
             for v in memory_info.values():
