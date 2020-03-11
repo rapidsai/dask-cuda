@@ -93,7 +93,7 @@ def partition_by_hash(df, columns, n_chunks):
     # Hashing `columns` in `df` and assing it to the "_partitions" column
     df["_partitions"] = partitioning_index(df[columns], n_chunks)
     # Split `df` based on the hash values in the "_partitions" column
-    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks)
+    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index=True)
 
     # Let's remove the partition column and return the partitions
     del df["_partitions"]
