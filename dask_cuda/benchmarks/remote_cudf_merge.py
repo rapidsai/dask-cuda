@@ -8,8 +8,6 @@ from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from distributed.comm.addressing import parse_address, parse_host_port
 from dask.utils import format_bytes, format_time, parse_bytes
-from dask_cuda import LocalCUDACluster
-from dask_cuda.initialize import initialize
 from dask_cuda import explicit_comms
 
 import cudf
@@ -145,7 +143,7 @@ def merge_explicit_comms(args, ddf1, ddf2):
 
 def run(client, args, write_profile=None):
     # Generate random Dask dataframes
-    n_workers = len(client.scheduler_info()['workers'])
+    n_workers = len(client.scheduler_info()["workers"])
     print(n_workers)
     ddf_base = get_random_ddf(
         args.chunk_size, n_workers, args.frac_match, "build", args
@@ -190,7 +188,7 @@ def main(args):
                 bandwidths[k, d["who"]].append(d["bandwidth"])
                 total_nbytes[k, d["who"]].append(d["total"])
 
-    n_workers = len(client.scheduler_info()['workers'])
+    n_workers = len(client.scheduler_info()["workers"])
     workers = client.run_on_scheduler(lambda dask_scheduler: dask_scheduler.workers)
 
     bandwidths = {
@@ -200,16 +198,15 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (
-            workers[w1].name,
-            workers[w2].name,
-        ): format_bytes(sum(nb))
+        (workers[w1].name, workers[w2].name,): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
     protocol, _ = parse_address(client.scheduler.addr)
+
     def conf():
         import dask
-        return dask.config.get('ucx')
+
+        return dask.config.get("ucx")
 
     res = client.run(conf)
     ucx = list(res.values())[0]
@@ -257,7 +254,14 @@ def main(args):
         for (d1, d2), bw in sorted(bandwidths.items()):
             print(
                 "(%s,%s)     | %s %s %s (%s)"
-                % (parse_host_port(d1)[1], parse_host_port(d2)[1], bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
+                % (
+                    parse_host_port(d1)[1],
+                    parse_host_port(d2)[1],
+                    bw[0],
+                    bw[1],
+                    bw[2],
+                    total_nbytes[(d1, d2)],
+                )
             )
         if args.markdown:
             print("```\n</details>\n")
@@ -321,9 +325,7 @@ def parse_args():
         help="Call set_index on the key column to sort the joined dataframe.",
     )
     parser.add_argument(
-        "--scheduler-addr",
-        type=str,
-        help="Address of the remote scheduler",
+        "--scheduler-addr", type=str, help="Address of the remote scheduler",
     )
     parser.add_argument("--runs", default=3, type=int, help="Number of runs")
     args = parser.parse_args()
