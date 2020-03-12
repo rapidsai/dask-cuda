@@ -105,9 +105,9 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
 
 
 async def hash_join(n_chunks, rank, eps, left_table, right_table, left_on, right_on):
-    left_bins = partition_by_hash(left_table, left_on, n_chunks)
+    left_bins = partition_by_hash(left_table, left_on, n_chunks, ignore_index=True)
     left_df = exchange_and_concat_bins(rank, eps, left_bins)
-    right_bins = partition_by_hash(right_table, right_on, n_chunks)
+    right_bins = partition_by_hash(right_table, right_on, n_chunks, ignore_index=True)
     left_df = await left_df
     right_df = await exchange_and_concat_bins(rank, eps, right_bins)
     return left_df.merge(right_df, left_on=left_on, right_on=right_on)
