@@ -69,7 +69,7 @@ def concat(df_list):
         return pandas.concat(df_list)
 
 
-def partition_by_hash(df, columns, n_chunks):
+def partition_by_hash(df, columns, n_chunks, ignore_index=False):
     """ Splits dataframe into partitions
 
     The partitions is determined by the hash value of the rows in `columns`.
@@ -81,6 +81,8 @@ def partition_by_hash(df, columns, n_chunks):
         Column names on which to split the dataframe
     npartition: int
         Number of partitions
+    ignore_index : bool, default False
+        Set True to ignore the index of `df`
 
     Returns
     -------
@@ -93,7 +95,7 @@ def partition_by_hash(df, columns, n_chunks):
     # Hashing `columns` in `df` and assing it to the "_partitions" column
     df["_partitions"] = partitioning_index(df[columns], n_chunks)
     # Split `df` based on the hash values in the "_partitions" column
-    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks)
+    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index)
 
     # Let's remove the partition column and return the partitions
     del df["_partitions"]
