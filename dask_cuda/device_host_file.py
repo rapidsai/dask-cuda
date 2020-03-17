@@ -186,3 +186,12 @@ class DeviceHostFile(ZictBase):
     def __delitem__(self, key):
         self.device_keys.discard(key)
         del self.device_buffer[key]
+
+    def get_from_dev_or_host_buffer(self, key):
+        """Get stored value without moving it from host to device memory.
+        If the value isn't in device memory, `DeviceSerialized` is returned.
+        """
+        if key not in self.device_keys or key in self.device_func:
+            return self.__getitem__(key)
+        else:
+            return self.host_buffer[key]
