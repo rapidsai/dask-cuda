@@ -163,7 +163,10 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer.fast
 
     def __setitem__(self, key, value):
-        if is_device_object(value):
+        if isinstance(value, DeviceSerialized):
+            self.device_keys.add(key)
+            self.host_buffer[key] = value
+        elif is_device_object(value):
             self.device_keys.add(key)
             self.device_buffer[key] = value
         else:
