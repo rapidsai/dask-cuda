@@ -195,3 +195,6 @@ class DeviceHostFile(ZictBase):
             return self.__getitem__(key)
         else:
             return self.host_buffer[key]
+
+    def __contains__(self, key):
+        return key in self.device_buffer or key in self.host_buffer
