@@ -1,7 +1,6 @@
 import os
 
 import dask
-from dask.sizeof import sizeof
 from distributed.protocol import (
     dask_deserialize,
     dask_serialize,
@@ -23,18 +22,6 @@ try:
     from rmm import DeviceBuffer as cuda_memory_manager
 except ImportError:
     import numba.cuda as cuda_memory_manager
-
-
-# Register sizeof for Numba DeviceNDArray while Dask doesn't add it
-if not hasattr(sizeof, "register_numba"):
-
-    @sizeof.register_lazy("numba")
-    def register_numba():
-        import numba
-
-        @sizeof.register(numba.cuda.cudadrv.devicearray.DeviceNDArray)
-        def sizeof_numba_devicearray(x):
-            return int(x.nbytes)
 
 
 class DeviceSerialized:
