@@ -18,6 +18,11 @@ def is_device_object_python_collection(seq):
     return any([is_device_object(s) for s in seq])
 
 
+@is_device_object.register(dict)
+def is_device_object_python_dict(seq):
+    return any([is_device_object(s) for s in seq.items()])
+
+
 @is_device_object.register_lazy("cudf")
 def register_cudf():
     import cudf
