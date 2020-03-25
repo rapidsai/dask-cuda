@@ -5,11 +5,14 @@
 0.13
 ----
 - Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
+- Add RMM pool support from dask-cuda-worker/LocalCUDACluster (#236) `Peter Andreas Entschev`_
 - Restrict CuPy to <7.2 (#239) `Benjamin Zaitlen`_
+- Fix UCX configurations (#246) `Peter Andreas Entschev`_
 - Respect `temporary-directory` config for spilling (#247) `John Kirkham`_
 - Relax CuPy pin (#248) `John Kirkham`_
 - Added `ignore_index` argument to `partition_by_hash()` (#253) `Mads R. B. Kristensen`_
 - Drop Numba `DeviceNDArray` code for `sizeof` (#257) `John Kirkham`_
+- Support spilling of device objects in dictionaries (#260) `Mads R. B. Kristensen`_
 
 0.12
 ----
