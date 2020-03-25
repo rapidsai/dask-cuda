@@ -1,3 +1,7 @@
+0.14
+----
+- Publish branch-0.14 to conda (#262)
+
 0.13
 ----
 - Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
