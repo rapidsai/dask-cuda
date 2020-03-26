@@ -45,7 +45,7 @@ class DeviceSerialized:
 
 
 @dask_serialize.register(DeviceSerialized)
-def _(obj):
+def device_serialize(obj):
     headers = []
     all_frames = []
     for part in obj.parts:
@@ -60,7 +60,7 @@ def _(obj):
 
 
 @dask_deserialize.register(DeviceSerialized)
-def _(header, frames):
+def device_deserialize(header, frames):
     parts = []
     for sub_header in header["sub-headers"]:
         start, stop = sub_header.pop("frame-start-stop")
