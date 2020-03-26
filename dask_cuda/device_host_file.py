@@ -115,10 +115,7 @@ class DeviceHostFile(ZictBase):
     """
 
     def __init__(
-        self,
-        device_memory_limit=None,
-        memory_limit=None,
-        local_directory=None,
+        self, device_memory_limit=None, memory_limit=None, local_directory=None,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
