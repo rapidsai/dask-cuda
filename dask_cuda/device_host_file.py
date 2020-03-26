@@ -26,9 +26,8 @@ class DeviceSerialized:
     This stores a device-side object as
 
     1.  A msgpack encodable header
-    2.  A list of objects that are returned by calling
-        `numba.cuda.as_cuda_array(f).copy_to_host()`
-        which are typically NumPy arrays
+    2.  A list of `bytes`-like objects (like NumPy arrays)
+        that are in host memory
     """
 
     def __init__(self, header, parts):
