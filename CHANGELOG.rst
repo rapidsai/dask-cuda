@@ -11,6 +11,7 @@
 - Respect `temporary-directory` config for spilling (#247) `John Kirkham`_
 - Relax CuPy pin (#248) `John Kirkham`_
 - Added `ignore_index` argument to `partition_by_hash()` (#253) `Mads R. B. Kristensen`_
+- Use `"dask"` serialization to move to/from host (#256) `John Kirkham`_
 - Drop Numba `DeviceNDArray` code for `sizeof` (#257) `John Kirkham`_
 - Support spilling of device objects in dictionaries (#260) `Mads R. B. Kristensen`_
 
