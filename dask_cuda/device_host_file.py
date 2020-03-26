@@ -1,5 +1,7 @@
 import os
 
+import numpy
+
 import dask
 from distributed.protocol import (
     dask_deserialize,
@@ -65,6 +67,7 @@ def device_deserialize(header, frames):
 
 def device_to_host(obj: object) -> DeviceSerialized:
     header, frames = serialize(obj, serializers=["dask", "pickle"])
+    frames = [numpy.asarray(f) for f in frames]
     return DeviceSerialized(header, frames)
 
 
