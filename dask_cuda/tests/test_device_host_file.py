@@ -157,9 +157,9 @@ def test_serialize_cupy_collection(collection, length, value):
     if length > 5:
         assert obj.header["serializer"] == "pickle"
     elif length > 0:
-        assert all([h["serializer"] == "cuda" for h in obj.header["sub-headers"]])
+        assert all([h["serializer"] == "dask" for h in obj.header["sub-headers"]])
     else:
-        assert obj.header["serializer"] == "cuda"
+        assert obj.header["serializer"] == "dask"
 
     btslst = serialize_bytelist(obj)
 
