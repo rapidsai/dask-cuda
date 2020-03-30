@@ -146,7 +146,7 @@ class LocalCUDACluster(LocalCluster):
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
         self.host_memory_limit = parse_memory_limit(
-            MEMORY_LIMIT, threads_per_worker, n_workers
+            memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = device_memory_limit
 
@@ -206,7 +206,7 @@ class LocalCUDACluster(LocalCluster):
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
-            memory_limit=memory_limit,
+            memory_limit=self.host_memory_limit,
             processes=True,
             data=data,
             local_directory=local_directory,
