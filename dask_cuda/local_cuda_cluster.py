@@ -5,6 +5,7 @@ import dask
 from dask.distributed import LocalCluster
 from distributed.system import MEMORY_LIMIT
 from distributed.utils import parse_bytes
+from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
@@ -124,7 +125,7 @@ class LocalCUDACluster(LocalCluster):
         n_workers=None,
         threads_per_worker=1,
         processes=True,
-        memory_limit=None,
+        memory_limit="auto",
         device_memory_limit=None,
         CUDA_VISIBLE_DEVICES=None,
         data=None,
@@ -144,9 +145,9 @@ class LocalCUDACluster(LocalCluster):
         CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
-        if memory_limit is None:
-            memory_limit = MEMORY_LIMIT / n_workers
-        self.host_memory_limit = memory_limit
+        self.host_memory_limit = parse_memory_limit(
+            memory_limit, threads_per_worker, n_workers
+        )
         self.device_memory_limit = device_memory_limit
 
         self.rmm_pool_size = rmm_pool_size
@@ -205,7 +206,7 @@ class LocalCUDACluster(LocalCluster):
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
-            memory_limit=memory_limit,
+            memory_limit=self.host_memory_limit,
             processes=True,
             data=data,
             local_directory=local_directory,

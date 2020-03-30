@@ -90,7 +90,8 @@ class DeviceHostFile(ZictBase):
         spills to host cache once filled.
     memory_limit: int
         Number of bytes of host memory for host LRU cache, spills to
-        disk once filled.
+        disk once filled. Setting this to 0 means unlimited host memory,
+        implies no spilling to disk.
     local_directory: path
         Path where to store serialized objects on disk
     """
@@ -109,9 +110,12 @@ class DeviceHostFile(ZictBase):
         self.disk_func = Func(
             serialize_bytelist, deserialize_bytes, File(self.disk_func_path)
         )
-        self.host_buffer = Buffer(
-            self.host_func, self.disk_func, memory_limit, weight=weight
-        )
+        if memory_limit == 0:
+            self.host_buffer = self.host_func
+        else:
+            self.host_buffer = Buffer(
+                self.host_func, self.disk_func, memory_limit, weight=weight
+            )
 
         self.device_keys = set()
         self.device_func = dict()
@@ -121,11 +125,11 @@ class DeviceHostFile(ZictBase):
         )
 
         self.device = self.device_buffer.fast.d
-        self.host = self.host_buffer.fast.d
-        self.disk = self.host_buffer.slow.d
+        self.host = self.host_buffer if memory_limit == 0 else self.host_buffer.fast.d
+        self.disk = None if memory_limit == 0 else self.host_buffer.slow.d
 
         # For Worker compatibility only, where `fast` is host memory buffer
-        self.fast = self.host_buffer.fast
+        self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
 
     def __setitem__(self, key, value):
         if is_device_object(value):

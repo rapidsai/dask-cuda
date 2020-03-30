@@ -7,6 +7,7 @@ from dask_cuda import LocalCUDACluster, utils
 from dask_cuda.device_host_file import DeviceHostFile
 from distributed import Client, get_worker, wait
 from distributed.metrics import time
+from distributed.sizeof import sizeof
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 from distributed.worker import Worker
 
@@ -20,15 +21,24 @@ if utils.get_device_total_memory() < 1e10:
 def device_host_file_size_matches(
     dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
 ):
-    byte_sum = dhf.device_buffer.fast.total_weight + dhf.host_buffer.fast.total_weight
-    file_path = [os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()]
-    file_size = [os.path.getsize(f) for f in file_path]
-    byte_sum += sum(file_size)
+    byte_sum = dhf.device_buffer.fast.total_weight
 
-    # Allow up to chunk_overhead bytes overhead per chunk on disk
+    # `dhf.host_buffer.fast` is only available when Worker's `memory_limit != 0`
+    if hasattr(dhf.host_buffer, "fast"):
+        byte_sum += dhf.host_buffer.fast.total_weight
+    else:
+        byte_sum += sum([sizeof(b) for b in dhf.host_buffer.values()])
+
+    # `dhf.disk` is only available when Worker's `memory_limit != 0`
+    if dhf.disk is not None:
+        file_path = [os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()]
+        file_size = [os.path.getsize(f) for f in file_path]
+        byte_sum += sum(file_size)
+
+    # Allow up to chunk_overhead bytes overhead per chunk
     device_overhead = len(dhf.device) * device_chunk_overhead
     host_overhead = len(dhf.host) * serialized_chunk_overhead
-    disk_overhead = len(dhf.disk) * serialized_chunk_overhead
+    disk_overhead = len(dhf.disk) * serialized_chunk_overhead if dhf.disk is not None else 0
 
     return (
         byte_sum >= total_bytes
@@ -65,7 +75,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             )
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
+#@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
@@ -84,6 +94,14 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
+        },
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 0,
+            "host_target": 0.0,
+            "host_spill": 0.0,
+            "host_pause": None,
+            "spills_to_disk": False,
         },
     ],
 )
@@ -125,7 +143,7 @@ def test_cupy_device_spill(params):
 
         yield client.run(worker_assert, x.nbytes, 1024, 1024)
         host_chunks = yield client.run(lambda: len(get_worker().data.host))
-        disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
+        disk_chunks = yield client.run(lambda: len(get_worker().data.disk or list()))
         for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
             if params["spills_to_disk"]:
                 assert dc > 0
@@ -154,6 +172,14 @@ def test_cupy_device_spill(params):
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
+        },
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 0,
+            "host_target": 0.0,
+            "host_spill": 0.0,
+            "host_pause": None,
+            "spills_to_disk": False,
         },
     ],
 )
@@ -194,7 +220,7 @@ async def test_cupy_cluster_device_spill(params):
 
                 await client.run(worker_assert, x.nbytes, 1024, 1024)
                 host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+                disk_chunks = await client.run(lambda: len(get_worker().data.disk or list()))
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
                         assert dc > 0
@@ -222,6 +248,14 @@ async def test_cupy_cluster_device_spill(params):
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
+        },
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 0,
+            "host_target": 0.0,
+            "host_spill": 0.0,
+            "host_pause": None,
+            "spills_to_disk": False,
         },
     ],
 )
@@ -267,7 +301,7 @@ def test_cudf_device_spill(params):
         del cdf
 
         host_chunks = yield client.run(lambda: len(get_worker().data.host))
-        disk_chunks = yield client.run(lambda: len(get_worker().data.disk))
+        disk_chunks = yield client.run(lambda: len(get_worker().data.disk or list()))
         for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
             if params["spills_to_disk"]:
                 assert dc > 0
@@ -303,6 +337,14 @@ def test_cudf_device_spill(params):
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
+        },
+        {
+            "device_memory_limit": 1e9,
+            "memory_limit": 0,
+            "host_target": 0.0,
+            "host_spill": 0.0,
+            "host_pause": None,
+            "spills_to_disk": False,
         },
     ],
 )
@@ -346,7 +388,7 @@ async def test_cudf_cluster_device_spill(params):
                 del cdf
 
                 host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk))
+                disk_chunks = await client.run(lambda: len(get_worker().data.disk or list()))
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
                         assert dc > 0
