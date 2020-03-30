@@ -111,7 +111,7 @@ class DeviceHostFile(ZictBase):
             serialize_bytelist, deserialize_bytes, File(self.disk_func_path)
         )
         if memory_limit == 0:
-            self.host_buffer = host_func
+            self.host_buffer = self.host_func
         else:
             self.host_buffer = Buffer(
                 self.host_func, self.disk_func, memory_limit, weight=weight
@@ -125,11 +125,11 @@ class DeviceHostFile(ZictBase):
         )
 
         self.device = self.device_buffer.fast.d
-        self.host = host_buffer if memory_limit == 0 else self.host_buffer.fast.d
+        self.host = self.host_buffer if memory_limit == 0 else self.host_buffer.fast.d
         self.disk = None if memory_limit == 0 else self.host_buffer.slow.d
 
         # For Worker compatibility only, where `fast` is host memory buffer
-        self.fast = self.host_buffer.fast
+        self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
 
     def __setitem__(self, key, value):
         if is_device_object(value):
