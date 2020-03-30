@@ -1,3 +1,4 @@
+import functools
 import os
 
 import numpy
@@ -108,7 +109,9 @@ class DeviceHostFile(ZictBase):
 
         self.host_func = dict()
         self.disk_func = Func(
-            serialize_bytelist, deserialize_bytes, File(self.disk_func_path)
+            functools.partial(serialize_bytelist, on_error="raise"),
+            deserialize_bytes,
+            File(self.disk_func_path),
         )
         if memory_limit == 0:
             self.host_buffer = self.host_func
