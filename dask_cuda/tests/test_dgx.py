@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+import subprocess
 
 import dask.array as da
 from dask_cuda import DGX
@@ -7,6 +8,15 @@ from distributed import Client
 
 import numpy
 import pytest
+
+from time import sleep
+from distributed.metrics import time
+from distributed.utils_test import loop  # noqa: F401
+from distributed.utils_test import popen
+from dask_cuda.utils import get_gpu_count
+from dask_cuda.initialize import initialize
+
+from distributed.worker import get_worker
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -28,6 +38,41 @@ def _check_dgx_version():
             break
 
     return dgx_server
+
+
+def _get_dgx_net_devices():
+    if _check_dgx_version() == 1:
+        return [
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
+        ]
+    elif _check_dgx_version() == 2:
+        return [
+            "mlx5_0:1,ib0",
+            "mlx5_0:1,ib0",
+            "mlx5_1:1,ib1",
+            "mlx5_1:1,ib1",
+            "mlx5_2:1,ib2",
+            "mlx5_2:1,ib2",
+            "mlx5_3:1,ib3",
+            "mlx5_3:1,ib3",
+            "mlx5_6:1,ib4",
+            "mlx5_6:1,ib4",
+            "mlx5_7:1,ib5",
+            "mlx5_7:1,ib5",
+            "mlx5_8:1,ib6",
+            "mlx5_8:1,ib6",
+            "mlx5_9:1,ib7",
+            "mlx5_9:1,ib7",
+        ]
+    else:
+        return None
 
 
 if _check_dgx_version() is None:
@@ -102,36 +147,7 @@ def test_tcp_only():
 def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
     cupy = pytest.importorskip("cupy")
 
-    if _check_dgx_version() == 1:
-        net_devices = [
-            "mlx5_0:1,ib0",
-            "mlx5_0:1,ib0",
-            "mlx5_1:1,ib1",
-            "mlx5_1:1,ib1",
-            "mlx5_2:1,ib2",
-            "mlx5_2:1,ib2",
-            "mlx5_3:1,ib3",
-            "mlx5_3:1,ib3",
-        ]
-    elif _check_dgx_version() == 2:
-        net_devices = [
-            "mlx5_0:1,ib0",
-            "mlx5_0:1,ib0",
-            "mlx5_1:1,ib1",
-            "mlx5_1:1,ib1",
-            "mlx5_2:1,ib2",
-            "mlx5_2:1,ib2",
-            "mlx5_3:1,ib3",
-            "mlx5_3:1,ib3",
-            "mlx5_6:1,ib4",
-            "mlx5_6:1,ib4",
-            "mlx5_7:1,ib5",
-            "mlx5_7:1,ib5",
-            "mlx5_8:1,ib6",
-            "mlx5_8:1,ib6",
-            "mlx5_9:1,ib7",
-            "mlx5_9:1,ib7",
-        ]
+    net_devices = _get_dgx_net_devices()
 
     ucx_net_devices = "auto" if enable_infiniband else None
 
@@ -187,3 +203,67 @@ def test_ucx_infiniband_nvlink(params):
     p.start()
     p.join()
     assert not p.exitcode
+
+
+def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
+    net_devices = _get_dgx_net_devices()
+
+    sched_env = os.environ.copy()
+    sched_env["UCX_TLS"] = "rc,sockcm,tcp,cuda_copy"
+    sched_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
+
+    with subprocess.Popen(
+        [
+            "dask-scheduler",
+            "--protocol",
+            "ucx",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "9379",
+            "--no-dashboard",
+        ],
+        env=sched_env,
+    ) as sched_proc:
+        # Scheduler with UCX will take a few seconds to fully start
+        sleep(5)
+
+        with subprocess.Popen(
+            [
+                "dask-cuda-worker",
+                "ucx://127.0.0.1:9379",
+                "--host",
+                "127.0.0.1",
+                "--enable-infiniband",
+                "--net-devices",
+                "auto",
+                "--no-dashboard",
+            ],
+        ) as worker_proc:
+            with Client("ucx://127.0.0.1:9379", loop=loop) as client:
+
+                start = time()
+                while True:
+                    if len(client.scheduler_info()["workers"]) == get_gpu_count():
+                        break
+                    else:
+                        assert time() - start < 10
+                        sleep(0.1)
+
+                worker_net_devices = client.run(lambda: ucp.get_config()["NET_DEVICES"])
+                cuda_visible_devices = client.run(
+                    lambda: os.environ["CUDA_VISIBLE_DEVICES"]
+                )
+
+                for i, v in enumerate(
+                    zip(worker_net_devices.values(), cuda_visible_devices.values())
+                ):
+                    net_dev = v[0]
+                    dev_idx = int(v[1].split(",")[0])
+                    assert net_dev == net_devices[dev_idx]
+
+            # A dask-worker with UCX protocol will not close until some work
+            # is dispatched, therefore we kill the worker and scheduler to
+            # ensure timely closing.
+            worker_proc.kill()
+            sched_proc.kill()

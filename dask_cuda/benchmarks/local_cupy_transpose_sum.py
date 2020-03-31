@@ -19,16 +19,27 @@ async def run(args):
         protocol=args.protocol,
         n_workers=len(args.devs.split(",")),
         CUDA_VISIBLE_DEVICES=args.devs,
+        ucx_net_devices="auto",
+        enable_infiniband=True,
+        enable_nvlink=True,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
 
-            def _worker_setup():
+            def _worker_setup(size=None):
                 import rmm
-                rmm.reinitialize(pool_allocator=not args.no_rmm_pool, devices=0)
+
+                rmm.reinitialize(
+                    pool_allocator=not args.no_rmm_pool,
+                    devices=0,
+                    initial_pool_size=size,
+                )
                 cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
             await client.run(_worker_setup)
+            # Create an RMM pool on the scheduler due to occasional deserialization
+            # of CUDA objects. May cause issues with InfiniBand otherwise.
+            await client.run_on_scheduler(_worker_setup, 1e9)
 
             # Create a simple random array
             rs = da.random.RandomState(RandomState=cupy.random.RandomState)

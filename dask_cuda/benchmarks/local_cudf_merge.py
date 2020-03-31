@@ -9,6 +9,7 @@ from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
+from dask_cuda import explicit_comms
 
 import cudf
 import cupy
@@ -115,24 +116,9 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
     return ddf
 
 
-def run(args, write_profile=None):
-    # Generate random Dask dataframes
-    ddf_base = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "build", args
-    ).persist()
-    ddf_other = get_random_ddf(
-        args.chunk_size, args.n_workers, args.frac_match, "other", args
-    ).persist()
-    wait(ddf_base)
-    wait(ddf_other)
-
-    assert(len(ddf_base.dtypes) == 2)
-    assert(len(ddf_other.dtypes) == 2)
-    data_processed = len(ddf_base) * sum([t.itemsize for t in ddf_base.dtypes])
-    data_processed += len(ddf_other) * sum([t.itemsize for t in ddf_other.dtypes])
-
+def merge(args, ddf1, ddf2, write_profile):
     # Lazy merge/join operation
-    ddf_join = ddf_base.merge(ddf_other, on=["key"], how="inner")
+    ddf_join = ddf1.merge(ddf2, on=["key"], how="inner")
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
 
@@ -146,6 +132,38 @@ def run(args, write_profile=None):
         t1 = clock()
         wait(ddf_join.persist())
         took = clock() - t1
+    return took
+
+
+def merge_explicit_comms(args, ddf1, ddf2):
+    t1 = clock()
+    wait(explicit_comms.dataframe_merge(ddf1, ddf2, on="key").persist())
+    took = clock() - t1
+    return took
+
+
+def run(client, args, write_profile=None):
+    # Generate random Dask dataframes
+    ddf_base = get_random_ddf(
+        args.chunk_size, args.n_workers, args.frac_match, "build", args
+    ).persist()
+    ddf_other = get_random_ddf(
+        args.chunk_size, args.n_workers, args.frac_match, "other", args
+    ).persist()
+    wait(ddf_base)
+    wait(ddf_other)
+    client.wait_for_workers(args.n_workers)
+
+    assert len(ddf_base.dtypes) == 2
+    assert len(ddf_other.dtypes) == 2
+    data_processed = len(ddf_base) * sum([t.itemsize for t in ddf_base.dtypes])
+    data_processed += len(ddf_other) * sum([t.itemsize for t in ddf_other.dtypes])
+
+    if args.backend == "dask":
+        took = merge(args, ddf_base, ddf_other, write_profile)
+    else:
+        took = merge_explicit_comms(args, ddf_base, ddf_other)
+
     return (data_processed, took)
 
 
@@ -178,18 +196,26 @@ def main(args):
         )
     client = Client(cluster)
 
-    def _worker_setup():
+    def _worker_setup(initial_pool_size=None):
         import rmm
-        rmm.reinitialize(pool_allocator=not args.no_rmm_pool, devices=0)
+
+        rmm.reinitialize(
+            pool_allocator=not args.no_rmm_pool,
+            devices=0,
+            initial_pool_size=initial_pool_size,
+        )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
     client.run(_worker_setup)
+    # Create an RMM pool on the scheduler due to occasional deserialization
+    # of CUDA objects. May cause issues with InfiniBand otherwise.
+    client.run_on_scheduler(_worker_setup, 1e9)
 
     took_list = []
     for _ in range(args.runs - 1):
-        took_list.append(run(args, write_profile=None))
+        took_list.append(run(client, args, write_profile=None))
     took_list.append(
-        run(args, write_profile=args.profile)
+        run(client, args, write_profile=args.profile)
     )  # Only profiling the last run
 
     # Collect, aggregate, and print peer-to-peer bandwidths
@@ -219,36 +245,41 @@ def main(args):
         print("```")
     print("Merge benchmark")
     print("-------------------------------")
-    print(f"Chunk-size  | {args.chunk_size}")
-    print(f"Frac-match  | {args.frac_match}")
-    print(f"Ignore-size | {format_bytes(args.ignore_size)}")
-    print(f"Protocol    | {args.protocol}")
-    print(f"Device(s)   | {args.devs}")
-    print(f"rmm-pool    | {(not args.no_rmm_pool)}")
+    print(f"backend        | {args.backend}")
+    print(f"rows-per-chunk | {args.chunk_size}")
+    print(f"protocol       | {args.protocol}")
+    print(f"device(s)      | {args.devs}")
+    print(f"rmm-pool       | {(not args.no_rmm_pool)}")
+    print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
-        print(f"tcp         | {args.enable_tcp_over_ucx}")
-        print(f"ib          | {args.enable_infiniband}")
-        print(f"nvlink      | {args.enable_nvlink}")
+        print(f"tcp            | {args.enable_tcp_over_ucx}")
+        print(f"ib             | {args.enable_infiniband}")
+        print(f"nvlink         | {args.enable_nvlink}")
+    print(f"data-processed | {format_bytes(took_list[0][0])}")
     print("===============================")
-    print("Wall-clock  | Throughput")
+    print("Wall-clock     | Throughput")
     print("-------------------------------")
     for data_processed, took in took_list:
         throughput = int(data_processed / took)
-        print(f"{format_time(took)}      | {format_bytes(throughput)}/s")
+        m = format_time(took)
+        m += " " * (15 - len(m))
+        print(f"{m}| {format_bytes(throughput)}/s")
     print("===============================")
     if args.markdown:
-        print(
-            "\n```\n<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```"
-        )
-    print("(w1,w2)     | 25% 50% 75% (total nbytes)")
-    print("-------------------------------")
-    for (d1, d2), bw in sorted(bandwidths.items()):
-        print(
-            "(%02d,%02d)     | %s %s %s (%s)"
-            % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
-        )
-    if args.markdown:
-        print("```\n</details>\n")
+        print("\n```")
+
+    if args.backend == "dask":
+        if args.markdown:
+            print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
+        print("(w1,w2)     | 25% 50% 75% (total nbytes)")
+        print("-------------------------------")
+        for (d1, d2), bw in sorted(bandwidths.items()):
+            print(
+                "(%02d,%02d)     | %s %s %s (%s)"
+                % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
+            )
+        if args.markdown:
+            print("```\n</details>\n")
 
 
 def parse_args():
@@ -265,6 +296,14 @@ def parse_args():
         default="tcp",
         type=str,
         help="The communication protocol to use.",
+    )
+    parser.add_argument(
+        "-b",
+        "--backend",
+        choices=["dask", "explicit-comms"],
+        default="dask",
+        type=str,
+        help="The backend to use.",
     )
     parser.add_argument(
         "-c",

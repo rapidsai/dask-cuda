@@ -16,6 +16,19 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
+class RMMPool:
+    def __init__(self, nbytes):
+        self.nbytes = nbytes
+
+    def setup(self, worker=None):
+        if self.nbytes is not None:
+            import rmm
+
+            rmm.reinitialize(
+                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+            )
+
+
 def unpack_bitmask(x, mask_bits=64):
     """Unpack a list of integers containing bitmasks.
 
@@ -129,6 +142,67 @@ def get_device_total_memory(index=0):
     ).total
 
 
+def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
+    if cuda_device_index is None and (
+        callable(ucx_net_devices) or ucx_net_devices == "auto"
+    ):
+        raise ValueError(
+            "A CUDA device index must be specified if the "
+            "ucx_net_devices variable is either callable or 'auto'"
+        )
+    elif cuda_device_index is not None:
+        dev = int(cuda_device_index)
+
+    net_dev = None
+    if callable(ucx_net_devices):
+        net_dev = ucx_net_devices(int(cuda_device_index))
+    elif isinstance(ucx_net_devices, str):
+        if ucx_net_devices == "auto":
+            # If TopologicalDistance from ucp is available, we set the UCX
+            # net device to the closest network device explicitly.
+            from ucp._libs.topological_distance import TopologicalDistance
+
+            net_dev = ""
+            td = TopologicalDistance()
+            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+            if len(ibs) > 0:
+                net_dev += ibs[0]["name"] + ":1,"
+            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+            if len(ifnames) > 0:
+                net_dev += ifnames[0]["name"]
+        else:
+            net_dev = ucx_net_devices
+    return net_dev
+
+
+def get_ucx_config(
+    enable_tcp_over_ucx=False,
+    enable_infiniband=False,
+    enable_nvlink=False,
+    net_devices="",
+    cuda_device_index=None,
+):
+    ucx_config = {
+        "tcp": None,
+        "infiniband": None,
+        "nvlink": None,
+        "net-devices": None,
+        "cuda_copy": None,
+    }
+    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+        ucx_config["cuda_copy"] = True
+    if enable_tcp_over_ucx:
+        ucx_config["tcp"] = True
+    if enable_infiniband:
+        ucx_config["infiniband"] = True
+    if enable_nvlink:
+        ucx_config["nvlink"] = True
+
+    if net_devices is not None and net_devices != "":
+        ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
+    return ucx_config
+
+
 def get_preload_options(
     protocol=None,
     create_cuda_context=False,
@@ -185,14 +259,6 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    def _ucx_net_devices(i):
-        dev = None
-        if callable(ucx_net_devices):
-            dev = ucx_net_devices(i)
-        elif ucx_net_devices != "":
-            dev = ucx_net_devices
-        return [] if dev is None else ["--net-devices=" + dev]
-
     if protocol == "ucx":
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
@@ -201,8 +267,10 @@ def get_preload_options(
             initialize_ucx_argv.append("--enable-infiniband")
         if enable_nvlink:
             initialize_ucx_argv.append("--enable-nvlink")
+        if ucx_net_devices is not None and ucx_net_devices != "":
+            net_dev = get_ucx_net_devices(cuda_device_index, ucx_net_devices)
+            initialize_ucx_argv.append("--net-devices=%s" % net_dev)
 
         preload_options["preload_argv"].extend(initialize_ucx_argv)
-        preload_options["preload_argv"].extend(_ucx_net_devices(cuda_device_index))
 
     return preload_options

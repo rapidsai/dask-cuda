@@ -19,14 +19,16 @@ ucp = pytest.importorskip("ucp")
 
 def _test_global_option(seg_size):
     """Test setting UCX options through dask's global config"""
-    dask.config.set(
+    dask.config.update(
+        dask.config.global_config,
         {
             "ucx": {
                 "SEG_SIZE": seg_size,
                 "TLS": "tcp,sockcm,cuda_copy",
                 "SOCKADDR_TLS_PRIORITY": "sockcm",
-            }
-        }
+            },
+        },
+        priority="new",
     )
 
     with LocalCluster(

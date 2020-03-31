@@ -27,9 +27,11 @@ from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
+    RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_ucx_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -83,7 +85,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     help="The external interface used to connect to the scheduler, usually "
     "an ethernet interface is used for connection, and not an InfiniBand "
-    "interface (if one is available)."
+    "interface (if one is available).",
 )
 @click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
 @click.option(
@@ -112,6 +114,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "string (like 5GB or 5000M), "
     "'auto', or zero for no memory management "
     "(i.e., allow full device memory usage).",
+)
+@click.option(
+    "--rmm-pool-size",
+    default=None,
+    help="If specified, initialize each worker with an RMM pool of "
+    "the given size, otherwise no RMM pool is created. This can be "
+    "an integer (bytes) or string (like 5GB or 5000M).",
 )
 @click.option(
     "--reconnect/--no-reconnect",
@@ -179,7 +188,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="When None (default), 'UCX_NET_DEVICES' will be left to its default. "
     "Otherwise, it must be a non-empty string with the interface name. Normally "
     "used only with --enable-infiniband to specify the interface to be used by "
-    "the worker, such as 'mlx5_0:1' or 'ib0'."
+    "the worker, such as 'mlx5_0:1' or 'ib0'.",
 )
 def main(
     scheduler,
@@ -188,6 +197,7 @@ def main(
     name,
     memory_limit,
     device_memory_limit,
+    rmm_pool_size,
     pid_file,
     resources,
     dashboard,
@@ -271,13 +281,16 @@ def main(
         else:
             host = get_ip_interface(interface)
 
-    initialize(
-        create_cuda_context=True,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        net_devices=net_devices,
-    )
+    if rmm_pool_size is not None:
+        try:
+            import rmm
+        except ImportError:
+            raise ValueError(
+                "RMM pool requested but module 'rmm' is not available. "
+                "For installation instructions, please see "
+                "https://github.com/rapidsai/rmm"
+            )  # pragma: no cover
+        rmm_pool_size = parse_bytes(rmm_pool_size)
 
     nannies = [
         t(
@@ -293,9 +306,18 @@ def main(
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-            plugins={CPUAffinity(get_cpu_affinity(i))},
+            plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
             local_directory=local_directory,
+            config={
+                "ucx": get_ucx_config(
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_infiniband=enable_infiniband,
+                    enable_nvlink=enable_nvlink,
+                    net_devices=net_devices,
+                    cuda_device_index=i,
+                )
+            },
             data=(
                 DeviceHostFile,
                 {

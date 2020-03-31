@@ -10,34 +10,13 @@ from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
+    RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
+    get_ucx_config,
+    get_ucx_net_devices,
 )
-
-
-def _ucx_net_devices(dev, ucx_net_devices):
-    dev = int(dev)
-    net_dev = None
-    if callable(ucx_net_devices):
-        net_dev = ucx_net_devices(dev)
-    elif isinstance(ucx_net_devices, str):
-        if ucx_net_devices == "auto":
-            # If TopologicalDistance from ucp is available, we set the UCX
-            # net device to the closest network device explicitly.
-            from ucp._libs.topological_distance import TopologicalDistance
-
-            net_dev = ""
-            td = TopologicalDistance()
-            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-            if len(ibs) > 0:
-                net_dev += ibs[0]["name"] + ":1,"
-            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-            if len(ifnames) > 0:
-                net_dev += ifnames[0]["name"]
-        else:
-            net_dev = ucx_net_devices
-    return net_dev
 
 
 def cuda_visible_devices(i, visible=None):
@@ -116,6 +95,9 @@ class LocalCUDACluster(LocalCluster):
         support, and it will always use the closest interface which may lead to
         unexpected errors if that interface is not properly configured or is
         disconnected.
+    rmm_pool: None, int or str
+        When None (default), no RMM pool is initialized. If a different value
+        is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
 
     Examples
     --------
@@ -152,6 +134,7 @@ class LocalCUDACluster(LocalCluster):
         enable_infiniband=False,
         enable_nvlink=False,
         ucx_net_devices=None,
+        rmm_pool_size=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -165,6 +148,18 @@ class LocalCUDACluster(LocalCluster):
             memory_limit = MEMORY_LIMIT / n_workers
         self.host_memory_limit = memory_limit
         self.device_memory_limit = device_memory_limit
+
+        self.rmm_pool_size = rmm_pool_size
+        if rmm_pool_size is not None:
+            try:
+                import rmm
+            except ImportError:
+                raise ValueError(
+                    "RMM pool requested but module 'rmm' is not available. "
+                    "For installation instructions, please see "
+                    "https://github.com/rapidsai/rmm"
+                )  # pragma: no cover
+            self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
         if not processes:
             raise ValueError(
@@ -194,12 +189,6 @@ class LocalCUDACluster(LocalCluster):
             elif protocol != "ucx":
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
-            initialize(
-                enable_tcp_over_ucx=enable_tcp_over_ucx,
-                enable_infiniband=enable_infiniband,
-                enable_nvlink=enable_nvlink,
-            )
-
         if ucx_net_devices == "auto":
             try:
                 from ucp._libs.topological_distance import TopologicalDistance  # noqa
@@ -221,6 +210,13 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
+            config={
+                "ucx": get_ucx_config(
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_nvlink=enable_nvlink,
+                    enable_infiniband=enable_infiniband,
+                )
+            },
             **kwargs,
         )
 
@@ -249,12 +245,15 @@ class LocalCUDACluster(LocalCluster):
         spec["options"].update(
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
-                "plugins": {CPUAffinity(get_cpu_affinity(worker_count))},
+                "plugins": {
+                    CPUAffinity(get_cpu_affinity(worker_count)),
+                    RMMPool(self.rmm_pool_size),
+                },
             }
         )
 
         if self.set_ucx_net_devices:
-            net_dev = _ucx_net_devices(
+            net_dev = get_ucx_net_devices(
                 visible_devices.split(",")[0], self.ucx_net_devices
             )
             if net_dev is not None:

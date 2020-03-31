@@ -104,3 +104,14 @@ async def test_n_workers():
     ) as cluster:
         assert len(cluster.workers) == 2
         assert len(cluster.worker_spec) == 2
+
+
+@gen_test(timeout=20)
+async def test_rmm_pool():
+    rmm = pytest.importorskip("rmm")
+
+    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_info = await client.run(rmm.get_info)
+            for v in memory_info.values():
+                assert v.total == 2000000000

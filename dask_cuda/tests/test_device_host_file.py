@@ -1,5 +1,7 @@
+import os
 from random import randint
 
+import dask
 import dask.array as da
 from dask_cuda.device_host_file import (
     DeviceHostFile,
@@ -12,6 +14,14 @@ import numpy as np
 import pytest
 
 cupy = pytest.importorskip("cupy")
+
+
+def test_device_host_file_config(tmp_path):
+    dhf_disk_path = str(tmp_path / "dask-worker-space" / "storage")
+    with dask.config.set(temporary_directory=str(tmp_path)):
+        dhf = DeviceHostFile()
+        assert os.path.exists(dhf_disk_path)
+        assert dhf.disk_func_path == dhf_disk_path
 
 
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
@@ -147,9 +157,9 @@ def test_serialize_cupy_collection(collection, length, value):
     if length > 5:
         assert obj.header["serializer"] == "pickle"
     elif length > 0:
-        assert all([h["serializer"] == "cuda" for h in obj.header["sub-headers"]])
+        assert all([h["serializer"] == "dask" for h in obj.header["sub-headers"]])
     else:
-        assert obj.header["serializer"] == "cuda"
+        assert obj.header["serializer"] == "dask"
 
     btslst = serialize_bytelist(obj)
 
