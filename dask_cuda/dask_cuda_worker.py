@@ -232,6 +232,8 @@ def main(
     if not nthreads:
         nthreads = min(1, multiprocessing.cpu_count() // nprocs)
 
+    memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
+
     if pid_file:
         with open(pid_file, "w") as f:
             f.write(str(os.getpid()))
@@ -324,9 +326,7 @@ def main(
                     "device_memory_limit": get_device_total_memory(index=i)
                     if (device_memory_limit == "auto" or device_memory_limit == int(0))
                     else parse_bytes(device_memory_limit),
-                    "memory_limit": parse_memory_limit(
-                        memory_limit, nthreads, total_cores=nprocs
-                    ),
+                    "memory_limit": memory_limit,
                     "local_directory": local_directory,
                 },
             ),
