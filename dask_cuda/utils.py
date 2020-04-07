@@ -7,6 +7,9 @@ import numpy as np
 import pynvml
 import toolz
 
+from dask.utils import parse_bytes
+from distributed.worker import get_worker
+
 
 class CPUAffinity:
     def __init__(self, cores):
@@ -27,6 +30,7 @@ class RMMPool:
             rmm.reinitialize(
                 pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
             )
+            #cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
 
 def unpack_bitmask(x, mask_bits=64):
@@ -274,3 +278,25 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def reset_device_memory_limit(device_memory_limit):
+    """
+    Set a new `device_memory_limit` for dask-cuda Worker object.
+
+    Parameters
+    ----------
+    device_memory_limit: int, float, string
+        New number of bytes of memory that the worker should use to control
+        spilling from device to host. Use strings or numbers like 5GB or 5e9.
+
+    Example
+    -------
+    >>> client.run(reset_device_memory_limit, "15GB")
+    """
+    device_memory_limit = parse_bytes(device_memory_limit)
+    w = get_worker()
+
+    # Set new zict.Buffer and zict.LRU limits
+    w.data.device_buffer.n = device_memory_limit
+    w.data.device_buffer.fast.n = device_memory_limit
