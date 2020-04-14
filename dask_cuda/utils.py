@@ -8,6 +8,17 @@ import pynvml
 import toolz
 
 
+try:
+    from cudf._lib.nvtx import annotate as nvtx_annotate
+except ImportError:
+    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
+    # installed, `annotate` yields only.
+    from contextlib import contextmanager
+    @contextmanager
+    def nvtx_annotate(message=None, color="blue", domain=None):
+        yield
+
+
 class CPUAffinity:
     def __init__(self, cores):
         self.cores = cores

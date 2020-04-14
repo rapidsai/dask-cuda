@@ -19,6 +19,7 @@ from zict import Buffer, File, Func
 from zict.common import ZictBase
 
 from .is_device_object import is_device_object
+from .utils import nvtx_annotate
 
 
 class DeviceSerialized:
@@ -65,12 +66,14 @@ def device_deserialize(header, frames):
     return DeviceSerialized(header["main-header"], parts)
 
 
+@nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
     header, frames = serialize(obj, serializers=["dask", "pickle"])
     frames = [numpy.asarray(f) for f in frames]
     return DeviceSerialized(header, frames)
 
 
+@nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
 def host_to_device(s: DeviceSerialized) -> object:
     return deserialize(s.header, s.parts)
 
