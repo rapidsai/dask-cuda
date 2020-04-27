@@ -177,6 +177,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="Enable InfiniBand communication",
 )
 @click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, "
+    "currently requires InfiniBand enabled."
+)
+@click.option(
     "--enable-nvlink/--disable-nvlink",
     default=False,
     help="Enable NVLink communication",
@@ -214,6 +220,7 @@ def main(
     enable_tcp_over_ucx,
     enable_infiniband,
     enable_nvlink,
+    enable_rdmacm,
     net_devices,
     **kwargs,
 ):
@@ -316,6 +323,7 @@ def main(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_infiniband=enable_infiniband,
                     enable_nvlink=enable_nvlink,
+                    enable_rdmacm=enable_rdmacm,
                     net_devices=net_devices,
                     cuda_device_index=i,
                 )

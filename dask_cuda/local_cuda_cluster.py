@@ -80,6 +80,9 @@ class LocalCUDACluster(LocalCluster):
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support,
+        requires protocol='ucx' and enable_infiniband=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
@@ -134,6 +137,7 @@ class LocalCUDACluster(LocalCluster):
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
+        enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
         **kwargs,
@@ -216,6 +220,7 @@ class LocalCUDACluster(LocalCluster):
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
+                    enable_rdmacm=enable_rdmacm,
                 )
             },
             **kwargs,
