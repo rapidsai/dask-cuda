@@ -1,6 +1,7 @@
 0.14
 ----
 - Publish branch-0.14 to conda (#262)
+- Local gpuCI build script (#285)
 
 0.13
 ----
