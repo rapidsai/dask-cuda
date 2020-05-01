@@ -30,6 +30,7 @@ from .utils import (
     RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
+    get_host_from_cuda_device,
     get_n_gpus,
     get_ucx_config,
 )
@@ -179,8 +180,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
     default=False,
-    help="Enable RDMA connection manager, "
-    "currently requires InfiniBand enabled."
+    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
@@ -310,7 +310,12 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            host=host,
+            host=get_host_from_cuda_device(
+                host=host,
+                cuda_device_index=i,
+                enable_infiniband=enable_infiniband,
+                net_devices=net_devices,
+            ),
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
