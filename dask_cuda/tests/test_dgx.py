@@ -10,7 +10,7 @@ import numpy
 import pytest
 
 from time import sleep
-from dask_cuda.utils import get_gpu_count
+from dask_cuda.utils import get_gpu_count, get_host_from_cuda_device
 from dask_cuda.initialize import initialize
 from distributed.metrics import time
 from distributed.utils import get_ip_interface
@@ -299,3 +299,31 @@ def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     p.start()
     p.join()
     assert not p.exitcode
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"host": "127.0.0.1", "enable_infiniband": False, "net_devices": None},
+        {"host": "127.0.0.1", "enable_infiniband": True, "net_devices": None},
+        {"host": "127.0.0.1", "enable_infiniband": True, "net_devices": "auto"},
+    ],
+)
+def test_get_host_from_cuda_device(params):
+    host = params["host"]
+    enable_infiniband = params["enable_infiniband"]
+    net_devices = params["net_devices"]
+    dgx_net_devices = _get_dgx_net_devices()
+
+    for i in range(get_gpu_count()):
+        ret_host = get_host_from_cuda_device(
+            host=host,
+            cuda_device_index=i,
+            enable_infiniband=enable_infiniband,
+            net_devices=net_devices,
+        )
+        if enable_infiniband is True and net_devices == "auto":
+            ib = dgx_net_devices[i].split(",")[1]
+            assert ret_host == get_ip_interface(ib)
+        else:
+            assert ret_host == host
