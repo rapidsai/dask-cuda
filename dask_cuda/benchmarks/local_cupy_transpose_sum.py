@@ -19,9 +19,10 @@ async def run(args):
         protocol=args.protocol,
         n_workers=len(args.devs.split(",")),
         CUDA_VISIBLE_DEVICES=args.devs,
-        ucx_net_devices="auto",
-        enable_infiniband=True,
-        enable_nvlink=True,
+        ucx_net_devices=args.ucx_net_devices,
+        enable_tcp_over_ucx=args.enable_tcp_over_ucx,
+        enable_infiniband=args.enable_infiniband,
+        enable_nvlink=args.enable_nvlink,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -153,7 +154,57 @@ def parse_args():
     parser.add_argument(
         "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
+    parser.add_argument(
+        "--enable-tcp-over-ucx",
+        action="store_true",
+        dest="enable_tcp_over_ucx",
+        help="Enable tcp over ucx.",
+    )
+    parser.add_argument(
+        "--enable-infiniband",
+        action="store_true",
+        dest="enable_infiniband",
+        help="Enable infiniband over ucx.",
+    )
+    parser.add_argument(
+        "--enable-nvlink",
+        action="store_true",
+        dest="enable_nvlink",
+        help="Enable NVLink over ucx.",
+    )
+    parser.add_argument(
+        "--disable-tcp-over-ucx",
+        action="store_false",
+        dest="enable_tcp_over_ucx",
+        help="Disable tcp over ucx.",
+    )
+    parser.add_argument(
+        "--disable-infiniband",
+        action="store_false",
+        dest="enable_infiniband",
+        help="Disable infiniband over ucx.",
+    )
+    parser.add_argument(
+        "--disable-nvlink",
+        action="store_false",
+        dest="enable_nvlink",
+        help="Disable NVLink over ucx.",
+    )
+    parser.add_argument(
+        "--ucx-net-devices",
+        default=None,
+        type=str,
+        help="The device to be used for UCX communication, or 'auto'. "
+        "Ignored if protocol is 'tcp'",
+    )
+    parser.set_defaults(
+        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
+    )
     args = parser.parse_args()
+    if args.protocol == "tcp":
+        args.enable_tcp_over_ucx = False
+        args.enable_infinibank = False
+        args.enable_nvlink = False
     return args
 
 

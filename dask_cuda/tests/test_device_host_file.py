@@ -154,9 +154,7 @@ def test_serialize_cupy_collection(collection, length, value):
     else:
         obj = device_to_host(collection((x,) * length))
 
-    if length > 5:
-        assert obj.header["serializer"] == "pickle"
-    elif length > 0:
+    if length > 0:
         assert all([h["serializer"] == "dask" for h in obj.header["sub-headers"]])
     else:
         assert obj.header["serializer"] == "dask"
