@@ -3,10 +3,11 @@ import os
 import warnings
 from multiprocessing import cpu_count
 
+from distributed.utils import get_ip_interface
+
 import numpy as np
 import pynvml
 import toolz
-
 
 try:
     from cudf._lib.nvtx import annotate as nvtx_annotate
@@ -14,6 +15,7 @@ except ImportError:
     # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
     # installed, `annotate` yields only.
     from contextlib import contextmanager
+
     @contextmanager
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
@@ -295,3 +297,48 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def get_host_from_cuda_device(host, cuda_device_index, enable_infiniband, net_devices):
+    """
+    Return the host address for a given CUDA device if enable_infinibad=True
+    and net_devices='auto', otherwise return the original host parameter.
+    This function is used to identify the host when InfiniBand interfaces
+    are available on the system and automatic detection of topologically
+    closest ones are requested. Currently requires that at least one of the
+    topologically closest devices is an InfiniBand and has a network address,
+    such as 'ib0'.
+
+    Parameters
+    ----------
+    host: None or str
+        Host to use if one cannot be identified automatically, when
+        net_devices is not "auto" or enable_infiniband=False.
+    cuda_device_index: int
+        The index of the CUDA device used to identify the host.
+    ucx_net_devices: str or callable
+        A string with value 'auto' to attempt identifying the host, otherwise
+        returns the value of host argument.
+    enable_infiniband: bool
+        True to attempt identifying the host, otherwise return the value of
+        host argument.
+        Set environment variables to enable UCX InfiniBand support. Implies
+        enable_tcp=True.
+
+    Example
+    -------
+    >>> from dask_cuda.utils import get_host_from_cuda_device
+    >>> get_host_from_cuda_device('127.0.0.1', 0, None, False)
+    '127.0.0.1'
+    >>> get_host_from_cuda_device('127.0.0.1', 0, "auto", False)
+    '127.0.0.1'
+    >>> get_host_from_cuda_device('127.0.0.1', 0, "auto", True)
+    '10.33.225.162'
+    """
+    if enable_infiniband and net_devices == "auto":
+        devices = get_ucx_net_devices(cuda_device_index, "auto").split(",")
+        for d in devices:
+            if d.startswith("ib"):
+                host = get_ip_interface(d)
+                break
+    return host
