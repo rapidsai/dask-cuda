@@ -10,13 +10,13 @@ import numpy
 import pytest
 
 from time import sleep
-from distributed.metrics import time
-from distributed.utils_test import loop  # noqa: F401
-from distributed.utils_test import popen
 from dask_cuda.utils import get_gpu_count
 from dask_cuda.initialize import initialize
-
+from distributed.metrics import time
+from distributed.utils import get_ip_interface
+from distributed.utils_test import popen
 from distributed.worker import get_worker
+from tornado.ioloop import IOLoop
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -201,12 +201,38 @@ def test_ucx_infiniband_nvlink(params):
     assert not p.exitcode
 
 
-def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
+def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    loop = IOLoop.current()
+
+    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
     net_devices = _get_dgx_net_devices()
 
+    sched_addr = "127.0.0.1"
+
+    # Enable proper variables for scheduler
     sched_env = os.environ.copy()
-    sched_env["UCX_TLS"] = "rc,sockcm,tcp,cuda_copy"
-    sched_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
+    sched_env["DASK_UCX__INFINIBAND"] = "True"
+    sched_env["DASK_UCX__TCP"] = "True"
+
+    if enable_rdmacm:
+        sched_env["DASK_UCX__RDMACM"] = "True"
+        sched_addr = get_ip_interface("ib0")
+
+    sched_url = "ucx://" + sched_addr + ":9379"
+
+    # Enable proper variables for workers
+    worker_ucx_opts = [
+        "--enable-infiniband",
+        "--net-devices",
+        "auto",
+    ]
+    if enable_rdmacm:
+        worker_ucx_opts.append("--enable-rdmacm")
+
+    # Enable proper variables for client
+    initialize(
+        enable_tcp_over_ucx=True, enable_infiniband=True, enable_rdmacm=enable_rdmacm
+    )
 
     with subprocess.Popen(
         [
@@ -214,7 +240,7 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
             "--protocol",
             "ucx",
             "--host",
-            "127.0.0.1",
+            sched_addr,
             "--port",
             "9379",
             "--no-dashboard",
@@ -225,18 +251,9 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
         sleep(5)
 
         with subprocess.Popen(
-            [
-                "dask-cuda-worker",
-                "ucx://127.0.0.1:9379",
-                "--host",
-                "127.0.0.1",
-                "--enable-infiniband",
-                "--net-devices",
-                "auto",
-                "--no-dashboard",
-            ],
+            ["dask-cuda-worker", sched_url, "--no-dashboard",] + worker_ucx_opts
         ) as worker_proc:
-            with Client("ucx://127.0.0.1:9379", loop=loop) as client:
+            with Client(sched_url, loop=loop) as client:
 
                 start = time()
                 while True:
@@ -246,6 +263,15 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
                         assert time() - start < 10
                         sleep(0.1)
 
+                workers_tls = client.run(lambda: ucp.get_config()["TLS"])
+                workers_tls_priority = client.run(
+                    lambda: ucp.get_config()["SOCKADDR_TLS_PRIORITY"]
+                )
+                for tls, tls_priority in zip(
+                    workers_tls.values(), workers_tls_priority.values()
+                ):
+                    assert cm_protocol in tls
+                    assert cm_protocol in tls_priority
                 worker_net_devices = client.run(lambda: ucp.get_config()["NET_DEVICES"])
                 cuda_visible_devices = client.run(
                     lambda: os.environ["CUDA_VISIBLE_DEVICES"]
@@ -263,3 +289,13 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
             # ensure timely closing.
             worker_proc.kill()
             sched_proc.kill()
+
+
+@pytest.mark.parametrize("enable_rdmacm", [False, True])
+def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    p = mp.Process(
+        target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
+    )
+    p.start()
+    p.join()
+    assert not p.exitcode
