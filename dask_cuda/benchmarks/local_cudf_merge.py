@@ -183,7 +183,7 @@ def main(args):
             protocol=args.protocol,
             n_workers=args.n_workers,
             CUDA_VISIBLE_DEVICES=args.devs,
-            ucx_net_devices="auto",
+            ucx_net_devices=args.ucx_net_devices,
             enable_tcp_over_ucx=enable_tcp_over_ucx,
             enable_infiniband=enable_infiniband,
             enable_nvlink=enable_nvlink,
@@ -386,6 +386,13 @@ def parse_args():
         action="store_false",
         dest="enable_nvlink",
         help="Disable NVLink over ucx.",
+    )
+    parser.add_argument(
+        "--ucx-net-devices",
+        default=None,
+        type=str,
+        help="The device to be used for UCX communication, or 'auto'. "
+        "Ignored if protocol is 'tcp'",
     )
     parser.set_defaults(
         enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
