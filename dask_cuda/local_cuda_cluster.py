@@ -14,6 +14,7 @@ from .utils import (
     RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
+    get_host_from_cuda_device,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
@@ -206,6 +207,7 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
         self.set_ucx_net_devices = enable_infiniband
+        self.host = kwargs.get("host", None)
 
         super().__init__(
             n_workers=0,
@@ -259,10 +261,18 @@ class LocalCUDACluster(LocalCluster):
         )
 
         if self.set_ucx_net_devices:
-            net_dev = get_ucx_net_devices(
-                visible_devices.split(",")[0], self.ucx_net_devices
-            )
+            cuda_device_index = visible_devices.split(",")[0]
+
+            net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
+                spec["options"]["config"]["ucx"]["net-devices"] = net_dev
+
+            spec["options"]["host"] = get_host_from_cuda_device(
+                host=self.host,
+                cuda_device_index=cuda_device_index,
+                enable_infiniband=self.set_ucx_net_devices,
+                net_devices=self.ucx_net_devices,
+            )
 
         return {name: spec}
