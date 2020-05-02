@@ -342,7 +342,9 @@ def get_host_from_cuda_device(host, cuda_device_index, enable_infiniband, net_de
     '10.33.225.162'
     """
     if enable_infiniband and net_devices == "auto":
-        devices = get_ucx_net_devices(cuda_device_index, "auto").split(",")
+        devices = get_ucx_net_devices(
+            cuda_device_index, "auto", get_network=True
+        ).split(",")
         for d in devices:
             if d.startswith("ib"):
                 host = get_ip_interface(d)
