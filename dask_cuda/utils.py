@@ -155,7 +155,9 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
+def get_ucx_net_devices(
+    cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
+):
     if cuda_device_index is None and (
         callable(ucx_net_devices) or ucx_net_devices == "auto"
     ):
@@ -177,12 +179,16 @@ def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
 
             net_dev = ""
             td = TopologicalDistance()
-            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-            if len(ibs) > 0:
-                net_dev += ibs[0]["name"] + ":1,"
-            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-            if len(ifnames) > 0:
-                net_dev += ifnames[0]["name"]
+            if get_openfabrics:
+                ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+                if len(ibs) > 0:
+                    net_dev += ibs[0]["name"] + ":1"
+            if get_network:
+                ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+                if len(ifnames) > 0:
+                    if len(net_dev) > 0:
+                        net_dev += ","
+                    net_dev += ifnames[0]["name"]
         else:
             net_dev = ucx_net_devices
     return net_dev
