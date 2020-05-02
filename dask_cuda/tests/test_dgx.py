@@ -145,22 +145,21 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     cupy = pytest.importorskip("cupy")
 
     net_devices = _get_dgx_net_devices()
-    sched_cli_device = "ib0"
+    openfabrics_devices = [d.split(",")[0] for d in net_devices]
+    network_devices = [d.split(",")[1] for d in net_devices]
 
     ucx_net_devices = "auto" if enable_infiniband else None
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
-    host = get_ip_interface(sched_cli_device) if enable_rdmacm else None
 
     initialize(
         enable_tcp_over_ucx=True,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
-        net_devices=sched_cli_device,
     )
 
     with LocalCUDACluster(
-        host=host,
+        interface="ib0",
         enable_tcp_over_ucx=True,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
@@ -189,7 +188,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
                 assert all(
                     [
                         cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
-                        == net_devices[k]
+                        == openfabrics_devices[k].split(",")[0]
                         for k in cluster.worker_spec.keys()
                     ]
                 )
@@ -225,6 +224,8 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
     net_devices = _get_dgx_net_devices()
+    openfabrics_devices = [d.split(",")[0] for d in net_devices]
+    network_devices = [d.split(",")[1] for d in net_devices]
 
     sched_addr = "127.0.0.1"
 
@@ -301,7 +302,7 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
                 ):
                     net_dev = v[0]
                     dev_idx = int(v[1].split(",")[0])
-                    assert net_dev == net_devices[dev_idx]
+                    assert net_dev == openfabrics_devices[dev_idx]
 
             # A dask-worker with UCX protocol will not close until some work
             # is dispatched, therefore we kill the worker and scheduler to
