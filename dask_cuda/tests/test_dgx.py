@@ -141,17 +141,30 @@ def test_tcp_only():
     assert not p.exitcode
 
 
-def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
+def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
     cupy = pytest.importorskip("cupy")
 
     net_devices = _get_dgx_net_devices()
+    sched_cli_device = "ib0"
 
     ucx_net_devices = "auto" if enable_infiniband else None
+    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
+    host = get_ip_interface(sched_cli_device) if enable_rdmacm else None
 
-    with LocalCUDACluster(
+    initialize(
         enable_tcp_over_ucx=True,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
+        net_devices=sched_cli_device,
+    )
+
+    with LocalCUDACluster(
+        host=host,
+        enable_tcp_over_ucx=True,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
         ucx_net_devices=ucx_net_devices,
     ) as cluster:
         with Client(cluster) as client:
@@ -163,9 +176,9 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
                 conf = ucp.get_config()
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                assert cm_protocol in conf["TLS"]
+                assert cm_protocol in conf["SOCKADDR_TLS_PRIORITY"]
                 if enable_nvlink:
                     assert "cuda_ipc" in conf["TLS"]
                 if enable_infiniband:
@@ -187,14 +200,20 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
 @pytest.mark.parametrize(
     "params",
     [
-        {"enable_infiniband": False, "enable_nvlink": False},
-        {"enable_infiniband": True, "enable_nvlink": True},
+        {"enable_infiniband": False, "enable_nvlink": False, "enable_rdmacm": False},
+        {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": False},
+        {"enable_infiniband": True, "enable_nvlink": False, "enable_rdmacm": True},
+        {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": True},
     ],
 )
 def test_ucx_infiniband_nvlink(params):
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
-        args=(params["enable_infiniband"], params["enable_nvlink"]),
+        args=(
+            params["enable_infiniband"],
+            params["enable_nvlink"],
+            params["enable_rdmacm"],
+        ),
     )
     p.start()
     p.join()
