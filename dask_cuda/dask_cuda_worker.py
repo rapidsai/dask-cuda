@@ -30,9 +30,9 @@ from .utils import (
     RMMPool,
     get_cpu_affinity,
     get_device_total_memory,
-    get_host_from_cuda_device,
     get_n_gpus,
     get_ucx_config,
+    get_ucx_net_devices,
 )
 
 logger = logging.getLogger(__name__)
@@ -310,11 +310,11 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            host=get_host_from_cuda_device(
-                host=host,
+            interface=get_ucx_net_devices(
                 cuda_device_index=i,
-                enable_infiniband=enable_infiniband,
-                net_devices=net_devices,
+                ucx_net_devices=net_devices,
+                get_openfabrics=False,
+                get_network=True,
             ),
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
