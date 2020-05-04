@@ -144,7 +144,6 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
-    network_devices = [d.split(",")[1] for d in net_devices]
 
     ucx_net_devices = "auto" if enable_infiniband else None
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
@@ -223,7 +222,6 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
-    network_devices = [d.split(",")[1] for d in net_devices]
 
     sched_addr = "127.0.0.1"
 
