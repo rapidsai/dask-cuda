@@ -13,7 +13,7 @@ from time import sleep
 from dask_cuda.utils import get_gpu_count
 from dask_cuda.initialize import initialize
 from distributed.metrics import time
-from distributed.utils_test import popen
+from distributed.utils import get_ip_interface
 from tornado.ioloop import IOLoop
 
 mp = mp.get_context("spawn")
