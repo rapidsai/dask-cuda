@@ -80,6 +80,9 @@ class LocalCUDACluster(LocalCluster):
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support,
+        requires protocol='ucx' and enable_infiniband=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
@@ -134,6 +137,7 @@ class LocalCUDACluster(LocalCluster):
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
+        enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
         **kwargs,
@@ -202,6 +206,7 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
         self.set_ucx_net_devices = enable_infiniband
+        self.host = kwargs.get("host", None)
 
         super().__init__(
             n_workers=0,
@@ -216,6 +221,7 @@ class LocalCUDACluster(LocalCluster):
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
+                    enable_rdmacm=enable_rdmacm,
                 )
             },
             **kwargs,
@@ -254,10 +260,18 @@ class LocalCUDACluster(LocalCluster):
         )
 
         if self.set_ucx_net_devices:
-            net_dev = get_ucx_net_devices(
-                visible_devices.split(",")[0], self.ucx_net_devices
-            )
+            cuda_device_index = visible_devices.split(",")[0]
+
+            net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
+                spec["options"]["config"]["ucx"]["net-devices"] = net_dev
+
+            spec["options"]["interface"] = get_ucx_net_devices(
+                cuda_device_index,
+                self.ucx_net_devices,
+                get_openfabrics=False,
+                get_network=True,
+            )
 
         return {name: spec}

@@ -32,6 +32,7 @@ from .utils import (
     get_device_total_memory,
     get_n_gpus,
     get_ucx_config,
+    get_ucx_net_devices,
 )
 
 logger = logging.getLogger(__name__)
@@ -177,6 +178,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="Enable InfiniBand communication",
 )
 @click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
+)
+@click.option(
     "--enable-nvlink/--disable-nvlink",
     default=False,
     help="Enable NVLink communication",
@@ -214,6 +220,7 @@ def main(
     enable_tcp_over_ucx,
     enable_infiniband,
     enable_nvlink,
+    enable_rdmacm,
     net_devices,
     **kwargs,
 ):
@@ -303,7 +310,12 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            host=host,
+            interface=get_ucx_net_devices(
+                cuda_device_index=i,
+                ucx_net_devices=net_devices,
+                get_openfabrics=False,
+                get_network=True,
+            ),
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
@@ -316,6 +328,7 @@ def main(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_infiniband=enable_infiniband,
                     enable_nvlink=enable_nvlink,
+                    enable_rdmacm=enable_rdmacm,
                     net_devices=net_devices,
                     cuda_device_index=i,
                 )
