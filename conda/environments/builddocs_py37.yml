@@ -1,0 +1,14 @@
+name: dask_cuda_docs
+channels:
+- rapidsai-nightly
+- conda-forge
+dependencies:
+# required for building docs
+- sphinx
+- sphinx_rtd_theme
+- sphinxcontrib-websupport
+- nbsphinx
+- numpydoc
+- recommonmark
+- pandoc=<2.0.0
+- pip
