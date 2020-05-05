@@ -1,0 +1,9 @@
+build:
+   image: latest
+
+python:
+   version: 3.7
+   setup_py_install: true
+
+conda:
+   file: conda/environments/builddocs_py37.yml
