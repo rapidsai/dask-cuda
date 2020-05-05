@@ -135,12 +135,18 @@ def test_get_ucx_net_devices_auto():
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("net_devices", ["eth0", "auto", ""])
 def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
-    ucx_config = get_ucx_config(
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        net_devices=net_devices,
-        cuda_device_index=0,
-    )
+    kwargs = {
+        "enable_tcp_over_ucx": enable_tcp_over_ucx,
+        "enable_infiniband": enable_infiniband,
+        "net_devices": net_devices,
+        "cuda_device_index": 0,
+    }
+    if net_devices == "auto" and enable_infiniband is False:
+        with pytest.raises(ValueError):
+            get_ucx_config(**kwargs)
+        return
+    else:
+        ucx_config = get_ucx_config(**kwargs)
 
     if enable_tcp_over_ucx is True:
         assert ucx_config["tcp"] is True
