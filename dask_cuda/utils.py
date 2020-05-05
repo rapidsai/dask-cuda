@@ -202,6 +202,12 @@ def get_ucx_config(
     net_devices="",
     cuda_device_index=None,
 ):
+    if net_devices == "auto" and enable_infiniband is False:
+        raise ValueError(
+            "Using ucx_net_devices='auto' is currently only "
+            "supported when enable_infiniband=True."
+        )
+
     ucx_config = {
         "tcp": None,
         "infiniband": None,
