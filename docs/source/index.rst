@@ -1,7 +1,7 @@
 Dask-CUDA
 ======
 
-Various utilities to improve deployment and management of Dask workers on CUDA-enabled systems.
+Dask-CUDA is tool for using `Dask <https://dask.org>`_ on GPUs.  It extends Dask's `Single-Machine Cluster <https://docs.dask.org/en/latest/setup/single-distributed.html#localcluster>`_ and `Workers <https://distributed.dask.org/en/latest/worker.html>`_ for optimized distributed GPU workloads.
 
 
 

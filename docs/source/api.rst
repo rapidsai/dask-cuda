@@ -5,10 +5,6 @@ API
 
 **dask_cuda**
 
-.. autosummary::
-   dask_cuda
-
-
 Setup
 ------
 
