@@ -95,10 +95,12 @@ class LocalCUDACluster(LocalCluster):
         with the interface name, such as "eth0" or "auto" to allow for
         automatically choosing the closest interface based on the system's
         topology.
-        WARNING: "auto" requires UCX-Py to be installed and compiled with hwloc
-        support, and it will always use the closest interface which may lead to
-        unexpected errors if that interface is not properly configured or is
-        disconnected.
+        WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc
+        support. Additionally that will always use the closest interface, and
+        that may cause unexpected errors if that interface is not properly
+        configured or is disconnected, for that reason it's limited to
+        InfiniBand only and will still cause unpredictable errors if not _ALL_
+        interfaces are connected and properly configured.
     rmm_pool: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
@@ -115,8 +117,9 @@ class LocalCUDACluster(LocalCluster):
     TypeError
         If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
     ValueError
-        If ucx_net_devices is an empty string or if it is "auto" and UCX-Py is
-        not installed or wasn't compiled with hwloc support.
+        If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
+        not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
+        wasn't compiled with hwloc support.
 
     See Also
     --------

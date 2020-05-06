@@ -192,9 +192,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="When None (default), 'UCX_NET_DEVICES' will be left to its default. "
-    "Otherwise, it must be a non-empty string with the interface name. Normally "
-    "used only with --enable-infiniband to specify the interface to be used by "
-    "the worker, such as 'mlx5_0:1' or 'ib0'.",
+    "Otherwise, it must be a non-empty string with the interface name, such as "
+    "such as 'eth0' or 'auto' to allow for automatically choosing the closest "
+    "interface based on the system's topology. Normally used only with "
+    "--enable-infiniband to specify the interface to be used by the worker, "
+    "such as 'mlx5_0:1' or 'ib0'. "
+    "WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc "
+    "support. Additionally that will always use the closest interface, and "
+    "that may cause unexpected errors if that interface is not properly "
+    "configured or is disconnected, for that reason it's limited to "
+    "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
+    "interfaces are connected and properly configured."
 )
 def main(
     scheduler,
