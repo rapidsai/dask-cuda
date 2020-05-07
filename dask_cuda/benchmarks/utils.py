@@ -142,7 +142,6 @@ def get_cluster_options(args):
             "scheduler_options": {"protocol": args.protocol},
             "worker_module": "dask_cuda.dask_cuda_worker",
             "worker_options": worker_options,
-            "asynchronous": True,
             # "n_workers": len(args.devs.split(",")),
             # "CUDA_VISIBLE_DEVICES": args.devs,
         }
@@ -158,7 +157,6 @@ def get_cluster_options(args):
             "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
             "enable_infiniband": args.enable_infiniband,
             "enable_nvlink": args.enable_nvlink,
-            "asynchronous": True,
         }
 
     return {

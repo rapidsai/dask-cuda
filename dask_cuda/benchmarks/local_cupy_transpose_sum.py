@@ -26,7 +26,7 @@ async def run(args):
     cluster_kwargs = cluster_options["kwargs"]
     scheduler_addr = cluster_options["scheduler_addr"]
 
-    async with Cluster(*cluster_args, **cluster_kwargs) as cluster:
+    async with Cluster(*cluster_args, **cluster_kwargs, asynchronous=True) as cluster:
         # Use the scheduler address with an SSHCluster rather than the cluster
         # object, otherwise we can't shut it down.
         async with Client(
