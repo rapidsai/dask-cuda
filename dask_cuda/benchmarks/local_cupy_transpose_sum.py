@@ -25,6 +25,12 @@ async def run(args):
     scheduler_addr = cluster_options["scheduler_addr"]
 
     async with Cluster(*cluster_args, **cluster_kwargs, asynchronous=True) as cluster:
+        if args.multi_node:
+            import time
+            # Allow some time for workers to start and connect to scheduler
+            # TODO: make this a command-line argument?
+            time.sleep(15)
+
         # Use the scheduler address with an SSHCluster rather than the cluster
         # object, otherwise we can't shut it down.
         async with Client(

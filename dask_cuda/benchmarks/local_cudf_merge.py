@@ -178,6 +178,12 @@ def main(args):
     scheduler_addr = cluster_options["scheduler_addr"]
 
     cluster = Cluster(*cluster_args, **cluster_kwargs)
+    if args.multi_node:
+        import time
+        # Allow some time for workers to start and connect to scheduler
+        # TODO: make this a command-line argument?
+        time.sleep(15)
+
     client = Client(scheduler_addr if args.multi_node else cluster)
 
     client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
