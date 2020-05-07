@@ -89,7 +89,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Specifies a comma-separated list of IP addresses or hostnames. "
         "The list begins with the host where the scheduler will be launched "
         "followed by any number of workers, with a minimum of 1 worker. "
-        "Requires --multi-node, ignored otherwise.",
+        "Requires --multi-node, ignored otherwise. "
+        "Usage example: --multi-node --hosts 'dgx12,dgx12,10.10.10.10,dgx13' . "
+        "In the example, the benchmark is launched with scheduler on host "
+        "'dgx12' (first in the list), and workers on three hosts being 'dgx12', "
+        "'10.10.10.10', and 'dgx13'. "
+        "Note: --devs is currently ignored in multi-node mode and for each host "
+        "one worker per GPU will be launched.",
     )
 
     for args in args_list:
