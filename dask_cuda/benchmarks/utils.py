@@ -5,9 +5,7 @@ from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 
 def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]):
-    parser = argparse.ArgumentParser(
-        description=description
-    )
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "-d", "--devs", default="0", type=str, help='GPU devices to use (default "0").'
     )
@@ -176,8 +174,6 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
     import cupy
 
     rmm.reinitialize(
-        pool_allocator=not disable_pool,
-        devices=0,
-        initial_pool_size=pool_size,
+        pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
     )
     cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
