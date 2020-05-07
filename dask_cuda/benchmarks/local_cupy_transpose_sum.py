@@ -4,7 +4,7 @@ from collections import defaultdict
 from time import perf_counter as clock
 
 import dask.array as da
-from dask.distributed import Client, performance_report, wait
+from dask.distributed import Client, SSHCluster, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -12,20 +12,67 @@ import cupy
 import numpy as np
 
 
-async def run(args):
+def get_scheduler_workers(dask_scheduler=None):
+    return dask_scheduler.workers
 
-    # Set up workers on the local machine
-    async with LocalCUDACluster(
-        protocol=args.protocol,
-        n_workers=len(args.devs.split(",")),
-        CUDA_VISIBLE_DEVICES=args.devs,
-        ucx_net_devices=args.ucx_net_devices,
-        enable_tcp_over_ucx=args.enable_tcp_over_ucx,
-        enable_infiniband=args.enable_infiniband,
-        enable_nvlink=args.enable_nvlink,
-        asynchronous=True,
-    ) as cluster:
-        async with Client(cluster, asynchronous=True) as client:
+
+async def run(args):
+    if args.multi_node is True:
+        Cluster = SSHCluster
+        cluster_args = [args.hosts.split(",")]
+        scheduler_addr = args.protocol + "://" + cluster_args[0][0] + ":8786"
+
+        worker_options = {}
+
+        # This looks counterintuitive but adding the variable name with
+        # an empty string is how we can enable CLI booleans currently,
+        # note that SSHCluster uses the dask-cuda-worker CLI.
+        if args.enable_tcp_over_ucx:
+            worker_options["enable_tcp_over_ucx"] = ""
+        if args.enable_nvlink:
+            worker_options["enable_nvlink"] = ""
+        if args.enable_infiniband:
+            worker_options["enable_infiniband"] = ""
+
+        if args.ucx_net_devices:
+            worker_options["ucx_net_devices"] = args.ucx_net_devices
+
+        cluster_kwargs = {
+            "connect_options": {"known_hosts": None},
+            "scheduler_options": {"protocol": args.protocol},
+            "worker_module": "dask_cuda.dask_cuda_worker",
+            "worker_options": worker_options,
+            "asynchronous": True,
+            # "n_workers": len(args.devs.split(",")),
+            # "CUDA_VISIBLE_DEVICES": args.devs,
+        }
+    else:
+        Cluster = LocalCUDACluster
+        cluster_args = []
+        cluster_kwargs = {
+            "protocol": args.protocol,
+            "n_workers": len(args.devs.split(",")),
+            "CUDA_VISIBLE_DEVICES": args.devs,
+            "ucx_net_devices": args.ucx_net_devices,
+            "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
+            "enable_infiniband": args.enable_infiniband,
+            "enable_nvlink": args.enable_nvlink,
+            "asynchronous": True,
+        }
+
+    async with Cluster(*cluster_args, **cluster_kwargs) as cluster:
+        # Use the scheduler address with an SSHCluster rather than the cluster
+        # object, otherwise we can't shut it down.
+        async with Client(
+            scheduler_addr if args.multi_node else cluster, asynchronous=True
+        ) as client:
+            print("Client connected", client)
+
+            import time
+
+            time.sleep(5)
+            scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
+            print("Client connected", client)
 
             def _worker_setup(size=None):
                 import rmm
@@ -69,20 +116,17 @@ async def run(args):
                     if d["total"] >= args.ignore_size:
                         bandwidths[k, d["who"]].append(d["bandwidth"])
                         total_nbytes[k, d["who"]].append(d["total"])
+
             bandwidths = {
-                (
-                    cluster.scheduler.workers[w1].name,
-                    cluster.scheduler.workers[w2].name,
-                ): [
+                (scheduler_workers[w1].name, scheduler_workers[w2].name,): [
                     "%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])
                 ]
                 for (w1, w2), v in bandwidths.items()
             }
             total_nbytes = {
-                (
-                    cluster.scheduler.workers[w1].name,
-                    cluster.scheduler.workers[w2].name,
-                ): format_bytes(sum(nb))
+                (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(
+                    sum(nb)
+                )
                 for (w1, w2), nb in total_nbytes.items()
             }
 
@@ -100,10 +144,17 @@ async def run(args):
             print("(w1,w2)     | 25% 50% 75% (total nbytes)")
             print("--------------------------")
             for (d1, d2), bw in sorted(bandwidths.items()):
-                print(
-                    "(%02d,%02d)     | %s %s %s (%s)"
-                    % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)])
+                fmt = (
+                    "(%s,%s)     | %s %s %s (%s)"
+                    if args.multi_node
+                    else "(%02d,%02d)     | %s %s %s (%s)"
                 )
+                print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+
+            # An SSHCluster will not automatically shut down, we have to
+            # ensure it does.
+            if args.multi_node:
+                await client.shutdown()
 
 
 def parse_args():
@@ -197,14 +248,40 @@ def parse_args():
         help="The device to be used for UCX communication, or 'auto'. "
         "Ignored if protocol is 'tcp'",
     )
+    parser.add_argument(
+        "--single-node",
+        action="store_true",
+        dest="multi_node",
+        help="Runs a single-node cluster on the current host.",
+    )
+    parser.add_argument(
+        "--multi-node",
+        action="store_true",
+        dest="multi_node",
+        help="Runs a multi-node cluster on the hosts specified by --hosts.",
+    )
+    parser.add_argument(
+        "--hosts",
+        default=None,
+        type=str,
+        help="Specifies a comma-separated list of IP addresses or hostnames. "
+        "The list begins with the host where the scheduler will be launched "
+        "followed by any number of workers, with a minimum of 1 worker. "
+        "Requires --multi-node, ignored otherwise.",
+    )
     parser.set_defaults(
         enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
     )
     args = parser.parse_args()
+
     if args.protocol == "tcp":
         args.enable_tcp_over_ucx = False
-        args.enable_infinibank = False
+        args.enable_infiniband = False
         args.enable_nvlink = False
+
+    if args.multi_node and len(args.hosts.split(",")) < 2:
+        raise ValueError("--multi-node requires at least 2 hosts")
+
     return args
 
 
