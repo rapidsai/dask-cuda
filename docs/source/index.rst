@@ -10,6 +10,7 @@ Dask-CUDA is tool for using `Dask <https://dask.org>`_ on GPUs.  It extends Dask
    :hidden:
 
    quickstart
+   specializations
    worker
    ucx
    api
