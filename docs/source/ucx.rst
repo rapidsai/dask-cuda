@@ -12,7 +12,7 @@ In this list below we shall see all the Dask configurations relevant for using w
 In the list below we describe the relevant Dask configurations for using UCX with Dask-CUDA.
 
 .. note::
-    These options can also be used with mainline Dask/Distributed outside of Dask-CUDA, however, we recommend using Dask-CUDA when possible. See the Specializations for GPU Usage section for details on the benefits of using Dask-CUDA.
+    These options can also be used with mainline Dask/Distributed outside of Dask-CUDA, however, we recommend using Dask-CUDA when possible. See the :doc:`Specializations for GPU Usage <specializations>` page for details on the benefits of using Dask-CUDA.
 
 
 - ``DASK_UCX__CUDA_COPY=True`` (default: ``False``): *Always required for UCX*, adds ``cuda_copy`` to ``UCX_TLS`` -- required for all CUDA transfers in UCX, both intra- and inter-node;

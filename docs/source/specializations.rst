@@ -21,4 +21,4 @@ To improve performance, setting CPU affinity for each GPU is automatically done,
 Automatic Selection of InfiniBand Device
 ----------------------------------------
 
-When UCX is activated, Dask-CUDA is also capable of selecting the topologically closest InfiniBand device to each GPU, thus ensuring optimal path and improving performance even further by using Remote Direct Memory Access (RDMA) when available.
+When UCX is activated, Dask-CUDA is also capable of selecting the topologically closest InfiniBand device to each GPU, thus ensuring optimal path and improving performance even further by using Remote Direct Memory Access (RDMA) when available. See the :doc:`UCX <ucx>` page for more details.
