@@ -17,6 +17,26 @@ import cupy
 import numpy as np
 
 
+async def _run(client, args):
+    # Create a simple random array
+    rs = da.random.RandomState(RandomState=cupy.random.RandomState)
+    x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+    await wait(x)
+
+    # Execute the operations to benchmark
+    if args.profile is not None:
+        async with performance_report(filename=args.profile):
+            t1 = clock()
+            await client.compute((x + x.T).sum())
+            took = clock() - t1
+    else:
+        t1 = clock()
+        await client.compute((x + x.T).sum())
+        took = clock() - t1
+
+    return (took, x.npartitions)
+
+
 async def run(args):
     cluster_options = get_cluster_options(args)
     Cluster = cluster_options["class"]
@@ -45,21 +65,9 @@ async def run(args):
                 setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool
             )
 
-            # Create a simple random array
-            rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-            x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
-            await wait(x)
-
-            # Execute the operations to benchmark
-            if args.profile is not None:
-                async with performance_report(filename=args.profile):
-                    t1 = clock()
-                    await client.compute((x + x.T).sum())
-                    took = clock() - t1
-            else:
-                t1 = clock()
-                await client.compute((x + x.T).sum())
-                took = clock() - t1
+            took_list = []
+            for i in range(args.runs):
+                took_list.append(await _run(client, args))
 
             # Collect, aggregate, and print peer-to-peer bandwidths
             incoming_logs = await client.run(
@@ -93,9 +101,13 @@ async def run(args):
             print(f"Ignore-size | {format_bytes(args.ignore_size)}")
             print(f"Protocol    | {args.protocol}")
             print(f"Device(s)   | {args.devs}")
-            print(f"npartitions | {x.npartitions}")
             print("==========================")
-            print(f"Total time  | {format_time(took)}")
+            print("Wall-clock  | npartitions")
+            print("--------------------------")
+            for (took, npartitions) in took_list:
+                t = format_time(took)
+                t += " " * (11 - len(t))
+                print(f"{t} | {npartitions}")
             print("==========================")
             print("(w1,w2)     | 25% 50% 75% (total nbytes)")
             print("--------------------------")
@@ -136,6 +148,7 @@ def parse_args():
             "type": parse_bytes,
             "help": "Ignore messages smaller than this (default '1 MB')",
         },
+        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
     ]
 
     return parse_benchmark_args(
