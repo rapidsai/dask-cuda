@@ -6,7 +6,7 @@ It is known that main line Dask and Distributed packages can be used to leverage
 Automatic Instantiation of One-Worker-Per-GPU
 ---------------------------------------------
 
-Using the ``dask-cuda-worker`` or ``LocalCUDACluster`` will automatically launch one worker for each GPU available on the node where that is running, avoiding the need for users to select GPUs in their application and thus reducing code complexity.
+Using the ``dask-cuda-worker`` or ``LocalCUDACluster`` will automatically launch one worker for each GPU available on the node from where it was executed, avoiding the need for users to select GPUs in their application and thus reducing code complexity.
 
 Spilling From Device
 --------------------
@@ -21,4 +21,4 @@ To improve performance, setting CPU affinity for each GPU is automatically done,
 Automatic Selection of InfiniBand Device
 ----------------------------------------
 
-When UCX is activated, Dask-CUDA is also capable of selecting the topologically closest InfiniBand device to each GPU, thus ensuring optimal path and improving performance even further by using Remote Direct Memory Access (RDMA) when available. See the :doc:`UCX <ucx>` page for more details.
+When InfiniBand is activated, Dask-CUDA is also capable of selecting the topologically closest InfiniBand device to each GPU, thus ensuring optimal path and improving performance even further by using GPU Remote Direct Memory Access (RDMA) when available. See the :doc:`UCX <ucx>` page for more details.
