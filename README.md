@@ -18,6 +18,8 @@ cluster = LocalCUDACluster()
 client = Client(cluster)
 ```
 
+Documentation is available [here](https://dask-cuda.readthedocs.io/).
+
 What this is not
 ----------------
 

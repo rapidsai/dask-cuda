@@ -20,7 +20,7 @@ Dask-CUDA can be configured for single machine clusters with multiple GPUs such 
 
     # Configurations
     protocol = "ucx"
-    interface = "enp134s0f1"    # DGX-2
+    interface = "enp6s0"    # DGX-2
     enable_tcp_over_ucx = True
     enable_nvlink = True
     enable_infiniband = False
@@ -38,7 +38,7 @@ Dask-CUDA can be configured for single machine clusters with multiple GPUs such 
                             enable_tcp_over_ucx=enable_tcp_over_ucx,
                             enable_infiniband=enable_infiniband,
                             enable_nvlink=enable_nvlink,
-                            rmm_pool="25GB",
+                            rmm_pool_size="25GB",
                         )
     client = Client(cluster)
 
