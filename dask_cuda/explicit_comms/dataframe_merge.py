@@ -4,11 +4,9 @@ from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
 
 import cudf
-import numpy as np
 import pandas
-import rmm
 
-from . import comms, utils
+from . import comms
 
 
 async def send_df(ep, df):

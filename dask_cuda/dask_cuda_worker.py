@@ -23,7 +23,6 @@ from tornado import gen
 from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
-from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
@@ -300,7 +299,7 @@ def main(
 
     if rmm_pool_size is not None:
         try:
-            import rmm
+            import rmm  # noqa F401
         except ImportError:
             raise ValueError(
                 "RMM pool requested but module 'rmm' is not available. "

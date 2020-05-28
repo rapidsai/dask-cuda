@@ -3,8 +3,6 @@ import os
 import warnings
 from multiprocessing import cpu_count
 
-from distributed.utils import get_ip_interface
-
 import numpy as np
 import pynvml
 import toolz

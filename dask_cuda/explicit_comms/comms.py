@@ -4,14 +4,12 @@ import time
 import uuid
 
 import distributed.comm
-from distributed import default_client, get_worker, wait
+from distributed import default_client, get_worker
 from distributed.comm.addressing import (
     parse_address,
     parse_host_port,
     unparse_address,
 )
-
-import numpy as np
 
 from . import utils
 
@@ -211,7 +209,6 @@ class CommsContext:
         dataframe: Dask.dataframe.Dataframe
             The resulting dataframe
         """
-        key = uuid.uuid1()
         df_parts_list = []
         for df in df_list:
             df_parts_list.append(

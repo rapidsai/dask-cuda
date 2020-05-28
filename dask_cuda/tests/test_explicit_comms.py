@@ -6,7 +6,6 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import cudf
-import cupy
 import numpy as np
 import pandas as pd
 import pytest
@@ -51,8 +50,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster) as client:
-            comms = CommsContext(client)
+        with Client(cluster):
             nrows = n_workers * 10
 
             # Let's make some dataframes that we can join on the "key" column
