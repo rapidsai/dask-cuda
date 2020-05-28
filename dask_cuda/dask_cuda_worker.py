@@ -23,6 +23,7 @@ from tornado import gen
 from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
+from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
@@ -307,6 +308,18 @@ def main(
                 "https://github.com/rapidsai/rmm"
             )  # pragma: no cover
         rmm_pool_size = parse_bytes(rmm_pool_size)
+
+    # Ensure this parent dask-cuda-worker process uses the same UCX
+    # configuration as child worker processes created by it.
+    initialize(
+        create_cuda_context=False,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
+        net_devices=net_devices,
+        cuda_device_index=0,
+    )
 
     nannies = [
         t(
