@@ -100,7 +100,9 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
         # For Dask < 2.17 compatibility
         ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index)
     except TypeError:
-        ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index, n_chunks)
+        ret = shuffle_group(
+            df, "_partitions", 0, n_chunks, n_chunks, ignore_index, n_chunks
+        )
 
     # Let's remove the partition column and return the partitions
     del df["_partitions"]

@@ -180,6 +180,7 @@ def main(args):
     cluster = Cluster(*cluster_args, **cluster_kwargs)
     if args.multi_node:
         import time
+
         # Allow some time for workers to start and connect to scheduler
         # TODO: make this a command-line argument?
         time.sleep(15)

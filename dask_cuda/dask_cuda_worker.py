@@ -202,7 +202,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "that may cause unexpected errors if that interface is not properly "
     "configured or is disconnected, for that reason it's limited to "
     "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
-    "interfaces are connected and properly configured."
+    "interfaces are connected and properly configured.",
 )
 def main(
     scheduler,
