@@ -1,19 +1,18 @@
 import multiprocessing as mp
 import os
 import subprocess
+from time import sleep
 
 import dask.array as da
 from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
+from dask_cuda.utils import get_gpu_count
 from distributed import Client
+from distributed.metrics import time
+from distributed.utils import get_ip_interface
 
 import numpy
 import pytest
-
-from time import sleep
-from dask_cuda.utils import get_gpu_count
-from dask_cuda.initialize import initialize
-from distributed.metrics import time
-from distributed.utils import get_ip_interface
 from tornado.ioloop import IOLoop
 
 mp = mp.get_context("spawn")

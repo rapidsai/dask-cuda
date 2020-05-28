@@ -5,8 +5,8 @@ from dask_cuda.utils import (
     get_device_total_memory,
     get_n_gpus,
     get_preload_options,
-    get_ucx_net_devices,
     get_ucx_config,
+    get_ucx_net_devices,
     unpack_bitmask,
 )
 

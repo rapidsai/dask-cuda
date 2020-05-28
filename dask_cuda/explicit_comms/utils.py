@@ -1,9 +1,10 @@
 from collections import OrderedDict
-from tornado import gen
-from toolz import first
 
 import dask.dataframe as dd
 from distributed import default_client, wait
+
+from toolz import first
+from tornado import gen
 
 
 def workers_to_parts(futures):

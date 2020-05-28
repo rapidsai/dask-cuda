@@ -1,11 +1,12 @@
 import asyncio
+
+from dask.dataframe.shuffle import partitioning_index, shuffle_group
+from distributed.protocol import to_serialize
+
+import cudf
 import numpy as np
 import pandas
 import rmm
-import cudf
-
-from dask.dataframe.shuffle import shuffle_group, partitioning_index
-from distributed.protocol import to_serialize
 
 from . import comms, utils
 
