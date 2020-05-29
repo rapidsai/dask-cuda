@@ -1,17 +1,14 @@
 import multiprocessing as mp
-import pytest
 
+import dask.dataframe as dd
+from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 from distributed import Client
 from distributed.deploy.local import LocalCluster
-from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 
-import pandas as pd
-import dask.dataframe as dd
-
-import numpy as np
-import pytest
 import cudf
-import cupy
+import numpy as np
+import pandas as pd
+import pytest
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -53,8 +50,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster) as client:
-            comms = CommsContext(client)
+        with Client(cluster):
             nrows = n_workers * 10
 
             # Let's make some dataframes that we can join on the "key" column

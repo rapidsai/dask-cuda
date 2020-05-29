@@ -1,15 +1,17 @@
-import time
-import uuid
 import asyncio
 import concurrent.futures
+import time
+import uuid
 
-import numpy as np
-from distributed import get_worker, default_client, wait
-from distributed.comm.addressing import parse_host_port, parse_address, unparse_address
 import distributed.comm
+from distributed import default_client, get_worker
+from distributed.comm.addressing import (
+    parse_address,
+    parse_host_port,
+    unparse_address,
+)
 
 from . import utils
-
 
 _default_comms = None
 
@@ -207,7 +209,6 @@ class CommsContext:
         dataframe: Dask.dataframe.Dataframe
             The resulting dataframe
         """
-        key = uuid.uuid1()
         df_parts_list = []
         for df in df_list:
             df_parts_list.append(

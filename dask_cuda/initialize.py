@@ -85,8 +85,7 @@ def initialize(
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
     default=False,
-    help="Enable RDMA connection manager, "
-    "currently requires InfiniBand enabled."
+    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
 )
 @click.option(
     "--net-devices",

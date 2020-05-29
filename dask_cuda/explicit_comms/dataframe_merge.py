@@ -1,13 +1,12 @@
 import asyncio
-import numpy as np
-import pandas
-import rmm
-import cudf
 
-from dask.dataframe.shuffle import shuffle_group, partitioning_index
+from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
 
-from . import comms, utils
+import cudf
+import pandas
+
+from . import comms
 
 
 async def send_df(ep, df):
@@ -95,7 +94,13 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
     # Hashing `columns` in `df` and assing it to the "_partitions" column
     df["_partitions"] = partitioning_index(df[columns], n_chunks)
     # Split `df` based on the hash values in the "_partitions" column
-    ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index)
+    try:
+        # For Dask < 2.17 compatibility
+        ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index)
+    except TypeError:
+        ret = shuffle_group(
+            df, "_partitions", 0, n_chunks, n_chunks, ignore_index, n_chunks
+        )
 
     # Let's remove the partition column and return the partitions
     del df["_partitions"]

@@ -1,9 +1,10 @@
 from collections import OrderedDict
-from tornado import gen
-from toolz import first
 
 import dask.dataframe as dd
 from distributed import default_client, wait
+
+from toolz import first
+from tornado import gen
 
 
 def workers_to_parts(futures):
@@ -66,7 +67,9 @@ def get_meta(df):
 
 def dataframes_to_dask_dataframe(futures, client=None):
     """
-    Convert a list of futures containing Dataframes (pandas or cudf) into a Dask.Dataframe
+    Convert a list of futures containing Dataframes (pandas or cudf) into a
+    Dask.Dataframe
+
     :param futures: list of futures containing dataframes
     :param client: dask.distributed.Client Optional client to use
     :return: dask.Dataframe a dask.Dataframe
