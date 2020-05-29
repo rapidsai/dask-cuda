@@ -1,10 +1,9 @@
-import argparse
 import asyncio
 from collections import defaultdict
 from time import perf_counter as clock
 
 import dask.array as da
-from dask.distributed import Client, SSHCluster, performance_report, wait
+from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
@@ -47,6 +46,7 @@ async def run(args):
     async with Cluster(*cluster_args, **cluster_kwargs, asynchronous=True) as cluster:
         if args.multi_node:
             import time
+
             # Allow some time for workers to start and connect to scheduler
             # TODO: make this a command-line argument?
             time.sleep(15)

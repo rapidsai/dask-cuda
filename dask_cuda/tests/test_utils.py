@@ -5,8 +5,8 @@ from dask_cuda.utils import (
     get_device_total_memory,
     get_n_gpus,
     get_preload_options,
-    get_ucx_net_devices,
     get_ucx_config,
+    get_ucx_net_devices,
     unpack_bitmask,
 )
 
@@ -128,7 +128,7 @@ def test_get_ucx_net_devices_auto():
         # Since the actual device is system-dependent, we just check that
         # this function call doesn't fail. If any InfiniBand devices are
         # available, it will return that, otherwise an empty string.
-        dev = get_ucx_net_devices(idx, "auto")
+        get_ucx_net_devices(idx, "auto")
 
 
 @pytest.mark.parametrize("enable_tcp_over_ucx", [True, False])

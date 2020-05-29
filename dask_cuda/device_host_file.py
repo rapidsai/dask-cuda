@@ -1,8 +1,6 @@
 import functools
 import os
 
-import numpy
-
 import dask
 from distributed.protocol import (
     dask_deserialize,
@@ -15,6 +13,7 @@ from distributed.protocol import (
 from distributed.utils import nbytes
 from distributed.worker import weight
 
+import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 

@@ -23,7 +23,6 @@ from tornado import gen
 from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
-from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
@@ -202,7 +201,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "that may cause unexpected errors if that interface is not properly "
     "configured or is disconnected, for that reason it's limited to "
     "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
-    "interfaces are connected and properly configured."
+    "interfaces are connected and properly configured.",
 )
 def main(
     scheduler,
@@ -300,7 +299,7 @@ def main(
 
     if rmm_pool_size is not None:
         try:
-            import rmm
+            import rmm  # noqa F401
         except ImportError:
             raise ValueError(
                 "RMM pool requested but module 'rmm' is not available. "

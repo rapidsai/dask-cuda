@@ -31,14 +31,18 @@ def device_host_file_size_matches(
 
     # `dhf.disk` is only available when Worker's `memory_limit != 0`
     if dhf.disk is not None:
-        file_path = [os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()]
+        file_path = [
+            os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()
+        ]
         file_size = [os.path.getsize(f) for f in file_path]
         byte_sum += sum(file_size)
 
     # Allow up to chunk_overhead bytes overhead per chunk
     device_overhead = len(dhf.device) * device_chunk_overhead
     host_overhead = len(dhf.host) * serialized_chunk_overhead
-    disk_overhead = len(dhf.disk) * serialized_chunk_overhead if dhf.disk is not None else 0
+    disk_overhead = (
+        len(dhf.disk) * serialized_chunk_overhead if dhf.disk is not None else 0
+    )
 
     return (
         byte_sum >= total_bytes
@@ -75,7 +79,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             )
 
 
-#@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
+# @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
@@ -220,7 +224,9 @@ async def test_cupy_cluster_device_spill(params):
 
                 await client.run(worker_assert, x.nbytes, 1024, 1024)
                 host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk or list()))
+                disk_chunks = await client.run(
+                    lambda: len(get_worker().data.disk or list())
+                )
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
                         assert dc > 0
@@ -388,7 +394,9 @@ async def test_cudf_cluster_device_spill(params):
                 del cdf
 
                 host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(lambda: len(get_worker().data.disk or list()))
+                disk_chunks = await client.run(
+                    lambda: len(get_worker().data.disk or list())
+                )
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
                         assert dc > 0

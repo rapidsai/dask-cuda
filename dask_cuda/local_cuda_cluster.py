@@ -3,12 +3,10 @@ import os
 
 import dask
 from dask.distributed import LocalCluster
-from distributed.system import MEMORY_LIMIT
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
-from .initialize import initialize
 from .utils import (
     CPUAffinity,
     RMMPool,
@@ -160,7 +158,7 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_pool_size = rmm_pool_size
         if rmm_pool_size is not None:
             try:
-                import rmm
+                import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
                     "RMM pool requested but module 'rmm' is not available. "
