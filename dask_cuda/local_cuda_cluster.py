@@ -7,6 +7,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
+from .initialize import initialize
 from .utils import (
     CPUAffinity,
     RMMPool,
@@ -208,6 +209,15 @@ class LocalCUDACluster(LocalCluster):
         self.ucx_net_devices = ucx_net_devices
         self.set_ucx_net_devices = enable_infiniband
         self.host = kwargs.get("host", None)
+
+        initialize(
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_nvlink=enable_nvlink,
+            enable_infiniband=enable_infiniband,
+            enable_rdmacm=enable_rdmacm,
+            net_devices=ucx_net_devices,
+            cuda_device_index=0,
+        )
 
         super().__init__(
             n_workers=0,
