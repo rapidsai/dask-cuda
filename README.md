@@ -1,3 +1,5 @@
+[![RTD](https://readthedocs.org/projects/dask-cuda/badge/?version=latest)](https://dask-cuda.readthedocs.io/en/latest/?badge=latest)
+
 Dask CUDA
 =========
 
@@ -29,4 +31,5 @@ It only helps with deployment and management of Dask workers in multi-GPU
 systems.  Parallelizing GPU libraries like [RAPIDS](https://rapids.ai) and
 [CuPy](https://cupy.chainer.org) with Dask is an ongoing effort.  You may wish
 to read about this effort at [blog.dask.org](https://blog.dask.org) for more
-information..
+information.  Additional information about Dask-CUDA can also be found in the
+[docs]( https://dask-cuda.readthedocs.io ).
