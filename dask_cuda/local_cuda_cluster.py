@@ -7,6 +7,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
+from .initialize import initialize
 from .utils import (
     CPUAffinity,
     RMMPool,
