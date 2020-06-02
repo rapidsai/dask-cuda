@@ -209,6 +209,15 @@ class LocalCUDACluster(LocalCluster):
         self.set_ucx_net_devices = enable_infiniband
         self.host = kwargs.get("host", None)
 
+        initialize(
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_nvlink=enable_nvlink,
+            enable_infiniband=enable_infiniband,
+            enable_rdmacm=enable_rdmacm,
+            net_devices=ucx_net_devices,
+            cuda_device_index=0,
+        )
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
