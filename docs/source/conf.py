@@ -25,6 +25,7 @@ author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
 release = "0.14.0"
+
 # The short X.Y version.
 version = "0.14"
 
