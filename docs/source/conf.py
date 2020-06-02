@@ -24,10 +24,10 @@ copyright = "2020, NVIDIA"
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
-release = "0.14.0"
+from dask_cuda import __version__ as release
 
 # The short X.Y version.
-version = "0.14"
+version = ".".join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
