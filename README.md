@@ -1,3 +1,5 @@
+[![RTD](https://readthedocs.org/projects/dask-cuda/badge/?version=latest)](https://dask-cuda.readthedocs.io/en/latest/?badge=latest)
+
 Dask CUDA
 =========
 
