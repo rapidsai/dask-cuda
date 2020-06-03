@@ -1,3 +1,24 @@
+0.14
+----
+- Publish branch-0.14 to conda (#262) `Paul Taylor`_
+- Fix behavior for `memory_limit=0` (#269) `Peter Andreas Entschev`_
+- Raise serialization errors when spilling (#272) `John Kirkham`_
+- Fix dask-cuda-worker memory_limit (#279) `Peter Andreas Entschev`_
+- Add NVTX annotations for spilling (#282) `Peter Andreas Entschev`_
+- Skip existing on conda uploads (#284) `Ray Douglass`_
+- Local gpuCI build script (#285) `Eli Fajardo`_
+- Remove deprecated DGX class (#286) `Peter Andreas Entschev`_
+- Add RDMACM support (#287) `Peter Andreas Entschev`_
+- Read the Docs Setup (#290) `Benjamin Zaitlen`_
+- Raise ValueError when ucx_net_devices="auto" and IB is disabled (#291) `Peter Andreas Entschev`_
+- Multi-node benchmarks (#293) `Peter Andreas Entschev`_
+- Add docs for UCX (#294) `Peter Andreas Entschev`_
+- Add `--runs` argument to CuPy benchmark (#295) `Peter Andreas Entschev`_
+- Fixing LocalCUDACluster example. Adding README links to docs (#297) `Randy Gelhausen`_
+- Add `nfinal` argument to shuffle_group, required in Dask >= 2.17 (#299) `Peter Andreas Entschev`_
+- Initialize parent process' UCX configuration (#301) `Peter Andreas Entschev`_
+- Add Read the Docs link (#302) `John Kirkham`_
+
 0.13
 ----
 - Use RMM's `DeviceBuffer` directly (#235) `John Kirkham`_
@@ -119,3 +140,6 @@
 .. _`Richard (Rick) Zamora`: https://github.com/rjzamora
 .. _`Benjamin Zaitlen`: https://github.com/quasiben
 .. _`Ray Douglass`: https://github.com/raydouglass
+.. _`Paul Taylor`: https://github.com/trxcllnt
+.. _`Eli Fajardo`: https://github.com/efajardo-nv
+.. _`Randy Gelhausen`: https://github.com/randerzander

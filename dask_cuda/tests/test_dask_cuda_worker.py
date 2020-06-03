@@ -3,16 +3,17 @@ from __future__ import absolute_import, division, print_function
 import os
 from time import sleep
 
+from dask_cuda.utils import get_gpu_count
 from distributed import Client
 from distributed.metrics import time
+from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
-from dask_cuda.utils import get_gpu_count
 
 import pytest
 
 
-def test_cuda_visible_devices(loop):  # noqa: F811
+def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
@@ -44,6 +45,11 @@ def test_cuda_visible_devices(loop):  # noqa: F811
                     expected = {"2,3,7,8": 1, "3,7,8,2": 1, "7,8,2,3": 1, "8,2,3,7": 1}
                     for v in result.values():
                         del expected[v]
+
+                    workers = client.scheduler_info()["workers"]
+                    for w in workers.values():
+                        assert w["memory_limit"] == MEMORY_LIMIT // len(workers)
+
                     assert len(expected) == 0
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]

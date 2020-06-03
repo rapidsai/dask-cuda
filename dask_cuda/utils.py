@@ -7,6 +7,17 @@ import numpy as np
 import pynvml
 import toolz
 
+try:
+    from cudf._lib.nvtx import annotate as nvtx_annotate
+except ImportError:
+    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
+    # installed, `annotate` yields only.
+    from contextlib import contextmanager
+
+    @contextmanager
+    def nvtx_annotate(message=None, color="blue", domain=None):
+        yield
+
 
 class CPUAffinity:
     def __init__(self, cores):
@@ -142,7 +153,9 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
+def get_ucx_net_devices(
+    cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
+):
     if cuda_device_index is None and (
         callable(ucx_net_devices) or ucx_net_devices == "auto"
     ):
@@ -164,12 +177,16 @@ def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
 
             net_dev = ""
             td = TopologicalDistance()
-            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-            if len(ibs) > 0:
-                net_dev += ibs[0]["name"] + ":1,"
-            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-            if len(ifnames) > 0:
-                net_dev += ifnames[0]["name"]
+            if get_openfabrics:
+                ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+                if len(ibs) > 0:
+                    net_dev += ibs[0]["name"] + ":1"
+            if get_network:
+                ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+                if len(ifnames) > 0:
+                    if len(net_dev) > 0:
+                        net_dev += ","
+                    net_dev += ifnames[0]["name"]
         else:
             net_dev = ucx_net_devices
     return net_dev
@@ -179,13 +196,21 @@ def get_ucx_config(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
+    enable_rdmacm=False,
     net_devices="",
     cuda_device_index=None,
 ):
+    if net_devices == "auto" and enable_infiniband is False:
+        raise ValueError(
+            "Using ucx_net_devices='auto' is currently only "
+            "supported when enable_infiniband=True."
+        )
+
     ucx_config = {
         "tcp": None,
         "infiniband": None,
         "nvlink": None,
+        "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
     }
@@ -197,6 +222,8 @@ def get_ucx_config(
         ucx_config["infiniband"] = True
     if enable_nvlink:
         ucx_config["nvlink"] = True
+    if enable_rdmacm:
+        ucx_config["rdmacm"] = True
 
     if net_devices is not None and net_devices != "":
         ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
@@ -209,6 +236,7 @@ def get_preload_options(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
+    enable_rdmacm=False,
     ucx_net_devices="",
     cuda_device_index=0,
 ):
@@ -230,6 +258,9 @@ def get_preload_options(
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support. Implies
         enable_tcp=True.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support.
+        Currently requires enable_infiniband=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp=True.
@@ -265,6 +296,8 @@ def get_preload_options(
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
         if enable_infiniband:
             initialize_ucx_argv.append("--enable-infiniband")
+        if enable_rdmacm:
+            initialize_ucx_argv.append("--enable-rdmacm")
         if enable_nvlink:
             initialize_ucx_argv.append("--enable-nvlink")
         if ucx_net_devices is not None and ucx_net_devices != "":

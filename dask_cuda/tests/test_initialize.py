@@ -44,7 +44,7 @@ def _test_initialize_ucx_tcp():
                 assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
-            assert client.run_on_scheduler(check_ucx_options) == True
+            assert client.run_on_scheduler(check_ucx_options) is True
             assert all(client.run(check_ucx_options).values())
 
 
@@ -81,7 +81,7 @@ def _test_initialize_ucx_nvlink():
                 assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
-            assert client.run_on_scheduler(check_ucx_options) == True
+            assert client.run_on_scheduler(check_ucx_options) is True
             assert all(client.run(check_ucx_options).values())
 
 
@@ -119,7 +119,7 @@ def _test_initialize_ucx_infiniband():
                 assert conf["NET_DEVICES"] == "ib0"
                 return True
 
-            assert client.run_on_scheduler(check_ucx_options) == True
+            assert client.run_on_scheduler(check_ucx_options) is True
             assert all(client.run(check_ucx_options).values())
 
 

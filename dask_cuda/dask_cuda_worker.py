@@ -23,7 +23,6 @@ from tornado import gen
 from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
-from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
@@ -32,6 +31,7 @@ from .utils import (
     get_device_total_memory,
     get_n_gpus,
     get_ucx_config,
+    get_ucx_net_devices,
 )
 
 logger = logging.getLogger(__name__)
@@ -177,6 +177,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="Enable InfiniBand communication",
 )
 @click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
+)
+@click.option(
     "--enable-nvlink/--disable-nvlink",
     default=False,
     help="Enable NVLink communication",
@@ -186,9 +191,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="When None (default), 'UCX_NET_DEVICES' will be left to its default. "
-    "Otherwise, it must be a non-empty string with the interface name. Normally "
-    "used only with --enable-infiniband to specify the interface to be used by "
-    "the worker, such as 'mlx5_0:1' or 'ib0'.",
+    "Otherwise, it must be a non-empty string with the interface name, such as "
+    "such as 'eth0' or 'auto' to allow for automatically choosing the closest "
+    "interface based on the system's topology. Normally used only with "
+    "--enable-infiniband to specify the interface to be used by the worker, "
+    "such as 'mlx5_0:1' or 'ib0'. "
+    "WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc "
+    "support. Additionally that will always use the closest interface, and "
+    "that may cause unexpected errors if that interface is not properly "
+    "configured or is disconnected, for that reason it's limited to "
+    "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
+    "interfaces are connected and properly configured.",
 )
 def main(
     scheduler,
@@ -214,6 +227,7 @@ def main(
     enable_tcp_over_ucx,
     enable_infiniband,
     enable_nvlink,
+    enable_rdmacm,
     net_devices,
     **kwargs,
 ):
@@ -231,6 +245,8 @@ def main(
 
     if not nthreads:
         nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+
+    memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
 
     if pid_file:
         with open(pid_file, "w") as f:
@@ -283,7 +299,7 @@ def main(
 
     if rmm_pool_size is not None:
         try:
-            import rmm
+            import rmm  # noqa F401
         except ImportError:
             raise ValueError(
                 "RMM pool requested but module 'rmm' is not available. "
@@ -301,7 +317,12 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            host=host,
+            interface=get_ucx_net_devices(
+                cuda_device_index=i,
+                ucx_net_devices=net_devices,
+                get_openfabrics=False,
+                get_network=True,
+            ),
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
@@ -314,6 +335,7 @@ def main(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_infiniband=enable_infiniband,
                     enable_nvlink=enable_nvlink,
+                    enable_rdmacm=enable_rdmacm,
                     net_devices=net_devices,
                     cuda_device_index=i,
                 )
@@ -324,9 +346,7 @@ def main(
                     "device_memory_limit": get_device_total_memory(index=i)
                     if (device_memory_limit == "auto" or device_memory_limit == int(0))
                     else parse_bytes(device_memory_limit),
-                    "memory_limit": parse_memory_limit(
-                        memory_limit, nthreads, total_cores=nprocs
-                    ),
+                    "memory_limit": memory_limit,
                     "local_directory": local_directory,
                 },
             ),
