@@ -41,27 +41,14 @@ class DeviceSerialized:
 
 @dask_serialize.register(DeviceSerialized)
 def device_serialize(obj):
-    headers = []
-    all_frames = []
-    for part in obj.parts:
-        header, frames = serialize(part)
-        header["frame-start-stop"] = [len(all_frames), len(all_frames) + len(frames)]
-        headers.append(header)
-        all_frames.extend(frames)
-
+    headers, frames = serialize(obj.parts)
     header = {"sub-headers": headers, "main-header": obj.header}
-
-    return header, all_frames
+    return header, frames
 
 
 @dask_deserialize.register(DeviceSerialized)
 def device_deserialize(header, frames):
-    parts = []
-    for sub_header in header["sub-headers"]:
-        start, stop = sub_header.pop("frame-start-stop")
-        part = deserialize(sub_header, frames[start:stop])
-        parts.append(part)
-
+    parts = deserialize(header["sub-headers"], frames)
     return DeviceSerialized(header["main-header"], parts)
 
 
