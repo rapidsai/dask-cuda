@@ -106,6 +106,7 @@ async def test_n_workers():
         assert len(cluster.worker_spec) == 2
 
 
+@pytest.mark.xfail(reason="rmm.get_info removed by https://github.com/rapidsai/rmm/pull/363")
 @gen_test(timeout=20)
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")

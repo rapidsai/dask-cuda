@@ -55,6 +55,7 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
+@pytest.mark.xfail(reason="rmm.get_info removed by https://github.com/rapidsai/rmm/pull/363")
 def test_rmm_pool(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
