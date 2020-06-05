@@ -56,6 +56,9 @@ def test_cpu_affinity():
 
 
 def test_get_device_total_memory():
+    # Ensure Numba is using its own memory manager, rather than RMM's
+    cuda.set_memory_manager(cuda.cudadrv.driver.NumbaCUDAMemoryManager)
+
     for i in range(get_n_gpus()):
         with cuda.gpus[i]:
             assert (
