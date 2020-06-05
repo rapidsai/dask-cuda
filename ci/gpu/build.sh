@@ -65,7 +65,7 @@ conda install "cudatoolkit=$CUDA_REL" \
 conda install -c conda-forge "pytest" "pytest-asyncio"
 
 # Use nightly build of ucx-py for now
-conda install -c rapidsai-nightly "ucx-py ucx-proc=*=gpu"
+conda install -c rapidsai-nightly -c conda-forge "ucx-py ucx-proc=*=gpu"
 
 conda list
 
