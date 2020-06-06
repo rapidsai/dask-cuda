@@ -106,13 +106,12 @@ async def test_n_workers():
         assert len(cluster.worker_spec) == 2
 
 
-@pytest.mark.xfail(reason="rmm.get_info removed by https://github.com/rapidsai/rmm/pull/363")
 @gen_test(timeout=20)
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
     async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
         async with Client(cluster, asynchronous=True) as client:
-            memory_info = await client.run(rmm.get_info)
-            for v in memory_info.values():
-                assert v.total == 2000000000
+            memory_resource_type = await client.run(rmm.mr.get_default_resource_type)
+            for v in memory_resource_type.values():
+                assert v is rmm._lib.memory_resource.CNMemMemoryResource

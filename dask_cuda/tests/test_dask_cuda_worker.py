@@ -55,7 +55,6 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
         del os.environ["CUDA_VISIBLE_DEVICES"]
 
 
-@pytest.mark.xfail(reason="rmm.get_info removed by https://github.com/rapidsai/rmm/pull/363")
 def test_rmm_pool(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
@@ -79,6 +78,6 @@ def test_rmm_pool(loop):  # noqa: F811
                         assert time() - start < 10
                         sleep(0.1)
 
-                memory_info = client.run(rmm.get_info)
-                for v in memory_info.values():
-                    assert v.total == 2000000000
+                memory_resource_type = client.run(rmm.mr.get_default_resource_type)
+                for v in memory_resource_type.values():
+                    assert v is rmm._lib.memory_resource.CNMemMemoryResource
