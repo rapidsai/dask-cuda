@@ -40,8 +40,8 @@ class DeviceSerialized:
 
 @dask_serialize.register(DeviceSerialized)
 def device_serialize(obj):
-    header = {"obj-header": dict(obj.header)}
-    frames = list(obj.frames)
+    header = {"obj-header": obj.header}
+    frames = obj.frames
     return header, frames
 
 
