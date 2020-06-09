@@ -14,7 +14,7 @@ from distributed.proctitle import (
     enable_proctitle_on_current,
 )
 from distributed.security import Security
-from distributed.utils import get_ip_interface, parse_bytes
+from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 import click
