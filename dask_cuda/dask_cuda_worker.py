@@ -327,7 +327,8 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            interface=interface or get_ucx_net_devices(
+            interface=interface
+            or get_ucx_net_devices(
                 cuda_device_index=i,
                 ucx_net_devices=net_devices,
                 get_openfabrics=False,
