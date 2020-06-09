@@ -41,6 +41,18 @@ logger = logging.getLogger(__name__)
 pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
 
+def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
+    if host:
+        return None
+    else:
+        return interface or get_ucx_net_devices(
+            cuda_device_index=cuda_device_index,
+            ucx_net_devices=ucx_net_devices,
+            get_openfabrics=False,
+            get_network=True,
+        )
+
+
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument("scheduler", type=str, required=False)
 @click.option(
@@ -327,13 +339,7 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            interface=interface
-            or get_ucx_net_devices(
-                cuda_device_index=i,
-                ucx_net_devices=net_devices,
-                get_openfabrics=False,
-                get_network=True,
-            ),
+            interface=_get_interface(interface, host, i, net_devices),
             host=host,
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
