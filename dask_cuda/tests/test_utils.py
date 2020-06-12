@@ -56,17 +56,11 @@ def test_cpu_affinity():
 
 
 def test_get_device_total_memory():
-    # Close CUDA context and Ensure Numba is using its own memory manager,
-    # rather than RMM's
-    cuda.close()
-    cuda.set_memory_manager(cuda.cudadrv.driver.NumbaCUDAMemoryManager)
-
     for i in range(get_n_gpus()):
         with cuda.gpus[i]:
-            assert (
-                get_device_total_memory(i)
-                == cuda.current_context().get_memory_info()[1]
-            )
+            total_mem = get_device_total_memory(i)
+            assert type(total_mem) is int
+            assert total_mem > 0
 
 
 @pytest.mark.parametrize("enable_tcp", [True, False])
