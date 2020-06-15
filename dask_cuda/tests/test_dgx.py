@@ -228,6 +228,8 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     sched_env = os.environ.copy()
     sched_env["DASK_UCX__INFINIBAND"] = "True"
     sched_env["DASK_UCX__TCP"] = "True"
+    sched_env["DASK_UCX__CUDA_COPY"] = "True"
+    sched_env["DASK_UCX__NET_DEVICES"] = openfabrics_devices[0]
 
     if enable_rdmacm:
         sched_env["DASK_UCX__RDMACM"] = "True"
@@ -246,7 +248,10 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
     # Enable proper variables for client
     initialize(
-        enable_tcp_over_ucx=True, enable_infiniband=True, enable_rdmacm=enable_rdmacm
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_rdmacm=enable_rdmacm,
+        net_devices=openfabrics_devices[0],
     )
 
     with subprocess.Popen(
