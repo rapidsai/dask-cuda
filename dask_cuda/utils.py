@@ -1,5 +1,6 @@
 import math
 import os
+import time
 import warnings
 from multiprocessing import cpu_count
 
@@ -307,3 +308,37 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def wait_workers(client, seconds_per_gpu=2, timeout_callback=None):
+    """
+    Wait for workers to be available. When a timeout occurs, a callback
+    is executed if specified. Generally used for tests.
+
+    Parameters
+    ----------
+    client: distributed.Client
+        Instance of client, used to query for number of workers connected.
+    seconds_per_gpu: float
+        Seconds to wait for each GPU on the system. For example, if its
+        value is 2 and there is a total of 8 GPUs (workers) being started,
+        a timeout will occur after 16 seconds.
+    timeout_callback: None or callable
+        A callback function to be executed if a timeout occurs, ignored if
+        None.
+
+    Returns
+    -------
+    True if all workers were started, False if a timeout occurs.
+    """
+    start = time.time()
+    while True:
+        n_gpus = get_n_gpus()
+        if len(client.scheduler_info()["workers"]) == n_gpus:
+            break
+        elif time.time() - start > seconds_per_gpu * n_gpus:
+            if callable(timeout_callback):
+                timeout_callback()
+            return False
+        time.sleep(0.1)
+    return True
