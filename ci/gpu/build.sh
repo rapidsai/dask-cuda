@@ -58,17 +58,13 @@ conda list
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
 conda install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
+              "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
 # https://docs.rapids.ai/maintainers/depmgmt/ 
 # conda remove -f rapids-build-env
 # conda install "your-pkg=1.0.0"
 
-# needed for async tests
-conda install -c conda-forge "pytest" "pytest-asyncio"
-
-# Use nightly build of ucx-py for now
-conda install -c rapidsai-nightly "ucx-py" "ucx-proc=*=gpu"
 
 conda list
 
