@@ -57,15 +57,14 @@ conda list
 # Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
 conda install "cudatoolkit=$CUDA_REL" \
-              "cupy>=6.5.0" "numpy=1.16.4" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "dask>=2.8.1" "distributed>=2.8.1"
+              "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
+              "rapids-build-env=$MINOR_VERSION.*"
 
-# needed for async tests
-conda install -c conda-forge "pytest" "pytest-asyncio"
+# https://docs.rapids.ai/maintainers/depmgmt/ 
+# conda remove -f rapids-build-env
+# conda install "your-pkg=1.0.0"
 
-# Use nightly build of ucx-py for now
-conda install -c rapidsai-nightly "ucx-py" "ucx-proc=*=gpu"
 
 conda list
 
