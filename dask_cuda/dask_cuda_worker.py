@@ -14,7 +14,7 @@ from distributed.proctitle import (
     enable_proctitle_on_current,
 )
 from distributed.security import Security
-from distributed.utils import get_ip_interface, parse_bytes
+from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 import click
@@ -39,6 +39,18 @@ logger = logging.getLogger(__name__)
 
 
 pem_file_option_type = click.Path(exists=True, resolve_path=True)
+
+
+def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
+    if host:
+        return None
+    else:
+        return interface or get_ucx_net_devices(
+            cuda_device_index=cuda_device_index,
+            ucx_net_devices=ucx_net_devices,
+            get_openfabrics=False,
+            get_network=True,
+        )
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -292,11 +304,8 @@ def main(
             "dask-worker SCHEDULER_ADDRESS:8786"
         )
 
-    if interface:
-        if host:
-            raise ValueError("Can not specify both interface and host")
-        else:
-            host = get_ip_interface(interface)
+    if interface and host:
+        raise ValueError("Can not specify both interface and host")
 
     if rmm_pool_size is not None:
         try:
@@ -330,12 +339,8 @@ def main(
             loop=loop,
             resources=resources,
             memory_limit=memory_limit,
-            interface=get_ucx_net_devices(
-                cuda_device_index=i,
-                ucx_net_devices=net_devices,
-                get_openfabrics=False,
-                get_network=True,
-            ),
+            interface=_get_interface(interface, host, i, net_devices),
+            host=host,
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
             security=sec,
