@@ -6,7 +6,7 @@ from time import sleep
 import dask.array as da
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_n_gpus
+from dask_cuda.utils import wait_workers
 from distributed import Client
 from distributed.metrics import time
 from distributed.utils import get_ip_interface
@@ -275,18 +275,13 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
         ) as worker_proc:
             with Client(sched_url, loop=loop) as client:
 
-                start = time()
-                while True:
-                    n_gpus = get_n_gpus()
-                    if len(client.scheduler_info()["workers"]) == n_gpus:
-                        break
-                    elif time() - start > 2 * n_gpus:
-                        # We need to ensure processes are terminated to avoid hangs
-                        # if a timeout occurs, and then raise an assertion error
-                        worker_proc.kill()
-                        sched_proc.kill()
-                        assert time() - start < 2 * n_gpus
-                    sleep(0.1)
+                def _timeout_callback():
+                    # We must ensure processes are terminated to avoid hangs
+                    # if a timeout occurs
+                    worker_proc.kill()
+                    sched_proc.kill()
+
+                assert wait_workers(client, timeout_callback=_timeout_callback)
 
                 workers_tls = client.run(lambda: ucp.get_config()["TLS"])
                 workers_tls_priority = client.run(

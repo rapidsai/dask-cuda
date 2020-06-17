@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from time import sleep
 
-from dask_cuda.utils import get_gpu_count
+from dask_cuda.utils import wait_workers
 from distributed import Client
 from distributed.metrics import time
 from distributed.system import MEMORY_LIMIT
@@ -29,13 +29,7 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
-                    start = time()
-                    while True:
-                        if len(client.scheduler_info()["workers"]) == 4:
-                            break
-                        else:
-                            assert time() - start < 10
-                            sleep(0.1)
+                    assert wait_workers(client)
 
                     def get_visible_devices():
                         return os.environ["CUDA_VISIBLE_DEVICES"]
@@ -70,13 +64,7 @@ def test_rmm_pool(loop):  # noqa: F811
             ]
         ):
             with Client("127.0.0.1:9369", loop=loop) as client:
-                start = time()
-                while True:
-                    if len(client.scheduler_info()["workers"]) == get_gpu_count():
-                        break
-                    else:
-                        assert time() - start < 10
-                        sleep(0.1)
+                assert wait_workers(client)
 
                 memory_resource_type = client.run(rmm.mr.get_default_resource_type)
                 for v in memory_resource_type.values():
