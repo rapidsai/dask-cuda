@@ -51,7 +51,7 @@ def _get_dgx_version():
 
 
 def _get_dgx_net_devices():
-    if _get_dgx_version() == DGXVersion.DGX_A100:
+    if _get_dgx_version() == DGXVersion.DGX_1:
         return [
             "mlx5_0:1,ib0",
             "mlx5_0:1,ib0",
