@@ -8,7 +8,6 @@ from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import wait_workers
 from distributed import Client
-from distributed.metrics import time
 from distributed.utils import get_ip_interface
 
 import numpy

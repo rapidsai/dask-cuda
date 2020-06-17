@@ -1,11 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from time import sleep
 
 from dask_cuda.utils import wait_workers
 from distributed import Client
-from distributed.metrics import time
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
