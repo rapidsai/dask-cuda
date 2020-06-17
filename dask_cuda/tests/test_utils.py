@@ -52,7 +52,7 @@ def test_cpu_affinity():
     for i in range(get_n_gpus()):
         affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
-        assert list(os.sched_getaffinity(0)) == affinity
+        assert os.sched_getaffinity(0) == set(affinity)
 
 
 def test_get_device_total_memory():
