@@ -334,15 +334,16 @@ def wait_workers(client, min_timeout=10, seconds_per_gpu=2, timeout_callback=Non
     -------
     True if all workers were started, False if a timeout occurs.
     """
-    start = time.time()
     n_gpus = get_n_gpus()
-    timeout = max(10, seconds_per_gpu * n_gpus)
+    timeout = max(min_timeout, seconds_per_gpu * n_gpus)
+
+    start = time.time()
     while True:
         if len(client.scheduler_info()["workers"]) == n_gpus:
-            break
+            return True
         elif time.time() - start > timeout:
             if callable(timeout_callback):
                 timeout_callback()
             return False
-        time.sleep(0.1)
-    return True
+        else:
+            time.sleep(0.1)
