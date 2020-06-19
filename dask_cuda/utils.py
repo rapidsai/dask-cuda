@@ -310,7 +310,9 @@ def get_preload_options(
     return preload_options
 
 
-def wait_workers(client, min_timeout=10, seconds_per_gpu=2, timeout_callback=None):
+def wait_workers(
+    client, min_timeout=10, seconds_per_gpu=2, n_gpus=None, timeout_callback=None
+):
     """
     Wait for workers to be available. When a timeout occurs, a callback
     is executed if specified. Generally used for tests.
@@ -326,6 +328,9 @@ def wait_workers(client, min_timeout=10, seconds_per_gpu=2, timeout_callback=Non
         value is 2 and there is a total of 8 GPUs (workers) being started,
         a timeout will occur after 16 seconds. Note that this value is only
         used as timeout when larger than min_timeout.
+    n_gpus: None or int
+        If specified, will wait for a that amount of GPUs (i.e., Dask workers)
+        to come online, else waits for a total of `get_n_gpus` workers.
     timeout_callback: None or callable
         A callback function to be executed if a timeout occurs, ignored if
         None.
@@ -334,7 +339,7 @@ def wait_workers(client, min_timeout=10, seconds_per_gpu=2, timeout_callback=Non
     -------
     True if all workers were started, False if a timeout occurs.
     """
-    n_gpus = get_n_gpus()
+    n_gpus = n_gpus or get_n_gpus()
     timeout = max(min_timeout, seconds_per_gpu * n_gpus)
 
     start = time.time()
