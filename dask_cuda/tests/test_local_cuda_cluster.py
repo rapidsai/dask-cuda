@@ -34,7 +34,7 @@ async def test_local_cuda_cluster():
             assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
 
             for w, devices in result.items():
-                ident = devices[0]
+                ident = devices.split(",")[0]
                 assert int(ident) == cluster.scheduler.workers[w].name
 
             with pytest.raises(ValueError):
