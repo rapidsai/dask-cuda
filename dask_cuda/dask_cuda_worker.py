@@ -247,9 +247,12 @@ def main(
     enable_proctitle_on_current()
     enable_proctitle_on_children()
 
-    sec = Security(
-        tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
-    )
+    if tls_ca_file and tls_cert and tls_worker_key:
+        sec = Security(
+            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
+        )
+    else:
+        sec = None
 
     try:
         nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
@@ -343,7 +346,7 @@ def main(
             host=host,
             preload=(list(preload) or []) + ["dask_cuda.initialize"],
             preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
-            security=sec,
+            #security=sec,
             env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
             plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
             name=name if nprocs == 1 or not name else name + "-" + str(i),
