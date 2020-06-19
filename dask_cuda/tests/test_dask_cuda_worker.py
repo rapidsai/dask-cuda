@@ -29,6 +29,7 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
+                    # Testing this
                     start = time()
                     while True:
                         if len(client.scheduler_info()["workers"]) == 4:
