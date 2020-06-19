@@ -247,9 +247,12 @@ def main(
     enable_proctitle_on_current()
     enable_proctitle_on_children()
 
-    sec = Security(
-        tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
-    )
+    if tls_ca_file and tls_cert and tls_key:
+        sec = Security(
+            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
+        )
+    else:
+        sec = None
 
     try:
         nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
