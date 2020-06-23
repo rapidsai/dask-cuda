@@ -156,7 +156,7 @@ class LocalCUDACluster(LocalCluster):
         )
         self.device_memory_limit = device_memory_limit
 
-        self.rmm_pool_size = rmm_pool_size
+        self.rmm_pool_size = rmm_pool_size or dask.config.get("rmm.pool-size")
         if rmm_pool_size is not None:
             try:
                 import rmm  # noqa F401
