@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import asyncio
 import atexit
 import logging
 import multiprocessing
@@ -244,151 +245,44 @@ def main(
     net_devices,
     **kwargs,
 ):
-    enable_proctitle_on_current()
-    enable_proctitle_on_children()
-
-    if tls_ca_file and tls_cert and tls_key:
-        sec = Security(
-            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key
-        )
-    else:
-        sec = None
-
-    try:
-        nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
-    except KeyError:
-        nprocs = get_n_gpus()
-
-    if not nthreads:
-        nthreads = min(1, multiprocessing.cpu_count() // nprocs)
-
-    memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
-
-    if pid_file:
-        with open(pid_file, "w") as f:
-            f.write(str(os.getpid()))
-
-        def del_pid_file():
-            if os.path.exists(pid_file):
-                os.remove(pid_file)
-
-        atexit.register(del_pid_file)
-
-    services = {}
-
-    if dashboard:
-        try:
-            from distributed.dashboard import BokehWorker
-        except ImportError:
-            pass
-        else:
-            if dashboard_prefix:
-                result = (BokehWorker, {"prefix": dashboard_prefix})
-            else:
-                result = BokehWorker
-            services[("dashboard", dashboard_address)] = result
-
-    if resources:
-        resources = resources.replace(",", " ").split()
-        resources = dict(pair.split("=") for pair in resources)
-        resources = valmap(float, resources)
-    else:
-        resources = None
-
-    loop = IOLoop.current()
-
-    preload_argv = kwargs.get("preload_argv", [])
-    kwargs = {"worker_port": None, "listen_address": None}
-    t = Nanny
-
-    if not scheduler and not scheduler_file and "scheduler-address" not in config:
-        raise ValueError(
-            "Need to provide scheduler address like\n"
-            "dask-worker SCHEDULER_ADDRESS:8786"
-        )
-
-    if interface and host:
-        raise ValueError("Can not specify both interface and host")
-
-    if rmm_pool_size is not None:
-        try:
-            import rmm  # noqa F401
-        except ImportError:
-            raise ValueError(
-                "RMM pool requested but module 'rmm' is not available. "
-                "For installation instructions, please see "
-                "https://github.com/rapidsai/rmm"
-            )  # pragma: no cover
-        rmm_pool_size = parse_bytes(rmm_pool_size)
-
-    # Ensure this parent dask-cuda-worker process uses the same UCX
-    # configuration as child worker processes created by it.
-    initialize(
-        create_cuda_context=False,
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        enable_nvlink=enable_nvlink,
-        enable_rdmacm=enable_rdmacm,
-        net_devices=net_devices,
-        cuda_device_index=0,
+    worker = CUDAWorker(
+        scheduler,
+        host,
+        nthreads,
+        name,
+        memory_limit,
+        device_memory_limit,
+        rmm_pool_size,
+        pid_file,
+        resources,
+        dashboard,
+        dashboard_address,
+        local_directory,
+        scheduler_file,
+        interface,
+        death_timeout,
+        preload,
+        dashboard_prefix,
+        tls_ca_file,
+        tls_cert,
+        tls_key,
+        enable_tcp_over_ucx,
+        enable_infiniband,
+        enable_nvlink,
+        enable_rdmacm,
+        net_devices,
+        **kwargs,
     )
 
-    nannies = [
-        t(
-            scheduler,
-            scheduler_file=scheduler_file,
-            nthreads=nthreads,
-            services=services,
-            loop=loop,
-            resources=resources,
-            memory_limit=memory_limit,
-            interface=_get_interface(interface, host, i, net_devices),
-            host=host,
-            preload=(list(preload) or []) + ["dask_cuda.initialize"],
-            preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
-            security=sec,
-            env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-            plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
-            name=name if nprocs == 1 or not name else name + "-" + str(i),
-            local_directory=local_directory,
-            config={
-                "ucx": get_ucx_config(
-                    enable_tcp_over_ucx=enable_tcp_over_ucx,
-                    enable_infiniband=enable_infiniband,
-                    enable_nvlink=enable_nvlink,
-                    enable_rdmacm=enable_rdmacm,
-                    net_devices=net_devices,
-                    cuda_device_index=i,
-                )
-            },
-            data=(
-                DeviceHostFile,
-                {
-                    "device_memory_limit": get_device_total_memory(index=i)
-                    if (device_memory_limit == "auto" or device_memory_limit == int(0))
-                    else parse_bytes(device_memory_limit),
-                    "memory_limit": memory_limit,
-                    "local_directory": local_directory,
-                },
-            ),
-            **kwargs,
-        )
-        for i in range(nprocs)
-    ]
-
-    @gen.coroutine
-    def close_all():
-        # Unregister all workers from scheduler
-        yield [n._close(timeout=2) for n in nannies]
-
-    def on_signal(signum):
+    async def on_signal(signum):
         logger.info("Exiting on signal %d", signum)
-        close_all()
+        await worker.close()
 
-    @gen.coroutine
-    def run():
-        yield nannies
-        yield [n.finished() for n in nannies]
+    async def run():
+        await worker
+        await worker.finished()
+
+    loop = IOLoop.current()
 
     install_signal_handlers(loop, cleanup=on_signal)
 
@@ -398,6 +292,186 @@ def main(
         pass
     finally:
         logger.info("End worker")
+
+
+class CUDAWorker:
+    def __init__(
+        self,
+        scheduler,
+        host,
+        nthreads,
+        name,
+        memory_limit,
+        device_memory_limit,
+        rmm_pool_size,
+        pid_file,
+        resources,
+        dashboard,
+        dashboard_address,
+        local_directory,
+        scheduler_file,
+        interface,
+        death_timeout,
+        preload,
+        dashboard_prefix,
+        tls_ca_file,
+        tls_cert,
+        tls_key,
+        enable_tcp_over_ucx,
+        enable_infiniband,
+        enable_nvlink,
+        enable_rdmacm,
+        net_devices,
+        **kwargs,
+    ):
+        enable_proctitle_on_current()
+        enable_proctitle_on_children()
+
+        if tls_ca_file and tls_cert and tls_key:
+            sec = Security(
+                tls_ca_file=tls_ca_file,
+                tls_worker_cert=tls_cert,
+                tls_worker_key=tls_key,
+            )
+        else:
+            sec = None
+
+        try:
+            nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+        except KeyError:
+            nprocs = get_n_gpus()
+
+        if not nthreads:
+            nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+
+        memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
+
+        if pid_file:
+            with open(pid_file, "w") as f:
+                f.write(str(os.getpid()))
+
+            def del_pid_file():
+                if os.path.exists(pid_file):
+                    os.remove(pid_file)
+
+            atexit.register(del_pid_file)
+
+        services = {}
+
+        if dashboard:
+            try:
+                from distributed.dashboard import BokehWorker
+            except ImportError:
+                pass
+            else:
+                if dashboard_prefix:
+                    result = (BokehWorker, {"prefix": dashboard_prefix})
+                else:
+                    result = BokehWorker
+                services[("dashboard", dashboard_address)] = result
+
+        if resources:
+            resources = resources.replace(",", " ").split()
+            resources = dict(pair.split("=") for pair in resources)
+            resources = valmap(float, resources)
+        else:
+            resources = None
+
+        loop = IOLoop.current()
+
+        preload_argv = kwargs.get("preload_argv", [])
+        kwargs = {"worker_port": None, "listen_address": None}
+        t = Nanny
+
+        if not scheduler and not scheduler_file and "scheduler-address" not in config:
+            raise ValueError(
+                "Need to provide scheduler address like\n"
+                "dask-worker SCHEDULER_ADDRESS:8786"
+            )
+
+        if interface and host:
+            raise ValueError("Can not specify both interface and host")
+
+        if rmm_pool_size is not None:
+            try:
+                import rmm  # noqa F401
+            except ImportError:
+                raise ValueError(
+                    "RMM pool requested but module 'rmm' is not available. "
+                    "For installation instructions, please see "
+                    "https://github.com/rapidsai/rmm"
+                )  # pragma: no cover
+            rmm_pool_size = parse_bytes(rmm_pool_size)
+
+        # Ensure this parent dask-cuda-worker process uses the same UCX
+        # configuration as child worker processes created by it.
+        initialize(
+            create_cuda_context=False,
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_infiniband=enable_infiniband,
+            enable_nvlink=enable_nvlink,
+            enable_rdmacm=enable_rdmacm,
+            net_devices=net_devices,
+            cuda_device_index=0,
+        )
+
+        self.nannies = [
+            t(
+                scheduler,
+                scheduler_file=scheduler_file,
+                nthreads=nthreads,
+                services=services,
+                loop=loop,
+                resources=resources,
+                memory_limit=memory_limit,
+                interface=_get_interface(interface, host, i, net_devices),
+                host=host,
+                preload=(list(preload) or []) + ["dask_cuda.initialize"],
+                preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
+                security=sec,
+                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+                plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
+                name=name if nprocs == 1 or not name else name + "-" + str(i),
+                local_directory=local_directory,
+                config={
+                    "ucx": get_ucx_config(
+                        enable_tcp_over_ucx=enable_tcp_over_ucx,
+                        enable_infiniband=enable_infiniband,
+                        enable_nvlink=enable_nvlink,
+                        enable_rdmacm=enable_rdmacm,
+                        net_devices=net_devices,
+                        cuda_device_index=i,
+                    )
+                },
+                data=(
+                    DeviceHostFile,
+                    {
+                        "device_memory_limit": get_device_total_memory(index=i)
+                        if (
+                            device_memory_limit == "auto"
+                            or device_memory_limit == int(0)
+                        )
+                        else parse_bytes(device_memory_limit),
+                        "memory_limit": memory_limit,
+                        "local_directory": local_directory,
+                    },
+                ),
+                **kwargs,
+            )
+            for i in range(nprocs)
+        ]
+
+    def __await__(self):
+        return self._wait().__await__()
+
+    async def _wait(self):
+        await asyncio.gather(*self.nannies)
+
+    async def finished(self):
+        await asyncio.gather(*[n.finished() for n in self.nannies])
+
+    async def close(self, timeout=2):
+        await asyncio.gather(*[n.close(timeout=timeout) for n in self.nannies])
 
 
 def go():
