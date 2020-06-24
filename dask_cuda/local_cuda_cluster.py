@@ -103,6 +103,11 @@ class LocalCUDACluster(LocalCluster):
     rmm_pool: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
+    rmm_logging: bool
+        Enables per-worker RMM logging when set to ``True``. Default is
+        ``False``. If users want logging from the client or scheduler, that
+        would need to be set separately. Has no effect if `rmm_pool` is not
+        specified.
 
     Examples
     --------
@@ -142,6 +147,7 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_logging=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -167,6 +173,10 @@ class LocalCUDACluster(LocalCluster):
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+
+        if rmm_logging is None:
+            rmm_logging = dask.config.get("rmm.logging", False)
+        self.rmm_logging = bool(rmm_logging)
 
         if not processes:
             raise ValueError(
@@ -265,7 +275,7 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMPool(self.rmm_pool_size),
+                    RMMPool(self.rmm_pool_size, self.rmm_logging),
                 },
             }
         )
