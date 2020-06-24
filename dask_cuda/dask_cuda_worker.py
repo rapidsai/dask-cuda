@@ -20,7 +20,6 @@ from distributed.worker import parse_memory_limit
 
 import click
 from toolz import valmap
-from tornado import gen
 from tornado.ioloop import IOLoop, TimeoutError
 
 from .device_host_file import DeviceHostFile
