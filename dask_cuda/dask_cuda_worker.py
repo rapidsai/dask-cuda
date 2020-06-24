@@ -244,6 +244,15 @@ def main(
     net_devices,
     **kwargs,
 ):
+    if tls_ca_file and tls_cert and tls_key:
+        security = Security(
+            tls_ca_file=tls_ca_file,
+            tls_worker_cert=tls_cert,
+            tls_worker_key=tls_key,
+        )
+    else:
+        security = None
+
     worker = CUDAWorker(
         scheduler,
         host,
@@ -262,9 +271,7 @@ def main(
         death_timeout,
         preload,
         dashboard_prefix,
-        tls_ca_file,
-        tls_cert,
-        tls_key,
+        security,
         enable_tcp_over_ucx,
         enable_infiniband,
         enable_nvlink,
@@ -297,43 +304,32 @@ class CUDAWorker:
     def __init__(
         self,
         scheduler,
-        host,
-        nthreads,
-        name,
-        memory_limit,
-        device_memory_limit,
-        rmm_pool_size,
-        pid_file,
-        resources,
-        dashboard,
-        dashboard_address,
-        local_directory,
-        scheduler_file,
-        interface,
-        death_timeout,
-        preload,
-        dashboard_prefix,
-        tls_ca_file,
-        tls_cert,
-        tls_key,
-        enable_tcp_over_ucx,
-        enable_infiniband,
-        enable_nvlink,
-        enable_rdmacm,
-        net_devices,
+        host=None,
+        nthreads=0,
+        name=None,
+        memory_limit="auto",
+        device_memory_limit="auto",
+        rmm_pool_size=None,
+        pid_file=None,
+        resources=None,
+        dashboard=True,
+        dashboard_address=":0",
+        local_directory=None,
+        scheduler_file=None,
+        interface=None,
+        death_timeout=None,
+        preload=[],
+        dashboard_prefix=None,
+        security=None,
+        enable_tcp_over_ucx=False,
+        enable_infiniband=False,
+        enable_nvlink=False,
+        enable_rdmacm=False,
+        net_devices=None,
         **kwargs,
     ):
         enable_proctitle_on_current()
         enable_proctitle_on_children()
-
-        if tls_ca_file and tls_cert and tls_key:
-            sec = Security(
-                tls_ca_file=tls_ca_file,
-                tls_worker_cert=tls_cert,
-                tls_worker_key=tls_key,
-            )
-        else:
-            sec = None
 
         try:
             nprocs = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
@@ -427,7 +423,7 @@ class CUDAWorker:
                 host=host,
                 preload=(list(preload) or []) + ["dask_cuda.initialize"],
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
-                security=sec,
+                security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
                 name=name if nprocs == 1 or not name else name + "-" + str(i),
