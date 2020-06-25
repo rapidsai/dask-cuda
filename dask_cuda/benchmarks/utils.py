@@ -143,8 +143,8 @@ def get_cluster_options(args):
 
         cluster_kwargs = {
             "connect_options": {"known_hosts": None},
-            "scheduler_options": {"protocol": args.protocol},
-            "worker_module": "dask_cuda.dask_cuda_worker",
+            "scheduler_options": {"protocol": args.protocol, "port": 8786},
+            "worker_class": "dask_cuda.CUDAWorker",
             "worker_options": worker_options,
             # "n_workers": len(args.devs.split(",")),
             # "CUDA_VISIBLE_DEVICES": args.devs,
