@@ -126,26 +126,16 @@ def get_cluster_options(args):
         cluster_args = [args.hosts.split(",")]
         scheduler_addr = args.protocol + "://" + cluster_args[0][0] + ":8786"
 
-        worker_options = {}
-
-        # This looks counterintuitive but adding the variable name with
-        # an empty string is how we can enable CLI booleans currently,
-        # note that SSHCluster uses the dask-cuda-worker CLI.
-        if args.enable_tcp_over_ucx:
-            worker_options["enable_tcp_over_ucx"] = ""
-        if args.enable_nvlink:
-            worker_options["enable_nvlink"] = ""
-        if args.enable_infiniband:
-            worker_options["enable_infiniband"] = ""
-
-        if args.ucx_net_devices:
-            worker_options["ucx_net_devices"] = args.ucx_net_devices
-
         cluster_kwargs = {
             "connect_options": {"known_hosts": None},
             "scheduler_options": {"protocol": args.protocol, "port": 8786},
             "worker_class": "dask_cuda.CUDAWorker",
-            "worker_options": worker_options,
+            "worker_options": {
+                "net_devices": args.ucx_net_devices,
+                "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
+                "enable_infiniband": args.enable_infiniband,
+                "enable_nvlink": args.enable_nvlink,
+            },
             # "n_workers": len(args.devs.split(",")),
             # "CUDA_VISIBLE_DEVICES": args.devs,
         }
