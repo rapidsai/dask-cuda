@@ -17,10 +17,10 @@ from distributed.worker import parse_memory_limit
 from toolz import valmap
 from tornado.ioloop import IOLoop
 
-from ..device_host_file import DeviceHostFile
-from ..initialize import initialize
-from ..local_cuda_cluster import cuda_visible_devices
-from ..utils import (
+from .device_host_file import DeviceHostFile
+from .initialize import initialize
+from .local_cuda_cluster import cuda_visible_devices
+from .utils import (
     CPUAffinity,
     RMMPool,
     get_cpu_affinity,
