@@ -107,7 +107,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option("--pid-file", type=str, default="", help="File to write the process PID")
 @click.option(
-    "--local-directory", default="", type=str, help="Directory to place worker files"
+    "--local-directory", default=None, type=str, help="Directory to place worker files"
 )
 @click.option(
     "--resources",
