@@ -146,6 +146,7 @@ class DeviceHostFile(ZictBase):
 
     def __delitem__(self, key):
         self.device_keys.discard(key)
-        del self.device_buffer[key]
+        with contextlib.suppress(KeyError):
+            del self.device_buffer[key]
         with contextlib.suppress(KeyError):
             del self.host_buffer[key]
