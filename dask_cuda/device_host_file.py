@@ -1,4 +1,5 @@
 import functools
+import itertools
 import os
 
 import dask
@@ -138,10 +139,10 @@ class DeviceHostFile(ZictBase):
             raise KeyError(key)
 
     def __len__(self):
-        return len(self.device_buffer)
+        return len(self.device_buffer) + len(self.host_buffer)
 
     def __iter__(self):
-        return iter(self.device_buffer)
+        return itertools.chain(iter(self.device_buffer), iter(self.host_buffer))
 
     def __delitem__(self, key):
         self.device_keys.discard(key)
