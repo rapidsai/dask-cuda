@@ -100,7 +100,7 @@ class LocalCUDACluster(LocalCluster):
         configured or is disconnected, for that reason it's limited to
         InfiniBand only and will still cause unpredictable errors if not _ALL_
         interfaces are connected and properly configured.
-    rmm_pool: None, int or str
+    rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
 
