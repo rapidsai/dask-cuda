@@ -1,5 +1,6 @@
 import copy
 import os
+import warnings
 
 import dask
 from dask.distributed import LocalCluster
@@ -167,6 +168,14 @@ class LocalCUDACluster(LocalCluster):
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`.  Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html#important-notes "
+                    "for more details"
+                )
 
         if not processes:
             raise ValueError(

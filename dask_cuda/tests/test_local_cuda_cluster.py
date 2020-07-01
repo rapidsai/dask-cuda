@@ -115,3 +115,12 @@ async def test_rmm_pool():
             memory_resource_type = await client.run(rmm.mr.get_default_resource_type)
             for v in memory_resource_type.values():
                 assert v is rmm._lib.memory_resource.CNMemMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_warn_no_rmm_defined():
+    with pytest.warns(Warning) as info:
+        async with LocalCUDACluster(asynchronous=True, enable_nvlink=True) as cluster:
+            pass
+
+    assert "When using NVLink" in str(info[0].message)
