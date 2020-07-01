@@ -172,7 +172,8 @@ class LocalCUDACluster(LocalCluster):
             if enable_nvlink:
                 warnings.warn(
                     "When using NVLink we recommend setting a "
-                    "`rmm_pool_size`.  Please see: "
+                    "`rmm_pool_size` or setting an RMM pool via `client.run`. "
+                    "Please see: "
                     "https://dask-cuda.readthedocs.io/en/latest/ucx.html#important-notes "
                     "for more details"
                 )
