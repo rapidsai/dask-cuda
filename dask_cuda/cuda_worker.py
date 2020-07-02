@@ -150,8 +150,6 @@ class CUDAWorker:
                     "for more details"
                 )
 
-
-
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
         initialize(
