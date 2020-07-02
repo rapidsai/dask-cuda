@@ -67,3 +67,34 @@ def test_rmm_pool(loop):  # noqa: F811
                 memory_resource_type = client.run(rmm.mr.get_default_resource_type)
                 for v in memory_resource_type.values():
                     assert v is rmm._lib.memory_resource.CNMemMemoryResource
+
+
+def test_nvlink_no_rmm_warning(loop):  # noqa: F811
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+    try:
+        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+            with popen(
+                [
+                    "dask-cuda-worker",
+                    "127.0.0.1:9359",
+                    "--host",
+                    "127.0.0.1",
+                    "--enable-nvlink",
+                ],
+                stdout=True,
+                stderr=True,
+            ) as proc:
+                with Client("127.0.0.1:9359", loop=loop) as client:
+                    assert wait_workers(client, n_gpus=2)
+
+                # grab first 5 lines of dask-cuda-worker startup
+                lines = []
+                for idx, line in enumerate(proc.stderr):
+                    lines.append(line)
+                    if idx == 5:
+                        break
+
+                assert any(b"When using NVLink we" in line for line in lines)
+
+    finally:
+        del os.environ["CUDA_VISIBLE_DEVICES"]

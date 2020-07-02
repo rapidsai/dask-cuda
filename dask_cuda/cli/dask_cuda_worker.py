@@ -4,7 +4,6 @@ import logging
 
 from distributed.cli.utils import check_python_3, install_signal_handlers
 from distributed.preloading import validate_preload_argv
-
 from distributed.security import Security
 
 import click
