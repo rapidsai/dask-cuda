@@ -120,7 +120,7 @@ async def test_rmm_pool():
 @gen_test(timeout=20)
 async def test_warn_no_rmm_defined():
     with pytest.warns(Warning) as info:
-        async with LocalCUDACluster(asynchronous=True, enable_nvlink=True) as cluster:
+        async with LocalCUDACluster(asynchronous=True, enable_nvlink=True):
             pass
 
     assert "When using NVLink" in str(info[0].message)

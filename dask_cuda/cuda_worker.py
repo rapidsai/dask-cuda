@@ -146,8 +146,8 @@ class CUDAWorker:
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`.  Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html#important-notes "
-                    "for more details"
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
                 )
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
