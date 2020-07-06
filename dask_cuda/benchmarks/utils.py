@@ -183,8 +183,11 @@ def get_scheduler_workers(dask_scheduler=None):
 
 
 def setup_memory_pool(pool_size=None, disable_pool=False):
-    import rmm
-    import cupy
+    try:
+        import rmm
+        import cupy
+    except ImportError:
+        return None
 
     rmm.reinitialize(
         pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
