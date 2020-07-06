@@ -72,11 +72,11 @@ def test_rmm_pool(loop):  # noqa: F811
 def test_nvlink_no_rmm_warning(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
     try:
-        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+        with popen(["dask-scheduler", "--port", "9379", "--no-dashboard"]):
             with popen(
                 [
                     "dask-cuda-worker",
-                    "127.0.0.1:9359",
+                    "127.0.0.1:9379",
                     "--host",
                     "127.0.0.1",
                     "--enable-nvlink",
@@ -84,9 +84,8 @@ def test_nvlink_no_rmm_warning(loop):  # noqa: F811
                 stdout=True,
                 stderr=True,
             ) as proc:
-                with Client("127.0.0.1:9359", loop=loop) as client:
-                    # CI only has one GPU
-                    assert wait_workers(client, n_gpus=1)
+                with Client("127.0.0.1:9379", loop=loop) as client:
+                    assert wait_workers(client, n_gpus=2)
 
                 # grab first 5 lines of dask-cuda-worker startup
                 lines = []
