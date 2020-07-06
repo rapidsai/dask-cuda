@@ -85,7 +85,8 @@ def test_nvlink_no_rmm_warning(loop):  # noqa: F811
                 stderr=True,
             ) as proc:
                 with Client("127.0.0.1:9359", loop=loop) as client:
-                    assert wait_workers(client, n_gpus=2)
+                    # CI only has one GPU
+                    assert wait_workers(client, n_gpus=1)
 
                 # grab first 5 lines of dask-cuda-worker startup
                 lines = []
