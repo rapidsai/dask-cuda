@@ -2,10 +2,16 @@ import math
 from collections import defaultdict
 from time import perf_counter as clock
 
+import cupy
+import numpy
+
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
+
+import cudf
+
 from dask_cuda import explicit_comms
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
@@ -13,10 +19,6 @@ from dask_cuda.benchmarks.utils import (
     parse_benchmark_args,
     setup_memory_pool,
 )
-
-import cudf
-import cupy
-import numpy
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>

@@ -1,14 +1,15 @@
 import multiprocessing as mp
 
-import dask.array as da
-from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_config
-from distributed import Client
-from distributed.deploy.local import LocalCluster
-
 import numpy
 import psutil
 import pytest
+
+from dask import array as da
+from distributed import Client
+from distributed.deploy.local import LocalCluster
+
+from dask_cuda.initialize import initialize
+from dask_cuda.utils import get_ucx_config
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

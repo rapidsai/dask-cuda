@@ -1,14 +1,16 @@
 import multiprocessing as mp
 
-import dask.dataframe as dd
-from dask_cuda.explicit_comms import CommsContext, dataframe_merge
+import numpy as np
+import pandas as pd
+import pytest
+
+from dask import dataframe as dd
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import cudf
-import numpy as np
-import pandas as pd
-import pytest
+
+from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

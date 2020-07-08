@@ -25,10 +25,10 @@ about Dask configuration.
 """
 import logging
 
-import dask
-
 import click
 import numba.cuda
+
+import dask
 
 from .utils import get_ucx_config
 

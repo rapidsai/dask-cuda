@@ -1,6 +1,7 @@
 import argparse
 
 from dask.distributed import SSHCluster
+
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 
@@ -176,8 +177,9 @@ def get_scheduler_workers(dask_scheduler=None):
 
 
 def setup_memory_pool(pool_size=None, disable_pool=False):
-    import rmm
     import cupy
+
+    import rmm
 
     rmm.reinitialize(
         pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,

@@ -1,8 +1,9 @@
 import os
 from codecs import open
 
-import versioneer
 from setuptools import find_packages, setup
+
+import versioneer
 
 # Get the long description from the README file
 with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
