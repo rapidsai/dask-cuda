@@ -1,7 +1,7 @@
-import dask.dataframe as dd
-from distributed import default_client, wait, get_client
-
 from toolz import first
+
+from dask import dataframe as dd
+from distributed import default_client, get_client, wait
 
 
 def extract_ddf_partitions(ddf):
