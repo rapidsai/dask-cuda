@@ -139,7 +139,7 @@ async def single_partition_join(
     return left_table.merge(right_table, left_on=left_on, right_on=right_on)
 
 
-async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
+async def _dataframe_merge(s, world, dfs_nparts, dfs_parts, left_on, right_on):
     """ Worker job that merge local DataFrames
 
     Parameters
@@ -175,40 +175,53 @@ async def _dataframe_merge(s, dfs_nparts, dfs_parts, left_on, right_on):
         else:
             return concat(df_parts)
 
+    assert s["rank"] in world
+
+    # Trimming
+    trim_map = {}
+    for i in range(s["nworkers"]):
+        if i in world:
+            trim_map[i] = len(trim_map)
+
+    nworkers = len(world)
+    rank = trim_map[s["rank"]]
+    eps = {trim_map[i]: s["eps"][trim_map[i]] for i in world if i != s["rank"]}
+
     df1 = df_concat(dfs_parts[0])
     df2 = df_concat(dfs_parts[1])
 
     if len(dfs_nparts[0]) == 1 and len(dfs_nparts[1]) == 1:
         return df1.merge(df2, left_on=left_on, right_on=right_on)
-
     elif len(dfs_nparts[0]) == 1:
         return await single_partition_join(
-            s["nworkers"],
-            s["rank"],
-            s["eps"],
+            nworkers,
+            rank,
+            eps,
             df1,
             df2,
             left_on,
             right_on,
             "left",
-            next(iter(dfs_nparts[0])),  # Extracting the only key in `dfs_nparts[0]`
+            trim_map[
+                next(iter(dfs_nparts[0]))
+            ],  # Extracting the only key in `dfs_nparts[0]`
         )
     elif len(dfs_nparts[1]) == 1:
         return await single_partition_join(
-            s["nworkers"],
-            s["rank"],
-            s["eps"],
+            nworkers,
+            rank,
+            eps,
             df1,
             df2,
             left_on,
             right_on,
             "right",
-            next(iter(dfs_nparts[1])),  # Extracting the only key in `dfs_nparts[1]`
+            trim_map[
+                next(iter(dfs_nparts[1]))
+            ],  # Extracting the only key in `dfs_nparts[1]`
         )
     else:
-        return await hash_join(
-            s["nworkers"], s["rank"], s["eps"], df1, df2, left_on, right_on
-        )
+        return await hash_join(nworkers, rank, eps, df1, df2, left_on, right_on)
 
 
 def dataframe_merge(left, right, on=None, left_on=None, right_on=None, how="inner"):

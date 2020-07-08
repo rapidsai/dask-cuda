@@ -114,7 +114,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
 
 
 def test_dataframe_merge_empty_partitions():
-     # Notice, we use more partitions than rows
+    # Notice, we use more partitions than rows
     p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
     p.start()
     p.join()
