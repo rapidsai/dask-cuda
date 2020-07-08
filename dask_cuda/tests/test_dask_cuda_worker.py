@@ -2,13 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from dask_cuda.utils import get_gpu_count, wait_workers
+import pytest
+
 from distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
 
-import pytest
+from dask_cuda.utils import get_gpu_count, wait_workers
 
 
 def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811

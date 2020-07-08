@@ -1,17 +1,18 @@
 import os
 from random import randint
 
+import numpy as np
+import pytest
+
 import dask
-import dask.array as da
+from dask import array as da
+from distributed.protocol import deserialize_bytes, serialize_bytelist
+
 from dask_cuda.device_host_file import (
     DeviceHostFile,
     device_to_host,
     host_to_device,
 )
-from distributed.protocol import deserialize_bytes, serialize_bytelist
-
-import numpy as np
-import pytest
 
 cupy = pytest.importorskip("cupy")
 

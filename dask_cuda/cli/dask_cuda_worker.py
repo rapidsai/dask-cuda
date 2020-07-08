@@ -2,13 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 
-from distributed.cli.utils import check_python_3, install_signal_handlers
-from distributed.preloading import validate_preload_argv
-
-from distributed.security import Security
-
 import click
 from tornado.ioloop import IOLoop, TimeoutError
+
+from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.preloading import validate_preload_argv
+from distributed.security import Security
 
 from ..cuda_worker import CUDAWorker
 

@@ -1,6 +1,9 @@
 import functools
 import os
 
+from zict import Buffer, File, Func
+from zict.common import ZictBase
+
 import dask
 from distributed.protocol import (
     dask_deserialize,
@@ -12,9 +15,6 @@ from distributed.protocol import (
 )
 from distributed.utils import nbytes
 from distributed.worker import weight
-
-from zict import Buffer, File, Func
-from zict.common import ZictBase
 
 from .is_device_object import is_device_object
 from .utils import nvtx_annotate

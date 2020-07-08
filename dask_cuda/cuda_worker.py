@@ -5,6 +5,9 @@ import atexit
 import multiprocessing
 import os
 
+from toolz import valmap
+from tornado.ioloop import IOLoop
+
 from distributed import Nanny
 from distributed.config import config
 from distributed.proctitle import (
@@ -13,9 +16,6 @@ from distributed.proctitle import (
 )
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
-
-from toolz import valmap
-from tornado.ioloop import IOLoop
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
