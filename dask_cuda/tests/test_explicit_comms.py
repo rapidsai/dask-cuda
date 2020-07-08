@@ -90,3 +90,32 @@ def test_dataframe_merge(backend, protocol, nworkers):
     p.start()
     p.join()
     assert not p.exitcode
+
+
+def _test_dataframe_merge_empty_partitions(nrows, npartitions):
+    with LocalCluster(
+        protocol="tcp",
+        dashboard_address=None,
+        n_workers=npartitions,
+        threads_per_worker=1,
+        processes=True,
+    ) as cluster:
+        with Client(cluster):
+            df1 = pd.DataFrame({"key": np.arange(nrows), "payload1": np.arange(nrows)})
+            key = np.arange(nrows)
+            np.random.shuffle(key)
+            df2 = pd.DataFrame({"key": key, "payload2": np.arange(nrows)})
+            expected = df1.merge(df2).set_index("key")
+            ddf1 = dd.from_pandas(df1, npartitions=npartitions)
+            ddf2 = dd.from_pandas(df2, npartitions=npartitions)
+            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
+            got = ddf3.compute()
+            pd.testing.assert_frame_equal(got, expected)
+
+
+def test_dataframe_merge_empty_partitions():
+    # Notice, we use more partitions than rows
+    p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
+    p.start()
+    p.join()
+    assert not p.exitcode
