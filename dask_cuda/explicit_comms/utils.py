@@ -1,3 +1,4 @@
+from collections import defaultdict
 from toolz import first
 
 from dask import dataframe as dd
@@ -12,13 +13,11 @@ def extract_ddf_partitions(ddf):
     wait(parts)
 
     key_to_part = dict([(str(part.key), part) for part in parts])
-    ret = {}  # Map worker -> [list of futures]
+    ret = defaultdict(list)  # Map worker -> [list of futures]
     for key, workers in client.who_has(parts).items():
         worker = first(
             workers
         )  # If multiple workers have the part, we pick the first worker
-        if worker not in ret:
-            ret[worker] = []
         ret[worker].append(key_to_part[key])
     return ret
 
