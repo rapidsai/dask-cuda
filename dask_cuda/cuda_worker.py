@@ -22,7 +22,7 @@ from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
-    RMMPool,
+    RMMSetup,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
@@ -53,6 +53,7 @@ class CUDAWorker:
         memory_limit="auto",
         device_memory_limit="auto",
         rmm_pool_size=None,
+        rmm_managed_memory=False,
         pid_file=None,
         resources=None,
         dashboard=True,
@@ -130,7 +131,7 @@ class CUDAWorker:
         if interface and host:
             raise ValueError("Can not specify both interface and host")
 
-        if rmm_pool_size is not None:
+        if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
             except ImportError:
@@ -139,7 +140,8 @@ class CUDAWorker:
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            rmm_pool_size = parse_bytes(rmm_pool_size)
+            if rmm_pool_size is not None:
+                rmm_pool_size = parse_bytes(rmm_pool_size)
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
@@ -168,7 +170,10 @@ class CUDAWorker:
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
+                plugins={
+                    CPUAffinity(get_cpu_affinity(i)),
+                    RMMSetup(rmm_pool_size, rmm_managed_memory),
+                },
                 name=name if nprocs == 1 or not name else name + "-" + str(i),
                 local_directory=local_directory,
                 config={

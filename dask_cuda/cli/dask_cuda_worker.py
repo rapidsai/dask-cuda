@@ -100,6 +100,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "an integer (bytes) or string (like 5GB or 5000M).",
 )
 @click.option(
+    "--rmm-managed-memory/--no-rmm-managed-memory",
+    default=False,
+    help="If enabled, initialize each worker with RMM and set it to "
+    "use managed memory. If disabled, RMM may still be used if "
+    "--rmm-pool-size is specified, but in that case with default "
+    "(non-managed) memory type.",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -188,6 +196,7 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
+    rmm_managed_memory,
     pid_file,
     resources,
     dashboard,
@@ -223,6 +232,7 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
+        rmm_managed_memory,
         pid_file,
         resources,
         dashboard,
