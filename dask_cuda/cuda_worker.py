@@ -143,6 +143,11 @@ class CUDAWorker:
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)
 
+        if enable_nvlink and rmm_managed_memory:
+            raise ValueError(
+                "RMM managed memory and NVLink are currently incompatible."
+            )
+
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
         initialize(

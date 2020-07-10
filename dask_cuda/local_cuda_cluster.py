@@ -103,10 +103,12 @@ class LocalCUDACluster(LocalCluster):
     rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M).
-    rmm_pool_size: bool
+    rmm_managed_memory: bool
         If True, initialize each worker with RMM and set it to use managed
         memory. If False, RMM may still be used if `rmm_pool_size` is specified,
         but in that case with default (non-managed) memory type.
+        WARNING: managed memory is currently incompatible with NVLink, trying
+        to enable both will result in an exception.
 
     Examples
     --------
@@ -122,7 +124,8 @@ class LocalCUDACluster(LocalCluster):
     ValueError
         If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
         not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
-        wasn't compiled with hwloc support.
+        wasn't compiled with hwloc support, or both RMM managed memory and
+        NVLink are enabled.
 
     See Also
     --------

@@ -105,7 +105,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="If enabled, initialize each worker with RMM and set it to "
     "use managed memory. If disabled, RMM may still be used if "
     "--rmm-pool-size is specified, but in that case with default "
-    "(non-managed) memory type.",
+    "(non-managed) memory type."
+    "WARNING: managed memory is currently incompatible with NVLink, "
+    "trying to enable both will result in an exception.",
 )
 @click.option(
     "--reconnect/--no-reconnect",
