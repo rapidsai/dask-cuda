@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import dask
 from dask import dataframe as dd
 from distributed import Client
 from distributed.deploy.local import LocalCluster
@@ -45,6 +46,12 @@ def test_local_cluster(protocol):
 
 
 def _test_dataframe_merge(backend, protocol, n_workers):
+    dask.config.update(
+        dask.config.global_config,
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
+        priority="new",
+    )
+
     with LocalCluster(
         protocol=protocol,
         dashboard_address=None,
