@@ -10,7 +10,7 @@ from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
-    RMMPool,
+    RMMSetup,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
@@ -102,7 +102,13 @@ class LocalCUDACluster(LocalCluster):
         interfaces are connected and properly configured.
     rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
-        is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
+        is given, it can be an integer (bytes) or string (like 5GB or 5000M).
+    rmm_managed_memory: bool
+        If True, initialize each worker with RMM and set it to use managed
+        memory. If False, RMM may still be used if `rmm_pool_size` is specified,
+        but in that case with default (non-managed) memory type.
+        WARNING: managed memory is currently incompatible with NVLink, trying
+        to enable both will result in an exception.
 
     Examples
     --------
@@ -118,7 +124,8 @@ class LocalCUDACluster(LocalCluster):
     ValueError
         If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
         not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
-        wasn't compiled with hwloc support.
+        wasn't compiled with hwloc support, or both RMM managed memory and
+        NVLink are enabled.
 
     See Also
     --------
@@ -142,6 +149,7 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_managed_memory=False,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -157,16 +165,18 @@ class LocalCUDACluster(LocalCluster):
         self.device_memory_limit = device_memory_limit
 
         self.rmm_pool_size = rmm_pool_size
-        if rmm_pool_size is not None:
+        self.rmm_managed_memory = rmm_managed_memory
+        if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
-                    "RMM pool requested but module 'rmm' is not available. "
-                    "For installation instructions, please see "
-                    "https://github.com/rapidsai/rmm"
+                    "RMM pool or managed memory requested but module 'rmm' "
+                    "is not available. For installation instructions, please "
+                    "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+            if self.rmm_pool_size is not None:
+                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
         if not processes:
             raise ValueError(
@@ -265,7 +275,7 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMPool(self.rmm_pool_size),
+                    RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),
                 },
             }
         )
