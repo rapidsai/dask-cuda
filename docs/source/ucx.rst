@@ -124,7 +124,7 @@ All options discussed previously are also available in ``LocalCUDACluster``. It 
         enable_nvlink = True
         enable_infiniband = True
         ucx_net_devices="auto"
-        rmm_pool="24GB"
+        rmm_pool_size="24GB"
     )
     client = Client(cluster)
 

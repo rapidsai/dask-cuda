@@ -1,6 +1,9 @@
 import functools
 import os
 
+from zict import Buffer, File, Func
+from zict.common import ZictBase
+
 import dask
 from distributed.protocol import (
     dask_deserialize,
@@ -12,10 +15,6 @@ from distributed.protocol import (
 )
 from distributed.utils import nbytes
 from distributed.worker import weight
-
-import numpy
-from zict import Buffer, File, Func
-from zict.common import ZictBase
 
 from .is_device_object import is_device_object
 from .utils import nvtx_annotate
@@ -31,37 +30,35 @@ class DeviceSerialized:
         that are in host memory
     """
 
-    def __init__(self, header, parts):
+    def __init__(self, header, frames):
         self.header = header
-        self.parts = parts
+        self.frames = frames
 
     def __sizeof__(self):
-        return sum(map(nbytes, self.parts))
+        return sum(map(nbytes, self.frames))
 
 
 @dask_serialize.register(DeviceSerialized)
 def device_serialize(obj):
-    headers, frames = serialize(obj.parts)
-    header = {"sub-headers": headers, "main-header": obj.header}
+    header = {"obj-header": obj.header}
+    frames = obj.frames
     return header, frames
 
 
 @dask_deserialize.register(DeviceSerialized)
 def device_deserialize(header, frames):
-    parts = deserialize(header["sub-headers"], frames)
-    return DeviceSerialized(header["main-header"], parts)
+    return DeviceSerialized(header["obj-header"], frames)
 
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
     header, frames = serialize(obj, serializers=["dask", "pickle"])
-    frames = [numpy.asarray(f) for f in frames]
     return DeviceSerialized(header, frames)
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
 def host_to_device(s: DeviceSerialized) -> object:
-    return deserialize(s.header, s.parts)
+    return deserialize(s.header, s.frames)
 
 
 class DeviceHostFile(ZictBase):
@@ -91,8 +88,10 @@ class DeviceHostFile(ZictBase):
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
+
+        if not os.path.exists(local_directory):
             os.makedirs(local_directory, exist_ok=True)
-            local_directory = os.path.join(local_directory, "dask-worker-space")
+        local_directory = os.path.join(local_directory, "dask-worker-space")
 
         self.disk_func_path = os.path.join(local_directory, "storage")
 

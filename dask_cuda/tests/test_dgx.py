@@ -4,16 +4,17 @@ import subprocess
 from enum import Enum, auto
 from time import sleep
 
-import dask.array as da
-from dask_cuda import LocalCUDACluster
-from dask_cuda.initialize import initialize
-from dask_cuda.utils import wait_workers
-from distributed import Client
-from distributed.utils import get_ip_interface
-
 import numpy
 import pytest
 from tornado.ioloop import IOLoop
+
+from dask import array as da
+from distributed import Client
+from distributed.utils import get_ip_interface
+
+from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
+from dask_cuda.utils import wait_workers
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

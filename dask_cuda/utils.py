@@ -28,16 +28,21 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
-class RMMPool:
-    def __init__(self, nbytes):
+class RMMSetup:
+    def __init__(self, nbytes, managed_memory):
         self.nbytes = nbytes
+        self.managed_memory = managed_memory
 
     def setup(self, worker=None):
-        if self.nbytes is not None:
+        if self.nbytes is not None or self.managed_memory is True:
             import rmm
 
+            pool_allocator = False if self.nbytes is None else True
+
             rmm.reinitialize(
-                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+                pool_allocator=pool_allocator,
+                managed_memory=self.managed_memory,
+                initial_pool_size=self.nbytes,
             )
 
 
@@ -214,6 +219,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "reuse-endpoints": True,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True

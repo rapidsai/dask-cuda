@@ -1,5 +1,8 @@
 import os
 
+import pytest
+from numba import cuda
+
 from dask_cuda.utils import (
     get_cpu_affinity,
     get_device_total_memory,
@@ -9,9 +12,6 @@ from dask_cuda.utils import (
     get_ucx_net_devices,
     unpack_bitmask,
 )
-
-import pytest
-from numba import cuda
 
 
 def test_get_n_gpus():
