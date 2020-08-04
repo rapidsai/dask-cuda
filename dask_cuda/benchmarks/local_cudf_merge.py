@@ -243,7 +243,7 @@ def main(args):
     print("Merge benchmark")
     print("-------------------------------")
     print(f"backend        | {args.backend}")
-    print(f"backend        | {args.type}")
+    print(f"merge type     | {args.type}")
     print(f"rows-per-chunk | {args.chunk_size}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
