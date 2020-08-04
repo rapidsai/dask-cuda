@@ -10,6 +10,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import cudf
+from cudf.tests.utils import assert_eq
 
 from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 
@@ -83,10 +84,10 @@ def _test_dataframe_merge(backend, protocol, n_workers):
             got = ddf3.compute()
 
             if backend == "cudf":
-                got = got.to_pandas()
-                got.index.names = ["key"]  # TODO: this shouldn't be needed
+                assert_eq(got, expected)
 
-            pd.testing.assert_frame_equal(got, expected)
+            else:
+                pd.testing.assert_frame_equal(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 4])

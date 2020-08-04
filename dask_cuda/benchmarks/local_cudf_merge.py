@@ -2,15 +2,12 @@ import math
 from collections import defaultdict
 from time import perf_counter as clock
 
-import cupy
 import numpy
 
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
-
-import cudf
 
 from dask_cuda import explicit_comms
 from dask_cuda.benchmarks.utils import (
@@ -24,9 +21,17 @@ from dask_cuda.benchmarks.utils import (
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
 
 
-def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
+def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu):
     # Setting a seed that triggers max amount of comm in the two-GPU case.
-    cupy.random.seed(17561648246761420848)
+    if gpu:
+        import cupy as xp
+
+        import cudf as xdf
+    else:
+        import numpy as xp
+        import pandas as xdf
+
+    xp.random.seed(2 ** 32 - 1)
 
     chunk_type = chunk_type or "build"
     frac_match = frac_match or 1.0
@@ -42,16 +47,14 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
         start = local_size * i_chunk
         stop = start + local_size
 
-        parts_array = cupy.arange(num_chunks, dtype="int64")
-        suffle_array = cupy.repeat(parts_array, math.ceil(local_size / num_chunks))
+        parts_array = xp.arange(num_chunks, dtype="int64")
+        suffle_array = xp.repeat(parts_array, math.ceil(local_size / num_chunks))
 
-        df = cudf.DataFrame(
+        df = xdf.DataFrame(
             {
-                "key": cupy.arange(start, stop=stop, dtype="int64"),
-                "shuffle": cupy.random.permutation(suffle_array)[:local_size],
-                "payload": cupy.random.permutation(
-                    cupy.arange(local_size, dtype="int64")
-                ),
+                "key": xp.arange(start, stop=stop, dtype="int64"),
+                "shuffle": xp.random.permutation(suffle_array)[:local_size],
+                "payload": xp.random.permutation(xp.arange(local_size, dtype="int64")),
             }
         )
     else:
@@ -71,26 +74,24 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
         for i in range(num_chunks):
             bgn = (local_size * i) + (sub_local_size * i_chunk)
             end = bgn + sub_local_size
-            ar = cupy.arange(bgn, stop=end, dtype="int64")
-            arrays.append(cupy.random.permutation(ar)[:sub_local_size_use])
-        key_array_match = cupy.concatenate(tuple(arrays), axis=0)
+            ar = xp.arange(bgn, stop=end, dtype="int64")
+            arrays.append(xp.random.permutation(ar)[:sub_local_size_use])
+        key_array_match = xp.concatenate(tuple(arrays), axis=0)
 
         # Step 2. Add values that DON'T match
         missing_size = local_size - key_array_match.shape[0]
         start = local_size * num_chunks + local_size * i_chunk
         stop = start + missing_size
-        key_array_no_match = cupy.arange(start, stop=stop, dtype="int64")
+        key_array_no_match = xp.arange(start, stop=stop, dtype="int64")
 
         # Step 3. Combine and create the final dataframe chunk (dask_cudf partition)
-        key_array_combine = cupy.concatenate(
+        key_array_combine = xp.concatenate(
             (key_array_match, key_array_no_match), axis=0
         )
-        df = cudf.DataFrame(
+        df = xdf.DataFrame(
             {
-                "key": cupy.random.permutation(key_array_combine),
-                "payload": cupy.random.permutation(
-                    cupy.arange(local_size, dtype="int64")
-                ),
+                "key": xp.random.permutation(key_array_combine),
+                "payload": xp.random.permutation(xp.arange(local_size, dtype="int64")),
             }
         )
     return df
@@ -99,13 +100,22 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match):
 def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
     parts = [chunk_size for i in range(num_chunks)]
-    meta = generate_chunk(0, 4, 1, chunk_type, None)
+    device_type = True if args.type == "gpu" else False
+    meta = generate_chunk(0, 4, 1, chunk_type, None, device_type)
     divisions = [None] * (len(parts) + 1)
 
     name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
 
     graph = {
-        (name, i): (generate_chunk, i, part, len(parts), chunk_type, frac_match)
+        (name, i): (
+            generate_chunk,
+            i,
+            part,
+            len(parts),
+            chunk_type,
+            frac_match,
+            device_type,
+        )
         for i, part in enumerate(parts)
     }
 
@@ -179,20 +189,24 @@ def main(args):
     cluster_kwargs = cluster_options["kwargs"]
     scheduler_addr = cluster_options["scheduler_addr"]
 
-    cluster = Cluster(*cluster_args, **cluster_kwargs)
-    if args.multi_node:
-        import time
+    if args.sched_addr:
+        client = Client(args.sched_addr)
+    else:
+        cluster = Cluster(*cluster_args, **cluster_kwargs)
+        if args.multi_node:
+            import time
 
-        # Allow some time for workers to start and connect to scheduler
-        # TODO: make this a command-line argument?
-        time.sleep(15)
+            # Allow some time for workers to start and connect to scheduler
+            # TODO: make this a command-line argument?
+            time.sleep(15)
 
-    client = Client(scheduler_addr if args.multi_node else cluster)
+        client = Client(scheduler_addr if args.multi_node else cluster)
 
-    client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
-    # Create an RMM pool on the scheduler due to occasional deserialization
-    # of CUDA objects. May cause issues with InfiniBand otherwise.
-    client.run_on_scheduler(setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool)
+    if args.type == "gpu":
+        client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
+        # Create an RMM pool on the scheduler due to occasional deserialization
+        # of CUDA objects. May cause issues with InfiniBand otherwise.
+        client.run_on_scheduler(setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool)
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
@@ -229,6 +243,7 @@ def main(args):
     print("Merge benchmark")
     print("-------------------------------")
     print(f"backend        | {args.backend}")
+    print(f"merge type     | {args.type}")
     print(f"rows-per-chunk | {args.chunk_size}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
@@ -279,6 +294,13 @@ def parse_args():
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
+        },
+        {
+            "name": ["-t", "--type",],
+            "choices": ["cpu", "gpu"],
+            "default": "gpu",
+            "type": str,
+            "help": "Do merge with GPU or CPU dataframes",
         },
         {
             "name": ["-c", "--chunk-size",],
