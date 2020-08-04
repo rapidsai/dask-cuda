@@ -125,7 +125,7 @@ class CommsContext:
                 )
             )
 
-        # Each worker creates a UCX endpoint to all workers with greater rank
+        # Each worker creates an endpoint to all workers with greater rank
         self.run(_create_endpoints, self.worker_direct_addresses)
 
         # At this point all workers should have a rank and endpoints to
@@ -211,14 +211,11 @@ class CommsContext:
         """
         df_parts_list = []
         for df in df_list:
-            df_parts_list.append(
-                utils.workers_to_parts(
-                    self.client.sync(utils.extract_ddf_partitions, df)
-                )
-            )
+            df_parts_list.append(utils.extract_ddf_partitions(df))
 
         # Let's create a dict for each dataframe that specifices the
         # number of partitions each worker has
+        world = set()
         dfs_nparts = []
         for df_parts in df_parts_list:
             nparts = {}
@@ -226,14 +223,18 @@ class CommsContext:
                 npart = len(df_parts.get(worker, []))
                 if npart > 0:
                     nparts[rank] = npart
+                    world.add(rank)
             dfs_nparts.append(nparts)
 
         # Submit `coroutine` on each worker given the df_parts that
         # belong the specific worker as input
         ret = []
-        for worker in self.worker_addresses:
-            dfs = []
-            for df_parts in df_parts_list:
-                dfs.append(df_parts.get(worker, []))
-            ret.append(self.submit(worker, coroutine, dfs_nparts, dfs, *extra_args))
+        for rank, worker in enumerate(self.worker_addresses):
+            if rank in world:
+                dfs = []
+                for df_parts in df_parts_list:
+                    dfs.append(df_parts.get(worker, []))
+                ret.append(
+                    self.submit(worker, coroutine, world, dfs_nparts, dfs, *extra_args)
+                )
         return utils.dataframes_to_dask_dataframe(ret)

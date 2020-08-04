@@ -2,12 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 
+import click
+from tornado.ioloop import IOLoop, TimeoutError
+
 from distributed.cli.utils import check_python_3, install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
-
-import click
-from tornado.ioloop import IOLoop, TimeoutError
 
 from ..cuda_worker import CUDAWorker
 
@@ -100,6 +100,16 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "an integer (bytes) or string (like 5GB or 5000M).",
 )
 @click.option(
+    "--rmm-managed-memory/--no-rmm-managed-memory",
+    default=False,
+    help="If enabled, initialize each worker with RMM and set it to "
+    "use managed memory. If disabled, RMM may still be used if "
+    "--rmm-pool-size is specified, but in that case with default "
+    "(non-managed) memory type."
+    "WARNING: managed memory is currently incompatible with NVLink, "
+    "trying to enable both will result in an exception.",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -188,6 +198,7 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
+    rmm_managed_memory,
     pid_file,
     resources,
     dashboard,
@@ -223,6 +234,7 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
+        rmm_managed_memory,
         pid_file,
         resources,
         dashboard,
