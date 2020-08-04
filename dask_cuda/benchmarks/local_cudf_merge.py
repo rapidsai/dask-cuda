@@ -100,7 +100,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu)
 def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
     parts = [chunk_size for i in range(num_chunks)]
-    device_type = True if args.type is "gpu" else False
+    device_type = True if args.type == "gpu" else False
     meta = generate_chunk(0, 4, 1, chunk_type, None, device_type)
     divisions = [None] * (len(parts) + 1)
 
