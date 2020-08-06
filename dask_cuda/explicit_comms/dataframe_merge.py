@@ -5,8 +5,6 @@ import pandas
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
 
-import cudf
-
 from . import comms
 
 
@@ -63,10 +61,14 @@ async def exchange_and_concat_bins(rank, eps, bins):
 def concat(df_list):
     if len(df_list) == 0:
         return None
-    elif isinstance(df_list[0], (cudf.DataFrame, cudf.Series)):
-        return cudf.concat(df_list)
     else:
-        return pandas.concat(df_list)
+        typ = str(type(df_list[0]))
+        if 'cudf' in typ:
+            # delay import of cudf to handle CPU only tests
+            import cudf
+            return cudf.concat(df_list)
+        else:
+            return pandas.concat(df_list)
 
 
 def partition_by_hash(df, columns, n_chunks, ignore_index=False):

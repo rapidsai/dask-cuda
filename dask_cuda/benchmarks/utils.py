@@ -84,6 +84,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Runs a multi-node cluster on the hosts specified by --hosts.",
     )
     parser.add_argument(
+        "--scheduler-address",
+        default=None,
+        type=str,
+        dest="sched_addr",
+        help="Scheduler Address -- assumes cluster is created outside of benchmark.",
+    )
+    parser.add_argument(
         "--hosts",
         default=None,
         type=str,
