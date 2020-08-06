@@ -37,6 +37,11 @@ class DeviceSerialized:
     def __sizeof__(self):
         return sum(map(nbytes, self.frames))
 
+    def __reduce_ex__(self, protocol):
+        header, frames = device_serialize(self)
+        frames = [f.obj for f in frames]
+        return device_deserialize, (header, frames)
+
 
 @dask_serialize.register(DeviceSerialized)
 def device_serialize(obj):
