@@ -15,11 +15,13 @@ from .utils import nvtx_annotate
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> proxy_object.ObjectProxy:
-    return proxy_object.asproxy(obj)
+    return proxy_object.asproxy(obj, serialize_obj=True)
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
 def host_to_device(s: proxy_object.ObjectProxy) -> object:
+    # Notice, we do _not_ deserialize at this point. The proxy
+    # object automatically deserialize just-in-time.
     return s
 
 
@@ -91,26 +93,13 @@ class DeviceHostFile(ZictBase):
         else:
             self.host_buffer[key] = value
 
-    def _1_getitem__(self, key):
+    def __getitem__(self, key):
         if key in self.device_keys:
             return self.device_buffer[key]
         elif key in self.host_buffer:
             return self.host_buffer[key]
         else:
             raise KeyError(key)
-
-    def __getitem__(self, key):
-        if key in self.device_keys:
-            ret = self.device_buffer[key]
-        elif key in self.host_buffer:
-            ret = self.host_buffer[key]
-        else:
-            raise KeyError(key)
-
-        # if hasattr(ret, "_obj_pxy_deserialize"):
-        #     ret = ret._obj_pxy_deserialize()
-        # return proxy_object.asproxy(ret, serialize_obj=False)
-        return ret
 
     def __len__(self):
         return len(self.device_buffer)
