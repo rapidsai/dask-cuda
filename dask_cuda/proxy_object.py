@@ -94,6 +94,33 @@ class ObjectProxy:
             ret += f" at {hex(id(self._obj_pxy['obj']))}>"
         return ret
 
+    def __len__(self):
+        return len(self._obj_pxy_deserialize())
+
+    def __contains__(self, value):
+        return value in self._obj_pxy_deserialize()
+
+    def __getitem__(self, key):
+        return self._obj_pxy_deserialize()[key]
+
+    def __setitem__(self, key, value):
+        self._obj_pxy_deserialize()[key] = value
+
+    def __delitem__(self, key):
+        del self._obj_pxy_deserialize()[key]
+
+    def __getslice__(self, i, j):
+        return self._obj_pxy_deserialize()[i:j]
+
+    def __setslice__(self, i, j, value):
+        self._obj_pxy_deserialize()[i:j] = value
+
+    def __delslice__(self, i, j):
+        del self._obj_pxy_deserialize()[i:j]
+
+    def __iter__(self):
+        return iter(self._obj_pxy_deserialize())
+
     @property
     def __class__(self):
         try:

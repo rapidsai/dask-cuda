@@ -11,6 +11,21 @@ from dask_cuda import proxy_object
 
 
 @pytest.mark.parametrize("serialize_obj", [True, False])
+def test_proxy_object(serialize_obj):
+    """Check "transparency" of the proxy object"""
+
+    org = list(range(10))
+    pxy = proxy_object.asproxy(org, serialize_obj=serialize_obj)
+
+    assert len(org) == len(pxy)
+    assert org[0] == pxy[0]
+    assert 1 in pxy
+    assert -1 not in pxy
+
+    # TODO: check operators (when implemented)
+
+
+@pytest.mark.parametrize("serialize_obj", [True, False])
 def test_proxy_object_of_cudf(serialize_obj):
     """Check that a proxied cudf dataframe is behaviors as a regular dataframe"""
     cudf = pytest.importorskip("cudf")
