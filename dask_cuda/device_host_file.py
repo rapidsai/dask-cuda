@@ -5,7 +5,13 @@ from zict import Buffer, File, Func
 from zict.common import ZictBase
 
 import dask
-from distributed.protocol import deserialize_bytes, serialize_bytelist
+from distributed.protocol import (
+    deserialize,
+    deserialize_bytes,
+    serialize,
+    serialize_bytelist,
+)
+from distributed.utils import nbytes
 from distributed.worker import weight
 
 from . import proxy_object
@@ -13,13 +19,40 @@ from .is_device_object import is_device_object
 from .utils import nvtx_annotate
 
 
+class DeviceSerialized:
+    """ Store device object on the host
+    This stores a device-side object as
+    1.  A msgpack encodable header
+    2.  A list of `bytes`-like objects (like NumPy arrays)
+        that are in host memory
+    """
+
+    def __init__(self, header, frames):
+        self.header = header
+        self.frames = frames
+
+    def __sizeof__(self):
+        return sum(map(nbytes, self.frames))
+
+
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
-def device_to_host(obj: object) -> proxy_object.ObjectProxy:
+def device_to_host(obj: object) -> DeviceSerialized:
+    header, frames = serialize(obj, serializers=["dask", "pickle"])
+    return DeviceSerialized(header, frames)
+
+
+@nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
+def host_to_device(s: DeviceSerialized) -> object:
+    return deserialize(s.header, s.frames)
+
+
+@nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
+def pxy_obj_device_to_host(obj: object) -> proxy_object.ObjectProxy:
     return proxy_object.asproxy(obj, serialize_obj=True)
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
-def host_to_device(s: proxy_object.ObjectProxy) -> object:
+def pxy_obj_host_to_device(s: proxy_object.ObjectProxy) -> object:
     # Notice, we do _not_ deserialize at this point. The proxy
     # object automatically deserialize just-in-time.
     return s
@@ -48,7 +81,11 @@ class DeviceHostFile(ZictBase):
     """
 
     def __init__(
-        self, device_memory_limit=None, memory_limit=None, local_directory=None,
+        self,
+        device_memory_limit=None,
+        memory_limit=None,
+        local_directory=None,
+        spill_proxy=False,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
@@ -74,7 +111,14 @@ class DeviceHostFile(ZictBase):
 
         self.device_keys = set()
         self.device_func = dict()
-        self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
+        if spill_proxy:
+            self.device_host_func = Func(
+                pxy_obj_device_to_host, pxy_obj_host_to_device, self.host_buffer
+            )
+        else:
+            self.device_host_func = Func(
+                device_to_host, host_to_device, self.host_buffer
+            )
         self.device_buffer = Buffer(
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )

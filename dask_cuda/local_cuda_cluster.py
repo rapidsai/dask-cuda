@@ -150,6 +150,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
+        spill_proxy=None,
         **kwargs,
     ):
         if CUDA_VISIBLE_DEVICES is None:
@@ -188,6 +189,11 @@ class LocalCUDACluster(LocalCluster):
         elif isinstance(self.device_memory_limit, str):
             self.device_memory_limit = parse_bytes(self.device_memory_limit)
 
+        if spill_proxy is None:
+            self.spill_proxy = dask.config.get("spill-proxy", default=False)
+        else:
+            self.spill_proxy = spill_proxy
+
         if data is None:
             data = (
                 DeviceHostFile,
@@ -197,6 +203,7 @@ class LocalCUDACluster(LocalCluster):
                     "local_directory": local_directory
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
+                    "spill_proxy": self.spill_proxy,
                 },
             )
 
