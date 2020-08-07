@@ -170,3 +170,8 @@ def obj_pxy_group_split(obj: ObjectProxy, *args, **kwargs):
     return dask.dataframe.utils.hash_object_dispatch(
         obj._obj_pxy_deserialize(), *args, **kwargs
     )
+
+
+@dask.dataframe.utils.make_scalar.register(ObjectProxy)
+def obj_pxy_make_scalar(obj: ObjectProxy, *args, **kwargs):
+    return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize(), *args, **kwargs)
