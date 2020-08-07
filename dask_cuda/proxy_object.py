@@ -121,6 +121,10 @@ class ObjectProxy:
     def __iter__(self):
         return iter(self._obj_pxy_deserialize())
 
+    def __array__(self):
+        ret = getattr(self._obj_pxy_deserialize(), "__array__")()
+        return ret
+
     @property
     def __class__(self):
         try:
