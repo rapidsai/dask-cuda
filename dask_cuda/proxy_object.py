@@ -1,7 +1,9 @@
 import pickle
+import sys
 
 import dask
 import distributed.protocol
+import distributed.utils
 
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
@@ -133,6 +135,13 @@ class ObjectProxy:
             ret = pickle.loads(self._obj_pxy["type_serialized"])
             self.__obj_pxy_cache["type_serialized"] = ret
             return ret
+
+    def __sizeof__(self):
+        if self._obj_pxy["is_serialized"]:
+            frames = self._obj_pxy["obj"][1]
+            return sum(map(distributed.utils.nbytes, frames))
+        else:
+            return sys.getsizeof(self._obj_pxy_deserialize())
 
 
 @distributed.protocol.dask_serialize.register(ObjectProxy)
