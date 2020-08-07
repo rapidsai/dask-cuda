@@ -6,6 +6,8 @@ from zict.common import ZictBase
 
 import dask
 from distributed.protocol import (
+    dask_deserialize,
+    dask_serialize,
     deserialize,
     deserialize_bytes,
     serialize,
@@ -38,6 +40,18 @@ class DeviceSerialized:
         header, frames = device_serialize(self)
         frames = [f.obj for f in frames]
         return device_deserialize, (header, frames)
+
+
+@dask_serialize.register(DeviceSerialized)
+def device_serialize(obj):
+    header = {"obj-header": obj.header}
+    frames = obj.frames
+    return header, frames
+
+
+@dask_deserialize.register(DeviceSerialized)
+def device_deserialize(header, frames):
+    return DeviceSerialized(header["obj-header"], frames)
 
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
