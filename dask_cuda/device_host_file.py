@@ -34,6 +34,11 @@ class DeviceSerialized:
     def __sizeof__(self):
         return sum(map(nbytes, self.frames))
 
+    def __reduce_ex__(self, protocol):
+        header, frames = device_serialize(self)
+        frames = [f.obj for f in frames]
+        return device_deserialize, (header, frames)
+
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
