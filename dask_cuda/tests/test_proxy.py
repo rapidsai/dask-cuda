@@ -61,7 +61,7 @@ def test_spilling_local_cuda_cluster(spill_proxy):
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
-        assert x.size == 10  # Trigger deserialization
+        assert len(x) == 10  # Trigger deserialization
         return x
 
     # Notice, setting `device_memory_limit=1` to trigger spilling
