@@ -3,6 +3,7 @@ import sys
 
 import dask
 import dask.dataframe.utils
+import dask.dataframe.methods
 import distributed.protocol
 import distributed.utils
 
@@ -175,3 +176,14 @@ def obj_pxy_group_split(obj: ObjectProxy, *args, **kwargs):
 @dask.dataframe.utils.make_scalar.register(ObjectProxy)
 def obj_pxy_make_scalar(obj: ObjectProxy, *args, **kwargs):
     return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize(), *args, **kwargs)
+
+
+@dask.dataframe.methods.concat_dispatch.register(ObjectProxy)
+def obj_pxy_concat(objs, *args, **kwargs):
+    # Deserialize concat inputs (in-place)
+    for i in range(len(objs)):
+        try:
+            objs[i] = objs[i]._obj_pxy_deserialize()
+        except AttributeError:
+            pass
+    return dask.dataframe.methods.concat(objs, *args, **kwargs)
