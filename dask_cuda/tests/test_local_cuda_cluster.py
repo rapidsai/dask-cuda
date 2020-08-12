@@ -119,4 +119,4 @@ async def test_rmm():
                 lambda: type(rmm.mr.get_per_device_resource(0))
             )
             for v in memory_resource_type.values():
-                assert v is rmm.mr.CNMemManagedMemoryResource
+                assert v is rmm.mr.PoolMemoryResource
