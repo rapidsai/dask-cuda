@@ -66,6 +66,8 @@ def test_rmm(loop):  # noqa: F811
             with Client("127.0.0.1:9369", loop=loop) as client:
                 assert wait_workers(client, n_gpus=get_gpu_count())
 
-                memory_resource_type = client.run(rmm.mr.get_default_resource_type)
+                memory_resource_type = client.run(
+                    lambda: type(rmm.mr.get_per_device_resource(0))
+                )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.CNMemManagedMemoryResource
