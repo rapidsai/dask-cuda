@@ -67,7 +67,7 @@ def test_rmm(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_gpu_count())
 
                 memory_resource_type = client.run(
-                    lambda: type(rmm.mr.get_per_device_resource(0))
+                    rmm.mr.get_current_device_resource_type
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.PoolMemoryResource

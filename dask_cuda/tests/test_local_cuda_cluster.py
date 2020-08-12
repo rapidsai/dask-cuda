@@ -116,7 +116,7 @@ async def test_rmm():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                lambda: type(rmm.mr.get_per_device_resource(0))
+                rmm.mr.get_current_device_resource_type
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.PoolMemoryResource
