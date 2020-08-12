@@ -186,6 +186,8 @@ def get_scheduler_workers(dask_scheduler=None):
 def setup_memory_pool(pool_size=None, disable_pool=False):
     import cupy
 
+    print("FOODSFSDF")
+    os.environ['RMM_NO_INITIALIZE'] = 'True'
     import rmm
 
     rmm.reinitialize(
