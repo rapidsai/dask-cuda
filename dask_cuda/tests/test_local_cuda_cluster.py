@@ -117,4 +117,4 @@ async def test_rmm():
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(rmm.mr.get_default_resource_type)
             for v in memory_resource_type.values():
-                assert v is rmm._lib.memory_resource.CNMemManagedMemoryResource
+                assert v is rmm.mr.CNMemManagedMemoryResource

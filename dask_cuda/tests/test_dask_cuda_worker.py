@@ -68,4 +68,4 @@ def test_rmm(loop):  # noqa: F811
 
                 memory_resource_type = client.run(rmm.mr.get_default_resource_type)
                 for v in memory_resource_type.values():
-                    assert v is rmm._lib.memory_resource.CNMemManagedMemoryResource
+                    assert v is rmm.mr.CNMemManagedMemoryResource
