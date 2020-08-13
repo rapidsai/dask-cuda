@@ -8,8 +8,8 @@ import dask
 from dask import array as da
 from distributed.protocol import (
     deserialize,
-    serialize,
     deserialize_bytes,
+    serialize,
     serialize_bytelist,
 )
 from distributed.protocol.pickle import HIGHEST_PROTOCOL
