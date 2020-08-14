@@ -35,7 +35,7 @@ class RMMSetup:
 
     def setup(self, worker=None):
         if self.nbytes is not None or self.managed_memory is True:
-            os.environ["RMM_NO_INITIALIZE"] = "True"
+            os.environ["RAPIDS_NO_INITIALIZE"] = "True"
             import rmm
 
             pool_allocator = False if self.nbytes is None else True

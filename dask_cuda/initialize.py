@@ -47,7 +47,7 @@ def initialize(
 ):
     if create_cuda_context:
         try:
-            os.environ["RMM_NO_INITIALIZE"] = "True"
+            os.environ["RAPIDS_NO_INITIALIZE"] = "True"
             numba.cuda.current_context()
         except Exception:
             logger.error("Unable to start CUDA Context", exc_info=True)
@@ -107,7 +107,7 @@ def dask_setup(
 ):
     if create_cuda_context:
         try:
-            os.environ["RMM_NO_INITIALIZE"] = "True"
+            os.environ["RAPIDS_NO_INITIALIZE"] = "True"
             numba.cuda.current_context()
         except Exception:
             logger.error("Unable to start CUDA Context", exc_info=True)

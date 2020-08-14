@@ -133,7 +133,7 @@ class CUDAWorker:
 
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
-                os.environ["RMM_NO_INITIALIZE"] = "True"
+                os.environ["RAPIDS_NO_INITIALIZE"] = "True"
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
