@@ -13,4 +13,4 @@ python:
         path: .
 
 conda:
-   file: conda/environments/builddocs_py37.yml
+   environment: conda/environments/builddocs_py37.yml
