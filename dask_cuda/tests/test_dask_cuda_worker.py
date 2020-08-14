@@ -9,7 +9,7 @@ from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
 
-from dask_cuda.utils import get_gpu_count, wait_workers
+from dask_cuda.utils import get_n_gpus, wait_workers
 
 
 def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
@@ -64,8 +64,10 @@ def test_rmm(loop):  # noqa: F811
             ]
         ):
             with Client("127.0.0.1:9369", loop=loop) as client:
-                assert wait_workers(client, n_gpus=get_gpu_count())
+                assert wait_workers(client, n_gpus=get_n_gpus())
 
-                memory_resource_type = client.run(rmm.mr.get_default_resource_type)
+                memory_resource_type = client.run(
+                    rmm.mr.get_current_device_resource_type
+                )
                 for v in memory_resource_type.values():
-                    assert v is rmm._lib.memory_resource.CNMemManagedMemoryResource
+                    assert v is rmm.mr.PoolMemoryResource
