@@ -60,8 +60,6 @@ class LocalCUDACluster(LocalCluster):
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
-    Parameters
-    ----------
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
