@@ -81,6 +81,7 @@ The same configurations used for the scheduler should be used by the client. One
 One can use ``os.environ`` inside the client script, it's important to set them at the very top before importing anything other than ``os``. See example below:
 
 .. code-block:: python
+
     import os
 
     os.environ["DASK_RMM__POOL_SIZE"] = "1GB"
