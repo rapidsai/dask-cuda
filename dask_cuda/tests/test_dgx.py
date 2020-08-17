@@ -33,8 +33,7 @@ def _get_dgx_name():
 
     # We verify `product_name_file` to check it's a DGX, and check
     # if `dgx_release_file` exists to confirm it's not a container.
-    if (not os.path.isfile(product_name_file) or
-            not os.path.isfile(dgx_release_file)):
+    if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
         return None
 
     for line in open(product_name_file):
