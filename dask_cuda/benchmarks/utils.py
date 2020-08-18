@@ -1,5 +1,4 @@
 import argparse
-import os
 
 from dask.distributed import SSHCluster
 
@@ -186,6 +185,7 @@ def get_scheduler_workers(dask_scheduler=None):
 
 def setup_memory_pool(pool_size=None, disable_pool=False):
     import cupy
+
     import rmm
 
     rmm.reinitialize(

@@ -24,7 +24,6 @@ See https://docs.dask.org/en/latest/configuration.html for more information
 about Dask configuration.
 """
 import logging
-import os
 
 import click
 import numba.cuda
