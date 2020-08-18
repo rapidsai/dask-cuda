@@ -150,6 +150,8 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
 
         if CUDA_VISIBLE_DEVICES is None:
