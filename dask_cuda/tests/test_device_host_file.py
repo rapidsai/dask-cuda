@@ -6,7 +6,13 @@ import pytest
 
 import dask
 from dask import array as da
-from distributed.protocol import deserialize_bytes, serialize_bytelist
+from distributed.protocol import (
+    deserialize,
+    deserialize_bytes,
+    serialize,
+    serialize_bytelist,
+)
+from distributed.protocol.pickle import HIGHEST_PROTOCOL
 
 from dask_cuda.device_host_file import (
     DeviceHostFile,
@@ -164,6 +170,23 @@ def test_serialize_cupy_collection(collection, length, value):
 
     bts = deserialize_bytes(b"".join(btslst))
     res = host_to_device(bts)
+
+    if length == 0:
+        assert_func(res, x)
+    else:
+        assert isinstance(res, collection)
+        values = res.values() if collection is dict else res
+        [assert_func(v, x) for v in values]
+
+    header, frames = serialize(obj, serializers=["pickle"])
+
+    if HIGHEST_PROTOCOL >= 5:
+        assert len(frames) == (1 + len(obj.frames))
+    else:
+        assert len(frames) == 1
+
+    obj2 = deserialize(header, frames)
+    res = host_to_device(obj2)
 
     if length == 0:
         assert_func(res, x)

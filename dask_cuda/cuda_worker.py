@@ -73,6 +73,10 @@ class CUDAWorker:
         net_devices=None,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         enable_proctitle_on_current()
         enable_proctitle_on_children()
 

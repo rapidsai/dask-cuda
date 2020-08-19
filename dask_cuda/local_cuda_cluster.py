@@ -61,8 +61,6 @@ class LocalCUDACluster(LocalCluster):
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
-    Parameters
-    ----------
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
@@ -153,6 +151,10 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):

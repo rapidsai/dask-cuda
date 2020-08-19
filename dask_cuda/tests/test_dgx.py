@@ -29,8 +29,11 @@ class DGXVersion(Enum):
 
 def _get_dgx_name():
     product_name_file = "/sys/class/dmi/id/product_name"
+    dgx_release_file = "/etc/dgx-release"
 
-    if not os.path.isfile(product_name_file):
+    # We verify `product_name_file` to check it's a DGX, and check
+    # if `dgx_release_file` exists to confirm it's not a container.
+    if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
         return None
 
     for line in open(product_name_file):
@@ -38,17 +41,16 @@ def _get_dgx_name():
 
 
 def _get_dgx_version():
-    dgx_server = None
     dgx_name = _get_dgx_name()
 
-    if "DGX-1" in dgx_name:
-        dgx_server = DGXVersion.DGX_1
+    if dgx_name is None:
+        return None
+    elif "DGX-1" in dgx_name:
+        return DGXVersion.DGX_1
     elif "DGX-2" in dgx_name:
-        dgx_server = DGXVersion.DGX_2
+        return DGXVersion.DGX_2
     elif "DGXA100" in dgx_name:
-        dgx_server = DGXVersion.DGX_A100
-
-    return dgx_server
+        return DGXVersion.DGX_A100
 
 
 def _get_dgx_net_devices():
