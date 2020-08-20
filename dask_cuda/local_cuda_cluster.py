@@ -150,6 +150,10 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
@@ -166,7 +170,6 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_managed_memory = rmm_managed_memory
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
-                os.environ["RAPIDS_NO_INITIALIZE"] = "True"
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
