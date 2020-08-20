@@ -4,6 +4,7 @@ import asyncio
 import atexit
 import multiprocessing
 import os
+import warnings
 
 from toolz import valmap
 from tornado.ioloop import IOLoop
@@ -144,6 +145,15 @@ class CUDAWorker:
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
+            rmm_pool_size = parse_bytes(rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`.  Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)
 
