@@ -31,6 +31,9 @@
 - Replace `RMM_NO_INITIALIZE` with `RAPIDS_NO_INITIALIZE` (#371) `John Kirkham`_
 - Fixes for docs and RTD updates (#373) `Benjamin Zaitlen`_
 - Confirm DGX tests are running baremetal (#376) `Peter Andreas Entschev`_
+- Set RAPIDS_NO_INITIALIZE at the top of CUDAWorker/LocalCUDACluster (#379) `Peter Andreas Entschev`_
+- Change pytest's basetemp in CI build script (#380) `Peter Andreas Entschev`_
+- Pin Numba version to exclude 0.51.0 (#385) `Benjamin Zaitlen`_
 
 0.14
 ----
