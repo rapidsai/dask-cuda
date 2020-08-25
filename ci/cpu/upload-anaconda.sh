@@ -7,13 +7,12 @@ set -e
 export UPLOADFILE=`conda build conda/recipes/dask-cuda --python=$PYTHON --output`
 CUDA_REL=${CUDA_VERSION%.*}
 
-SOURCE_BRANCH=master
 
 LABEL_OPTION="--label main"
 echo "LABEL_OPTION=${LABEL_OPTION}"
 
 # Restrict uploads to master branch
-if [ ${GIT_BRANCH} != ${SOURCE_BRANCH} ]; then
+if [ ${BUILD_MODE} != "branch" ]; then
   echo "Skipping upload"
   return 0
 fi
