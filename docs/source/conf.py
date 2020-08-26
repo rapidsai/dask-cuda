@@ -23,10 +23,11 @@ project = "dask-cuda"
 copyright = "2020, NVIDIA"
 author = "NVIDIA"
 
-# The short X.Y version
-version = "0.14"
-# The full version, including alpha/beta/rc tags
-release = "0.14.0"
+# The full version, including alpha/beta/rc tags.
+from dask_cuda import __version__ as release
+
+# The short X.Y version.
+version = ".".join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
@@ -46,7 +47,10 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
+    "numpydoc",
 ]
+
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

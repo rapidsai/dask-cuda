@@ -43,11 +43,13 @@ dask-scheduler
 The ``dask-scheduler`` has no parameters for UCX configuration -- different from what we will see for ``dask-cuda-worker`` on the next section -- for that reason we rely on Dask environment variables. Here's how to start the scheduler with all transports that are currently supported by Dask-CUDA:
 
 .. code-block:: bash
+
     DASK_RMM__POOL_SIZE=1GB DASK_UCX__CUDA_COPY=True DASK_UCX__TCP=True DASK_UCX__NVLINK=True DASK_UCX__INFINIBAND=True DASK_UCX__RDMACM=True DASK_UCX__NET_DEVICES=mlx5_0:1 dask-scheduler --protocol ucx --interface ib0
 
 Note above how we use ``DASK_UCX__NET_DEVICES=mlx5_0:1`` (the Mellanox name for ``ib0``) and the same interface with ``--interface ib0``. If the system doesn't have an InfiniBand interface available, you would normally use the main network interface, such as ``eth0``, as seen below:
 
 .. code-block:: bash
+
     DASK_RMM__POOL_SIZE=1GB DASK_UCX__CUDA_COPY=True DASK_UCX__TCP=True DASK_UCX__NVLINK=True dask-scheduler --protocol ucx --interface eth0
 
 Setting ``DASK_UCX__NET_DEVICES`` when using an interface that isn't an InfiniBand can generally be skipped.
@@ -67,6 +69,7 @@ All ``DASK_*`` configurations described above have analogous parameters in ``das
 Here's how to start workers with all transports that are currently relevant for us:
 
 .. code-block:: bash
+
     dask-cuda-worker ucx://SCHEDULER_IB0_IP:8786 --enable-tcp-over-ucx --enable-nvlink --enable-infiniband -- enable-rdmacm --net-devices="auto" --rmm-pool-size="30GB"
 
 
@@ -78,6 +81,7 @@ The same configurations used for the scheduler should be used by the client. One
 One can use ``os.environ`` inside the client script, it's important to set them at the very top before importing anything other than ``os``. See example below:
 
 .. code-block:: python
+
     import os
 
     os.environ["DASK_RMM__POOL_SIZE"] = "1GB"
@@ -124,7 +128,7 @@ All options discussed previously are also available in ``LocalCUDACluster``. It 
         enable_nvlink = True
         enable_infiniband = True
         ucx_net_devices="auto"
-        rmm_pool="24GB"
+        rmm_pool_size="24GB"
     )
     client = Client(cluster)
 

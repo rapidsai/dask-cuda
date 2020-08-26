@@ -1,3 +1,40 @@
+0.15
+----
+- Fix-up versioneer (#305) `John Kirkham`_
+- Require Distributed 2.15.0+ (#306) `John Kirkham`_
+- Rely on Dask's ability to serialize collections (#307) `John Kirkham`_
+- Ensure CI installs GPU build of UCX (#308) `Peter Andreas Entschev`_
+- Skip 2nd serialization pass of `DeviceSerialized` (#309) `John Kirkham`_
+- Fix tests related to latest RMM changes (#310) `Peter Andreas Entschev`_
+- Fix dask-cuda-worker's interface argument (#314) `Peter Andreas Entschev`_
+- Check only for memory type during test_get_device_total_memory (#315) `Peter Andreas Entschev`_
+- Fix and improve DGX tests (#316) `Peter Andreas Entschev`_
+- Install dependencies via meta package (#317) `Ray Douglass`_
+- Fix errors when TLS files are not specified (#320) `Peter Andreas Entschev`_
+- Refactor dask-cuda-worker into CUDAWorker class (#324) `Jacob Tomlinson`_
+- Add missing __init__.py to dask_cuda/cli (#327) `Peter Andreas Entschev`_
+- Add Dask distributed GPU tests to CI (#329) `Benjamin Zaitlen`_
+- Fix rmm_pool_size argument name in docstrings (#329) `Benjamin Zaitlen`_
+- Add CPU support to benchmarks (#338) `Benjamin Zaitlen`_
+- Fix isort configuration (#339) `Mads R. B. Kristensen`_
+- Explicit-comms: cleanup and bug fix (#340) `Mads R. B. Kristensen`_
+- Add support for RMM managed memory (#343) `Peter Andreas Entschev`_
+- Update docker image in local build script (#345) `Sean Frye`_
+- Support pickle protocol 5 based spilling (#349) `John Kirkham`_
+- Use get_n_gpus for RMM test with dask-cuda-worker (#356) `Peter Andreas Entschev`_
+- Update RMM tests based on deprecated CNMeM (#359) `John Kirkham`_
+- Fix a black error in explicit comms (#360) `John Kirkham`_
+- Fix an `isort` error (#360) `John Kirkham`_
+- Fix an `isort` error (#360) `John Kirkham`_
+- Set `RMM_NO_INITIALIZE` environment variable (#363) `Benjamin Zaitlen`_
+- Fix bash lines in docs (#369) `Benjamin Zaitlen`_
+- Replace `RMM_NO_INITIALIZE` with `RAPIDS_NO_INITIALIZE` (#371) `John Kirkham`_
+- Fixes for docs and RTD updates (#373) `Benjamin Zaitlen`_
+- Confirm DGX tests are running baremetal (#376) `Peter Andreas Entschev`_
+- Set RAPIDS_NO_INITIALIZE at the top of CUDAWorker/LocalCUDACluster (#379) `Peter Andreas Entschev`_
+- Change pytest's basetemp in CI build script (#380) `Peter Andreas Entschev`_
+- Pin Numba version to exclude 0.51.0 (#385) `Benjamin Zaitlen`_
+
 0.14
 ----
 - Publish branch-0.14 to conda (#262) `Paul Taylor`_
@@ -143,3 +180,5 @@
 .. _`Paul Taylor`: https://github.com/trxcllnt
 .. _`Eli Fajardo`: https://github.com/efajardo-nv
 .. _`Randy Gelhausen`: https://github.com/randerzander
+.. _`Jacob Tomlinson`: https://github.com/jacobtomlinson
+.. _`Sean Frye`: https://github.com/sean-frye

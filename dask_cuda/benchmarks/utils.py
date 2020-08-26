@@ -1,6 +1,7 @@
 import argparse
 
 from dask.distributed import SSHCluster
+
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 
@@ -81,6 +82,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         action="store_true",
         dest="multi_node",
         help="Runs a multi-node cluster on the hosts specified by --hosts.",
+    )
+    parser.add_argument(
+        "--scheduler-address",
+        default=None,
+        type=str,
+        dest="sched_addr",
+        help="Scheduler Address -- assumes cluster is created outside of benchmark.",
     )
     parser.add_argument(
         "--hosts",
@@ -176,8 +184,9 @@ def get_scheduler_workers(dask_scheduler=None):
 
 
 def setup_memory_pool(pool_size=None, disable_pool=False):
-    import rmm
     import cupy
+
+    import rmm
 
     rmm.reinitialize(
         pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,

@@ -1,44 +1,60 @@
 import multiprocessing as mp
 import os
 import subprocess
+from enum import Enum, auto
 from time import sleep
-
-import dask.array as da
-from dask_cuda import LocalCUDACluster
-from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_gpu_count
-from distributed import Client
-from distributed.metrics import time
-from distributed.utils import get_ip_interface
 
 import numpy
 import pytest
 from tornado.ioloop import IOLoop
+
+from dask import array as da
+from distributed import Client
+from distributed.utils import get_ip_interface
+
+from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
+from dask_cuda.utils import wait_workers
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
 
-def _check_dgx_version():
-    dgx_server = None
+class DGXVersion(Enum):
+    DGX_1 = auto()
+    DGX_2 = auto()
+    DGX_A100 = auto()
 
-    if not os.path.isfile("/etc/dgx-release"):
-        return dgx_server
 
-    for line in open("/etc/dgx-release"):
-        if line.startswith("DGX_PLATFORM"):
-            if "DGX Server for DGX-1" in line:
-                dgx_server = 1
-            elif "DGX Server for DGX-2" in line:
-                dgx_server = 2
-            break
+def _get_dgx_name():
+    product_name_file = "/sys/class/dmi/id/product_name"
+    dgx_release_file = "/etc/dgx-release"
 
-    return dgx_server
+    # We verify `product_name_file` to check it's a DGX, and check
+    # if `dgx_release_file` exists to confirm it's not a container.
+    if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
+        return None
+
+    for line in open(product_name_file):
+        return line
+
+
+def _get_dgx_version():
+    dgx_name = _get_dgx_name()
+
+    if dgx_name is None:
+        return None
+    elif "DGX-1" in dgx_name:
+        return DGXVersion.DGX_1
+    elif "DGX-2" in dgx_name:
+        return DGXVersion.DGX_2
+    elif "DGXA100" in dgx_name:
+        return DGXVersion.DGX_A100
 
 
 def _get_dgx_net_devices():
-    if _check_dgx_version() == 1:
+    if _get_dgx_version() == DGXVersion.DGX_1:
         return [
             "mlx5_0:1,ib0",
             "mlx5_0:1,ib0",
@@ -49,7 +65,7 @@ def _get_dgx_net_devices():
             "mlx5_3:1,ib3",
             "mlx5_3:1,ib3",
         ]
-    elif _check_dgx_version() == 2:
+    elif _get_dgx_version() == DGXVersion.DGX_2:
         return [
             "mlx5_0:1,ib0",
             "mlx5_0:1,ib0",
@@ -72,7 +88,7 @@ def _get_dgx_net_devices():
         return None
 
 
-if _check_dgx_version() is None:
+if _get_dgx_version() is None:
     pytest.skip("Not a DGX server", allow_module_level=True)
 
 
@@ -201,6 +217,10 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
         {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": True},
     ],
 )
+@pytest.mark.skipif(
+    _get_dgx_version() == DGXVersion.DGX_A100,
+    reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
+)
 def test_ucx_infiniband_nvlink(params):
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
@@ -228,6 +248,8 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     sched_env = os.environ.copy()
     sched_env["DASK_UCX__INFINIBAND"] = "True"
     sched_env["DASK_UCX__TCP"] = "True"
+    sched_env["DASK_UCX__CUDA_COPY"] = "True"
+    sched_env["DASK_UCX__NET_DEVICES"] = openfabrics_devices[0]
 
     if enable_rdmacm:
         sched_env["DASK_UCX__RDMACM"] = "True"
@@ -246,7 +268,10 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
     # Enable proper variables for client
     initialize(
-        enable_tcp_over_ucx=True, enable_infiniband=True, enable_rdmacm=enable_rdmacm
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_rdmacm=enable_rdmacm,
+        net_devices=openfabrics_devices[0],
     )
 
     with subprocess.Popen(
@@ -270,13 +295,13 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
         ) as worker_proc:
             with Client(sched_url, loop=loop) as client:
 
-                start = time()
-                while True:
-                    if len(client.scheduler_info()["workers"]) == get_gpu_count():
-                        break
-                    else:
-                        assert time() - start < 10
-                        sleep(0.1)
+                def _timeout_callback():
+                    # We must ensure processes are terminated to avoid hangs
+                    # if a timeout occurs
+                    worker_proc.kill()
+                    sched_proc.kill()
+
+                assert wait_workers(client, timeout_callback=_timeout_callback)
 
                 workers_tls = client.run(lambda: ucp.get_config()["TLS"])
                 workers_tls_priority = client.run(
@@ -307,6 +332,10 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
 
 @pytest.mark.parametrize("enable_rdmacm", [False, True])
+@pytest.mark.skipif(
+    _get_dgx_version() == DGXVersion.DGX_A100,
+    reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
+)
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),

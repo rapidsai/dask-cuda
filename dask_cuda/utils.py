@@ -1,5 +1,6 @@
 import math
 import os
+import time
 import warnings
 from multiprocessing import cpu_count
 
@@ -27,16 +28,21 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
-class RMMPool:
-    def __init__(self, nbytes):
+class RMMSetup:
+    def __init__(self, nbytes, managed_memory):
         self.nbytes = nbytes
+        self.managed_memory = managed_memory
 
     def setup(self, worker=None):
-        if self.nbytes is not None:
+        if self.nbytes is not None or self.managed_memory is True:
             import rmm
 
+            pool_allocator = False if self.nbytes is None else True
+
             rmm.reinitialize(
-                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+                pool_allocator=pool_allocator,
+                managed_memory=self.managed_memory,
+                initial_pool_size=self.nbytes,
             )
 
 
@@ -213,6 +219,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "reuse-endpoints": True,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True
@@ -307,3 +314,47 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def wait_workers(
+    client, min_timeout=10, seconds_per_gpu=2, n_gpus=None, timeout_callback=None
+):
+    """
+    Wait for workers to be available. When a timeout occurs, a callback
+    is executed if specified. Generally used for tests.
+
+    Parameters
+    ----------
+    client: distributed.Client
+        Instance of client, used to query for number of workers connected.
+    min_timeout: float
+        Minimum number of seconds to wait before timeout.
+    seconds_per_gpu: float
+        Seconds to wait for each GPU on the system. For example, if its
+        value is 2 and there is a total of 8 GPUs (workers) being started,
+        a timeout will occur after 16 seconds. Note that this value is only
+        used as timeout when larger than min_timeout.
+    n_gpus: None or int
+        If specified, will wait for a that amount of GPUs (i.e., Dask workers)
+        to come online, else waits for a total of `get_n_gpus` workers.
+    timeout_callback: None or callable
+        A callback function to be executed if a timeout occurs, ignored if
+        None.
+
+    Returns
+    -------
+    True if all workers were started, False if a timeout occurs.
+    """
+    n_gpus = n_gpus or get_n_gpus()
+    timeout = max(min_timeout, seconds_per_gpu * n_gpus)
+
+    start = time.time()
+    while True:
+        if len(client.scheduler_info()["workers"]) == n_gpus:
+            return True
+        elif time.time() - start > timeout:
+            if callable(timeout_callback):
+                timeout_callback()
+            return False
+        else:
+            time.sleep(0.1)
