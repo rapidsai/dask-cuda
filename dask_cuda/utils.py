@@ -1,5 +1,6 @@
 import math
 import os
+import time
 import warnings
 from multiprocessing import cpu_count
 
@@ -10,6 +11,17 @@ import toolz
 from dask.utils import parse_bytes
 from distributed.worker import get_worker
 
+try:
+    from cudf._lib.nvtx import annotate as nvtx_annotate
+except ImportError:
+    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
+    # installed, `annotate` yields only.
+    from contextlib import contextmanager
+
+    @contextmanager
+    def nvtx_annotate(message=None, color="blue", domain=None):
+        yield
+
 
 class CPUAffinity:
     def __init__(self, cores):
@@ -19,16 +31,21 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
-class RMMPool:
-    def __init__(self, nbytes):
+class RMMSetup:
+    def __init__(self, nbytes, managed_memory):
         self.nbytes = nbytes
+        self.managed_memory = managed_memory
 
     def setup(self, worker=None):
-        if self.nbytes is not None:
+        if self.nbytes is not None or self.managed_memory is True:
             import rmm
 
+            pool_allocator = False if self.nbytes is None else True
+
             rmm.reinitialize(
-                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+                pool_allocator=pool_allocator,
+                managed_memory=self.managed_memory,
+                initial_pool_size=self.nbytes,
             )
             #cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
@@ -146,7 +163,9 @@ def get_device_total_memory(index=0):
     ).total
 
 
-def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
+def get_ucx_net_devices(
+    cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
+):
     if cuda_device_index is None and (
         callable(ucx_net_devices) or ucx_net_devices == "auto"
     ):
@@ -168,12 +187,16 @@ def get_ucx_net_devices(cuda_device_index, ucx_net_devices):
 
             net_dev = ""
             td = TopologicalDistance()
-            ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-            if len(ibs) > 0:
-                net_dev += ibs[0]["name"] + ":1,"
-            ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-            if len(ifnames) > 0:
-                net_dev += ifnames[0]["name"]
+            if get_openfabrics:
+                ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
+                if len(ibs) > 0:
+                    net_dev += ibs[0]["name"] + ":1"
+            if get_network:
+                ifnames = td.get_cuda_distances_from_device_index(dev, "network")
+                if len(ifnames) > 0:
+                    if len(net_dev) > 0:
+                        net_dev += ","
+                    net_dev += ifnames[0]["name"]
         else:
             net_dev = ucx_net_devices
     return net_dev
@@ -183,15 +206,24 @@ def get_ucx_config(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
+    enable_rdmacm=False,
     net_devices="",
     cuda_device_index=None,
 ):
+    if net_devices == "auto" and enable_infiniband is False:
+        raise ValueError(
+            "Using ucx_net_devices='auto' is currently only "
+            "supported when enable_infiniband=True."
+        )
+
     ucx_config = {
         "tcp": None,
         "infiniband": None,
         "nvlink": None,
+        "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "reuse-endpoints": True,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True
@@ -201,6 +233,8 @@ def get_ucx_config(
         ucx_config["infiniband"] = True
     if enable_nvlink:
         ucx_config["nvlink"] = True
+    if enable_rdmacm:
+        ucx_config["rdmacm"] = True
 
     if net_devices is not None and net_devices != "":
         ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
@@ -213,6 +247,7 @@ def get_preload_options(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
+    enable_rdmacm=False,
     ucx_net_devices="",
     cuda_device_index=0,
 ):
@@ -234,6 +269,9 @@ def get_preload_options(
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support. Implies
         enable_tcp=True.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support.
+        Currently requires enable_infiniband=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp=True.
@@ -269,6 +307,8 @@ def get_preload_options(
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
         if enable_infiniband:
             initialize_ucx_argv.append("--enable-infiniband")
+        if enable_rdmacm:
+            initialize_ucx_argv.append("--enable-rdmacm")
         if enable_nvlink:
             initialize_ucx_argv.append("--enable-nvlink")
         if ucx_net_devices is not None and ucx_net_devices != "":
@@ -300,3 +340,47 @@ def reset_device_memory_limit(device_memory_limit):
     # Set new zict.Buffer and zict.LRU limits
     w.data.device_buffer.n = device_memory_limit
     w.data.device_buffer.fast.n = device_memory_limit
+
+
+def wait_workers(
+    client, min_timeout=10, seconds_per_gpu=2, n_gpus=None, timeout_callback=None
+):
+    """
+    Wait for workers to be available. When a timeout occurs, a callback
+    is executed if specified. Generally used for tests.
+
+    Parameters
+    ----------
+    client: distributed.Client
+        Instance of client, used to query for number of workers connected.
+    min_timeout: float
+        Minimum number of seconds to wait before timeout.
+    seconds_per_gpu: float
+        Seconds to wait for each GPU on the system. For example, if its
+        value is 2 and there is a total of 8 GPUs (workers) being started,
+        a timeout will occur after 16 seconds. Note that this value is only
+        used as timeout when larger than min_timeout.
+    n_gpus: None or int
+        If specified, will wait for a that amount of GPUs (i.e., Dask workers)
+        to come online, else waits for a total of `get_n_gpus` workers.
+    timeout_callback: None or callable
+        A callback function to be executed if a timeout occurs, ignored if
+        None.
+
+    Returns
+    -------
+    True if all workers were started, False if a timeout occurs.
+    """
+    n_gpus = n_gpus or get_n_gpus()
+    timeout = max(min_timeout, seconds_per_gpu * n_gpus)
+
+    start = time.time()
+    while True:
+        if len(client.scheduler_info()["workers"]) == n_gpus:
+            return True
+        elif time.time() - start > timeout:
+            if callable(timeout_callback):
+                timeout_callback()
+            return False
+        else:
+            time.sleep(0.1)

@@ -57,15 +57,14 @@ conda list
 # Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
 conda install "cudatoolkit=$CUDA_REL" \
-              "cupy>=6.5.0" "numpy=1.16.4" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "dask>=2.8.1" "distributed>=2.8.1"
+              "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
+              "rapids-build-env=$MINOR_VERSION.*"
 
-# needed for async tests
-conda install -c conda-forge "pytest" "pytest-asyncio"
+# https://docs.rapids.ai/maintainers/depmgmt/ 
+# conda remove -f rapids-build-env
+# conda install "your-pkg=1.0.0"
 
-# Use nightly build of ucx-py for now
-conda install -c rapidsai-nightly "ucx-py"
 
 conda list
 
@@ -101,5 +100,17 @@ else
     logger "Python py.test for dask-cuda..."
     cd $WORKSPACE
     ls dask_cuda/tests/
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp=${WORKSPACE}/dask-cuda-tmp --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
+
+    logger "Running dask.distributed GPU tests"
+    # Test downstream packages, which requires Python v3.7
+    if [ $(python -c "import sys; print(sys.version_info[1])") -ge "7" ]; then
+        logger "TEST OF DASK/UCX..."
+        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.tests.test_gpu_metrics as m;print(m.__file__)"`
+    fi
 fi

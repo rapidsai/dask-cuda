@@ -1,9 +1,9 @@
 import copy
 import os
+import warnings
 
 import dask
 from dask.distributed import LocalCluster
-from distributed.system import MEMORY_LIMIT
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
@@ -11,7 +11,7 @@ from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
-    RMMPool,
+    RMMSetup,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
@@ -61,8 +61,6 @@ class LocalCUDACluster(LocalCluster):
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
-    Parameters
-    ----------
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
@@ -80,6 +78,9 @@ class LocalCUDACluster(LocalCluster):
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support,
+        requires protocol='ucx' and enable_infiniband=True.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support, requires
         protocol='ucx' and implies enable_tcp_over_ucx=True.
@@ -92,13 +93,21 @@ class LocalCUDACluster(LocalCluster):
         with the interface name, such as "eth0" or "auto" to allow for
         automatically choosing the closest interface based on the system's
         topology.
-        WARNING: "auto" requires UCX-Py to be installed and compiled with hwloc
-        support, and it will always use the closest interface which may lead to
-        unexpected errors if that interface is not properly configured or is
-        disconnected.
-    rmm_pool: None, int or str
+        WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc
+        support. Additionally that will always use the closest interface, and
+        that may cause unexpected errors if that interface is not properly
+        configured or is disconnected, for that reason it's limited to
+        InfiniBand only and will still cause unpredictable errors if not _ALL_
+        interfaces are connected and properly configured.
+    rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
-        is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
+        is given, it can be an integer (bytes) or string (like 5GB or 5000M).
+    rmm_managed_memory: bool
+        If True, initialize each worker with RMM and set it to use managed
+        memory. If False, RMM may still be used if `rmm_pool_size` is specified,
+        but in that case with default (non-managed) memory type.
+        WARNING: managed memory is currently incompatible with NVLink, trying
+        to enable both will result in an exception.
 
     Examples
     --------
@@ -112,8 +121,10 @@ class LocalCUDACluster(LocalCluster):
     TypeError
         If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
     ValueError
-        If ucx_net_devices is an empty string or if it is "auto" and UCX-Py is
-        not installed or wasn't compiled with hwloc support.
+        If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
+        not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
+        wasn't compiled with hwloc support, or both RMM managed memory and
+        NVLink are enabled.
 
     See Also
     --------
@@ -134,10 +145,16 @@ class LocalCUDACluster(LocalCluster):
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
         enable_nvlink=False,
+        enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_managed_memory=False,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
@@ -151,16 +168,27 @@ class LocalCUDACluster(LocalCluster):
         self.device_memory_limit = device_memory_limit
 
         self.rmm_pool_size = rmm_pool_size
-        if rmm_pool_size is not None:
+        self.rmm_managed_memory = rmm_managed_memory
+        if rmm_pool_size is not None or rmm_managed_memory:
             try:
-                import rmm
+                import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
-                    "RMM pool requested but module 'rmm' is not available. "
-                    "For installation instructions, please see "
-                    "https://github.com/rapidsai/rmm"
+                    "RMM pool or managed memory requested but module 'rmm' "
+                    "is not available. For installation instructions, please "
+                    "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
             self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`. Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
+            if self.rmm_pool_size is not None:
+                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
         if not processes:
             raise ValueError(
@@ -192,7 +220,8 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import TopologicalDistance  # noqa
+                from ucp._libs.topological_distance import \
+                    TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "
@@ -202,6 +231,16 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
         self.set_ucx_net_devices = enable_infiniband
+        self.host = kwargs.get("host", None)
+
+        initialize(
+            enable_tcp_over_ucx=enable_tcp_over_ucx,
+            enable_nvlink=enable_nvlink,
+            enable_infiniband=enable_infiniband,
+            enable_rdmacm=enable_rdmacm,
+            net_devices=ucx_net_devices,
+            cuda_device_index=0,
+        )
 
         super().__init__(
             n_workers=0,
@@ -216,6 +255,7 @@ class LocalCUDACluster(LocalCluster):
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
+                    enable_rdmacm=enable_rdmacm,
                 )
             },
             **kwargs,
@@ -248,16 +288,24 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMPool(self.rmm_pool_size),
+                    RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),
                 },
             }
         )
 
         if self.set_ucx_net_devices:
-            net_dev = get_ucx_net_devices(
-                visible_devices.split(",")[0], self.ucx_net_devices
-            )
+            cuda_device_index = visible_devices.split(",")[0]
+
+            net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
+                spec["options"]["config"]["ucx"]["net-devices"] = net_dev
+
+            spec["options"]["interface"] = get_ucx_net_devices(
+                cuda_device_index,
+                self.ucx_net_devices,
+                get_openfabrics=False,
+                get_network=True,
+            )
 
         return {name: spec}

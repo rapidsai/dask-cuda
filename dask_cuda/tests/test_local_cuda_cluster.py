@@ -1,12 +1,13 @@
 import os
 
+import pytest
+
 from dask.distributed import Client
-from dask_cuda import LocalCUDACluster, utils
-from dask_cuda.initialize import initialize
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
 
-import pytest
+from dask_cuda import LocalCUDACluster, utils
+from dask_cuda.initialize import initialize
 
 
 @gen_test(timeout=20)
@@ -34,7 +35,7 @@ async def test_local_cuda_cluster():
             assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
 
             for w, devices in result.items():
-                ident = devices[0]
+                ident = devices.split(",")[0]
                 assert int(ident) == cluster.scheduler.workers[w].name
 
             with pytest.raises(ValueError):
@@ -107,11 +108,15 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
-async def test_rmm_pool():
+async def test_rmm():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB", rmm_managed_memory=True, asynchronous=True
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
-            memory_info = await client.run(rmm.get_info)
-            for v in memory_info.values():
-                assert v.total == 2000000000
+            memory_resource_type = await client.run(
+                rmm.mr.get_current_device_resource_type
+            )
+            for v in memory_resource_type.values():
+                assert v is rmm.mr.PoolMemoryResource

@@ -1,57 +1,26 @@
-from collections import OrderedDict
-from tornado import gen
+from collections import defaultdict
+
 from toolz import first
 
-import dask.dataframe as dd
-from distributed import default_client, wait
+from dask import dataframe as dd
+from distributed import default_client, get_client, wait
 
 
-def workers_to_parts(futures):
-    """
-    Builds an ordered dict mapping each worker to their list
-    of parts
-    :param futures: list of (worker, part) tuples
-    :return:
-    """
-    w_to_p_map = OrderedDict()
-    for w, p in futures:
-        if w not in w_to_p_map:
-            w_to_p_map[w] = []
-        w_to_p_map[w].append(p)
-    return w_to_p_map
-
-
-@gen.coroutine
-def extract_ddf_partitions(ddf, client=None, agg=True):
-    """
-    Given a Dask dataframe, return an OrderedDict mapping
-    'worker -> [list of futures]' for each partition in ddf.
-
-    :param ddf: Dask.dataframe split dataframe partitions into a list of
-               futures.
-    :param client: dask.distributed.Client Optional client to use
-    """
-    client = default_client() if client is None else client
-
+def extract_ddf_partitions(ddf):
+    """ Returns the mapping: worker -> [list of futures]"""
+    client = get_client()
     delayed_ddf = ddf.to_delayed()
     parts = client.compute(delayed_ddf)
-    yield wait(parts)
+    wait(parts)
 
-    key_to_part_dict = dict([(str(part.key), part) for part in parts])
-    who_has = yield client.who_has(parts)
-
-    worker_map = {}  # Map from part -> worker
-    for key, workers in who_has.items():
-        worker = first(workers)
-        worker_map[key_to_part_dict[key]] = worker
-
-    worker_to_parts = []
-    for part in parts:
-        worker = worker_map[part]
-        worker_to_parts.append((worker, part))
-
-    yield wait(worker_to_parts)
-    raise gen.Return(worker_to_parts)
+    key_to_part = dict([(str(part.key), part) for part in parts])
+    ret = defaultdict(list)  # Map worker -> [list of futures]
+    for key, workers in client.who_has(parts).items():
+        worker = first(
+            workers
+        )  # If multiple workers have the part, we pick the first worker
+        ret[worker].append(key_to_part[key])
+    return ret
 
 
 def get_meta(df):
@@ -66,7 +35,9 @@ def get_meta(df):
 
 def dataframes_to_dask_dataframe(futures, client=None):
     """
-    Convert a list of futures containing Dataframes (pandas or cudf) into a Dask.Dataframe
+    Convert a list of futures containing Dataframes (pandas or cudf) into a
+    Dask.Dataframe
+
     :param futures: list of futures containing dataframes
     :param client: dask.distributed.Client Optional client to use
     :return: dask.Dataframe a dask.Dataframe

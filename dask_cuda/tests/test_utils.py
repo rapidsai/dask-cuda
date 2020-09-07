@@ -1,17 +1,17 @@
 import os
 
+import pytest
+from numba import cuda
+
 from dask_cuda.utils import (
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
     get_preload_options,
-    get_ucx_net_devices,
     get_ucx_config,
+    get_ucx_net_devices,
     unpack_bitmask,
 )
-
-import pytest
-from numba import cuda
 
 
 def test_get_n_gpus():
@@ -52,16 +52,15 @@ def test_cpu_affinity():
     for i in range(get_n_gpus()):
         affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
-        assert list(os.sched_getaffinity(0)) == affinity
+        assert os.sched_getaffinity(0) == set(affinity)
 
 
 def test_get_device_total_memory():
     for i in range(get_n_gpus()):
         with cuda.gpus[i]:
-            assert (
-                get_device_total_memory(i)
-                == cuda.current_context().get_memory_info()[1]
-            )
+            total_mem = get_device_total_memory(i)
+            assert type(total_mem) is int
+            assert total_mem > 0
 
 
 @pytest.mark.parametrize("enable_tcp", [True, False])
@@ -128,19 +127,25 @@ def test_get_ucx_net_devices_auto():
         # Since the actual device is system-dependent, we just check that
         # this function call doesn't fail. If any InfiniBand devices are
         # available, it will return that, otherwise an empty string.
-        dev = get_ucx_net_devices(idx, "auto")
+        get_ucx_net_devices(idx, "auto")
 
 
 @pytest.mark.parametrize("enable_tcp_over_ucx", [True, False])
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("net_devices", ["eth0", "auto", ""])
 def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
-    ucx_config = get_ucx_config(
-        enable_tcp_over_ucx=enable_tcp_over_ucx,
-        enable_infiniband=enable_infiniband,
-        net_devices=net_devices,
-        cuda_device_index=0,
-    )
+    kwargs = {
+        "enable_tcp_over_ucx": enable_tcp_over_ucx,
+        "enable_infiniband": enable_infiniband,
+        "net_devices": net_devices,
+        "cuda_device_index": 0,
+    }
+    if net_devices == "auto" and enable_infiniband is False:
+        with pytest.raises(ValueError):
+            get_ucx_config(**kwargs)
+        return
+    else:
+        ucx_config = get_ucx_config(**kwargs)
 
     if enable_tcp_over_ucx is True:
         assert ucx_config["tcp"] is True

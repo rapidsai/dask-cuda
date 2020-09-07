@@ -1,17 +1,18 @@
 import multiprocessing as mp
-import pytest
-
-from distributed import Client
-from distributed.deploy.local import LocalCluster
-from dask_cuda.explicit_comms import CommsContext, dataframe_merge
-
-import pandas as pd
-import dask.dataframe as dd
 
 import numpy as np
+import pandas as pd
 import pytest
+
+import dask
+from dask import dataframe as dd
+from distributed import Client
+from distributed.deploy.local import LocalCluster
+
 import cudf
-import cupy
+from cudf.tests.utils import assert_eq
+
+from dask_cuda.explicit_comms import CommsContext, dataframe_merge
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -46,6 +47,12 @@ def test_local_cluster(protocol):
 
 
 def _test_dataframe_merge(backend, protocol, n_workers):
+    dask.config.update(
+        dask.config.global_config,
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
+        priority="new",
+    )
+
     with LocalCluster(
         protocol=protocol,
         dashboard_address=None,
@@ -53,8 +60,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster) as client:
-            comms = CommsContext(client)
+        with Client(cluster):
             nrows = n_workers * 10
 
             # Let's make some dataframes that we can join on the "key" column
@@ -78,10 +84,10 @@ def _test_dataframe_merge(backend, protocol, n_workers):
             got = ddf3.compute()
 
             if backend == "cudf":
-                got = got.to_pandas()
-                got.index.names = ["key"]  # TODO: this shouldn't be needed
+                assert_eq(got, expected)
 
-            pd.testing.assert_frame_equal(got, expected)
+            else:
+                pd.testing.assert_frame_equal(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
@@ -89,6 +95,35 @@ def _test_dataframe_merge(backend, protocol, n_workers):
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_merge(backend, protocol, nworkers):
     p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol, nworkers))
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_dataframe_merge_empty_partitions(nrows, npartitions):
+    with LocalCluster(
+        protocol="tcp",
+        dashboard_address=None,
+        n_workers=npartitions,
+        threads_per_worker=1,
+        processes=True,
+    ) as cluster:
+        with Client(cluster):
+            df1 = pd.DataFrame({"key": np.arange(nrows), "payload1": np.arange(nrows)})
+            key = np.arange(nrows)
+            np.random.shuffle(key)
+            df2 = pd.DataFrame({"key": key, "payload2": np.arange(nrows)})
+            expected = df1.merge(df2).set_index("key")
+            ddf1 = dd.from_pandas(df1, npartitions=npartitions)
+            ddf2 = dd.from_pandas(df2, npartitions=npartitions)
+            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
+            got = ddf3.compute()
+            pd.testing.assert_frame_equal(got, expected)
+
+
+def test_dataframe_merge_empty_partitions():
+    # Notice, we use more partitions than rows
+    p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
     p.start()
     p.join()
     assert not p.exitcode

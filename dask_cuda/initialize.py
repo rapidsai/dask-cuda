@@ -25,10 +25,10 @@ about Dask configuration.
 """
 import logging
 
-import dask
-
 import click
 import numba.cuda
+
+import dask
 
 from .utils import get_ucx_config
 
@@ -40,6 +40,7 @@ def initialize(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
+    enable_rdmacm=False,
     net_devices="",
     cuda_device_index=None,
 ):
@@ -53,6 +54,7 @@ def initialize(
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
         net_devices=net_devices,
         cuda_device_index=cuda_device_index,
     )
@@ -81,6 +83,11 @@ def initialize(
     help="Enable NVLink communication",
 )
 @click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
+)
+@click.option(
     "--net-devices",
     type=str,
     default=None,
@@ -93,6 +100,7 @@ def dask_setup(
     enable_tcp_over_ucx,
     enable_infiniband,
     enable_nvlink,
+    enable_rdmacm,
     net_devices,
 ):
     if create_cuda_context:

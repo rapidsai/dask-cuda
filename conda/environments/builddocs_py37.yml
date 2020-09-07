@@ -1,0 +1,6 @@
+name: dask_cuda_docs
+channels:
+- rapidsai-nightly
+- conda-forge
+dependencies:
+- rapids-doc-env

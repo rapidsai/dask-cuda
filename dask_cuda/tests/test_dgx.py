@@ -1,47 +1,60 @@
 import multiprocessing as mp
 import os
 import subprocess
-
-import dask.array as da
-from dask_cuda import DGX
-from distributed import Client
+from enum import Enum, auto
+from time import sleep
 
 import numpy
 import pytest
+from tornado.ioloop import IOLoop
 
-from time import sleep
-from distributed.metrics import time
-from distributed.utils_test import loop  # noqa: F401
-from distributed.utils_test import popen
-from dask_cuda.utils import get_gpu_count
+from dask import array as da
+from distributed import Client
+from distributed.utils import get_ip_interface
+
+from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
-
-from distributed.worker import get_worker
+from dask_cuda.utils import wait_workers
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
 
-def _check_dgx_version():
-    dgx_server = None
+class DGXVersion(Enum):
+    DGX_1 = auto()
+    DGX_2 = auto()
+    DGX_A100 = auto()
 
-    if not os.path.isfile("/etc/dgx-release"):
-        return dgx_server
 
-    for line in open("/etc/dgx-release"):
-        if line.startswith("DGX_PLATFORM"):
-            if "DGX Server for DGX-1" in line:
-                dgx_server = 1
-            elif "DGX Server for DGX-2" in line:
-                dgx_server = 2
-            break
+def _get_dgx_name():
+    product_name_file = "/sys/class/dmi/id/product_name"
+    dgx_release_file = "/etc/dgx-release"
 
-    return dgx_server
+    # We verify `product_name_file` to check it's a DGX, and check
+    # if `dgx_release_file` exists to confirm it's not a container.
+    if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
+        return None
+
+    for line in open(product_name_file):
+        return line
+
+
+def _get_dgx_version():
+    dgx_name = _get_dgx_name()
+
+    if dgx_name is None:
+        return None
+    elif "DGX-1" in dgx_name:
+        return DGXVersion.DGX_1
+    elif "DGX-2" in dgx_name:
+        return DGXVersion.DGX_2
+    elif "DGXA100" in dgx_name:
+        return DGXVersion.DGX_A100
 
 
 def _get_dgx_net_devices():
-    if _check_dgx_version() == 1:
+    if _get_dgx_version() == DGXVersion.DGX_1:
         return [
             "mlx5_0:1,ib0",
             "mlx5_0:1,ib0",
@@ -52,7 +65,7 @@ def _get_dgx_net_devices():
             "mlx5_3:1,ib3",
             "mlx5_3:1,ib3",
         ]
-    elif _check_dgx_version() == 2:
+    elif _get_dgx_version() == DGXVersion.DGX_2:
         return [
             "mlx5_0:1,ib0",
             "mlx5_0:1,ib0",
@@ -75,7 +88,7 @@ def _get_dgx_net_devices():
         return None
 
 
-if _check_dgx_version() is None:
+if _get_dgx_version() is None:
     pytest.skip("Not a DGX server", allow_module_level=True)
 
 
@@ -86,12 +99,11 @@ if _check_dgx_version() is None:
 
 
 def _test_default():
-    with pytest.warns(DeprecationWarning):
-        with DGX() as cluster:
-            with Client(cluster):
-                res = da.from_array(numpy.arange(10000), chunks=(1000,))
-                res = res.sum().compute()
-                assert res == 49995000
+    with LocalCUDACluster() as cluster:
+        with Client(cluster):
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
 
 
 def test_default():
@@ -102,23 +114,22 @@ def test_default():
 
 
 def _test_tcp_over_ucx():
-    with pytest.warns(DeprecationWarning):
-        with DGX(enable_tcp_over_ucx=True) as cluster:
-            with Client(cluster) as client:
-                res = da.from_array(numpy.arange(10000), chunks=(1000,))
-                res = res.sum().compute()
-                assert res == 49995000
+    with LocalCUDACluster(enable_tcp_over_ucx=True) as cluster:
+        with Client(cluster) as client:
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
 
-                def check_ucx_options():
-                    conf = ucp.get_config()
-                    assert "TLS" in conf
-                    assert "tcp" in conf["TLS"]
-                    assert "sockcm" in conf["TLS"]
-                    assert "cuda_copy" in conf["TLS"]
-                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                    return True
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "sockcm" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                return True
 
-                assert all(client.run(check_ucx_options).values())
+            assert all(client.run(check_ucx_options).values())
 
 
 def test_tcp_over_ucx():
@@ -129,12 +140,11 @@ def test_tcp_over_ucx():
 
 
 def _test_tcp_only():
-    with pytest.warns(DeprecationWarning):
-        with DGX(protocol="tcp") as cluster:
-            with Client(cluster):
-                res = da.from_array(numpy.arange(10000), chunks=(1000,))
-                res = res.sum().compute()
-                assert res == 49995000
+    with LocalCUDACluster(protocol="tcp") as cluster:
+        with Client(cluster):
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
 
 
 def test_tcp_only():
@@ -144,73 +154,125 @@ def test_tcp_only():
     assert not p.exitcode
 
 
-def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink):
+def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
     cupy = pytest.importorskip("cupy")
 
     net_devices = _get_dgx_net_devices()
+    openfabrics_devices = [d.split(",")[0] for d in net_devices]
 
     ucx_net_devices = "auto" if enable_infiniband else None
+    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
 
-    with pytest.warns(DeprecationWarning):
-        with DGX(
-            enable_tcp_over_ucx=True,
-            enable_infiniband=enable_infiniband,
-            enable_nvlink=enable_nvlink,
-            ucx_net_devices=ucx_net_devices,
-        ) as cluster:
-            with Client(cluster) as client:
-                res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
-                res = res.sum().compute()
-                assert res == 49995000
+    initialize(
+        enable_tcp_over_ucx=True,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
+    )
 
-                def check_ucx_options():
-                    conf = ucp.get_config()
-                    assert "TLS" in conf
-                    assert "tcp" in conf["TLS"]
-                    assert "sockcm" in conf["TLS"]
-                    assert "cuda_copy" in conf["TLS"]
-                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                    if enable_nvlink:
-                        assert "cuda_ipc" in conf["TLS"]
-                    if enable_infiniband:
-                        assert "rc" in conf["TLS"]
-                    return True
+    with LocalCUDACluster(
+        interface="ib0",
+        enable_tcp_over_ucx=True,
+        enable_infiniband=enable_infiniband,
+        enable_nvlink=enable_nvlink,
+        enable_rdmacm=enable_rdmacm,
+        ucx_net_devices=ucx_net_devices,
+    ) as cluster:
+        with Client(cluster) as client:
+            res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
+            res = res.sum().compute()
+            assert res == 49995000
 
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert "tcp" in conf["TLS"]
+                assert "cuda_copy" in conf["TLS"]
+                assert cm_protocol in conf["TLS"]
+                assert cm_protocol in conf["SOCKADDR_TLS_PRIORITY"]
+                if enable_nvlink:
+                    assert "cuda_ipc" in conf["TLS"]
                 if enable_infiniband:
-                    assert all(
-                        [
-                            cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
-                            == net_devices[k]
-                            for k in cluster.worker_spec.keys()
-                        ]
-                    )
+                    assert "rc" in conf["TLS"]
+                return True
 
-                assert all(client.run(check_ucx_options).values())
+            if enable_infiniband:
+                assert all(
+                    [
+                        cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
+                        == openfabrics_devices[k].split(",")[0]
+                        for k in cluster.worker_spec.keys()
+                    ]
+                )
+
+            assert all(client.run(check_ucx_options).values())
 
 
 @pytest.mark.parametrize(
     "params",
     [
-        {"enable_infiniband": False, "enable_nvlink": False},
-        {"enable_infiniband": True, "enable_nvlink": True},
+        {"enable_infiniband": False, "enable_nvlink": False, "enable_rdmacm": False},
+        {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": False},
+        {"enable_infiniband": True, "enable_nvlink": False, "enable_rdmacm": True},
+        {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": True},
     ],
+)
+@pytest.mark.skipif(
+    _get_dgx_version() == DGXVersion.DGX_A100,
+    reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(params):
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
-        args=(params["enable_infiniband"], params["enable_nvlink"]),
+        args=(
+            params["enable_infiniband"],
+            params["enable_nvlink"],
+            params["enable_rdmacm"],
+        ),
     )
     p.start()
     p.join()
     assert not p.exitcode
 
 
-def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
-    net_devices = _get_dgx_net_devices()
+def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    loop = IOLoop.current()
 
+    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
+    net_devices = _get_dgx_net_devices()
+    openfabrics_devices = [d.split(",")[0] for d in net_devices]
+
+    sched_addr = "127.0.0.1"
+
+    # Enable proper variables for scheduler
     sched_env = os.environ.copy()
-    sched_env["UCX_TLS"] = "rc,sockcm,tcp,cuda_copy"
-    sched_env["UCX_SOCKADDR_TLS_PRIORITY"] = "sockcm"
+    sched_env["DASK_UCX__INFINIBAND"] = "True"
+    sched_env["DASK_UCX__TCP"] = "True"
+    sched_env["DASK_UCX__CUDA_COPY"] = "True"
+    sched_env["DASK_UCX__NET_DEVICES"] = openfabrics_devices[0]
+
+    if enable_rdmacm:
+        sched_env["DASK_UCX__RDMACM"] = "True"
+        sched_addr = get_ip_interface("ib0")
+
+    sched_url = "ucx://" + sched_addr + ":9379"
+
+    # Enable proper variables for workers
+    worker_ucx_opts = [
+        "--enable-infiniband",
+        "--net-devices",
+        "auto",
+    ]
+    if enable_rdmacm:
+        worker_ucx_opts.append("--enable-rdmacm")
+
+    # Enable proper variables for client
+    initialize(
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_rdmacm=enable_rdmacm,
+        net_devices=openfabrics_devices[0],
+    )
 
     with subprocess.Popen(
         [
@@ -218,7 +280,7 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
             "--protocol",
             "ucx",
             "--host",
-            "127.0.0.1",
+            sched_addr,
             "--port",
             "9379",
             "--no-dashboard",
@@ -229,27 +291,27 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
         sleep(5)
 
         with subprocess.Popen(
-            [
-                "dask-cuda-worker",
-                "ucx://127.0.0.1:9379",
-                "--host",
-                "127.0.0.1",
-                "--enable-infiniband",
-                "--net-devices",
-                "auto",
-                "--no-dashboard",
-            ],
+            ["dask-cuda-worker", sched_url, "--no-dashboard",] + worker_ucx_opts
         ) as worker_proc:
-            with Client("ucx://127.0.0.1:9379", loop=loop) as client:
+            with Client(sched_url, loop=loop) as client:
 
-                start = time()
-                while True:
-                    if len(client.scheduler_info()["workers"]) == get_gpu_count():
-                        break
-                    else:
-                        assert time() - start < 10
-                        sleep(0.1)
+                def _timeout_callback():
+                    # We must ensure processes are terminated to avoid hangs
+                    # if a timeout occurs
+                    worker_proc.kill()
+                    sched_proc.kill()
 
+                assert wait_workers(client, timeout_callback=_timeout_callback)
+
+                workers_tls = client.run(lambda: ucp.get_config()["TLS"])
+                workers_tls_priority = client.run(
+                    lambda: ucp.get_config()["SOCKADDR_TLS_PRIORITY"]
+                )
+                for tls, tls_priority in zip(
+                    workers_tls.values(), workers_tls_priority.values()
+                ):
+                    assert cm_protocol in tls
+                    assert cm_protocol in tls_priority
                 worker_net_devices = client.run(lambda: ucp.get_config()["NET_DEVICES"])
                 cuda_visible_devices = client.run(
                     lambda: os.environ["CUDA_VISIBLE_DEVICES"]
@@ -260,10 +322,24 @@ def test_dask_cuda_worker_ucx_net_devices(loop):  # noqa: F811
                 ):
                     net_dev = v[0]
                     dev_idx = int(v[1].split(",")[0])
-                    assert net_dev == net_devices[dev_idx]
+                    assert net_dev == openfabrics_devices[dev_idx]
 
             # A dask-worker with UCX protocol will not close until some work
             # is dispatched, therefore we kill the worker and scheduler to
             # ensure timely closing.
             worker_proc.kill()
             sched_proc.kill()
+
+
+@pytest.mark.parametrize("enable_rdmacm", [False, True])
+@pytest.mark.skipif(
+    _get_dgx_version() == DGXVersion.DGX_A100,
+    reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
+)
+def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    p = mp.Process(
+        target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
+    )
+    p.start()
+    p.join()
+    assert not p.exitcode
