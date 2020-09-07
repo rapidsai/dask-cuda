@@ -145,7 +145,8 @@ class CUDAWorker:
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            rmm_pool_size = parse_bytes(rmm_pool_size)
+            if rmm_pool_size is not None:
+                rmm_pool_size = parse_bytes(rmm_pool_size)
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -154,8 +155,6 @@ class CUDAWorker:
                     "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
                     "#important-notes for more details"
                 )
-            if rmm_pool_size is not None:
-                rmm_pool_size = parse_bytes(rmm_pool_size)
 
         if enable_nvlink and rmm_managed_memory:
             raise ValueError(
