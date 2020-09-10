@@ -9,8 +9,8 @@ import warnings
 from toolz import valmap
 from tornado.ioloop import IOLoop
 
+import dask
 from distributed import Nanny
-from distributed.config import config
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
@@ -47,7 +47,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
 class CUDAWorker:
     def __init__(
         self,
-        scheduler,
+        scheduler=None,
         host=None,
         nthreads=0,
         name=None,
@@ -127,7 +127,11 @@ class CUDAWorker:
         kwargs = {"worker_port": None, "listen_address": None}
         t = Nanny
 
-        if not scheduler and not scheduler_file and "scheduler-address" not in config:
+        if (
+            not scheduler
+            and not scheduler_file
+            and dask.config.get("scheduler-address", None) is None
+        ):
             raise ValueError(
                 "Need to provide scheduler address like\n"
                 "dask-worker SCHEDULER_ADDRESS:8786"
