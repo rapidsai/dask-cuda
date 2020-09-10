@@ -11,7 +11,6 @@ from tornado.ioloop import IOLoop
 
 import dask
 from distributed import Nanny
-from distributed.config import config
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
