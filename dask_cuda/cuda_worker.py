@@ -47,7 +47,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
 class CUDAWorker:
     def __init__(
         self,
-        scheduler,
+        scheduler=None,
         host=None,
         nthreads=0,
         name=None,
