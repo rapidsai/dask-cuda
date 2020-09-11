@@ -1,5 +1,6 @@
 import copy
 import os
+import warnings
 
 import dask
 from dask.distributed import LocalCluster
@@ -60,8 +61,6 @@ class LocalCUDACluster(LocalCluster):
     CUDA_VISIBLE_DEVICES: str
         String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
         different GPUs
-    Parameters
-    ----------
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
@@ -153,6 +152,10 @@ class LocalCUDACluster(LocalCluster):
         spill_proxy=None,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
@@ -169,7 +172,6 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_managed_memory = rmm_managed_memory
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
-                os.environ['RMM_NO_INITIALIZE'] = 'True'
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
@@ -179,6 +181,14 @@ class LocalCUDACluster(LocalCluster):
                 )  # pragma: no cover
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`. Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
 
         if not processes:
             raise ValueError(

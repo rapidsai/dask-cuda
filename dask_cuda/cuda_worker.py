@@ -4,12 +4,13 @@ import asyncio
 import atexit
 import multiprocessing
 import os
+import warnings
 
 from toolz import valmap
 from tornado.ioloop import IOLoop
 
+import dask
 from distributed import Nanny
-from distributed.config import config
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
@@ -46,7 +47,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
 class CUDAWorker:
     def __init__(
         self,
-        scheduler,
+        scheduler=None,
         host=None,
         nthreads=0,
         name=None,
@@ -72,6 +73,10 @@ class CUDAWorker:
         net_devices=None,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         enable_proctitle_on_current()
         enable_proctitle_on_children()
 
@@ -122,7 +127,11 @@ class CUDAWorker:
         kwargs = {"worker_port": None, "listen_address": None}
         t = Nanny
 
-        if not scheduler and not scheduler_file and "scheduler-address" not in config:
+        if (
+            not scheduler
+            and not scheduler_file
+            and dask.config.get("scheduler-address", None) is None
+        ):
             raise ValueError(
                 "Need to provide scheduler address like\n"
                 "dask-worker SCHEDULER_ADDRESS:8786"
@@ -133,7 +142,6 @@ class CUDAWorker:
 
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
-                os.environ['RMM_NO_INITIALIZE'] = 'True'
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
@@ -143,6 +151,14 @@ class CUDAWorker:
                 )  # pragma: no cover
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`.  Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
 
         if enable_nvlink and rmm_managed_memory:
             raise ValueError(
