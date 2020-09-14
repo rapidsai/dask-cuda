@@ -108,6 +108,8 @@ class LocalCUDACluster(LocalCluster):
         but in that case with default (non-managed) memory type.
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
+    jit_unspill: bool
+        If True, enable just-in-time unspilling (see proxy_object.ObjectProxy).
 
     Examples
     --------
@@ -149,7 +151,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
-        spill_proxy=None,
+        jit_unspill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -200,10 +202,10 @@ class LocalCUDACluster(LocalCluster):
         elif isinstance(self.device_memory_limit, str):
             self.device_memory_limit = parse_bytes(self.device_memory_limit)
 
-        if spill_proxy is None:
-            self.spill_proxy = dask.config.get("spill-proxy", default=False)
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
         else:
-            self.spill_proxy = spill_proxy
+            self.jit_unspill = jit_unspill
 
         if data is None:
             data = (
@@ -214,7 +216,7 @@ class LocalCUDACluster(LocalCluster):
                     "local_directory": local_directory
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
-                    "spill_proxy": self.spill_proxy,
+                    "jit_unspill": self.jit_unspill,
                 },
             )
 

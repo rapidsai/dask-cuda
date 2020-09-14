@@ -190,6 +190,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
     "interfaces are connected and properly configured.",
 )
+@click.option(
+    "--enable-jit-unspill/--disable-jit-unspill",
+    default=None,  # If not specified, use Dask config
+    help="Enable just-in-time unspilling",
+)
 def main(
     scheduler,
     host,
@@ -217,6 +222,7 @@ def main(
     enable_nvlink,
     enable_rdmacm,
     net_devices,
+    enable_jit_unspill,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -251,6 +257,7 @@ def main(
         enable_nvlink,
         enable_rdmacm,
         net_devices,
+        enable_jit_unspill,
         **kwargs,
     )
 

@@ -54,8 +54,8 @@ def test_serialize_of_proxied_cudf(serialize_obj, serializers):
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
 
-@pytest.mark.parametrize("spill_proxy", [True, False])
-def test_spilling_local_cuda_cluster(spill_proxy):
+@pytest.mark.parametrize("jit_unspill", [True, False])
+def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spelling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
 
@@ -66,7 +66,7 @@ def test_spilling_local_cuda_cluster(spill_proxy):
 
     # Notice, setting `device_memory_limit=1` to trigger spilling
     with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit=1, spill_proxy=spill_proxy
+        n_workers=1, device_memory_limit=1, jit_unspill=jit_unspill
     ) as cluster:
         with Client(cluster):
             df = cudf.DataFrame({"a": range(10)})
