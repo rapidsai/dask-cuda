@@ -4,10 +4,11 @@ import pandas
 
 from . import comms
 from .dataframe_shuffle import (
-    send_df,
-    recv_df,
-    partition_by_hash,
+    df_concat,
     exchange_and_concat_bins,
+    partition_by_hash,
+    recv_df,
+    send_df,
 )
 
 
@@ -90,16 +91,6 @@ async def _dataframe_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on)
     -------
         merged_dataframe: DataFrame
     """
-
-    def df_concat(df_parts):
-        """Making sure df_parts is a single dataframe or None"""
-        if len(df_parts) == 0:
-            return None
-        elif len(df_parts) == 1:
-            return df_parts[0]
-        else:
-            return concat(df_parts)
-
     assert s["rank"] in workers
 
     # Trimming such that all participanting workers get a rank within 0..len(workers)
@@ -153,6 +144,10 @@ def dataframe_merge(left, right, on=None, left_on=None, right_on=None, how="inne
 
     This will merge the two datasets, either on the indices, a certain column
     in each dataset or the index in one dataset and the column in another.
+
+    As a side effect, this operation concatenate all partitions located on
+    the same worker thus npartitions of the returned dataframe equals number
+    of workers.
 
     Requires an activate client.
 
