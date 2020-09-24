@@ -1,9 +1,9 @@
 import asyncio
+from typing import List
 
 import pandas
 
-from dask.base import is_dask_collection
-from dask.dataframe.core import _Frame
+from dask.dataframe.core import DataFrame
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
 
@@ -117,12 +117,12 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
     return ret
 
 
-async def rearrange_by_column(n_chunks, rank, eps, left_table, column):
+async def shuffle(n_chunks, rank, eps, left_table, column):
     left_bins = partition_by_hash(left_table, column, n_chunks, ignore_index=True)
     return await exchange_and_concat_bins(rank, eps, left_bins)
 
 
-async def _rearrange_by_column(s, workers, dfs_nparts, dfs_parts, column):
+async def _shuffle(s, workers, dfs_nparts, dfs_parts, column):
     """
     Parameters
     ----------
@@ -155,106 +155,41 @@ async def _rearrange_by_column(s, workers, dfs_nparts, dfs_parts, column):
 
     df = df_concat(df_parts)
 
-    return await rearrange_by_column(len(workers), rank, eps, df, column)
+    return await shuffle(len(workers), rank, eps, df, column)
 
 
-def dataframe_rearrange_by_column(df, column):
+def dataframe_shuffle(df: DataFrame, column_names: List[str]) -> DataFrame:
     """Order divisions of DataFrame so that all values within column(s) align
 
-    This enacts a task-based shuffle.  It contains most of the tricky logic
-    around the complex network of tasks.  Typically before this function is
-    called a new column, ``"_partitions"`` has been added to the dataframe,
-    containing the output partition number of every row.  This function
-    produces a new dataframe where every row is in the proper partition.  It
-    accomplishes this by splitting each input partition into several pieces,
-    and then concatenating pieces from different input partitions into output
-    partitions.
-
-    Note that the `column` input may correspond to a list of columns (rather
-    than just a single column name).  In this case, the `shuffle_group` and
-    `shuffle_group_2` functions will use hashing to map each row to an output
-    partition. This approach may require the same rows to be hashed multiple
-    times, but avoids the need to assign a new "_partitions" column.
-
-    Parameters
-    ----------
-    df: dask.dataframe.DataFrame
-    column: str or list
-        A column name on which we want to split, commonly ``"_partitions"``
-        which is assigned by functions upstream.  This could also be a list of
-        columns (in which case shuffle_group will create a hash array/column).
-
-    Returns
-    -------
-    df3: dask.dataframe.DataFrame
-
-    See also
-    --------
-    rearrange_by_column_disk: same operation, but uses partd
-    rearrange_by_column: parent function that calls this or rearrange_by_column_disk
-    shuffle_group: does the actual splitting per-partition
-    """
-
-    return comms.default_comms().dataframe_operation(
-        _rearrange_by_column,
-        df_list=(df,),
-        extra_args=(column,),
-    )
-
-
-def dataframe_shuffle(df, index):
-    """Group DataFrame by index
-
-    Hash grouping of elements. After this operation all elements that have
-    the same index will be in the same partition. Note that this requires
-    full dataset read, serialization and shuffle. This is expensive. If
-    possible you should avoid shuffles.
+    This enacts a task-based shuffle using explicit-comms. It requires a full
+    dataset read, serialization and shuffle. This is expensive. If possible
+    you should avoid shuffles.
 
     This does not preserve a meaningful index/partitioning scheme. This is not
     deterministic if done in parallel.
 
+    Requires an activate client.
+
+    Notice
+    ------
     As a side effect, this operation concatenate all partitions located on
     the same worker thus npartitions of the returned dataframe equals number
-    of workers.
+    of available workers.
 
-    See Also
-    --------
-    set_index
-    set_partition
-    shuffle_disk
+    Parameters
+    ----------
+    df: dask.dataframe.DataFrame
+    column_names: list of strings
+        List of column names on which we want to split.
+
+    Returns
+    -------
+    df: dask.dataframe.DataFrame
+        Shuffled dataframe
     """
 
-    if isinstance(index, str) or (
-        pandas.api.types.is_list_like(index) and not is_dask_collection(index)
-    ):
-        # Avoid creating the "_partitions" column if possible.
-        # We currently do this if the user is passing in
-        # specific column names (and shuffle == "tasks").
-        if isinstance(index, str):
-            index = [index]
-        else:
-            index = list(index)
-        nset = set(index)
-        if nset.intersection(set(df.columns)) == nset:
-            return dataframe_rearrange_by_column(
-                df,
-                index,
-            )
-
-    if not isinstance(index, _Frame):
-        index = df._select_columns_or_index(index)
-
-    partitions = index.map_partitions(
-        partitioning_index,
-        npartitions=df.npartitions,
-        meta=df._meta._constructor_sliced([0]),
-        transform_divisions=False,
+    return comms.default_comms().dataframe_operation(
+        _shuffle,
+        df_list=(df,),
+        extra_args=(column_names,),
     )
-    df2 = df.assign(_partitions=partitions)
-    df2._meta.index.name = df._meta.index.name
-    df3 = dataframe_rearrange_by_column(
-        df2,
-        "_partitions",
-    )
-    del df3["_partitions"]
-    return df3

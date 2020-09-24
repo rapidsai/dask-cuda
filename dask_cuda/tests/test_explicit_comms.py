@@ -125,7 +125,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             expected = df1.merge(df2).set_index("key")
             ddf1 = dd.from_pandas(df1, npartitions=npartitions)
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
-            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
+            ddf3 = dataframe_merge(ddf1, ddf2, on=["key"]).set_index("key")
             got = ddf3.compute()
             pd.testing.assert_frame_equal(got, expected)
 
@@ -173,7 +173,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                 df = cudf.DataFrame.from_pandas(df)
             ddf = dd.from_pandas(df, npartitions=n_workers)
 
-            ddf = dataframe_shuffle(ddf, "key")
+            ddf = dataframe_shuffle(ddf, ["key"])
 
             # Check that each partition of `ddf` hashes to the same value
             result = ddf.map_partitions(check_partitions, n_workers).compute()

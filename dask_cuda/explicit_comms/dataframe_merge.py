@@ -80,16 +80,15 @@ async def _dataframe_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on)
         dataframe worker 1 has.
     dfs_parts: list of lists of Dataframes
         List of inputs, which in this case are two dataframe lists.
-    left_on : label or list, or array-like
-        Column to join on in the left DataFrame. Other than in pandas
-        arrays and lists are only support if their length is 1.
-    right_on : label or list, or array-like
-        Column to join on in the right DataFrame. Other than in pandas
-        arrays and lists are only support if their length is 1.
+    left_on : str or list of str
+        Column to join on in the left DataFrame.
+    right_on : str or list of str
+        Column to join on in the right DataFrame.
 
     Returns
     -------
-        merged_dataframe: DataFrame
+        df: DataFrame
+        Merged dataframe
     """
     assert s["rank"] in workers
 
@@ -139,70 +138,36 @@ async def _dataframe_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on)
         return await hash_join(len(workers), rank, eps, df1, df2, left_on, right_on)
 
 
-def dataframe_merge(left, right, on=None, left_on=None, right_on=None, how="inner"):
-    """Merge two Dask DataFrames
+def dataframe_merge(left, right, on=None, left_on=None, right_on=None):
+    """Merge two DataFrames using explicit-comms.
 
-    This will merge the two datasets, either on the indices, a certain column
-    in each dataset or the index in one dataset and the column in another.
+    This is an explicit-comms version of Dask's Dataframe.merge() that
+    only supports "inner" joins.
 
+    Requires an activate client.
+
+    Notice
+    ------
     As a side effect, this operation concatenate all partitions located on
     the same worker thus npartitions of the returned dataframe equals number
     of workers.
-
-    Requires an activate client.
 
     Parameters
     ----------
     left: dask.dataframe.DataFrame
     right: dask.dataframe.DataFrame
-    how : {'left', 'right', 'outer', 'inner'}, default: 'inner'
-        How to handle the operation of the two objects:
-
-        - left: use calling frame's index (or column if on is specified)
-        - right: use other frame's index
-        - outer: form union of calling frame's index (or column if on is
-            specified) with other frame's index, and sort it
-            lexicographically
-        - inner: form intersection of calling frame's index (or column if
-            on is specified) with other frame's index, preserving the order
-            of the calling's one
-
-    on : label or list
+    on : str or list of str
         Column or index level names to join on. These must be found in both
-        DataFrames. If on is None and not merging on indexes then this
-        defaults to the intersection of the columns in both DataFrames.
-    left_on : label or list, or array-like
-        Column to join on in the left DataFrame. Other than in pandas
-        arrays and lists are only support if their length is 1.
-    right_on : label or list, or array-like
-        Column to join on in the right DataFrame. Other than in pandas
-        arrays and lists are only support if their length is 1.
-    left_index : boolean, default False
-        Use the index from the left DataFrame as the join key.
-    right_index : boolean, default False
-        Use the index from the right DataFrame as the join key.
-    suffixes : 2-length sequence (tuple, list, ...)
-        Suffix to apply to overlapping column names in the left and
-        right side, respectively
-    indicator : boolean or string, default False
-        If True, adds a column to output DataFrame called "_merge" with
-        information on the source of each row. If string, column with
-        information on source of each row will be added to output DataFrame,
-        and column will be named value of string. Information column is
-        Categorical-type and takes on a value of "left_only" for observations
-        whose merge key only appears in `left` DataFrame, "right_only" for
-        observations whose merge key only appears in `right` DataFrame,
-        and "both" if the observation’s merge key is found in both.
+        DataFrames.
+    left_on : str or list of str
+        Column to join on in the left DataFrame.
+    right_on : str or list of str
+        Column to join on in the right DataFrame.
 
     Returns
     -------
-        merged_dataframe: dask.dataframe.DataFrame
-
-    Notes
-    -----
-    This function submits jobs the each available worker explicitly and the
-    number of partitions of `left` and `right` might change (typically to the
-    number of workers).
+    df: dask.dataframe.DataFrame
+        Merged dataframe
     """
 
     # Making sure that the "on" arguments are list of column names
@@ -222,9 +187,6 @@ def dataframe_merge(left, right, on=None, left_on=None, right_on=None, how="inne
         raise ValueError(
             "Some combination of the on, left_on, and right_on arguments must be set"
         )
-
-    if how != "inner":
-        raise NotImplementedError('Only support `how="inner"`')
 
     return comms.default_comms().dataframe_operation(
         _dataframe_merge, df_list=(left, right), extra_args=(left_on, right_on)
