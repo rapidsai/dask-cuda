@@ -1,7 +1,5 @@
 import asyncio
 
-import pandas
-
 from . import comms
 from .dataframe_shuffle import (
     df_concat,
@@ -10,20 +8,6 @@ from .dataframe_shuffle import (
     recv_df,
     send_df,
 )
-
-
-def concat(df_list):
-    if len(df_list) == 0:
-        return None
-    else:
-        typ = str(type(df_list[0]))
-        if "cudf" in typ:
-            # delay import of cudf to handle CPU only tests
-            import cudf
-
-            return cudf.concat(df_list)
-        else:
-            return pandas.concat(df_list)
 
 
 async def broadcast(rank, root_rank, eps, df=None):

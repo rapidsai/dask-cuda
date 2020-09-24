@@ -3,7 +3,7 @@ from typing import List
 
 import pandas
 
-from dask.dataframe.core import DataFrame
+from dask.dataframe.core import DataFrame, _concat
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
 
@@ -49,7 +49,7 @@ async def recv_bins(eps, bins):
 async def exchange_and_concat_bins(rank, eps, bins):
     ret = [bins[rank]]
     await asyncio.gather(recv_bins(eps, ret), send_bins(eps, bins))
-    return concat([df for df in ret if df is not None])
+    return _concat([df for df in ret if df is not None])
 
 
 def concat(df_list):
@@ -73,7 +73,7 @@ def df_concat(df_parts):
     elif len(df_parts) == 1:
         return df_parts[0]
     else:
-        return concat(df_parts)
+        return _concat(df_parts)
 
 
 def partition_by_hash(df, columns, n_chunks, ignore_index=False):
