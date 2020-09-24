@@ -1,8 +1,6 @@
 import asyncio
 from typing import List
 
-import pandas
-
 from dask.dataframe.core import DataFrame, _concat
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.protocol import to_serialize
@@ -50,20 +48,6 @@ async def exchange_and_concat_bins(rank, eps, bins):
     ret = [bins[rank]]
     await asyncio.gather(recv_bins(eps, ret), send_bins(eps, bins))
     return _concat([df for df in ret if df is not None])
-
-
-def concat(df_list):
-    if len(df_list) == 0:
-        return None
-    else:
-        typ = str(type(df_list[0]))
-        if "cudf" in typ:
-            # delay import of cudf to handle CPU only tests
-            import cudf
-
-            return cudf.concat(df_list)
-        else:
-            return pandas.concat(df_list)
 
 
 def df_concat(df_parts):
