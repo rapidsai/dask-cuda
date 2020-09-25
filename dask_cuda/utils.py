@@ -20,6 +20,15 @@ except ImportError:
         yield
 
 
+@toolz.memoize
+def _is_tegra():
+    import os
+
+    return os.path.isdir("/sys/class/tegra-firmware/") or os.path.isfile(
+        "/etc/nv_tegra_release"
+    )
+
+
 class CPUAffinity:
     def __init__(self, cores):
         self.cores = cores
@@ -96,8 +105,13 @@ def get_cpu_count():
 
 @toolz.memoize
 def get_gpu_count():
-    pynvml.nvmlInit()
-    return pynvml.nvmlDeviceGetCount()
+    if _is_tegra():
+        import numba.cuda
+
+        return len(numba.cuda.gpus)
+    else:
+        pynvml.nvmlInit()
+        return pynvml.nvmlDeviceGetCount()
 
 
 def get_cpu_affinity(device_index):
@@ -153,10 +167,15 @@ def get_device_total_memory(index=0):
     """
     Return total memory of CUDA device with index
     """
-    pynvml.nvmlInit()
-    return pynvml.nvmlDeviceGetMemoryInfo(
-        pynvml.nvmlDeviceGetHandleByIndex(index)
-    ).total
+    if _is_tegra():
+        import numba.cuda
+
+        return numba.cuda.current_context().get_memory_info()[1]
+    else:
+        pynvml.nvmlInit()
+        return pynvml.nvmlDeviceGetMemoryInfo(
+            pynvml.nvmlDeviceGetHandleByIndex(index)
+        ).total
 
 
 def get_ucx_net_devices(
