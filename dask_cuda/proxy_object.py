@@ -155,27 +155,26 @@ def obj_pxy_dask_serialize(obj: ObjectProxy):
 @distributed.protocol.dask_deserialize.register(ObjectProxy)
 def obj_pxy_dask_deserialize(header, frames):
     return ObjectProxy(
-        obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],
+        obj=(header["proxied-header"], frames),
+        **header["obj-pxy-meta"],
     )
 
 
 @dask.dataframe.utils.hash_object_dispatch.register(ObjectProxy)
-def obj_pxy_hash_object(obj: ObjectProxy, *args, **kwargs):
-    return dask.dataframe.utils.hash_object_dispatch(
-        obj._obj_pxy_deserialize(), *args, **kwargs
-    )
+def obj_pxy_hash_object(obj: ObjectProxy, index=True):
+    return dask.dataframe.utils.hash_object_dispatch(obj._obj_pxy_deserialize(), index)
 
 
 @dask.dataframe.utils.group_split_dispatch.register(ObjectProxy)
-def obj_pxy_group_split(obj: ObjectProxy, *args, **kwargs):
+def obj_pxy_group_split(obj: ObjectProxy, c, k, ignore_index=False):
     return dask.dataframe.utils.hash_object_dispatch(
-        obj._obj_pxy_deserialize(), *args, **kwargs
+        obj._obj_pxy_deserialize(), c, k, ignore_index
     )
 
 
 @dask.dataframe.utils.make_scalar.register(ObjectProxy)
-def obj_pxy_make_scalar(obj: ObjectProxy, *args, **kwargs):
-    return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize(), *args, **kwargs)
+def obj_pxy_make_scalar(obj: ObjectProxy):
+    return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize())
 
 
 @dask.dataframe.methods.concat_dispatch.register(ObjectProxy)
