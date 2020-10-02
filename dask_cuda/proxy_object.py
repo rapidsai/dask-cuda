@@ -167,7 +167,7 @@ def obj_pxy_hash_object(obj: ObjectProxy, index=True):
 
 @dask.dataframe.utils.group_split_dispatch.register(ObjectProxy)
 def obj_pxy_group_split(obj: ObjectProxy, c, k, ignore_index=False):
-    return dask.dataframe.utils.hash_object_dispatch(
+    return dask.dataframe.utils.group_split_dispatch(
         obj._obj_pxy_deserialize(), c, k, ignore_index
     )
 
