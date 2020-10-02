@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
-import multiprocessing
 import os
 import warnings
 
@@ -86,7 +85,7 @@ class CUDAWorker:
             nprocs = get_n_gpus()
 
         if not nthreads:
-            nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+            nthreads = 1
 
         memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
 
