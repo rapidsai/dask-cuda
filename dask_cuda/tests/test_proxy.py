@@ -35,9 +35,7 @@ def test_proxy_object_of_cudf(serialize_obj):
 
 
 @pytest.mark.parametrize("serialize_obj", [True, False])
-@pytest.mark.parametrize(
-    "serializers", [["dask", "pickle"], ["cuda", "dask", "pickle"]]
-)
+@pytest.mark.parametrize("serializers", [["dask"], ["cuda"]])
 def test_serialize_of_proxied_cudf(serialize_obj, serializers):
     """Check that we can serialize a proxied cudf dataframe, which might
     be serialized already.
