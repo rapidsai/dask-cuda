@@ -67,7 +67,9 @@ def host_to_device(s: DeviceSerialized) -> object:
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def pxy_obj_device_to_host(obj: object) -> proxy_object.ObjectProxy:
-    return proxy_object.asproxy(obj, serialize_obj=True)
+    # Notice, both the "dask" and the "pickle" serializer will
+    # spill `obj` to main memory.
+    return proxy_object.asproxy(obj, serializers=["dask", "pickle"])
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")

@@ -10,12 +10,12 @@ import dask_cuda
 from dask_cuda import proxy_object
 
 
-@pytest.mark.parametrize("serialize_obj", [True, False])
-def test_proxy_object(serialize_obj):
+@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+def test_proxy_object(serializers):
     """Check "transparency" of the proxy object"""
 
     org = list(range(10))
-    pxy = proxy_object.asproxy(org, serialize_obj=serialize_obj)
+    pxy = proxy_object.asproxy(org, serializers=serializers)
 
     assert len(org) == len(pxy)
     assert org[0] == pxy[0]
@@ -25,29 +25,29 @@ def test_proxy_object(serialize_obj):
     # TODO: check operators (when implemented)
 
 
-@pytest.mark.parametrize("serialize_obj", [True, False])
-def test_proxy_object_of_cudf(serialize_obj):
+@pytest.mark.parametrize("serializers", [None, ["dask"]])
+def test_proxy_object_of_cudf(serializers):
     """Check that a proxied cudf dataframe is behaviors as a regular dataframe"""
     cudf = pytest.importorskip("cudf")
     df = cudf.DataFrame({"a": range(10)})
-    pxy = proxy_object.asproxy(df, serialize_obj=serialize_obj)
+    pxy = proxy_object.asproxy(df, serializers=serializers)
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
 
-@pytest.mark.parametrize("serialize_obj", [True, False])
-@pytest.mark.parametrize("serializers", [["dask"], ["cuda"]])
-def test_serialize_of_proxied_cudf(serialize_obj, serializers):
+@pytest.mark.parametrize("proxy_serializers", [None, ["dask"]])
+@pytest.mark.parametrize("dask_serializers", [["dask"], ["cuda"]])
+def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
     """Check that we can serialize a proxied cudf dataframe, which might
     be serialized already.
     """
     cudf = pytest.importorskip("cudf")
 
-    if "cuda" in serializers:
+    if "cuda" in dask_serializers:
         pytest.skip("cuda serializer support not implemented")
 
     df = cudf.DataFrame({"a": range(10)})
-    pxy = proxy_object.asproxy(df, serialize_obj=serialize_obj)
-    header, frames = serialize(pxy, serializers=serializers)
+    pxy = proxy_object.asproxy(df, serializers=proxy_serializers)
+    header, frames = serialize(pxy, serializers=dask_serializers)
     pxy = deserialize(header, frames)
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
