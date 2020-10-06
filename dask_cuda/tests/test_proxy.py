@@ -34,16 +34,13 @@ def test_proxy_object_of_cudf(serializers):
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
 
-@pytest.mark.parametrize("proxy_serializers", [None, ["dask"]])
+@pytest.mark.parametrize("proxy_serializers", [None, ["dask"], ["cuda"]])
 @pytest.mark.parametrize("dask_serializers", [["dask"], ["cuda"]])
 def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
     """Check that we can serialize a proxied cudf dataframe, which might
     be serialized already.
     """
     cudf = pytest.importorskip("cudf")
-
-    if "cuda" in dask_serializers:
-        pytest.skip("cuda serializer support not implemented")
 
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df, serializers=proxy_serializers)
