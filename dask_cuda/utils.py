@@ -171,9 +171,16 @@ def get_device_total_memory(index=0):
     Return total memory of CUDA device with index
     """
     if _is_tegra():
+        from ctypes import byref, c_size_t
         import numba.cuda
 
-        return numba.cuda.current_context().get_memory_info()[1]
+        driver = numba.cuda.driver.Driver()
+
+        numba.cuda.current_context()
+        free = c_size_t()
+        total = c_size_t()
+        driver.cuMemGetInfo(byref(free), byref(total))
+        return total.value
     else:
         pynvml.nvmlInit()
         return pynvml.nvmlDeviceGetMemoryInfo(
