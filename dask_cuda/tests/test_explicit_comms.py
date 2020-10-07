@@ -57,11 +57,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
 
     dask.config.update(
         dask.config.global_config,
-        {
-            "ucx": {
-                "TLS": "tcp,sockcm,cuda_copy",
-            },
-        },
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
         priority="new",
     )
 
@@ -158,11 +154,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
 
     dask.config.update(
         dask.config.global_config,
-        {
-            "ucx": {
-                "TLS": "tcp,sockcm,cuda_copy",
-            },
-        },
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
         priority="new",
     )
 

@@ -173,7 +173,5 @@ def dataframe_shuffle(df: DataFrame, column_names: List[str]) -> DataFrame:
     """
 
     return comms.default_comms().dataframe_operation(
-        _shuffle,
-        df_list=(df,),
-        extra_args=(column_names,),
+        _shuffle, df_list=(df,), extra_args=(column_names,),
     )
