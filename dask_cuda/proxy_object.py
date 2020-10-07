@@ -1,9 +1,10 @@
+import operator
 import pickle
 import sys
 
 import dask
-import dask.dataframe.utils
 import dask.dataframe.methods
+import dask.dataframe.utils
 import distributed.protocol
 import distributed.utils
 
@@ -142,6 +143,22 @@ class ObjectProxy:
             ret += f" at {hex(id(self._obj_pxy['obj']))}>"
         return ret
 
+    @property
+    def __class__(self):
+        try:
+            return self.__obj_pxy_cache["type_serialized"]
+        except KeyError:
+            ret = pickle.loads(self._obj_pxy["type_serialized"])
+            self.__obj_pxy_cache["type_serialized"] = ret
+            return ret
+
+    def __sizeof__(self):
+        if self._obj_pxy["serializers"] is not None:
+            frames = self._obj_pxy["obj"][1]
+            return sum(map(distributed.utils.nbytes, frames))
+        else:
+            return sys.getsizeof(self._obj_pxy_deserialize())
+
     def __len__(self):
         return len(self._obj_pxy_deserialize())
 
@@ -173,21 +190,178 @@ class ObjectProxy:
         ret = getattr(self._obj_pxy_deserialize(), "__array__")()
         return ret
 
-    @property
-    def __class__(self):
-        try:
-            return self.__obj_pxy_cache["type_serialized"]
-        except KeyError:
-            ret = pickle.loads(self._obj_pxy["type_serialized"])
-            self.__obj_pxy_cache["type_serialized"] = ret
-            return ret
+    def __add__(self, other):
+        return self._obj_pxy_deserialize() + other
 
-    def __sizeof__(self):
-        if self._obj_pxy["serializers"] is not None:
-            frames = self._obj_pxy["obj"][1]
-            return sum(map(distributed.utils.nbytes, frames))
-        else:
-            return sys.getsizeof(self._obj_pxy_deserialize())
+    def __sub__(self, other):
+        return self._obj_pxy_deserialize() - other
+
+    def __mul__(self, other):
+        return self._obj_pxy_deserialize() * other
+
+    def __div__(self, other):
+        return operator.div(self._obj_pxy_deserialize(), other)
+
+    def __truediv__(self, other):
+        return operator.truediv(self._obj_pxy_deserialize(), other)
+
+    def __floordiv__(self, other):
+        return self._obj_pxy_deserialize() // other
+
+    def __mod__(self, other):
+        return self._obj_pxy_deserialize() % other
+
+    def __divmod__(self, other):
+        return divmod(self._obj_pxy_deserialize(), other)
+
+    def __pow__(self, other, *args):
+        return pow(self._obj_pxy_deserialize(), other, *args)
+
+    def __lshift__(self, other):
+        return self._obj_pxy_deserialize() << other
+
+    def __rshift__(self, other):
+        return self._obj_pxy_deserialize() >> other
+
+    def __and__(self, other):
+        return self._obj_pxy_deserialize() & other
+
+    def __xor__(self, other):
+        return self._obj_pxy_deserialize() ^ other
+
+    def __or__(self, other):
+        return self._obj_pxy_deserialize() | other
+
+    def __radd__(self, other):
+        return other + self._obj_pxy_deserialize()
+
+    def __rsub__(self, other):
+        return other - self._obj_pxy_deserialize()
+
+    def __rmul__(self, other):
+        return other * self._obj_pxy_deserialize()
+
+    def __rdiv__(self, other):
+        return operator.div(other, self._obj_pxy_deserialize())
+
+    def __rtruediv__(self, other):
+        return operator.truediv(other, self._obj_pxy_deserialize())
+
+    def __rfloordiv__(self, other):
+        return other // self._obj_pxy_deserialize()
+
+    def __rmod__(self, other):
+        return other % self._obj_pxy_deserialize()
+
+    def __rdivmod__(self, other):
+        return divmod(other, self._obj_pxy_deserialize())
+
+    def __rpow__(self, other, *args):
+        return pow(other, self._obj_pxy_deserialize(), *args)
+
+    def __rlshift__(self, other):
+        return other << self._obj_pxy_deserialize()
+
+    def __rrshift__(self, other):
+        return other >> self._obj_pxy_deserialize()
+
+    def __rand__(self, other):
+        return other & self._obj_pxy_deserialize()
+
+    def __rxor__(self, other):
+        return other ^ self._obj_pxy_deserialize()
+
+    def __ror__(self, other):
+        return other | self._obj_pxy_deserialize()
+
+    def __iadd__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied += other
+        return self
+
+    def __isub__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied -= other
+        return self
+
+    def __imul__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied *= other
+        return self
+
+    def __idiv__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        self._obj_pxy["obj"] = operator.idiv(proxied, other)
+        return self
+
+    def __itruediv__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        self._obj_pxy["obj"] = operator.itruediv(proxied, other)
+        return self
+
+    def __ifloordiv__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied //= other
+        return self
+
+    def __imod__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied %= other
+        return self
+
+    def __ipow__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied **= other
+        return self
+
+    def __ilshift__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied <<= other
+        return self
+
+    def __irshift__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied >>= other
+        return self
+
+    def __iand__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied &= other
+        return self
+
+    def __ixor__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied ^= other
+        return self
+
+    def __ior__(self, other):
+        proxied = self._obj_pxy_deserialize()
+        proxied |= other
+        return self
+
+    def __neg__(self):
+        return -self._obj_pxy_deserialize()
+
+    def __pos__(self):
+        return +self._obj_pxy_deserialize()
+
+    def __abs__(self):
+        return abs(self._obj_pxy_deserialize())
+
+    def __invert__(self):
+        return ~self._obj_pxy_deserialize()
+
+    def __int__(self):
+        return int(self._obj_pxy_deserialize())
+
+    def __float__(self):
+        return float(self._obj_pxy_deserialize())
+
+    def __complex__(self):
+        return complex(self._obj_pxy_deserialize())
+
+    def __index__(self):
+        return operator.index(self._obj_pxy_deserialize())
 
 
 @distributed.protocol.dask_serialize.register(ObjectProxy)

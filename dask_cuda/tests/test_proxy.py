@@ -1,3 +1,5 @@
+import operator
+
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -22,12 +24,100 @@ def test_proxy_object(serializers):
     assert 1 in pxy
     assert -1 not in pxy
 
-    # TODO: check operators (when implemented)
+
+@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+def test_proxy_object_of_numpy(serializers):
+    """Check that a proxied numpy array behaves as a regular dataframe"""
+
+    np = pytest.importorskip("numpy")
+
+    # Make sure that equality works, which we use to test the other operators
+    org = np.arange(10) + 1
+    pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+    assert all(org == pxy)
+    assert all(org + 1 != pxy)
+
+    # Check unary scalar operators
+    for op in [int, float, complex, operator.index, oct, hex]:
+        org = np.int64(42)
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = op(org)
+        got = op(pxy)
+        assert type(expect) == type(got)
+        assert expect == got
+
+    # Check unary operators
+    for op_str in ["neg", "pos", "abs", "inv"]:
+        op = getattr(operator, op_str)
+        org = np.arange(10) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = op(org)
+        got = op(pxy)
+        assert type(expect) == type(got)
+        assert all(expect == got)
+
+    # Check binary operators that takes a scalar as second argument
+    for op_str in ["rshift", "lshift", "pow"]:
+        op = getattr(operator, op_str)
+        org = np.arange(10) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = op(org, 2)
+        got = op(pxy, 2)
+        assert type(expect) == type(got)
+        assert all(expect == got)
+
+    # Check binary operators
+    for op_str in [
+        "add",
+        "eq",
+        "floordiv",
+        "ge",
+        "gt",
+        "le",
+        "lshift",
+        "lt",
+        "mod",
+        "mul",
+        "ne",
+        "or_",
+        "sub",
+        "truediv",
+        "xor",
+        "iadd",
+        "ifloordiv",
+        "ilshift",
+        "imod",
+        "imul",
+        "isub",
+        "ixor",
+    ]:
+        op = getattr(operator, op_str)
+        org = np.arange(10) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = op(org.copy(), org)
+        got = op(org.copy(), pxy)
+        assert isinstance(got, type(expect))
+        assert all(expect == got)
+
+        expect = op(org.copy(), org)
+        got = op(pxy, org)
+        assert isinstance(got, type(expect))
+        assert all(expect == got)
+
+    # Check unary truth operators
+    for op_str in ["not_", "truth"]:
+        op = getattr(operator, op_str)
+        org = np.arange(1) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = op(org)
+        got = op(pxy)
+        assert type(expect) == type(got)
+        assert expect == got
 
 
 @pytest.mark.parametrize("serializers", [None, ["dask"]])
 def test_proxy_object_of_cudf(serializers):
-    """Check that a proxied cudf dataframe is behaviors as a regular dataframe"""
+    """Check that a proxied cudf dataframe behaves as a regular dataframe"""
     cudf = pytest.importorskip("cudf")
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df, serializers=serializers)
