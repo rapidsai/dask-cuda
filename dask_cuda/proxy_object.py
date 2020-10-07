@@ -27,22 +27,22 @@ def asproxy(obj, serializers=None):
         The proxy object proxing `obj`
     """
 
-    if hasattr(obj, "_obj_pxy"):
-        return obj  # Already a proxy object
+    if hasattr(obj, "_obj_pxy"):  # Already a proxy object
+        ret = obj
+    else:
+        fixed_attr = {}
+        for attr in _FIXED_ATTRS:
+            try:
+                fixed_attr[attr] = getattr(obj, attr)
+            except AttributeError:
+                pass
 
-    fixed_attr = {}
-    for attr in _FIXED_ATTRS:
-        try:
-            fixed_attr[attr] = getattr(obj, attr)
-        except AttributeError:
-            pass
-
-    ret = ObjectProxy(
-        obj=obj,
-        fixed_attr=fixed_attr,
-        type_serialized=pickle.dumps(type(obj)),
-        typename=dask.utils.typename(type(obj)),
-    )
+        ret = ObjectProxy(
+            obj=obj,
+            fixed_attr=fixed_attr,
+            type_serialized=pickle.dumps(type(obj)),
+            typename=dask.utils.typename(type(obj)),
+        )
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
     return ret
@@ -89,6 +89,7 @@ class ObjectProxy:
         frames: List[Bytes]
             List of frames that makes up the serialized object
         """
+        assert serializers is not None
         if (
             self._obj_pxy["serializers"] is not None
             and self._obj_pxy["serializers"] != serializers

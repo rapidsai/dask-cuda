@@ -25,6 +25,22 @@ def test_proxy_object(serializers):
     assert -1 not in pxy
 
 
+@pytest.mark.parametrize("serializers_first", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers_second", [None, ["dask", "pickle"]])
+def test_double_proxy_object(serializers_first, serializers_second):
+    """Check asproxy() when creating a proxy object of a proxy object"""
+    org = list(range(10))
+    pxy1 = proxy_object.asproxy(org, serializers=serializers_first)
+    assert pxy1._obj_pxy["serializers"] == serializers_first
+    pxy2 = proxy_object.asproxy(pxy1, serializers=serializers_second)
+    if serializers_second is None:
+        # Check that `serializers=None` doesn't change the initial serializers
+        assert pxy2._obj_pxy["serializers"] == serializers_first
+    else:
+        assert pxy2._obj_pxy["serializers"] == serializers_second
+    assert pxy1 is pxy2
+
+
 @pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
 def test_proxy_object_of_numpy(serializers):
     """Check that a proxied numpy array behaves as a regular dataframe"""
