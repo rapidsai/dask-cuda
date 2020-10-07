@@ -9,10 +9,9 @@ import pynvml
 import toolz
 
 try:
-    from cudf._lib.nvtx import annotate as nvtx_annotate
+    from nvtx import annotate as nvtx_annotate
 except ImportError:
-    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
-    # installed, `annotate` yields only.
+    # If nvtx module is not installed, `annotate` yields only.
     from contextlib import contextmanager
 
     @contextmanager
