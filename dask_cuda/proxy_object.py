@@ -378,10 +378,10 @@ def obj_pxy_dask_serialize(obj: ObjectProxy):
 @distributed.protocol.cuda.cuda_serialize.register(ObjectProxy)
 def obj_pxy_cuda_serialize(obj: ObjectProxy):
     """
-    The CUDA serialization of ObjectProxy used by Dask when communicating
-    ObjectProxy. As serializers, it uses "cuda", "dask" or "pickle", which means
-    that proxied CUDA objects are _not_ spilled to main memory if communicating
-    using UCX or another CUDA friendly communicantion library.
+    The CUDA serialization of ObjectProxy used by Dask when communicating using UCX
+    or another CUDA friendly communicantion library. As serializers, it uses "cuda",
+    "dask" or "pickle", which means that proxied CUDA objects are _not_ spilled to
+    main memory.
     """
     if obj._obj_pxy["serializers"] is not None:  # Already serialized
         header, frames = obj._obj_pxy["obj"]
@@ -395,7 +395,7 @@ def obj_pxy_cuda_serialize(obj: ObjectProxy):
 def obj_pxy_dask_deserialize(header, frames):
     """
     The generic deserialization of ObjectProxy. Notice, it doesn't deserialize
-    thr proxied object at this time. When accessed, the proxied object are
+    the proxied object at this time. When accessed, the proxied object are
     deserialized using the same serializers that were used when the object was
     serialized.
     """
