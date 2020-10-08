@@ -21,7 +21,7 @@ from .utils import (
 
 
 def cuda_visible_devices(i, visible=None):
-    """ Cycling values for CUDA_VISIBLE_DEVICES environment variable
+    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
 
     Examples
     --------
@@ -42,7 +42,7 @@ def cuda_visible_devices(i, visible=None):
 
 
 class LocalCUDACluster(LocalCluster):
-    """ A variant of LocalCluster that uses one GPU per process
+    """A variant of LocalCluster that uses one GPU per process
 
     This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
     worker process.
@@ -219,8 +219,7 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import \
-                    TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "
