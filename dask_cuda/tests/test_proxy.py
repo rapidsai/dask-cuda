@@ -165,7 +165,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) == proxy_object.ObjectProxy
-            assert x._obj_pxy_get_meta()["serializers"] == ['dask', 'pickle']
+            assert x._obj_pxy_get_meta()["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -181,3 +181,60 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             ddf = ddf.map_partitions(task, meta=df.head())
             got = ddf.compute()
             assert_frame_equal(got.to_pandas(), df.to_pandas())
+
+
+class _PxyObjTest(proxy_object.ObjectProxy):
+    """
+    A class that:
+        - defines `__dask_tokenize__` in order to avoid deserialization when
+          calling `client.scatter()`
+        - Asserts that no deserialization is performaned when communicating.
+    """
+
+    def __dask_tokenize__(self):
+        return 42
+
+    def _obj_pxy_deserialize(self):
+        if self.assert_on_deserializing:
+            assert self._obj_pxy["serializers"] is None
+        return super()._obj_pxy_deserialize()
+
+
+@pytest.mark.parametrize("send_serializers", [None, ["dask", "pickle"], ["cuda"]])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+def test_communicating_proxy_objects(protocol, send_serializers):
+    """Testing serialization of cuDF dataframe when communicating"""
+    cudf = pytest.importorskip("cudf")
+
+    def task(x):
+        # Check that the subclass survives the trip from client to worker
+        assert isinstance(x, _PxyObjTest)
+        serializers_used = list(x._obj_pxy_get_meta()["serializers"])
+
+        # Check that `x` is serialized with the expected serializers
+        if protocol == "ucx":
+            if send_serializers is None:
+                assert serializers_used == ["cuda", "dask", "pickle"]
+            else:
+                assert serializers_used == send_serializers
+        else:
+            assert serializers_used == ["dask", "pickle"]
+
+    with dask_cuda.LocalCUDACluster(
+        n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
+    ) as cluster:
+        with Client(cluster) as client:
+            df = cudf.DataFrame({"a": range(10)})
+            df = proxy_object.asproxy(
+                df, serializers=send_serializers, subclass=_PxyObjTest
+            )
+
+            # Notice, in one case we expect deserialization when communicating.
+            # Since "tcp" cannot send device memory directly, it will be re-serialized
+            # using the default dask serializers that spill the data to main memory.
+            if protocol == "tcp" and send_serializers == ["cuda"]:
+                df.assert_on_deserializing = False
+            else:
+                df.assert_on_deserializing = True
+            df = client.scatter(df)
+            client.submit(task, df).result()
