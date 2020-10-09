@@ -8,6 +8,8 @@ import dask.dataframe.utils
 import distributed.protocol
 import distributed.utils
 
+from .is_device_object import is_device_object
+
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
 _FIXED_ATTRS = ["name"]
@@ -23,6 +25,9 @@ def asproxy(obj, serializers=None):
     serializers: List[Str], optional
         List of serializers to use to serialize `obj`. If None,
         no serialization is done.
+
+    Returns
+    -------
     ret: ObjectProxy
         The proxy object proxing `obj`
     """
@@ -42,6 +47,7 @@ def asproxy(obj, serializers=None):
             fixed_attr=fixed_attr,
             type_serialized=pickle.dumps(type(obj)),
             typename=dask.utils.typename(type(obj)),
+            is_cuda_object=is_device_object(obj),
         )
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
@@ -54,12 +60,21 @@ class ObjectProxy:
         "__obj_pxy_cache",  # A dict used for caching attributes
     ]
 
-    def __init__(self, obj, fixed_attr, type_serialized, typename, serializers=None):
+    def __init__(
+        self,
+        obj,
+        fixed_attr,
+        type_serialized,
+        typename,
+        is_cuda_object,
+        serializers=None,
+    ):
         self._obj_pxy = {
             "obj": obj,
             "fixed_attr": fixed_attr,
             "type_serialized": type_serialized,
             "typename": typename,
+            "is_cuda_object": is_cuda_object,
             "serializers": serializers,
         }
         self.__obj_pxy_cache = {}
@@ -119,6 +134,16 @@ class ObjectProxy:
             self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
             self._obj_pxy["serializers"] = None
         return self._obj_pxy["obj"]
+
+    def _obj_pxy_is_cuda_object(self):
+        """Inplace deserialization of the proxied object
+
+        Returns
+        -------
+        ret : object
+            The proxied object (deserialized)
+        """
+        return self._obj_pxy["is_cuda_object"]
 
     def __getattr__(self, name):
         typename = self._obj_pxy["typename"]
@@ -363,6 +388,16 @@ class ObjectProxy:
 
     def __index__(self):
         return operator.index(self._obj_pxy_deserialize())
+
+
+@is_device_object.register(ObjectProxy)
+def obj_pxy_is_device_object(obj: ObjectProxy):
+    """
+    In order to avoid de-serializing the proxied object, we call
+    `_obj_pxy_is_cuda_object()` instead of the default
+    `hasattr(o, "__cuda_array_interface__")` check.
+    """
+    return obj._obj_pxy_is_cuda_object()
 
 
 @distributed.protocol.dask_serialize.register(ObjectProxy)
