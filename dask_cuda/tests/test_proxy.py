@@ -164,7 +164,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) == proxy_object.ObjectProxy
+            assert type(x) == proxy_object.ProxyObject
             assert x._obj_pxy_get_meta()["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame
@@ -183,7 +183,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-class _PxyObjTest(proxy_object.ObjectProxy):
+class _PxyObjTest(proxy_object.ProxyObject):
     """
     A class that:
         - defines `__dask_tokenize__` in order to avoid deserialization when

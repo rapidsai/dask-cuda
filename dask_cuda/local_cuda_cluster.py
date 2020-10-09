@@ -109,7 +109,7 @@ class LocalCUDACluster(LocalCluster):
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
     jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ObjectProxy).
+        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
 
     Examples
     --------

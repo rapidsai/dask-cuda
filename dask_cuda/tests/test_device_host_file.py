@@ -23,7 +23,7 @@ cupy = pytest.importorskip("cupy")
 
 
 def assert_eq(x, y):
-    # Explicitly calling "cupy.asnumpy" to support `ObjectProxy` because
+    # Explicitly calling "cupy.asnumpy" to support `ProxyObject` because
     # "cupy" is hardcoded in `dask.array.normalize_to_array()`
     return dask.array.assert_eq(cupy.asnumpy(x), cupy.asnumpy(y))
 

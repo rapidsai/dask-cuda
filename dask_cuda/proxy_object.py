@@ -17,19 +17,19 @@ _FIXED_ATTRS = ["name"]
 
 
 def asproxy(obj, serializers=None, subclass=None):
-    """Wrap `obj` in a ObjectProxy object if it isn't already.
+    """Wrap `obj` in a ProxyObject object if it isn't already.
 
     Parameters
     ----------
     obj: object
-        Object to wrap in a ObjectProxy object.
+        Object to wrap in a ProxyObject object.
     serializers: List[Str], optional
         List of serializers to use to serialize `obj`. If None,
         no serialization is done.
     subclass: Class, optional
-        Specify a subclass of ObjectProxy to create instead of ObjectProxy.
+        Specify a subclass of ProxyObject to create instead of ProxyObject.
         `subclass` must be pickable.
-    ret: ObjectProxy
+    ret: ProxyObject
         The proxy object proxing `obj`
     """
 
@@ -44,7 +44,7 @@ def asproxy(obj, serializers=None, subclass=None):
                 pass
 
         if subclass is None:
-            subclass = ObjectProxy
+            subclass = ProxyObject
         ret = subclass(
             obj=obj,
             fixed_attr=fixed_attr,
@@ -59,7 +59,7 @@ def asproxy(obj, serializers=None, subclass=None):
     return ret
 
 
-class ObjectProxy:
+class ProxyObject:
     __slots__ = [
         "_obj_pxy",  # A dict that holds the state of the proxy object
         "_obj_pxy_lock",  # Threading lock for all obj_pxy access
@@ -411,8 +411,8 @@ class ObjectProxy:
         return operator.index(self._obj_pxy_deserialize())
 
 
-@is_device_object.register(ObjectProxy)
-def obj_pxy_is_device_object(obj: ObjectProxy):
+@is_device_object.register(ProxyObject)
+def obj_pxy_is_device_object(obj: ProxyObject):
     """
     In order to avoid de-serializing the proxied object, we call
     `_obj_pxy_is_cuda_object()` instead of the default
@@ -421,21 +421,21 @@ def obj_pxy_is_device_object(obj: ObjectProxy):
     return obj._obj_pxy_is_cuda_object()
 
 
-@distributed.protocol.dask_serialize.register(ObjectProxy)
-def obj_pxy_dask_serialize(obj: ObjectProxy):
+@distributed.protocol.dask_serialize.register(ProxyObject)
+def obj_pxy_dask_serialize(obj: ProxyObject):
     """
-    The generic serialization of ObjectProxy used by Dask when communicating
-    ObjectProxy. As serializers, it uses "dask" or "pickle", which means
+    The generic serialization of ProxyObject used by Dask when communicating
+    ProxyObject. As serializers, it uses "dask" or "pickle", which means
     that proxied CUDA objects are spilled to main memory before communicated.
     """
     header, frames = obj._obj_pxy_serialize(serializers=["dask", "pickle"])
     return {"proxied-header": header, "obj-pxy-meta": obj._obj_pxy_get_meta()}, frames
 
 
-@distributed.protocol.cuda.cuda_serialize.register(ObjectProxy)
-def obj_pxy_cuda_serialize(obj: ObjectProxy):
+@distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
+def obj_pxy_cuda_serialize(obj: ProxyObject):
     """
-    The CUDA serialization of ObjectProxy used by Dask when communicating using UCX
+    The CUDA serialization of ProxyObject used by Dask when communicating using UCX
     or another CUDA friendly communicantion library. As serializers, it uses "cuda",
     "dask" or "pickle", which means that proxied CUDA objects are _not_ spilled to
     main memory.
@@ -447,18 +447,18 @@ def obj_pxy_cuda_serialize(obj: ObjectProxy):
     return {"proxied-header": header, "obj-pxy-meta": obj._obj_pxy_get_meta()}, frames
 
 
-@distributed.protocol.dask_deserialize.register(ObjectProxy)
-@distributed.protocol.cuda.cuda_deserialize.register(ObjectProxy)
+@distributed.protocol.dask_deserialize.register(ProxyObject)
+@distributed.protocol.cuda.cuda_deserialize.register(ProxyObject)
 def obj_pxy_dask_deserialize(header, frames):
     """
-    The generic deserialization of ObjectProxy. Notice, it doesn't deserialize
+    The generic deserialization of ProxyObject. Notice, it doesn't deserialize
     the proxied object at this time. When accessed, the proxied object are
     deserialized using the same serializers that were used when the object was
     serialized.
     """
     meta = header["obj-pxy-meta"]
     if meta["subclass"] is None:
-        subclass = ObjectProxy
+        subclass = ProxyObject
     else:
         subclass = pickle.loads(meta["subclass"])
     return subclass(
@@ -467,24 +467,24 @@ def obj_pxy_dask_deserialize(header, frames):
     )
 
 
-@dask.dataframe.utils.hash_object_dispatch.register(ObjectProxy)
-def obj_pxy_hash_object(obj: ObjectProxy, index=True):
+@dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)
+def obj_pxy_hash_object(obj: ProxyObject, index=True):
     return dask.dataframe.utils.hash_object_dispatch(obj._obj_pxy_deserialize(), index)
 
 
-@dask.dataframe.utils.group_split_dispatch.register(ObjectProxy)
-def obj_pxy_group_split(obj: ObjectProxy, c, k, ignore_index=False):
+@dask.dataframe.utils.group_split_dispatch.register(ProxyObject)
+def obj_pxy_group_split(obj: ProxyObject, c, k, ignore_index=False):
     return dask.dataframe.utils.group_split_dispatch(
         obj._obj_pxy_deserialize(), c, k, ignore_index
     )
 
 
-@dask.dataframe.utils.make_scalar.register(ObjectProxy)
-def obj_pxy_make_scalar(obj: ObjectProxy):
+@dask.dataframe.utils.make_scalar.register(ProxyObject)
+def obj_pxy_make_scalar(obj: ProxyObject):
     return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize())
 
 
-@dask.dataframe.methods.concat_dispatch.register(ObjectProxy)
+@dask.dataframe.methods.concat_dispatch.register(ProxyObject)
 def obj_pxy_concat(objs, *args, **kwargs):
     # Deserialize concat inputs (in-place)
     for i in range(len(objs)):
