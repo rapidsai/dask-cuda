@@ -1,6 +1,7 @@
 import operator
 import pickle
 import sys
+import threading
 
 import dask
 import dask.dataframe.methods
@@ -61,6 +62,7 @@ def asproxy(obj, serializers=None, subclass=None):
 class ObjectProxy:
     __slots__ = [
         "_obj_pxy",  # A dict that holds the state of the proxy object
+        "_obj_pxy_lock",  # Threading lock for all obj_pxy access
         "__obj_pxy_cache",  # A dict used for caching attributes
     ]
 
@@ -83,6 +85,7 @@ class ObjectProxy:
             "subclass": subclass,
             "serializers": serializers,
         }
+        self._obj_pxy_lock = threading.RLock()
         self.__obj_pxy_cache = {}
 
     def _obj_pxy_get_meta(self):
@@ -93,7 +96,8 @@ class ObjectProxy:
         ret: dict
             Dictionary of metadata
         """
-        return {k: self._obj_pxy[k] for k in self._obj_pxy.keys() if k != "obj"}
+        with self._obj_pxy_lock:
+            return {k: self._obj_pxy[k] for k in self._obj_pxy.keys() if k != "obj"}
 
     def _obj_pxy_serialize(self, serializers):
         """Inplace serialization of the proxied object using the `serializers`
@@ -110,22 +114,23 @@ class ObjectProxy:
         frames: List[Bytes]
             List of frames that makes up the serialized object
         """
-        assert serializers is not None
-        if (
-            self._obj_pxy["serializers"] is not None
-            and self._obj_pxy["serializers"] != serializers
-        ):
-            # The proxied object is serialized with other serializers
-            self._obj_pxy_deserialize()
+        with self._obj_pxy_lock:
+            assert serializers is not None
+            if (
+                self._obj_pxy["serializers"] is not None
+                and self._obj_pxy["serializers"] != serializers
+            ):
+                # The proxied object is serialized with other serializers
+                self._obj_pxy_deserialize()
 
-        if self._obj_pxy["serializers"] is None:
-            self._obj_pxy["obj"] = distributed.protocol.serialize(
-                self._obj_pxy["obj"], serializers
-            )
-            self._obj_pxy["serializers"] = serializers
+            if self._obj_pxy["serializers"] is None:
+                self._obj_pxy["obj"] = distributed.protocol.serialize(
+                    self._obj_pxy["obj"], serializers
+                )
+                self._obj_pxy["serializers"] = serializers
 
-        assert serializers == self._obj_pxy["serializers"]
-        return self._obj_pxy["obj"]
+            assert serializers == self._obj_pxy["serializers"]
+            return self._obj_pxy["obj"]
 
     def _obj_pxy_deserialize(self):
         """Inplace deserialization of the proxied object
@@ -135,11 +140,12 @@ class ObjectProxy:
         ret : object
             The proxied object (deserialized)
         """
-        if self._obj_pxy["serializers"] is not None:
-            header, frames = self._obj_pxy["obj"]
-            self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
-            self._obj_pxy["serializers"] = None
-        return self._obj_pxy["obj"]
+        with self._obj_pxy_lock:
+            if self._obj_pxy["serializers"] is not None:
+                header, frames = self._obj_pxy["obj"]
+                self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
+                self._obj_pxy["serializers"] = None
+            return self._obj_pxy["obj"]
 
     def _obj_pxy_is_cuda_object(self):
         """Inplace deserialization of the proxied object
@@ -149,47 +155,54 @@ class ObjectProxy:
         ret : object
             The proxied object (deserialized)
         """
-        return self._obj_pxy["is_cuda_object"]
+        with self._obj_pxy_lock:
+            return self._obj_pxy["is_cuda_object"]
 
     def __getattr__(self, name):
-        typename = self._obj_pxy["typename"]
-        if name in _FIXED_ATTRS:
-            try:
-                return self._obj_pxy["fixed_attr"][name]
-            except KeyError:
-                raise AttributeError(
-                    f"type object '{typename}' has no attribute '{name}'"
-                )
+        with self._obj_pxy_lock:
+            typename = self._obj_pxy["typename"]
+            if name in _FIXED_ATTRS:
+                try:
+                    return self._obj_pxy["fixed_attr"][name]
+                except KeyError:
+                    raise AttributeError(
+                        f"type object '{typename}' has no attribute '{name}'"
+                    )
 
-        return getattr(self._obj_pxy_deserialize(), name)
+            return getattr(self._obj_pxy_deserialize(), name)
 
     def __str__(self):
         return str(self._obj_pxy_deserialize())
 
     def __repr__(self):
-        typename = self._obj_pxy["typename"]
-        ret = f"<{dask.utils.typename(type(self))} at {hex(id(self))} for {typename}"
-        if self._obj_pxy["serializers"] is not None:
-            ret += f" (serialized={repr(self._obj_pxy['serializers'])})>"
-        else:
-            ret += f" at {hex(id(self._obj_pxy['obj']))}>"
-        return ret
+        with self._obj_pxy_lock:
+            typename = self._obj_pxy["typename"]
+            ret = (
+                f"<{dask.utils.typename(type(self))} at {hex(id(self))} for {typename}"
+            )
+            if self._obj_pxy["serializers"] is not None:
+                ret += f" (serialized={repr(self._obj_pxy['serializers'])})>"
+            else:
+                ret += f" at {hex(id(self._obj_pxy['obj']))}>"
+            return ret
 
     @property
     def __class__(self):
-        try:
-            return self.__obj_pxy_cache["type_serialized"]
-        except KeyError:
-            ret = pickle.loads(self._obj_pxy["type_serialized"])
-            self.__obj_pxy_cache["type_serialized"] = ret
-            return ret
+        with self._obj_pxy_lock:
+            try:
+                return self.__obj_pxy_cache["type_serialized"]
+            except KeyError:
+                ret = pickle.loads(self._obj_pxy["type_serialized"])
+                self.__obj_pxy_cache["type_serialized"] = ret
+                return ret
 
     def __sizeof__(self):
-        if self._obj_pxy["serializers"] is not None:
-            frames = self._obj_pxy["obj"][1]
-            return sum(map(distributed.utils.nbytes, frames))
-        else:
-            return sys.getsizeof(self._obj_pxy_deserialize())
+        with self._obj_pxy_lock:
+            if self._obj_pxy["serializers"] is not None:
+                frames = self._obj_pxy["obj"][1]
+                return sum(map(distributed.utils.nbytes, frames))
+            else:
+                return sys.getsizeof(self._obj_pxy_deserialize())
 
     def __len__(self):
         return len(self._obj_pxy_deserialize())
@@ -322,13 +335,15 @@ class ObjectProxy:
         return self
 
     def __idiv__(self, other):
-        proxied = self._obj_pxy_deserialize()
-        self._obj_pxy["obj"] = operator.idiv(proxied, other)
+        with self._obj_pxy_lock:
+            proxied = self._obj_pxy_deserialize()
+            self._obj_pxy["obj"] = operator.idiv(proxied, other)
         return self
 
     def __itruediv__(self, other):
-        proxied = self._obj_pxy_deserialize()
-        self._obj_pxy["obj"] = operator.itruediv(proxied, other)
+        with self._obj_pxy_lock:
+            proxied = self._obj_pxy_deserialize()
+            self._obj_pxy["obj"] = operator.itruediv(proxied, other)
         return self
 
     def __ifloordiv__(self, other):
