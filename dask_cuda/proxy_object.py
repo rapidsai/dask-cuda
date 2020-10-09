@@ -15,7 +15,7 @@ from .is_device_object import is_device_object
 _FIXED_ATTRS = ["name"]
 
 
-def asproxy(obj, serializers=None):
+def asproxy(obj, serializers=None, subclass=None):
     """Wrap `obj` in a ObjectProxy object if it isn't already.
 
     Parameters
@@ -25,9 +25,9 @@ def asproxy(obj, serializers=None):
     serializers: List[Str], optional
         List of serializers to use to serialize `obj`. If None,
         no serialization is done.
-
-    Returns
-    -------
+    subclass: Class, optional
+        Specify a subclass of ObjectProxy to create instead of ObjectProxy.
+        `subclass` must be pickable.
     ret: ObjectProxy
         The proxy object proxing `obj`
     """
@@ -42,12 +42,16 @@ def asproxy(obj, serializers=None):
             except AttributeError:
                 pass
 
-        ret = ObjectProxy(
+        if subclass is None:
+            subclass = ObjectProxy
+        ret = subclass(
             obj=obj,
             fixed_attr=fixed_attr,
             type_serialized=pickle.dumps(type(obj)),
             typename=dask.utils.typename(type(obj)),
             is_cuda_object=is_device_object(obj),
+            subclass=pickle.dumps(subclass) if subclass else None,
+            serializers=None,
         )
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
@@ -67,7 +71,8 @@ class ObjectProxy:
         type_serialized,
         typename,
         is_cuda_object,
-        serializers=None,
+        subclass,
+        serializers,
     ):
         self._obj_pxy = {
             "obj": obj,
@@ -75,6 +80,7 @@ class ObjectProxy:
             "type_serialized": type_serialized,
             "typename": typename,
             "is_cuda_object": is_cuda_object,
+            "subclass": subclass,
             "serializers": serializers,
         }
         self.__obj_pxy_cache = {}
@@ -435,7 +441,12 @@ def obj_pxy_dask_deserialize(header, frames):
     deserialized using the same serializers that were used when the object was
     serialized.
     """
-    return ObjectProxy(
+    meta = header["obj-pxy-meta"]
+    if meta["subclass"] is None:
+        subclass = ObjectProxy
+    else:
+        subclass = pickle.loads(meta["subclass"])
+    return subclass(
         obj=(header["proxied-header"], frames),
         **header["obj-pxy-meta"],
     )
