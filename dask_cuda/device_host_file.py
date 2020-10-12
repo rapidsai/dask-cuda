@@ -67,6 +67,13 @@ def host_to_device(s: DeviceSerialized) -> object:
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
+    try:
+        # Never re-serialize proxy objects.
+        if obj._obj_pxy["serializers"] is None:
+            return obj
+    except (KeyError, AttributeError):
+        pass
+
     # Notice, both the "dask" and the "pickle" serializer will
     # spill `obj` to main memory.
     return proxy_object.asproxy(obj, serializers=["dask", "pickle"])
