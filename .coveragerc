@@ -2,3 +2,4 @@
 [run]
 include = dask_cuda/*
 omit = dask_cuda/tests/*
+disable_warnings = include-ignored
