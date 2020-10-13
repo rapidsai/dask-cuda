@@ -61,7 +61,7 @@ conda install "cudatoolkit=$CUDA_REL" \
               "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
-# https://docs.rapids.ai/maintainers/depmgmt/ 
+# https://docs.rapids.ai/maintainers/depmgmt/
 # conda remove -f rapids-build-env
 # conda install "your-pkg=1.0.0"
 
@@ -100,17 +100,17 @@ else
     logger "Python py.test for dask-cuda..."
     cd $WORKSPACE
     ls dask_cuda/tests/
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp=${WORKSPACE}/dask-cuda-tmp --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test --cache-clear --basetemp=${WORKSPACE}/dask-cuda-tmp --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
 
     logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
     if [ $(python -c "import sys; print(sys.version_info[1])") -ge "7" ]; then
         logger "TEST OF DASK/UCX..."
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
+        py.test --cache-clear `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
     fi
 fi
