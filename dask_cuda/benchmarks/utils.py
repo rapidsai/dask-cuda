@@ -73,7 +73,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     )
     parser.add_argument(
         "--single-node",
-        action="store_true",
+        action="store_false",
         dest="multi_node",
         help="Runs a single-node cluster on the current host.",
     )
