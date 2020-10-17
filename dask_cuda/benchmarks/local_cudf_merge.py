@@ -274,7 +274,7 @@ def main(args):
         for (d1, d2), bw in sorted(bandwidths.items()):
             fmt = (
                 "(%s,%s)     | %s %s %s (%s)"
-                if args.multi_node
+                if args.multi_node or args.sched_addr
                 else "(%02d,%02d)     | %s %s %s (%s)"
             )
             print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
