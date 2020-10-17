@@ -26,7 +26,11 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--no-rmm-pool", action="store_true", help="Do not set RMM memory pool" \
+        "from the Client",
+    )
+    parser.add_argument(
+        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",

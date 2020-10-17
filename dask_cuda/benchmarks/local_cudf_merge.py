@@ -192,7 +192,7 @@ def main(args):
     if args.sched_addr:
         client = Client(args.sched_addr)
     else:
-        cluster = Cluster(*cluster_args, **cluster_kwargs)
+        cluster = Cluster(*cluster_args, **cluster_kwargs, rmm_pool_size="20GB")
         if args.multi_node:
             import time
 
@@ -203,10 +203,12 @@ def main(args):
         client = Client(scheduler_addr if args.multi_node else cluster)
 
     if args.type == "gpu":
-        client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
-        # Create an RMM pool on the scheduler due to occasional deserialization
-        # of CUDA objects. May cause issues with InfiniBand otherwise.
-        client.run_on_scheduler(setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool)
+        if not args.no_rmm_pool:
+            client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
+            # Create an RMM pool on the scheduler due to occasional deserialization
+            # of CUDA objects. May cause issues with InfiniBand otherwise.
+            client.run_on_scheduler(setup_memory_pool, 1e9,
+                    disable_pool=args.disable_rmm_pool)
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
