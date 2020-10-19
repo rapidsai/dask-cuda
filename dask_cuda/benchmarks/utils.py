@@ -72,12 +72,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Ignored if protocol is 'tcp'",
     )
     parser.add_argument(
-        "--single-node",
-        action="store_false",
-        dest="multi_node",
-        help="Runs a single-node cluster on the current host.",
-    )
-    parser.add_argument(
         "--multi-node",
         action="store_true",
         dest="multi_node",
