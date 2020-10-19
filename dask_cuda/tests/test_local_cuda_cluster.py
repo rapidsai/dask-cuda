@@ -106,6 +106,7 @@ async def test_n_workers():
         assert len(cluster.workers) == 2
         assert len(cluster.worker_spec) == 2
 
+
 @gen_test(timeout=20)
 async def test_all_to_all():
     async with LocalCUDACluster(
@@ -117,7 +118,7 @@ async def test_all_to_all():
             await utils.all_to_all(client, cleanup=False)
             # assert all to all has resulted in all data on every worker
             data = await client.has_what()
-            all_data = [v for w in data.values() for v in w if 'lambda' in v]
+            all_data = [v for w in data.values() for v in w if "lambda" in v]
             assert all(all_data.count(i) == n_workers for i in all_data)
 
 

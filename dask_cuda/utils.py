@@ -9,6 +9,7 @@ from multiprocessing import cpu_count
 import numpy as np
 import pynvml
 import toolz
+
 from dask.distributed import wait
 from distributed.client import _wait
 
@@ -362,6 +363,7 @@ def wait_workers(
         else:
             time.sleep(0.1)
 
+
 async def _all_to_all(client, cleanup=True):
     """
     Trigger all to all communication between workers and scheduler
@@ -375,7 +377,7 @@ async def _all_to_all(client, cleanup=True):
 
     await wait(futs)
 
-    def f(x,y):
+    def f(x, y):
         pass
 
     new_futs = []
@@ -390,5 +392,8 @@ async def _all_to_all(client, cleanup=True):
         await client.cancel(futs)
         await client.cancel(new_futs)
 
+
 def all_to_all(client, cleanup=True):
-    return client.sync(_all_to_all, client=client, cleanup=cleanup, asynchronous=client.asynchronous)
+    return client.sync(
+        _all_to_all, client=client, cleanup=cleanup, asynchronous=client.asynchronous
+    )
