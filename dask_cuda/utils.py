@@ -1,12 +1,16 @@
+import asyncio
 import math
 import os
 import time
 import warnings
+from itertools import combinations
 from multiprocessing import cpu_count
 
 import numpy as np
 import pynvml
 import toolz
+from dask.distributed import wait
+from distributed.client import _wait
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -357,3 +361,34 @@ def wait_workers(
             return False
         else:
             time.sleep(0.1)
+
+async def _all_to_all(client, cleanup=True):
+    """
+    Trigger all to all communication between workers and scheduler
+    """
+    workers = list(client.scheduler_info()["workers"])
+    futs = []
+    for w in workers:
+        bit_of_data = b"0" * 1
+        data = client.map(lambda x: bit_of_data, range(1), pure=False, workers=[w])
+        futs.append(data[0])
+
+    await wait(futs)
+
+    def f(x,y):
+        pass
+
+    new_futs = []
+    for w in workers:
+        for fut1, fut2 in combinations(futs, 2):
+            data = client.submit(f, fut1, fut2, workers=[w], pure=False)
+            new_futs.append(data)
+
+    await wait(new_futs)
+
+    if cleanup:
+        await client.cancel(futs)
+        await client.cancel(new_futs)
+
+def all_to_all(client, cleanup=True):
+    return client.sync(_all_to_all, client=client, cleanup=cleanup, asynchronous=client.asynchronous)
