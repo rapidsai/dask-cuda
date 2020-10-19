@@ -192,7 +192,7 @@ def main(args):
     if args.sched_addr:
         client = Client(args.sched_addr)
     else:
-        cluster = Cluster(*cluster_args, **cluster_kwargs, rmm_pool_size="20GB")
+        cluster = Cluster(*cluster_args, **cluster_kwargs)
         if args.multi_node:
             import time
 
