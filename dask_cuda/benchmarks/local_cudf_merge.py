@@ -10,6 +10,7 @@ from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
 from dask_cuda import explicit_comms
+from dask_cuda.utils import all_to_all
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -167,7 +168,6 @@ def run(client, args, n_workers, write_profile=None):
     ).persist()
     wait(ddf_base)
     wait(ddf_other)
-    client.wait_for_workers(n_workers)
 
     assert len(ddf_base.dtypes) == 2
     assert len(ddf_other.dtypes) == 2
@@ -210,6 +210,9 @@ def main(args):
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
+    client.wait_for_workers(n_workers)
+
+    all_to_all(client)
 
     took_list = []
     for _ in range(args.runs - 1):
