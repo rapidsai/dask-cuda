@@ -207,8 +207,9 @@ def main(args):
             client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
-            client.run_on_scheduler(setup_memory_pool, 1e9,
-                    disable_pool=args.disable_rmm_pool)
+            client.run_on_scheduler(
+                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+            )
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
@@ -236,7 +237,10 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(sum(nb))
+        (
+            scheduler_workers[w1].name,
+            scheduler_workers[w2].name,
+        ): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
 
@@ -291,21 +295,30 @@ def main(args):
 def parse_args():
     special_args = [
         {
-            "name": ["-b", "--backend",],
+            "name": [
+                "-b",
+                "--backend",
+            ],
             "choices": ["dask", "explicit-comms"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
         },
         {
-            "name": ["-t", "--type",],
+            "name": [
+                "-t",
+                "--type",
+            ],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Do merge with GPU or CPU dataframes",
         },
         {
-            "name": ["-c", "--chunk-size",],
+            "name": [
+                "-c",
+                "--chunk-size",
+            ],
             "default": 1_000_000,
             "metavar": "n",
             "type": int,
@@ -334,9 +347,17 @@ def parse_args():
             "action": "store_true",
             "help": "Write output as markdown",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
         {
-            "name": ["-s", "--set-index",],
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs",
+        },
+        {
+            "name": [
+                "-s",
+                "--set-index",
+            ],
             "action": "store_true",
             "help": "Call set_index on the key column to sort the joined dataframe.",
         },
