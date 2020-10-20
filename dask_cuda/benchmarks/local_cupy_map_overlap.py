@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 from time import perf_counter as clock
+from warnings import filterwarnings
 
 import cupy as cp
 import numpy as np
@@ -57,6 +58,8 @@ async def run(args):
     cluster_args = cluster_options["args"]
     cluster_kwargs = cluster_options["kwargs"]
     scheduler_addr = cluster_options["scheduler_addr"]
+
+    filterwarnings("ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning)
 
     async with Cluster(*cluster_args, **cluster_kwargs, asynchronous=True) as cluster:
         if args.multi_node:

@@ -1,6 +1,7 @@
 import math
 from collections import defaultdict
 from time import perf_counter as clock
+from warnings import filterwarnings
 
 import numpy
 
@@ -192,6 +193,10 @@ def main(args):
     if args.sched_addr:
         client = Client(args.sched_addr)
     else:
+        filterwarnings(
+            "ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning
+        )
+
         cluster = Cluster(*cluster_args, **cluster_kwargs)
         if args.multi_node:
             import time
