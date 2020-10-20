@@ -212,7 +212,7 @@ def main(args):
     n_workers = len(scheduler_workers)
     client.wait_for_workers(n_workers)
 
-    if not args.all_to_all:
+    if args.all_to_all:
         all_to_all(client)
 
     took_list = []
