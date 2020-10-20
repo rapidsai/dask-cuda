@@ -115,7 +115,7 @@ async def test_all_to_all():
         async with Client(cluster, asynchronous=True) as client:
             workers = list(client.scheduler_info()["workers"])
             n_workers = len(workers)
-            await utils.all_to_all(client, cleanup=False)
+            await utils.all_to_all(client)
             # assert all to all has resulted in all data on every worker
             data = await client.has_what()
             all_data = [v for w in data.values() for v in w if "lambda" in v]
