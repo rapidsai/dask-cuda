@@ -21,7 +21,7 @@ from .utils import (
 
 
 def cuda_visible_devices(i, visible=None):
-    """ Cycling values for CUDA_VISIBLE_DEVICES environment variable
+    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
 
     Examples
     --------
@@ -42,7 +42,7 @@ def cuda_visible_devices(i, visible=None):
 
 
 class LocalCUDACluster(LocalCluster):
-    """ A variant of LocalCluster that uses one GPU per process
+    """A variant of LocalCluster that uses one GPU per process
 
     This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
     worker process.
@@ -178,7 +178,8 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+            if self.rmm_pool_size is not None:
+                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -187,8 +188,6 @@ class LocalCUDACluster(LocalCluster):
                     "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
                     "#important-notes for more details"
                 )
-            if self.rmm_pool_size is not None:
-                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
 
         if not processes:
             raise ValueError(
@@ -220,8 +219,7 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import \
-                    TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "

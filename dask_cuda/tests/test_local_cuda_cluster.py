@@ -75,7 +75,7 @@ async def test_with_subset_of_cuda_visible_devices():
 @pytest.mark.parametrize("protocol", ["ucx", None])
 @pytest.mark.asyncio
 async def test_ucx_protocol(protocol):
-    pytest.importorskip("distributed.comm.ucx")
+    pytest.importorskip("ucp")
 
     initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
@@ -88,7 +88,7 @@ async def test_ucx_protocol(protocol):
 
 @pytest.mark.asyncio
 async def test_ucx_protocol_type_error():
-    pytest.importorskip("distributed.comm.ucx")
+    pytest.importorskip("ucp")
 
     initialize(enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
@@ -108,15 +108,26 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
-async def test_rmm():
+async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(
-        rmm_pool_size="2GB", rmm_managed_memory=True, asynchronous=True
-    ) as cluster:
+    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.PoolMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_rmm_managed():
+    rmm = pytest.importorskip("rmm")
+
+    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_type = await client.run(
+                rmm.mr.get_current_device_resource_type
+            )
+            for v in memory_resource_type.values():
+                assert v is rmm.mr.ManagedMemoryResource

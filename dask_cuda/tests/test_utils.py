@@ -70,6 +70,8 @@ def test_get_device_total_memory():
 )
 @pytest.mark.parametrize("enable_nvlink", [True, False])
 def test_get_preload_options(enable_tcp, enable_infiniband_netdev, enable_nvlink):
+    pytest.importorskip("ucp")
+
     enable_infiniband, net_devices = enable_infiniband_netdev
 
     opts = get_preload_options(
@@ -101,11 +103,15 @@ def test_get_preload_options(enable_tcp, enable_infiniband_netdev, enable_nvlink
 
 
 def test_get_ucx_net_devices_raises():
+    pytest.importorskip("ucp")
+
     with pytest.raises(ValueError):
         get_ucx_net_devices(None, "auto")
 
 
 def test_get_ucx_net_devices_callable():
+    pytest.importorskip("ucp")
+
     net_devices = [
         "mlx5_0:1",
         "mlx5_0:1",
@@ -123,6 +129,8 @@ def test_get_ucx_net_devices_callable():
 
 
 def test_get_ucx_net_devices_auto():
+    pytest.importorskip("ucp")
+
     for idx in range(get_n_gpus()):
         # Since the actual device is system-dependent, we just check that
         # this function call doesn't fail. If any InfiniBand devices are
@@ -134,6 +142,8 @@ def test_get_ucx_net_devices_auto():
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("net_devices", ["eth0", "auto", ""])
 def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
+    pytest.importorskip("ucp")
+
     kwargs = {
         "enable_tcp_over_ucx": enable_tcp_over_ucx,
         "enable_infiniband": enable_infiniband,
