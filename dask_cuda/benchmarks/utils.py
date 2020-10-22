@@ -36,6 +36,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
+        "--all-to-all", action="store_true", help="Run all-to-all before computation",
+    )
+    parser.add_argument(
         "--enable-tcp-over-ucx",
         action="store_true",
         dest="enable_tcp_over_ucx",

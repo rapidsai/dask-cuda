@@ -8,6 +8,8 @@ import numpy as np
 import pynvml
 import toolz
 
+from dask.distributed import wait
+
 try:
     from nvtx import annotate as nvtx_annotate
 except ImportError:
@@ -357,3 +359,32 @@ def wait_workers(
             return False
         else:
             time.sleep(0.1)
+
+
+async def _all_to_all(client):
+    """
+    Trigger all to all communication between workers and scheduler
+    """
+    workers = list(client.scheduler_info()["workers"])
+    futs = []
+    for w in workers:
+        bit_of_data = b"0" * 1
+        data = client.map(lambda x: bit_of_data, range(1), pure=False, workers=[w])
+        futs.append(data[0])
+
+    await wait(futs)
+
+    def f(x):
+        pass
+
+    new_futs = []
+    for w in workers:
+        for future in futs:
+            data = client.submit(f, future, workers=[w], pure=False)
+            new_futs.append(data)
+
+    await wait(new_futs)
+
+
+def all_to_all(client):
+    return client.sync(_all_to_all, client=client, asynchronous=client.asynchronous)
