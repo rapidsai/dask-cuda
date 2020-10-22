@@ -265,7 +265,7 @@ def main(args):
     print(f"rows-per-chunk | {args.chunk_size}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
-    print(f"rmm-pool       | {(not args.no_rmm_pool)}")
+    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
     print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
         print(f"tcp            | {args.enable_tcp_over_ucx}")

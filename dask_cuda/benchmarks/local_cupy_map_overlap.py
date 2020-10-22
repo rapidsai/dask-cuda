@@ -76,11 +76,11 @@ async def run(args):
         ) as client:
             scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
 
-            await client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
+            await client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(
-                setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool
+                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
             )
 
             took_list = []
