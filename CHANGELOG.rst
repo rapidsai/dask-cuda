@@ -1,3 +1,13 @@
+0.16
+----
+- Parse pool size only when set (#396) `Benjamin Zaitlen`_
+- Improve CUDAWorker scheduler-address parsing and __init__ (#397) `Rami Chowdhury`_
+- Add benchmark for `da.map_overlap` (#399) `John Kirkham`_
+- Explicit-comms: dataframe shuffle (#401) `Mads R. B. Kristensen`_
+- Use new NVTX module (#406) `Peter Andreas Entschev`_
+- Run Dask's NVML tests (#408) `Benjamin Zaitlen`_
+- Skip tests that require cuDF/UCX-Py, when not installed (#411) `Peter Andreas Entschev`_
+
 0.15
 ----
 - Fix-up versioneer (#305) `John Kirkham`_
@@ -182,3 +192,4 @@
 .. _`Randy Gelhausen`: https://github.com/randerzander
 .. _`Jacob Tomlinson`: https://github.com/jacobtomlinson
 .. _`Sean Frye`: https://github.com/sean-frye
+.. _`Rami Chowdhury`: https://github.com/necaris
