@@ -1,17 +1,17 @@
-#!/bin/bash -eu
+#!/bin/bash
 
-set -xeuo pipefail
+set -xo pipefail
 
 #export PATH=/gpfs/fs1/bzaitlen/miniconda3/bin:$PATH
 CONDA_ROOT=/gpfs/fs1/bzaitlen/miniconda3
 source $CONDA_ROOT/etc/profile.d/conda.sh
 ENV=`date +"%Y%m%d-nightly"`
-#ENV="20201016-nightly"
 
 srun -N1 create-env.sh
 # Environment variables to enable GPUs, InfiniBand, NVLink
 # These are read by the scheduler and client script
 conda activate $ENV
+which python
 
 # Each worker uses all GPUs on its node
 # (don't set CUDA_VISIBLE_DEVICES)
@@ -87,9 +87,10 @@ echo "Client start: $(date +%s)"
    python \
    "$CONDA_PREFIX/lib/python3.8/site-packages/dask_cuda/benchmarks/local_cudf_merge.py" \
   --scheduler-address "$SCHED_ADDR" \
-  -c 40000000 \
+  -c 50_000_000 \
+  --frac-match 1.0 \
   --protocol ucx \
-  --no-rmm-pool \
+  --disable-rmm-pool \
   --all-to-all
 
 echo "Client done: $(date +%s)"

@@ -8,15 +8,21 @@ source /gpfs/fs1/bzaitlen/miniconda3/bin/activate
 ENV=`date +"%Y%m%d-nightly"`
 
 mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
-    automake make libtool pkg-config \
+    automake make libtool pkg-config cudatoolkit=11.0 \
     libhwloc psutil python=3.8 setuptools cython \
-    cudf=0.17 dask-cudf dask-cuda ipython ipdb --yes --quiet
+    cudf=0.17 dask-cudf ipython ipdb --yes --quiet
     
 
 conda activate $ENV
+git clone http://github.com/quasiben/dask-cuda /tmp/dask-cuda
+cd /tmp/dask-cuda
+git checkout more-rmm-options
+python -m pip install .
+cd -
 git clone https://github.com/openucx/ucx /tmp/ucx
 cd /tmp/ucx
 git checkout v1.8.x
+git clean -fdx
 # apply UCX IB registration cache patches, improves overall
 # CUDA IB performance when using a memory pool
 curl -LO https://raw.githubusercontent.com/rapidsai/ucx-split-feedstock/master/recipe/add-page-alignment.patch
@@ -40,8 +46,7 @@ ls $CUDA_HOME
     --with-dc \
     --with-dm \
     --with-cuda="${CUDA_HOME}"
-
-#make -j install
+make -j install
 cd -
 git clone https://github.com/rapidsai/ucx-py.git /tmp/ucx-py
 cd /tmp/ucx-py
