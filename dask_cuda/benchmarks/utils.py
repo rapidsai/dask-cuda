@@ -29,7 +29,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
-        "--all-to-all", action="store_true", help="Run all-to-all before computation",
+        "--all-to-all",
+        action="store_true",
+        help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -101,6 +103,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "'10.10.10.10', and 'dgx13'. "
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
+    )
+    parser.add_argument(
+        "--plot", action="store_true", help="Generate plot output (plot.png)"
     )
 
     for args in args_list:
@@ -186,6 +191,27 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
     import rmm
 
     rmm.reinitialize(
-        pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
+        pool_allocator=not disable_pool,
+        devices=0,
+        initial_pool_size=pool_size,
     )
     cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+
+def plot_benchmark(t_runs):
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    x = [str(x) for x in range(len(t_runs))]
+    df = pd.DataFrame(dict(t_runs=t_runs, x=x))
+
+    ax = sns.barplot(x="x", y="t_runs", data=df, color="purple")
+
+    ax.set(
+        xlabel="Run Iteration",
+        ylabel="Merge Throughput in GB/s",
+        title=f"cudf Merge Throughput -- Average {df.t_runs.mean()} GB/s",
+    )
+    fig = ax.get_figure()
+    fig.savefig("plot.png")

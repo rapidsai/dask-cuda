@@ -17,6 +17,7 @@ from dask_cuda.benchmarks.utils import (
     get_scheduler_workers,
     parse_benchmark_args,
     setup_memory_pool,
+    plot_benchmark,
 )
 
 # Benchmarking cuDF merge operation based on
@@ -243,10 +244,14 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(sum(nb))
+        (
+            scheduler_workers[w1].name,
+            scheduler_workers[w2].name,
+        ): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
 
+    t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
     print("Merge benchmark")
@@ -266,14 +271,18 @@ def main(args):
     print("===============================")
     print("Wall-clock     | Throughput")
     print("-------------------------------")
-    for data_processed, took in took_list:
+    for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
         m += " " * (15 - len(m))
         print(f"{m}| {format_bytes(throughput)}/s")
+        t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     print("===============================")
     if args.markdown:
         print("\n```")
+
+    if args.plot:
+        plot_benchmark(t_runs)
 
     if args.backend == "dask":
         if args.markdown:
@@ -298,21 +307,30 @@ def main(args):
 def parse_args():
     special_args = [
         {
-            "name": ["-b", "--backend",],
+            "name": [
+                "-b",
+                "--backend",
+            ],
             "choices": ["dask", "explicit-comms"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
         },
         {
-            "name": ["-t", "--type",],
+            "name": [
+                "-t",
+                "--type",
+            ],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Do merge with GPU or CPU dataframes",
         },
         {
-            "name": ["-c", "--chunk-size",],
+            "name": [
+                "-c",
+                "--chunk-size",
+            ],
             "default": 1_000_000,
             "metavar": "n",
             "type": int,
@@ -341,9 +359,17 @@ def parse_args():
             "action": "store_true",
             "help": "Write output as markdown",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
         {
-            "name": ["-s", "--set-index",],
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs",
+        },
+        {
+            "name": [
+                "-s",
+                "--set-index",
+            ],
             "action": "store_true",
             "help": "Call set_index on the key column to sort the joined dataframe.",
         },
