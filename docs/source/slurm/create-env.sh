@@ -2,13 +2,14 @@
 
 set -x 
 
-module load cuda/11.0.3
+#module load cuda/11.0.3
+module load cuda/10.2.89.0
 export PATH=/gpfs/fs1/bzaitlen/miniconda3/bin:$PATH
 source /gpfs/fs1/bzaitlen/miniconda3/bin/activate
-ENV=`date +"%Y%m%d-nightly"`
+ENV=`date +"%Y%m%d-nightly-0.17"`
 
 mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
-    automake make libtool pkg-config cudatoolkit=11.0 \
+    automake make libtool pkg-config cudatoolkit=10.2 \
     libhwloc psutil python=3.8 setuptools cython \
     cudf=0.17 dask-cudf ipython ipdb --yes --quiet
     

@@ -5,7 +5,7 @@ set -xo pipefail
 #export PATH=/gpfs/fs1/bzaitlen/miniconda3/bin:$PATH
 CONDA_ROOT=/gpfs/fs1/bzaitlen/miniconda3
 source $CONDA_ROOT/etc/profile.d/conda.sh
-ENV=`date +"%Y%m%d-nightly"`
+ENV=`date +"%Y%m%d-nightly-0.17"`
 
 srun -N1 create-env.sh
 # Environment variables to enable GPUs, InfiniBand, NVLink
@@ -18,7 +18,8 @@ which python
 # Make all NICs available to the scheduler. "--net-devices auto" overrides this
 # for workers: each subprocess is assigned the best NIC for its GPU.
 
-module load cuda/11.0.3
+#module load cuda/11.0.3
+module load cuda/10.2.89.0
 # Prepare output directory
 JOB_OUTPUT_DIR="slurm-dask-$SLURM_JOB_ID"
 mkdir $JOB_OUTPUT_DIR
