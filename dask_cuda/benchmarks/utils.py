@@ -199,9 +199,15 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
 
 def plot_benchmark(t_runs):
-    import pandas as pd
-    import seaborn as sns
-    import matplotlib.pyplot as plt
+    try:
+        import pandas as pd
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print(
+            "Plotting libraries are not installed.  Please install pandas seaborn and matplotlib"
+        )
+        return
 
     x = [str(x) for x in range(len(t_runs))]
     df = pd.DataFrame(dict(t_runs=t_runs, x=x))
