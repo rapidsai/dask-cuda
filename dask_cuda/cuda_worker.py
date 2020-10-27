@@ -15,6 +15,7 @@ from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.deploy.cluster import Cluster
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
@@ -136,6 +137,9 @@ class CUDAWorker:
                 "Need to provide scheduler address like\n"
                 "dask-worker SCHEDULER_ADDRESS:8786"
             )
+
+        if isinstance(scheduler, Cluster):
+            scheduler = scheduler.scheduler_address
 
         if interface and host:
             raise ValueError("Can not specify both interface and host")

@@ -6,7 +6,7 @@ from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
 
-from dask_cuda import LocalCUDACluster, utils
+from dask_cuda import LocalCUDACluster, CUDAWorker, utils
 from dask_cuda.initialize import initialize
 
 
@@ -146,3 +146,19 @@ async def test_rmm_managed():
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.ManagedMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_cluster_worker():
+    async with LocalCUDACluster(
+        scheduler_port=0,
+        asynchronous=True,
+        device_memory_limit=1,
+        n_workers=0,
+    ) as cluster:
+        assert len(cluster.workers) == 0
+        async with Client(cluster, asynchronous=True) as client:
+            new_worker = CUDAWorker(cluster)
+            await new_worker
+            await client.wait_for_workers(1)
+            await new_worker.close()
