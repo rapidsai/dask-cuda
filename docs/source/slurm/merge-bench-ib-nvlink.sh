@@ -97,3 +97,9 @@ echo "Client start: $(date +%s)"
 echo "Client done: $(date +%s)"
 # Wait for the cluster to shut down gracefully
 sleep 5
+
+# Upload results
+# TODO Export GITHUB_ACCESS_TOKEN
+srun -N 1 -n 1 \
+   python \
+   "$CONDA_PREFIX/lib/python3.8/site-packages/dask_cuda/benchmarks/publish_benchmark.py"

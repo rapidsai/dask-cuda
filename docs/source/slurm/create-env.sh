@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x 
+set -x
 
 #module load cuda/11.0.3
 module load cuda/10.2.89.0
@@ -11,8 +11,8 @@ ENV=`date +"%Y%m%d-nightly-0.17"`
 mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
     automake make libtool pkg-config cudatoolkit=10.2 \
     libhwloc psutil python=3.8 setuptools cython \
-    cudf=0.17 dask-cudf ipython ipdb --yes --quiet
-    
+    cudf=0.17 dask-cudf ipython ipdb pygithub --yes --quiet
+
 
 conda activate $ENV
 git clone http://github.com/quasiben/dask-cuda /tmp/dask-cuda
