@@ -85,23 +85,23 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 4e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 800e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 200e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
         },
         {
-            "device_memory_limit": 1e9,
+            "device_memory_limit": 200e6,
             "memory_limit": 0,
             "host_target": 0.0,
             "host_spill": 0.0,
@@ -133,7 +133,7 @@ def test_cupy_device_spill(params):
     def test_device_spill(client, scheduler, worker):
         cupy = pytest.importorskip("cupy")
         rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-        x = rs.random(int(250e6), chunks=10e6)
+        x = rs.random(int(50e6), chunks=2e6)
 
         xx = x.persist()
         yield wait(xx)
@@ -163,23 +163,23 @@ def test_cupy_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 4e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 800e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 200e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
         },
         {
-            "device_memory_limit": 1e9,
+            "device_memory_limit": 200e6,
             "memory_limit": 0,
             "host_target": 0.0,
             "host_spill": 0.0,
@@ -209,7 +209,7 @@ async def test_cupy_cluster_device_spill(params):
             async with Client(cluster, asynchronous=True) as client:
 
                 rs = da.random.RandomState(RandomState=cupy.random.RandomState)
-                x = rs.random(int(250e6), chunks=10e6)
+                x = rs.random(int(50e6), chunks=2e6)
                 await wait(x)
 
                 xx = x.persist()
@@ -241,23 +241,23 @@ async def test_cupy_cluster_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 4e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 800e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 200e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
         },
         {
-            "device_memory_limit": 1e9,
+            "device_memory_limit": 200e6,
             "memory_limit": 0,
             "host_target": 0.0,
             "host_spill": 0.0,
@@ -292,7 +292,7 @@ def test_cudf_device_spill(params):
         # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
         # The same error above happens when spilling datetime64 to disk
         cdf = (
-            dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="20ms")
+            dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="100ms")
             .reset_index(drop=True)
             .map_partitions(cudf.from_pandas)
         )
@@ -330,23 +330,23 @@ def test_cudf_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 4e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 800e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": 1e9,
-            "memory_limit": 1e9,
+            "device_memory_limit": 200e6,
+            "memory_limit": 200e6,
             "host_target": 0.0,
             "host_spill": 0.0,
             "host_pause": None,
             "spills_to_disk": True,
         },
         {
-            "device_memory_limit": 1e9,
+            "device_memory_limit": 200e6,
             "memory_limit": 0,
             "host_target": 0.0,
             "host_spill": 0.0,
@@ -375,7 +375,7 @@ async def test_cudf_cluster_device_spill(params):
                 # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
                 # The same error above happens when spilling datetime64 to disk
                 cdf = (
-                    dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="20ms")
+                    dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="100ms")
                     .reset_index(drop=True)
                     .map_partitions(cudf.from_pandas)
                 )
