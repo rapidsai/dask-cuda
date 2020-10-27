@@ -159,6 +159,5 @@ async def test_cluster_worker():
         assert len(cluster.workers) == 0
         async with Client(cluster, asynchronous=True) as client:
             new_worker = CUDAWorker(cluster)
-            await new_worker
             await client.wait_for_workers(1)
             await new_worker.close()
