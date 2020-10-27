@@ -331,10 +331,10 @@ def parse_args():
                 "-c",
                 "--chunk-size",
             ],
-            "default": 40_000_000,
+            "default": 1_000_000,
             "metavar": "n",
             "type": int,
-            "help": "Chunk size (default 40_000_000)",
+            "help": "Chunk size (default 1_000_000)",
         },
         {
             "name": "--ignore-size",
