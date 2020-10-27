@@ -26,7 +26,14 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--rmm-pool-size",
+        default=None,
+        type=float,
+        help="The size of the RMM memory pool. By default, 1/2 of "
+        "the total GPU memory is used.",
+    )
+    parser.add_argument(
+        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
         "--all-to-all",
@@ -190,13 +197,13 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
     import rmm
 
-    rmm.reinitialize(
-        pool_allocator=not disable_pool,
-        devices=0,
-        initial_pool_size=pool_size,
-    )
-    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
-
+    if not disable_pool:
+        rmm.reinitialize(
+            pool_allocator=True,
+            devices=0,
+            initial_pool_size=pool_size,
+        )
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
 def plot_benchmark(t_runs):
     try:
@@ -221,3 +228,5 @@ def plot_benchmark(t_runs):
     )
     fig = ax.get_figure()
     fig.savefig("plot.png")
+=======
+

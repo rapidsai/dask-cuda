@@ -209,10 +209,16 @@ def main(args):
         client = Client(scheduler_addr if args.multi_node else cluster)
 
     if args.type == "gpu":
-        client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
+        client.run(
+            setup_memory_pool,
+            pool_size=args.rmm_pool_size,
+            disable_pool=args.disable_rmm_pool,
+        )
         # Create an RMM pool on the scheduler due to occasional deserialization
         # of CUDA objects. May cause issues with InfiniBand otherwise.
-        client.run_on_scheduler(setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool)
+        client.run_on_scheduler(
+            setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+        )
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
@@ -261,7 +267,7 @@ def main(args):
     print(f"rows-per-chunk | {args.chunk_size}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
-    print(f"rmm-pool       | {(not args.no_rmm_pool)}")
+    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
     print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
         print(f"tcp            | {args.enable_tcp_over_ucx}")
