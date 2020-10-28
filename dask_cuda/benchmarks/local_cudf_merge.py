@@ -288,7 +288,7 @@ def main(args):
         print("\n```")
 
     if args.plot:
-        plot_benchmark(t_runs)
+        plot_benchmark(t_runs, historical=True)
 
     if args.backend == "dask":
         if args.markdown:

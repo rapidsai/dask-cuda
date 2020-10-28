@@ -10,14 +10,14 @@ ENV=`date +"%Y%m%d-nightly-0.17"`
 
 mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
     automake make libtool pkg-config cudatoolkit=10.2 \
-    libhwloc psutil python=3.8 setuptools cython \
+    libhwloc psutil python=3.8 setuptools cython matplotlib seaborn \
     cudf=0.17 dask-cudf ipython ipdb pygithub --yes --quiet
 
 
 conda activate $ENV
 git clone http://github.com/quasiben/dask-cuda /tmp/dask-cuda
 cd /tmp/dask-cuda
-git checkout more-rmm-options
+git checkout nightly-benchmarks
 python -m pip install .
 cd -
 git clone https://github.com/openucx/ucx /tmp/ucx

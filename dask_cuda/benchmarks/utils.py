@@ -1,4 +1,6 @@
 import argparse
+import os
+from datetime import datetime
 
 from dask.distributed import SSHCluster
 
@@ -205,7 +207,8 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
-def plot_benchmark(t_runs):
+
+def plot_benchmark(t_runs, historical=False):
     try:
         import pandas as pd
         import seaborn as sns
@@ -218,15 +221,31 @@ def plot_benchmark(t_runs):
 
     x = [str(x) for x in range(len(t_runs))]
     df = pd.DataFrame(dict(t_runs=t_runs, x=x))
+    avg = round(df.t_runs.mean(), 2)
 
     ax = sns.barplot(x="x", y="t_runs", data=df, color="purple")
 
     ax.set(
         xlabel="Run Iteration",
         ylabel="Merge Throughput in GB/s",
-        title=f"cudf Merge Throughput -- Average {df.t_runs.mean()} GB/s",
+        title=f"cudf Merge Throughput -- Average {avg} GB/s",
     )
     fig = ax.get_figure()
-    fig.savefig("plot.png")
-=======
+    today = datetime.now().strftime("%Y%m%d")
+    fname = today +"-benchmark.png"
+    fig.savefig(fname)
+
+    if historical:
+        # record average tohroughput and plot historical averages
+        history_file = os.path.join(os.path.expanduser('~'), 'benchmark-historic-runs.csv')
+        with open(history_file, 'a+') as f:
+            f.write(f"{today},{avg}\n")
+
+        df = pd.read_csv(history_file, names=["date", "throughput"], parse_dates=['date'])
+        ax = df.plot(x='date', y='throughput', marker='o', title="Historical Throughput")
+
+        fig = ax.get_figure()
+        fname = today +"-benchmark-history.png"
+        fig.savefig(fname)
+
 
