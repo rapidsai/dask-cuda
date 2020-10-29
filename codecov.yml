@@ -1,4 +1,4 @@
 #Configuration File for CodeCov
 ignore:
-  - "versioneer.py"
+  - "dask_cuda/_version.py"
   - "dask_cuda/benchmarks/*"  # benchmarks aren't covered
