@@ -194,8 +194,6 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
     if not disable_pool:
         rmm.reinitialize(
-            pool_allocator=True,
-            devices=0,
-            initial_pool_size=pool_size,
+            pool_allocator=True, devices=0, initial_pool_size=pool_size,
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
