@@ -375,7 +375,9 @@ async def test_cudf_cluster_device_spill(params):
                 # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
                 # The same error above happens when spilling datetime64 to disk
                 cdf = (
-                    dask.datasets.timeseries(dtypes={"x": int, "y": float}, freq="100ms")
+                    dask.datasets.timeseries(
+                        dtypes={"x": int, "y": float}, freq="100ms"
+                    )
                     .reset_index(drop=True)
                     .map_partitions(cudf.from_pandas)
                 )
