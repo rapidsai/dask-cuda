@@ -2,7 +2,6 @@
 
 set -x
 
-#module load cuda/11.0.3
 module load cuda/10.2.89.0
 export PATH=/gpfs/fs1/bzaitlen/miniconda3/bin:$PATH
 source /gpfs/fs1/bzaitlen/miniconda3/bin/activate
@@ -15,9 +14,7 @@ mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
 
 
 conda activate $ENV
-git clone http://github.com/quasiben/dask-cuda /tmp/dask-cuda
-cd /tmp/dask-cuda
-git checkout nightly-benchmarks
+cd /home/bzaitlen/GitRepos/dask-cuda
 python -m pip install .
 cd -
 git clone https://github.com/openucx/ucx /tmp/ucx

@@ -38,9 +38,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
-        "--all-to-all",
-        action="store_true",
-        help="Run all-to-all before computation",
+        "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -201,9 +199,7 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
     if not disable_pool:
         rmm.reinitialize(
-            pool_allocator=True,
-            devices=0,
-            initial_pool_size=pool_size,
+            pool_allocator=True, devices=0, initial_pool_size=pool_size,
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
@@ -232,20 +228,29 @@ def plot_benchmark(t_runs, historical=False):
     )
     fig = ax.get_figure()
     today = datetime.now().strftime("%Y%m%d")
-    fname = today +"-benchmark.png"
-    fig.savefig(fname)
+    fname_bench = today + "-benchmark.png"
+    d = f"slurm-dask-{today}"
+    bench_path = os.path.join(d, fname_bench)
+    fig.savefig(bench_path)
 
     if historical:
         # record average tohroughput and plot historical averages
-        history_file = os.path.join(os.path.expanduser('~'), 'benchmark-historic-runs.csv')
-        with open(history_file, 'a+') as f:
+        history_file = os.path.join(
+            os.path.expanduser("~"), "benchmark-historic-runs.csv"
+        )
+        with open(history_file, "a+") as f:
             f.write(f"{today},{avg}\n")
 
-        df = pd.read_csv(history_file, names=["date", "throughput"], parse_dates=['date'])
-        ax = df.plot(x='date', y='throughput', marker='o', title="Historical Throughput")
+        df = pd.read_csv(
+            history_file, names=["date", "throughput"], parse_dates=["date"]
+        )
+        ax = df.plot(
+            x="date", y="throughput", marker="o", title="Historical Throughput"
+        )
+
+        ax.set_ylim(0, 30)
 
         fig = ax.get_figure()
-        fname = today +"-benchmark-history.png"
-        fig.savefig(fname)
-
-
+        fname_hist = today + "-benchmark-history.png"
+        hist_path = os.path.join(d, fname_hist)
+        fig.savefig(hist_path)
