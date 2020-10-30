@@ -12,7 +12,7 @@ from dask import array as da
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
-from dask_cuda.benchmarks.utils import (
+from benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
