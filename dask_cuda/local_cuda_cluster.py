@@ -17,6 +17,7 @@ from .utils import (
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    parse_cuda_visible_device,
 )
 
 
@@ -32,7 +33,9 @@ def cuda_visible_devices(i, visible=None):
     """
     if visible is None:
         try:
-            visible = map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+            visible = map(
+                parse_cuda_visible_device, os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+            )
         except KeyError:
             visible = range(get_n_gpus())
     visible = list(visible)
@@ -159,7 +162,9 @@ class LocalCUDACluster(LocalCluster):
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
             CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-        CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+        CUDA_VISIBLE_DEVICES = list(
+            map(parse_cuda_visible_device, CUDA_VISIBLE_DEVICES)
+        )
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
         self.host_memory_limit = parse_memory_limit(
@@ -283,7 +288,9 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": visible_devices,
+                },
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),
