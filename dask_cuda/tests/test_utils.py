@@ -6,12 +6,15 @@ from numba import cuda
 from dask_cuda.utils import (
     get_cpu_affinity,
     get_device_total_memory,
+    get_gpu_count,
     get_n_gpus,
     get_preload_options,
     get_ucx_config,
     get_ucx_net_devices,
+    parse_cuda_visible_device,
     unpack_bitmask,
 )
+from dask_cuda.local_cuda_cluster import cuda_visible_devices
 
 
 def test_get_n_gpus():
@@ -181,3 +184,38 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
         pass
     elif net_devices == "":
         assert "net-device" not in ucx_config
+
+
+def test_parse_visible_devices():
+    pynvml = pytest.importorskip("pynvml")
+    pynvml.nvmlInit()
+    indices = []
+    uuids = []
+    for index in range(get_gpu_count()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+        uuid = pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+
+        assert parse_cuda_visible_device(index) == index
+        assert parse_cuda_visible_device(uuid) == uuid
+
+        indices.append(str(index))
+        uuids.append(pynvml.nvmlDeviceGetUUID(handle).decode("utf-8"))
+
+    index_devices = ",".join(indices)
+    os.environ["CUDA_VISIBLE_DEVICES"] = index_devices
+    for index in range(get_gpu_count()):
+        visible = cuda_visible_devices(index)
+        assert visible.split(",")[0] == str(index)
+
+    uuid_devices = ",".join(uuids)
+    os.environ["CUDA_VISIBLE_DEVICES"] = uuid_devices
+    for index in range(get_gpu_count()):
+        visible = cuda_visible_devices(index)
+        assert visible.split(",")[0] == str(uuids[index])
+
+    with pytest.raises(ValueError):
+        parse_cuda_visible_device("Foo")
+
+    with pytest.raises(TypeError):
+        parse_cuda_visible_device(None)
+        parse_cuda_visible_device([])
