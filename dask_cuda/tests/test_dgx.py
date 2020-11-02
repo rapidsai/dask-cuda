@@ -17,7 +17,6 @@ from dask_cuda.initialize import initialize
 from dask_cuda.utils import wait_workers
 
 mp = mp.get_context("spawn")
-ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
 
@@ -133,6 +132,8 @@ def _test_tcp_over_ucx():
 
 
 def test_tcp_over_ucx():
+    ucp = pytest.importorskip("ucp")
+
     p = mp.Process(target=_test_tcp_over_ucx)
     p.start()
     p.join()
@@ -222,6 +223,8 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(params):
+    ucp = pytest.importorskip("ucp")
+
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
@@ -337,6 +340,8 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    ucp = pytest.importorskip("ucp")
+
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
     )
