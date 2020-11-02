@@ -4,6 +4,7 @@ import pytest
 from numba import cuda
 
 from dask_cuda.utils import (
+    cuda_visible_devices,
     get_cpu_affinity,
     get_device_total_memory,
     get_gpu_count,
@@ -14,7 +15,6 @@ from dask_cuda.utils import (
     parse_cuda_visible_device,
     unpack_bitmask,
 )
-from dask_cuda.local_cuda_cluster import cuda_visible_devices
 
 
 def test_get_n_gpus():

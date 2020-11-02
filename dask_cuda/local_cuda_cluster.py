@@ -12,36 +12,13 @@ from .initialize import initialize
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    cuda_visible_devices,
     get_cpu_affinity,
     get_device_total_memory,
-    get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
     parse_cuda_visible_device,
 )
-
-
-def cuda_visible_devices(i, visible=None):
-    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
-
-    Examples
-    --------
-    >>> cuda_visible_devices(0, range(4))
-    '0,1,2,3'
-    >>> cuda_visible_devices(3, range(8))
-    '3,4,5,6,7,0,1,2'
-    """
-    if visible is None:
-        try:
-            visible = map(
-                parse_cuda_visible_device, os.environ["CUDA_VISIBLE_DEVICES"].split(",")
-            )
-        except KeyError:
-            visible = range(get_n_gpus())
-    visible = list(visible)
-
-    L = visible[i:] + visible[:i]
-    return ",".join(map(str, L))
 
 
 class LocalCUDACluster(LocalCluster):

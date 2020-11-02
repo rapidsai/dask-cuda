@@ -20,10 +20,10 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .local_cuda_cluster import cuda_visible_devices
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    cuda_visible_devices,
     get_cpu_affinity,
     get_device_total_memory,
     get_n_gpus,
