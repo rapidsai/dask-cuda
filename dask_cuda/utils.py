@@ -406,7 +406,8 @@ def parse_cuda_visible_device(dev):
     >>> parse_cuda_visible_device('Foo')
     Traceback (most recent call last):
     ...
-    ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
+    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
     """
     try:
         return int(dev)
