@@ -388,3 +388,57 @@ async def _all_to_all(client):
 
 def all_to_all(client):
     return client.sync(_all_to_all, client=client, asynchronous=client.asynchronous)
+
+
+def parse_cuda_visible_device(dev):
+    """Parses a single CUDA device identifier
+
+    A device identifier must either be an integer, a string containing an
+    integer or a string containing the device's UUID, beginning with prefix
+    'GPU-' or 'MIG-GPU'.
+
+    >>> parse_cuda_visible_device(2)
+    2
+    >>> parse_cuda_visible_device('2')
+    2
+    >>> parse_cuda_visible_device('GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005')
+    'GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005'
+    >>> parse_cuda_visible_device('Foo')
+    Traceback (most recent call last):
+    ...
+    ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
+    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    """
+    try:
+        return int(dev)
+    except ValueError:
+        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-"]):
+            return dev
+        else:
+            raise ValueError(
+                "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
+                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes."
+            )
+
+
+def cuda_visible_devices(i, visible=None):
+    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
+
+    Examples
+    --------
+    >>> cuda_visible_devices(0, range(4))
+    '0,1,2,3'
+    >>> cuda_visible_devices(3, range(8))
+    '3,4,5,6,7,0,1,2'
+    """
+    if visible is None:
+        try:
+            visible = map(
+                parse_cuda_visible_device, os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+            )
+        except KeyError:
+            visible = range(get_n_gpus())
+    visible = list(visible)
+
+    L = visible[i:] + visible[:i]
+    return ",".join(map(str, L))
