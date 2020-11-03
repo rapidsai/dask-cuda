@@ -61,6 +61,10 @@ conda install "cudatoolkit=$CUDA_REL" \
               "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
+# Pin pytest-asyncio because latest versions modify the default asyncio
+# `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
+conda install "pytest-asyncio=<0.14.0"
+
 # https://docs.rapids.ai/maintainers/depmgmt/ 
 # conda remove -f rapids-build-env
 # conda install "your-pkg=1.0.0"
