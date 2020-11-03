@@ -393,7 +393,7 @@ def all_to_all(client):
 def parse_cuda_visible_device(dev):
     """Parses a single CUDA device identifier
 
-    A device identifier must either be an intenger, a string containing an
+    A device identifier must either be an integer, a string containing an
     integer or a string containing the device's UUID, beginning with prefix
     'GPU-' or 'MIG-GPU'.
 
