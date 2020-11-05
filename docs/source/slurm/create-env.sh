@@ -12,6 +12,9 @@ mamba create -n $ENV -c rapidsai-nightly -c nvidia -c conda-forge \
     libhwloc psutil python=3.8 setuptools cython matplotlib seaborn \
     cudf=0.17 dask-cudf ipython ipdb pygithub --yes --quiet
 
+# use dask/distibuted latest
+python -m pip install git+https://github.com/dask/dask.git
+python -m pip install git+https://github.com/dask/distributed.git
 
 conda activate $ENV
 cd /home/bzaitlen/GitRepos/dask-cuda
