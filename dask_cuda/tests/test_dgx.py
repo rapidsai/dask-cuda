@@ -17,7 +17,6 @@ from dask_cuda.initialize import initialize
 from dask_cuda.utils import wait_workers
 
 mp = mp.get_context("spawn")
-ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
 
@@ -114,6 +113,8 @@ def test_default():
 
 
 def _test_tcp_over_ucx():
+    ucp = pytest.importorskip("ucp")
+
     with LocalCUDACluster(enable_tcp_over_ucx=True) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -133,6 +134,8 @@ def _test_tcp_over_ucx():
 
 
 def test_tcp_over_ucx():
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
     p = mp.Process(target=_test_tcp_over_ucx)
     p.start()
     p.join()
@@ -156,6 +159,7 @@ def test_tcp_only():
 
 def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
     cupy = pytest.importorskip("cupy")
+    ucp = pytest.importorskip("ucp")
 
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
@@ -222,6 +226,8 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(params):
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
@@ -237,6 +243,7 @@ def test_ucx_infiniband_nvlink(params):
 
 def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     loop = IOLoop.current()
+    ucp = pytest.importorskip("ucp")
 
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
     net_devices = _get_dgx_net_devices()
@@ -337,6 +344,8 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
     )

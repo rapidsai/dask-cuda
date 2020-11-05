@@ -40,6 +40,7 @@ def _test_local_cluster(protocol):
             assert sum(comms.run(my_rank)) == sum(range(4))
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_local_cluster(protocol):
     p = mp.Process(target=_test_local_cluster, args=(protocol,))
@@ -98,6 +99,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
                 pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
@@ -180,6 +182,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
             assert all(result.to_list())
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])

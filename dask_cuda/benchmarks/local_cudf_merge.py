@@ -11,7 +11,6 @@ from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
 from dask_cuda import explicit_comms
-from dask_cuda.utils import all_to_all
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -19,6 +18,7 @@ from dask_cuda.benchmarks.utils import (
     setup_memory_pool,
     plot_benchmark,
 )
+from dask_cuda.utils import all_to_all
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
@@ -250,10 +250,7 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (
-            scheduler_workers[w1].name,
-            scheduler_workers[w2].name,
-        ): format_bytes(sum(nb))
+        (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
 
@@ -313,30 +310,21 @@ def main(args):
 def parse_args():
     special_args = [
         {
-            "name": [
-                "-b",
-                "--backend",
-            ],
+            "name": ["-b", "--backend",],
             "choices": ["dask", "explicit-comms"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
         },
         {
-            "name": [
-                "-t",
-                "--type",
-            ],
+            "name": ["-t", "--type",],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Do merge with GPU or CPU dataframes",
         },
         {
-            "name": [
-                "-c",
-                "--chunk-size",
-            ],
+            "name": ["-c", "--chunk-size",],
             "default": 1_000_000,
             "metavar": "n",
             "type": int,
@@ -365,17 +353,9 @@ def parse_args():
             "action": "store_true",
             "help": "Write output as markdown",
         },
+        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
         {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
-        },
-        {
-            "name": [
-                "-s",
-                "--set-index",
-            ],
+            "name": ["-s", "--set-index",],
             "action": "store_true",
             "help": "Call set_index on the key column to sort the joined dataframe.",
         },
