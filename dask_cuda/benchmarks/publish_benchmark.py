@@ -37,10 +37,13 @@ repo.create_file(
 print("Creating Issue...")
 template = f"""
 ## Historical Throughput
-<img width="641" alt="Benchmark Image" src="https://raw.githubusercontent.com/quasiben/dask-cuda/benchmark-images/assets/{fname_hist}">
+<img width="641" alt="Benchmark Image"
+src="https://raw.githubusercontent.com/quasiben/dask-cuda/benchmark-images/assets/{fname_hist}">
+
 
 ## Throughput Runs
-<img width="641" alt="Benchmark Image" src="https://raw.githubusercontent.com/quasiben/dask-cuda/benchmark-images/assets/{fname_bench}">
+<img width="641" alt="Benchmark Image"
+src="https://raw.githubusercontent.com/quasiben/dask-cuda/benchmark-images/assets/{fname_bench}">
 
 ## Raw Data
 {raw_data}

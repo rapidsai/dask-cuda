@@ -201,7 +201,8 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import \
+                    TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "
