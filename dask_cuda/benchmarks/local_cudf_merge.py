@@ -15,8 +15,8 @@ from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
-    setup_memory_pool,
     plot_benchmark,
+    setup_memory_pool,
 )
 from dask_cuda.utils import all_to_all
 

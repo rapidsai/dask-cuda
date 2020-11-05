@@ -208,10 +208,10 @@ def plot_benchmark(t_runs, historical=False):
     try:
         import pandas as pd
         import seaborn as sns
-        import matplotlib.pyplot as plt
     except ImportError:
         print(
-            "Plotting libraries are not installed.  Please install pandas seaborn and matplotlib"
+            "Plotting libraries are not installed.  Please install pandas, "
+            "seaborn, and matplotlib"
         )
         return
 
