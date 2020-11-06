@@ -21,13 +21,13 @@ conda activate $ENV
 which python
 
 # Each worker uses all GPUs on its node
-# (don't set CUDA_VISIBLE_DEVICES)
 # Make all NICs available to the scheduler. "--net-devices auto" overrides this
 # for workers: each subprocess is assigned the best NIC for its GPU.
 
 # Prepare output directory
 JOB_OUTPUT_DIR=slurm-dask-`date +"%Y%m%d"`
 mkdir $JOB_OUTPUT_DIR
+
 # Start a single scheduler on node 0 of the allocation
    DASK_UCX__CUDA_COPY=True \
    DASK_UCX__TCP=True \
@@ -71,12 +71,7 @@ for HOST in `scontrol show hostnames "$SLURM_JOB_NODELIST"`; do
     --scheduler-file "$JOB_OUTPUT_DIR/cluster.json" &
 done
 # Wait for the workers to start
-sleep 30
-#NUM_WORKERS=$(($SLURM_NODES*8))
-#srun -N 1 -n 1 \
-#   python -c "from dask.distributed import Client; client = \
-#Client('$SCHED_ADDR'); client.wait_for_workers(int('$NUM_WORKERS'))"
-
+sleep 5
 
 # Execute the client script on node 0 of the allocation
 # The client script should shut down the scheduler before exiting
@@ -103,7 +98,8 @@ echo "Client start: $(date +%s)"
   --markdown \
   --all-to-all \
   --runs 10 \
-  --plot > $JOB_OUTPUT_DIR/raw_data.txt
+  --profile "$JOB_OUTPUT_DIR/$ENV-dask-cudf-merge-profile.html" \
+  --plot "$JOB_OUTPUT_DIR"  > $JOB_OUTPUT_DIR/raw_data.txt
 
 echo "Client done: $(date +%s)"
 # Wait for the cluster to shut down gracefully

@@ -112,7 +112,11 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "one worker per GPU will be launched.",
     )
     parser.add_argument(
-        "--plot", action="store_true", help="Generate plot output (plot.png)"
+        "--plot",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Generate plot output written to defined directory",
     )
 
     for args in args_list:
@@ -204,7 +208,11 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
 
-def plot_benchmark(t_runs, historical=False):
+def plot_benchmark(t_runs, path, historical=False):
+    """
+    Plot the throughput the benchmark for each run.  If historical=True, Load historical data from
+    ~/benchmark-historic-runs.csv
+    """
     try:
         import pandas as pd
         import seaborn as sns
@@ -229,7 +237,7 @@ def plot_benchmark(t_runs, historical=False):
     fig = ax.get_figure()
     today = datetime.now().strftime("%Y%m%d")
     fname_bench = today + "-benchmark.png"
-    d = f"slurm-dask-{today}"
+    d = os.path.expanduser(path)
     bench_path = os.path.join(d, fname_bench)
     fig.savefig(bench_path)
 
