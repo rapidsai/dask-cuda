@@ -66,7 +66,7 @@ src="https://raw.githubusercontent.com/quasiben/dask-cuda/benchmark-images/asset
 
 ## Dask Profile
 
-[Performance Profile](https://raw.githack.com/quasiben/dask-cuda/benchmark-images/assets/{profile_name})
-"""
+[Performance
+Profile](https://raw.githack.com/quasiben/dask-cuda/benchmark-images/assets/{profile_name})"""  # noqa
 
 repo.create_issue(title=f"Nightly Benchmark run {today}", body=template)

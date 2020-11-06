@@ -210,8 +210,8 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
 def plot_benchmark(t_runs, path, historical=False):
     """
-    Plot the throughput the benchmark for each run.  If historical=True, Load historical data from
-    ~/benchmark-historic-runs.csv
+    Plot the throughput the benchmark for each run.  If historical=True,
+    Load historical data from ~/benchmark-historic-runs.csv
     """
     try:
         import pandas as pd
