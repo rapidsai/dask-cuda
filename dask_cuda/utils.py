@@ -2,6 +2,7 @@ import math
 import os
 import time
 import warnings
+from contextlib import suppress
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -470,22 +471,15 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
     >>> parse_device_memory_limit("1GB")
     1000000000
     """
-    if any(device_memory_limit == v for v in [0, None, "auto"]):
+    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
         return get_device_total_memory(device_index)
-    elif isinstance(device_memory_limit, int):
-        return device_memory_limit
-    elif isinstance(device_memory_limit, float):
-        if device_memory_limit < 0.0 or device_memory_limit > 1.0:
-            raise ValueError(
-                "When `device_memory_limit` is float, it must meet the "
-                "`0.0 <= device_memory_limit <= 1.0` condition, where that is "
-                "fraction of the total GPU memory."
-            )
-        return int(get_device_total_memory(device_index) * device_memory_limit)
-    elif isinstance(device_memory_limit, str):
+
+    with suppress(ValueError, TypeError):
+        device_memory_limit = float(device_memory_limit)
+        if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
+            return int(get_device_total_memory(device_index) * device_memory_limit)
+
+    if isinstance(device_memory_limit, str):
         return parse_bytes(device_memory_limit)
     else:
-        raise ValueError(
-            "Invalid value for `device_memory_limit`, valid values are "
-            "floats, integers, strings, 0, None or 'auto'."
-        )
+        return int(device_memory_limit)
