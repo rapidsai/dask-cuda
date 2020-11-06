@@ -14,10 +14,10 @@ from .utils import (
     RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
     get_ucx_config,
     get_ucx_net_devices,
     parse_cuda_visible_device,
+    parse_device_memory_limit,
 )
 
 
