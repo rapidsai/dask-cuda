@@ -84,7 +84,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--device-memory-limit",
-    default=0.8,
+    default="0.8",
     help="Specifies the size of the CUDA device LRU cache, which "
     "is used to determine when the worker starts spilling to host "
     "memory.  This can be a float (fraction of total device "
