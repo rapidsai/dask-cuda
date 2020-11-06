@@ -38,18 +38,22 @@ class LocalCUDACluster(LocalCluster):
 
     Parameters
     ----------
-    CUDA_VISIBLE_DEVICES: str
-        String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs
+    CUDA_VISIBLE_DEVICES: str or list
+        String or list ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
+        different GPUs.
+    device_memory_limit: int, float or str
+        Specifies the size of the CUDA device LRU cache, which is used to
+        determine when the worker starts spilling to host memory.  This can be
+        a float (fraction of total device memory), an integer (bytes), a string
+        (like 5GB or 5000M), and "auto", 0 or None to disable spilling to
+        host (i.e., allow full device memory usage). Default is 0.8, 80% of the
+        worker's total device memory.
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
         interface (if one is available).
     threads_per_worker: int
         Number of threads to be used for each CUDA worker process.
-    CUDA_VISIBLE_DEVICES: str or list
-        String or list ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs.
     protocol: str
         Protocol to use for communication, e.g., "tcp" or "ucx".
     enable_tcp_over_ucx: bool
@@ -117,7 +121,7 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit="auto",
-        device_memory_limit=None,
+        device_memory_limit=0.8,
         CUDA_VISIBLE_DEVICES=None,
         data=None,
         local_directory=None,
@@ -147,7 +151,9 @@ class LocalCUDACluster(LocalCluster):
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
-        self.device_memory_limit = device_memory_limit
+        self.device_memory_limit = parse_device_memory_limit(
+            device_memory_limit, device_index=0
+        )
 
         self.rmm_pool_size = rmm_pool_size
         self.rmm_managed_memory = rmm_managed_memory
@@ -175,11 +181,6 @@ class LocalCUDACluster(LocalCluster):
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
-
-        if self.device_memory_limit is None:
-            self.device_memory_limit = get_device_total_memory(0)
-        elif isinstance(self.device_memory_limit, str):
-            self.device_memory_limit = parse_bytes(self.device_memory_limit)
 
         if data is None:
             data = (
@@ -265,9 +266,7 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": visible_devices,
-                },
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),

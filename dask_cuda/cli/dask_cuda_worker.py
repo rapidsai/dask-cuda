@@ -84,13 +84,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--device-memory-limit",
-    default="auto",
-    help="Bytes of memory per CUDA device that the worker can use. "
-    "This can be an integer (bytes), "
-    "float (fraction of total device memory), "
-    "string (like 5GB or 5000M), "
-    "'auto', or zero for no memory management "
-    "(i.e., allow full device memory usage).",
+    default=0.8,
+    help="Specifies the size of the CUDA device LRU cache, which "
+    "is used to determine when the worker starts spilling to host "
+    "memory.  This can be a float (fraction of total device "
+    "memory), an integer (bytes), a string (like 5GB or 5000M), "
+    "and 'auto' or 0 to disable spilling to host (i.e., allow "
+    "full device memory usage). Default is 0.8, 80% of the "
+    "worker's total device memory.",
 )
 @click.option(
     "--rmm-pool-size",
