@@ -12,7 +12,8 @@ if test -f ~/.profile; then
     source ~/.profile
 fi
 source $CONDA_ROOT/etc/profile.d/conda.sh
-ENV=`date +"%Y%m%d-nightly-0.17"`
+TODAY=`date +"%Y%m%d"`
+ENV="$TODAY-nightly-0.17"
 
 srun -N1 create-env.sh
 # Environment variables to enable GPUs, InfiniBand, NVLink
@@ -98,7 +99,7 @@ echo "Client start: $(date +%s)"
   --markdown \
   --all-to-all \
   --runs 10 \
-  --profile "$JOB_OUTPUT_DIR/$ENV-dask-cudf-merge-profile.html" \
+  --profile "$JOB_OUTPUT_DIR/$TODAY-dask-cudf-merge-profile.html" \
   --plot "$JOB_OUTPUT_DIR"  > $JOB_OUTPUT_DIR/raw_data.txt
 
 echo "Client done: $(date +%s)"
