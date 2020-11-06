@@ -8,7 +8,8 @@ import numpy as np
 import pynvml
 import toolz
 
-from dask.distributed import wait
+from distributed import wait
+from distributed.utils import parse_bytes
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -442,3 +443,49 @@ def cuda_visible_devices(i, visible=None):
 
     L = visible[i:] + visible[:i]
     return ",".join(map(str, L))
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0):
+    """Parse memory limit to be used by a CUDA device.
+
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        This can be a float (fraction of total device memory), an integer (bytes),
+        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
+        size.
+    device_index: int
+        The index of device from which to obtain the total memory amount.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_memory_limit(None)
+    34089730048
+    >>> parse_device_memory_limit(0.8)
+    27271784038
+    >>> parse_device_memory_limit(1000000000)
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    """
+    if any(device_memory_limit == v for v in [0, None, "auto"]):
+        return get_device_total_memory(device_index)
+    elif isinstance(device_memory_limit, int):
+        return device_memory_limit
+    elif isinstance(device_memory_limit, float):
+        if device_memory_limit < 0.0 or device_memory_limit > 1.0:
+            raise ValueError(
+                "When `device_memory_limit` is float, it must meet the "
+                "`0.0 <= device_memory_limit <= 1.0` condition, where that is "
+                "fraction of the total GPU memory."
+            )
+        return int(get_device_total_memory(device_index) * device_memory_limit)
+    elif isinstance(device_memory_limit, str):
+        return parse_bytes(device_memory_limit)
+    else:
+        raise ValueError(
+            "Invalid value for `device_memory_limit`, valid values are "
+            "floats, integers, strings, 0, None or 'auto'."
+        )
