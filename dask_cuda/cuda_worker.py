@@ -25,10 +25,10 @@ from .utils import (
     RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    parse_device_memory_limit,
 )
 
 
@@ -211,12 +211,9 @@ class CUDAWorker:
                 data=(
                     DeviceHostFile,
                     {
-                        "device_memory_limit": get_device_total_memory(index=i)
-                        if (
-                            device_memory_limit == "auto"
-                            or device_memory_limit == int(0)
-                        )
-                        else parse_bytes(device_memory_limit),
+                        "device_memory_limit": parse_device_memory_limit(
+                            device_memory_limit, device_index=i
+                        ),
                         "memory_limit": memory_limit,
                         "local_directory": local_directory,
                     },
