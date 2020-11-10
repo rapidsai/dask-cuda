@@ -13,6 +13,8 @@ Spilling From Device
 
 For applications that do not fit in GPU memory, Dask-CUDA supports spilling from device memory to host memory when the GPU can't fit more data. The spilling mechanism is automatically triggered once the user-defined limit is reached, such limit can be set via the ``--device-memory-limit`` and ``device_memory_limit`` arguments for ``dask-cuda-worker`` and ``LocalCUDACluster``, respectively.
 
+Previously, spilling was disabled by default, but since Dask-CUDA 0.17 the default has been changed to ``0.8`` -- spilling will begin when Dask-CUDA device memory utilization reaches 80% of the device's total memory.  Behavior can configured with ``--device-memory-limit`` flag.  Users can disable spilling by setting ``--device-memory-limit=0`` or ``device_memory_limit=0``.
+
 CPU Affinity
 ------------
 

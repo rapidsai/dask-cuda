@@ -10,9 +10,6 @@ from dask.dataframe.shuffle import partitioning_index
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
-import cudf
-from cudf.tests.utils import assert_eq
-
 from dask_cuda.explicit_comms import (
     CommsContext,
     dataframe_merge,
@@ -43,6 +40,7 @@ def _test_local_cluster(protocol):
             assert sum(comms.run(my_rank)) == sum(range(4))
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_local_cluster(protocol):
     p = mp.Process(target=_test_local_cluster, args=(protocol,))
@@ -52,13 +50,15 @@ def test_local_cluster(protocol):
 
 
 def _test_dataframe_merge(backend, protocol, n_workers):
+    if backend == "cudf":
+        cudf = pytest.importorskip("cudf")
+        from cudf.tests.utils import assert_eq
+    else:
+        from dask.dataframe.utils import assert_eq
+
     dask.config.update(
         dask.config.global_config,
-        {
-            "ucx": {
-                "TLS": "tcp,sockcm,cuda_copy",
-            },
-        },
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
         priority="new",
     )
 
@@ -99,10 +99,13 @@ def _test_dataframe_merge(backend, protocol, n_workers):
                 pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_merge(backend, protocol, nworkers):
+    if backend == "cudf":
+        pytest.importorskip("cudf")
     p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol, nworkers))
     p.start()
     p.join()
@@ -148,13 +151,12 @@ def check_partitions(df, npartitions):
 
 
 def _test_dataframe_shuffle(backend, protocol, n_workers):
+    if backend == "cudf":
+        cudf = pytest.importorskip("cudf")
+
     dask.config.update(
         dask.config.global_config,
-        {
-            "ucx": {
-                "TLS": "tcp,sockcm,cuda_copy",
-            },
-        },
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
         priority="new",
     )
 
@@ -180,10 +182,14 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
             assert all(result.to_list())
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_shuffle(backend, protocol, nworkers):
+    if backend == "cudf":
+        pytest.importorskip("cudf")
+
     p = mp.Process(target=_test_dataframe_shuffle, args=(backend, protocol, nworkers))
     p.start()
     p.join()

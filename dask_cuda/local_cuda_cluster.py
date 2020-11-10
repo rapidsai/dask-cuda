@@ -12,37 +12,17 @@ from .initialize import initialize
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
-    get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    parse_cuda_visible_device,
+    parse_device_memory_limit,
 )
 
 
-def cuda_visible_devices(i, visible=None):
-    """ Cycling values for CUDA_VISIBLE_DEVICES environment variable
-
-    Examples
-    --------
-    >>> cuda_visible_devices(0, range(4))
-    '0,1,2,3'
-    >>> cuda_visible_devices(3, range(8))
-    '3,4,5,6,7,0,1,2'
-    """
-    if visible is None:
-        try:
-            visible = map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(","))
-        except KeyError:
-            visible = range(get_n_gpus())
-    visible = list(visible)
-
-    L = visible[i:] + visible[:i]
-    return ",".join(map(str, L))
-
-
 class LocalCUDACluster(LocalCluster):
-    """ A variant of LocalCluster that uses one GPU per process
+    """A variant of LocalCluster that uses one GPU per process
 
     This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
     worker process.
@@ -58,18 +38,22 @@ class LocalCUDACluster(LocalCluster):
 
     Parameters
     ----------
-    CUDA_VISIBLE_DEVICES: str
-        String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs
+    CUDA_VISIBLE_DEVICES: str or list
+        String or list ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
+        different GPUs.
+    device_memory_limit: int, float or str
+        Specifies the size of the CUDA device LRU cache, which is used to
+        determine when the worker starts spilling to host memory.  This can be
+        a float (fraction of total device memory), an integer (bytes), a string
+        (like 5GB or 5000M), and "auto", 0 or None to disable spilling to
+        host (i.e., allow full device memory usage). Default is 0.8, 80% of the
+        worker's total device memory.
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
         interface (if one is available).
     threads_per_worker: int
         Number of threads to be used for each CUDA worker process.
-    CUDA_VISIBLE_DEVICES: str or list
-        String or list ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs.
     protocol: str
         Protocol to use for communication, e.g., "tcp" or "ucx".
     enable_tcp_over_ucx: bool
@@ -139,7 +123,7 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         processes=True,
         memory_limit="auto",
-        device_memory_limit=None,
+        device_memory_limit=0.8,
         CUDA_VISIBLE_DEVICES=None,
         data=None,
         local_directory=None,
@@ -162,13 +146,17 @@ class LocalCUDACluster(LocalCluster):
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
             CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-        CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+        CUDA_VISIBLE_DEVICES = list(
+            map(parse_cuda_visible_device, CUDA_VISIBLE_DEVICES)
+        )
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
-        self.device_memory_limit = device_memory_limit
+        self.device_memory_limit = parse_device_memory_limit(
+            device_memory_limit, device_index=0
+        )
 
         self.rmm_pool_size = rmm_pool_size
         self.rmm_managed_memory = rmm_managed_memory
@@ -197,11 +185,6 @@ class LocalCUDACluster(LocalCluster):
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
-        if self.device_memory_limit is None:
-            self.device_memory_limit = get_device_total_memory(0)
-        elif isinstance(self.device_memory_limit, str):
-            self.device_memory_limit = parse_bytes(self.device_memory_limit)
-
         if jit_unspill is None:
             self.jit_unspill = dask.config.get("jit-unspill", default=False)
         else:
@@ -228,8 +211,7 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import \
-                    TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "

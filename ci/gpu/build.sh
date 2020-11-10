@@ -61,6 +61,10 @@ conda install "cudatoolkit=$CUDA_REL" \
               "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
+# Pin pytest-asyncio because latest versions modify the default asyncio
+# `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
+conda install "pytest-asyncio=<0.14.0"
+
 # https://docs.rapids.ai/maintainers/depmgmt/ 
 # conda remove -f rapids-build-env
 # conda install "your-pkg=1.0.0"
@@ -111,6 +115,6 @@ else
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.tests.test_gpu_metrics as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
     fi
 fi

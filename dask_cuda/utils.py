@@ -2,17 +2,20 @@ import math
 import os
 import time
 import warnings
+from contextlib import suppress
 from multiprocessing import cpu_count
 
 import numpy as np
 import pynvml
 import toolz
 
+from distributed import wait
+from distributed.utils import parse_bytes
+
 try:
-    from cudf._lib.nvtx import annotate as nvtx_annotate
+    from nvtx import annotate as nvtx_annotate
 except ImportError:
-    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
-    # installed, `annotate` yields only.
+    # If nvtx module is not installed, `annotate` yields only.
     from contextlib import contextmanager
 
     @contextmanager
@@ -358,3 +361,125 @@ def wait_workers(
             return False
         else:
             time.sleep(0.1)
+
+
+async def _all_to_all(client):
+    """
+    Trigger all to all communication between workers and scheduler
+    """
+    workers = list(client.scheduler_info()["workers"])
+    futs = []
+    for w in workers:
+        bit_of_data = b"0" * 1
+        data = client.map(lambda x: bit_of_data, range(1), pure=False, workers=[w])
+        futs.append(data[0])
+
+    await wait(futs)
+
+    def f(x):
+        pass
+
+    new_futs = []
+    for w in workers:
+        for future in futs:
+            data = client.submit(f, future, workers=[w], pure=False)
+            new_futs.append(data)
+
+    await wait(new_futs)
+
+
+def all_to_all(client):
+    return client.sync(_all_to_all, client=client, asynchronous=client.asynchronous)
+
+
+def parse_cuda_visible_device(dev):
+    """Parses a single CUDA device identifier
+
+    A device identifier must either be an integer, a string containing an
+    integer or a string containing the device's UUID, beginning with prefix
+    'GPU-' or 'MIG-GPU'.
+
+    >>> parse_cuda_visible_device(2)
+    2
+    >>> parse_cuda_visible_device('2')
+    2
+    >>> parse_cuda_visible_device('GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005')
+    'GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005'
+    >>> parse_cuda_visible_device('Foo')
+    Traceback (most recent call last):
+    ...
+    ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
+    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    """
+    try:
+        return int(dev)
+    except ValueError:
+        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-"]):
+            return dev
+        else:
+            raise ValueError(
+                "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
+                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes."
+            )
+
+
+def cuda_visible_devices(i, visible=None):
+    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
+
+    Examples
+    --------
+    >>> cuda_visible_devices(0, range(4))
+    '0,1,2,3'
+    >>> cuda_visible_devices(3, range(8))
+    '3,4,5,6,7,0,1,2'
+    """
+    if visible is None:
+        try:
+            visible = map(
+                parse_cuda_visible_device, os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+            )
+        except KeyError:
+            visible = range(get_n_gpus())
+    visible = list(visible)
+
+    L = visible[i:] + visible[:i]
+    return ",".join(map(str, L))
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0):
+    """Parse memory limit to be used by a CUDA device.
+
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        This can be a float (fraction of total device memory), an integer (bytes),
+        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
+        size.
+    device_index: int
+        The index of device from which to obtain the total memory amount.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_memory_limit(None)
+    34089730048
+    >>> parse_device_memory_limit(0.8)
+    27271784038
+    >>> parse_device_memory_limit(1000000000)
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    """
+    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
+        return get_device_total_memory(device_index)
+
+    with suppress(ValueError, TypeError):
+        device_memory_limit = float(device_memory_limit)
+        if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
+            return int(get_device_total_memory(device_index) * device_memory_limit)
+
+    if isinstance(device_memory_limit, str):
+        return parse_bytes(device_memory_limit)
+    else:
+        return int(device_memory_limit)

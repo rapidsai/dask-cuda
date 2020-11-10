@@ -26,7 +26,17 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--rmm-pool-size",
+        default=None,
+        type=float,
+        help="The size of the RMM memory pool. By default, 1/2 of "
+        "the total GPU memory is used.",
+    )
+    parser.add_argument(
+        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+    )
+    parser.add_argument(
+        "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -70,12 +80,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         type=str,
         help="The device to be used for UCX communication, or 'auto'. "
         "Ignored if protocol is 'tcp'",
-    )
-    parser.add_argument(
-        "--single-node",
-        action="store_true",
-        dest="multi_node",
-        help="Runs a single-node cluster on the current host.",
     )
     parser.add_argument(
         "--multi-node",
@@ -188,7 +192,8 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
     import rmm
 
-    rmm.reinitialize(
-        pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
-    )
-    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    if not disable_pool:
+        rmm.reinitialize(
+            pool_allocator=True, devices=0, initial_pool_size=pool_size,
+        )
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
