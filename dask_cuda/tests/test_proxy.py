@@ -164,16 +164,16 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) == proxy_object.ProxyObject
+            assert type(x) is proxy_object.ProxyObject
             assert x._obj_pxy_get_meta()["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
         return x
 
-    # Notice, setting `device_memory_limit=1` to trigger spilling
+    # Notice, setting `device_memory_limit=1B` to trigger spilling
     with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit=1, jit_unspill=jit_unspill
+        n_workers=1, device_memory_limit="1B", jit_unspill=jit_unspill
     ) as cluster:
         with Client(cluster):
             df = cudf.DataFrame({"a": range(10)})
