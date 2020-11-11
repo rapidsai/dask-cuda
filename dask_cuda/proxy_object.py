@@ -244,9 +244,6 @@ class ProxyObject:
     def __mul__(self, other):
         return self._obj_pxy_deserialize() * other
 
-    def __div__(self, other):
-        return operator.div(self._obj_pxy_deserialize(), other)
-
     def __truediv__(self, other):
         return operator.truediv(self._obj_pxy_deserialize(), other)
 
@@ -285,9 +282,6 @@ class ProxyObject:
 
     def __rmul__(self, other):
         return other * self._obj_pxy_deserialize()
-
-    def __rdiv__(self, other):
-        return operator.div(other, self._obj_pxy_deserialize())
 
     def __rtruediv__(self, other):
         return operator.truediv(other, self._obj_pxy_deserialize())
@@ -332,12 +326,6 @@ class ProxyObject:
     def __imul__(self, other):
         proxied = self._obj_pxy_deserialize()
         proxied *= other
-        return self
-
-    def __idiv__(self, other):
-        with self._obj_pxy_lock:
-            proxied = self._obj_pxy_deserialize()
-            self._obj_pxy["obj"] = operator.idiv(proxied, other)
         return self
 
     def __itruediv__(self, other):
