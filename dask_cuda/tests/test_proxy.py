@@ -238,3 +238,4 @@ def test_communicating_proxy_objects(protocol, send_serializers):
                 df.assert_on_deserializing = True
             df = client.scatter(df)
             client.submit(task, df).result()
+            client.shutdown()  # Avoids a UCX shutdown error
