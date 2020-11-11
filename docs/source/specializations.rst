@@ -8,6 +8,20 @@ Automatic Instantiation of One-Worker-Per-GPU
 
 Using the ``dask-cuda-worker`` or ``LocalCUDACluster`` will automatically launch one worker for each GPU available on the node from where it was executed, avoiding the need for users to select GPUs in their application and thus reducing code complexity.
 
+Controlling Number of Workers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Users can control the number of workers by explicitly defining ``CUDA_VISIBLE_DEVICES`` in either the ``dask-cuda-worker`` CLI or using ``LocalCUDACluster``.  For example, the following will launch 3 workers on devices, 1, 2, and 3:
+
+.. code-block:: bash
+
+    LocalCUDACluster(CUDA_VISIBLE_DEVICES='0,1,2')
+    or
+    CUDA_VISIBLE_DEVICES=0,1,2 dask-cuda-workewr
+
+Users can also use UUID of the device as an inputs to ``CUDA_VISIBLE_DEVICES``.  UUIDs should begin with prefix 'GPU-' or 'MIG-GPU': `GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005`, for example.
+
+
 Spilling From Device
 --------------------
 
