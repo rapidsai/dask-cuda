@@ -1,7 +1,6 @@
 import functools
 import logging
 import os
-import sys
 
 from zict import Buffer, File, Func
 from zict.common import ZictBase
