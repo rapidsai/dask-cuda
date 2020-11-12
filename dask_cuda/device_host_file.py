@@ -1,5 +1,7 @@
 import functools
+import logging
 import os
+import sys
 
 from zict import Buffer, File, Func
 from zict.common import ZictBase
@@ -18,6 +20,45 @@ from distributed.worker import weight
 
 from .is_device_object import is_device_object
 from .utils import nvtx_annotate
+
+
+class LoggedBuffer(Buffer):
+    """Extends zict.Buffer with logging capabilities
+
+    Two arguments `fast_name` and `slow_name` are passed to constructor that
+    identify a user-friendly name for logging of where spilling is going from/to.
+    For example, their names can be "Device" and "Host" to identify that spilling
+    is happening from a CUDA device into system memory.
+    """
+
+    def __init__(self, *args, fast_name="Fast", slow_name="Slow", addr=None, **kwargs):
+        self.addr = "Unknown Address" if addr is None else addr
+        self.fast_name = fast_name
+        self.slow_name = slow_name
+        self.msg_template = "Worker at <%s>: Spilling key %s from %s to %s"
+
+        # It is a bit hacky to forcefully capture the "distributed.worker" logger,
+        # eventually it would be better to have a different logger. For now this
+        # is ok, allowing users to read logs with client.get_worker_logs(), a
+        # proper solution would require changes to Distributed.
+        self.logger = logging.getLogger("distributed.worker")
+
+        super().__init__(*args, **kwargs)
+
+    def fast_to_slow(self, key, value):
+        self.logger.info(
+            self.msg_template % (self.addr, key, self.fast_name, self.slow_name)
+        )
+        return super().fast_to_slow(key, value)
+
+    def slow_to_fast(self, key):
+        self.logger.info(
+            self.msg_template % (self.addr, key, self.slow_name, self.fast_name)
+        )
+        return super().slow_to_fast(key)
+
+    def set_address(self, addr):
+        self.addr = addr
 
 
 class DeviceSerialized:
@@ -109,15 +150,25 @@ class DeviceHostFile(ZictBase):
         if memory_limit == 0:
             self.host_buffer = self.host_func
         else:
-            self.host_buffer = Buffer(
-                self.host_func, self.disk_func, memory_limit, weight=weight
+            self.host_buffer = LoggedBuffer(
+                self.host_func,
+                self.disk_func,
+                memory_limit,
+                weight=weight,
+                fast_name="Host",
+                slow_name="Disk",
             )
 
         self.device_keys = set()
         self.device_func = dict()
         self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
-        self.device_buffer = Buffer(
-            self.device_func, self.device_host_func, device_memory_limit, weight=weight
+        self.device_buffer = LoggedBuffer(
+            self.device_func,
+            self.device_host_func,
+            device_memory_limit,
+            weight=weight,
+            fast_name="Device",
+            slow_name="Host",
         )
 
         self.device = self.device_buffer.fast.d
@@ -151,3 +202,7 @@ class DeviceHostFile(ZictBase):
     def __delitem__(self, key):
         self.device_keys.discard(key)
         del self.device_buffer[key]
+
+    def set_address(self, addr):
+        self.host_buffer.set_address(addr)
+        self.device_buffer.set_address(addr)
