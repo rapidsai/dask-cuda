@@ -60,6 +60,26 @@ def asproxy(obj, serializers=None, subclass=None):
 
 
 class ProxyObject:
+    """Object wrapper/proxy for serializable objects
+
+    This is used by DeviceHostFile to delay deserialization of returned objects.
+    An objects proxied by an instance of this class will JIT-deserialized when
+    accessed. The instance behaves as the proxied object and can be accessed/used
+    just like the proxied object.
+
+    Notice
+    ------
+    Type checking using instance() works as expected but direct type checking
+    doesn't:
+        >>> import numpy as np
+        >>> from dask_cuda.proxy_object import asproxy
+        >>> x = np.arange(3)
+        >>> isinstance(asproxy(x), type(x))
+        True
+        >>>  type(asproxy(x)) is type(x)
+        False
+    """
+
     __slots__ = [
         "_obj_pxy",  # A dict that holds the state of the proxy object
         "_obj_pxy_lock",  # Threading lock for all obj_pxy access
