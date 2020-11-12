@@ -250,7 +250,7 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
-            worker_class=LoggedNanny,
+            worker_class=LoggedNanny if log_spilling is True else Nanny,
             config={
                 "ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
