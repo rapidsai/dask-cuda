@@ -141,6 +141,27 @@ def test_proxy_object_of_numpy(serializers):
         assert type(expect) == type(got)
         assert expect == got
 
+    # Check reflected methods
+    for op_str in [
+        "__radd__",
+        "__rsub__",
+        "__rmul__",
+        "__rtruediv__",
+        "__rfloordiv__",
+        "__rmod__",
+        "__rpow__",
+        "__rlshift__",
+        "__rrshift__",
+        "__rxor__",
+        "__ror__",
+    ]:
+        org = np.arange(10) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = getattr(org, op_str)(org)
+        got = getattr(org, op_str)(pxy)
+        assert isinstance(got, type(expect))
+        assert all(expect == got)
+
 
 @pytest.mark.parametrize("serializers", [None, ["dask"]])
 def test_proxy_object_of_cudf(serializers):

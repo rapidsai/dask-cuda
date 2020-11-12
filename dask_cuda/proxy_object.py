@@ -232,8 +232,7 @@ class ProxyObject:
         return iter(self._obj_pxy_deserialize())
 
     def __array__(self):
-        ret = getattr(self._obj_pxy_deserialize(), "__array__")()
-        return ret
+        return getattr(self._obj_pxy_deserialize(), "__array__")()
 
     def __add__(self, other):
         return self._obj_pxy_deserialize() + other
