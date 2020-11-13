@@ -31,6 +31,9 @@ def test_proxy_object(serializers):
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
     assert "list (serialized=['dask', 'pickle'])" in repr(pxy)
 
+    assert org == proxy_object.unproxy(pxy)
+    assert org == proxy_object.unproxy(org)
+
 
 @pytest.mark.parametrize("serializers_first", [None, ["dask", "pickle"]])
 @pytest.mark.parametrize("serializers_second", [None, ["dask", "pickle"]])

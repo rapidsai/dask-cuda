@@ -29,6 +29,9 @@ def asproxy(obj, serializers=None, subclass=None):
     subclass: Class, optional
         Specify a subclass of ProxyObject to create instead of ProxyObject.
         `subclass` must be pickable.
+
+    Returns
+    -------
     ret: ProxyObject
         The proxy object proxing `obj`
     """
@@ -57,6 +60,28 @@ def asproxy(obj, serializers=None, subclass=None):
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
     return ret
+
+
+def unproxy(obj):
+    """Unwrap ProxyObject objects and pass-through anything else.
+
+    Use this function to retrieve the proxied object.
+
+    Parameters
+    ----------
+    obj: object
+        Any kind of object
+
+    Returns
+    -------
+    ret: object
+        The proxied object or `obj` itself if it isn't a ProxyObject
+    """
+    try:
+        obj = obj._obj_pxy_deserialize()
+    except AttributeError:
+        pass
+    return obj
 
 
 class ProxyObject:
