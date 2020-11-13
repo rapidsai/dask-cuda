@@ -181,8 +181,10 @@ class ProxyObject:
         frames: List[Bytes]
             List of frames that makes up the serialized object
         """
+        if not serializers:
+            raise ValueError("Please specify a list of serializers")
+
         with self._obj_pxy_lock:
-            assert serializers is not None
             if (
                 self._obj_pxy["serializers"] is not None
                 and self._obj_pxy["serializers"] != serializers
@@ -196,7 +198,6 @@ class ProxyObject:
                 )
                 self._obj_pxy["serializers"] = serializers
 
-            assert serializers == self._obj_pxy["serializers"]
             return self._obj_pxy["obj"]
 
     def _obj_pxy_deserialize(self):
