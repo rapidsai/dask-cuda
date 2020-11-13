@@ -93,7 +93,7 @@ class ProxyObject:
     just like the proxied object.
 
     ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
-    Thus, if encountering problems remember that is always possible to use unproxy()
+    Thus, if encountering problems remember that it is always possible to use unproxy()
     to access the proxied object directly or disable `jit_unspill=False` completely.
 
     Type checking using instance() works as expected but direct type checking
