@@ -40,5 +40,5 @@ if [ "$UPLOAD_DASK-CUDA" == "1" ]; then
   test -e ${DASK-CUDA_FILE}
   echo "Upload Dask-cuda"
   echo ${DASK-CUDA_FILE}
-  gpuci_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASK-CUDA_FILE}
+  gpuci_conda_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASK-CUDA_FILE}
 fi
