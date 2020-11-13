@@ -92,17 +92,39 @@ class ProxyObject:
     accessed. The instance behaves as the proxied object and can be accessed/used
     just like the proxied object.
 
-    Notice
-    ------
+    ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
+    Thus, if encountering problems remember that is always possible to use unproxy()
+    to access the proxied object directly or disable `jit_unspill=False` completely.
+
     Type checking using instance() works as expected but direct type checking
     doesn't:
-        >>> import numpy as np
-        >>> from dask_cuda.proxy_object import asproxy
-        >>> x = np.arange(3)
-        >>> isinstance(asproxy(x), type(x))
-        True
-        >>>  type(asproxy(x)) is type(x)
-        False
+    >>> import numpy as np
+    >>> from dask_cuda.proxy_object import asproxy
+    >>> x = np.arange(3)
+    >>> isinstance(asproxy(x), type(x))
+    True
+    >>>  type(asproxy(x)) is type(x)
+    False
+
+    Parameters
+    ----------
+    obj: object
+        Any kind of object to be proxied.
+    fixed_attr: Dict
+        Dictionary of attributes that are accessable without deserialization
+        the proxied object.
+    type_serialized: bytes
+        Pickled type of `obj`.
+    typename: str
+        Name of the type of `obj`.
+    is_cuda_object: boolean
+        Whether `obj` is a CUDA object or not.
+    subclass: bytes
+        Pickled type to use instead of ProxyObject when deserializing. The type
+        must inherit from ProxyObject.
+    serializers: List[Str], optional
+        List of serializers to used to serialize `obj`. If None, `obj`
+        isn't serialized.
     """
 
     __slots__ = [
