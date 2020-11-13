@@ -23,17 +23,16 @@ def asproxy(obj, serializers=None, subclass=None):
     ----------
     obj: object
         Object to wrap in a ProxyObject object.
-    serializers: List[Str], optional
+    serializers: list(str), optional
         List of serializers to use to serialize `obj`. If None,
         no serialization is done.
-    subclass: Class, optional
+    subclass: class, optional
         Specify a subclass of ProxyObject to create instead of ProxyObject.
         `subclass` must be pickable.
 
     Returns
     -------
-    ret: ProxyObject
-        The proxy object proxing `obj`
+    The ProxyObject proxying `obj`
     """
 
     if hasattr(obj, "_obj_pxy"):  # Already a proxy object
@@ -74,8 +73,7 @@ def unproxy(obj):
 
     Returns
     -------
-    ret: object
-        The proxied object or `obj` itself if it isn't a ProxyObject
+    The proxied object or `obj` itself if it isn't a ProxyObject
     """
     try:
         obj = obj._obj_pxy_deserialize()
@@ -88,13 +86,14 @@ class ProxyObject:
     """Object wrapper/proxy for serializable objects
 
     This is used by DeviceHostFile to delay deserialization of returned objects.
-    An objects proxied by an instance of this class will JIT-deserialized when
+   Objects proxied by an instance of this class will be JIT-deserialized when
     accessed. The instance behaves as the proxied object and can be accessed/used
     just like the proxied object.
 
     ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
     Thus, if encountering problems remember that it is always possible to use unproxy()
-    to access the proxied object directly or disable `jit_unspill=False` completely.
+    to access the proxied object directly or disable JIT deserialization completely
+    with `jit_unspill=False`.
 
     Type checking using instance() works as expected but direct type checking
     doesn't:
@@ -110,8 +109,8 @@ class ProxyObject:
     ----------
     obj: object
         Any kind of object to be proxied.
-    fixed_attr: Dict
-        Dictionary of attributes that are accessable without deserialization
+    fixed_attr: dict
+        Dictionary of attributes that are accessible without deserializing
         the proxied object.
     type_serialized: bytes
         Pickled type of `obj`.
@@ -122,8 +121,8 @@ class ProxyObject:
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
-    serializers: List[Str], optional
-        List of serializers to used to serialize `obj`. If None, `obj`
+    serializers: list(str), optional
+        List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
     """
 
@@ -160,8 +159,7 @@ class ProxyObject:
 
         Returns
         -------
-        ret: dict
-            Dictionary of metadata
+        Dictionary of metadata
         """
         with self._obj_pxy_lock:
             return {k: self._obj_pxy[k] for k in self._obj_pxy.keys() if k != "obj"}
@@ -171,15 +169,15 @@ class ProxyObject:
 
         Parameters
         ----------
-        serializers: List[Str]
+        serializers: list(str)
             List of serializers to use to serialize the proxied object.
 
         Returns
         -------
         header: dict
             The header of the serialized frames
-        frames: List[Bytes]
-            List of frames that makes up the serialized object
+        frames: list(bytes)
+            List of frames that make up the serialized object
         """
         if not serializers:
             raise ValueError("Please specify a list of serializers")
@@ -205,7 +203,7 @@ class ProxyObject:
 
         Returns
         -------
-        ret : object
+        object
             The proxied object (deserialized)
         """
         with self._obj_pxy_lock:
@@ -220,8 +218,7 @@ class ProxyObject:
 
         Returns
         -------
-        ret : object
-            The proxied object (deserialized)
+        The deserialized proxied object
         """
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
@@ -491,7 +488,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
 def obj_pxy_cuda_serialize(obj: ProxyObject):
     """
     The CUDA serialization of ProxyObject used by Dask when communicating using UCX
-    or another CUDA friendly communicantion library. As serializers, it uses "cuda",
+    or another CUDA friendly communication library. As serializers, it uses "cuda",
     "dask" or "pickle", which means that proxied CUDA objects are _not_ spilled to
     main memory.
     """

@@ -192,7 +192,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
 def test_spilling_local_cuda_cluster(jit_unspill):
-    """Testing spelling of a proxied cudf dataframe in a local cuda cluster"""
+    """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
 
     def task(x):
