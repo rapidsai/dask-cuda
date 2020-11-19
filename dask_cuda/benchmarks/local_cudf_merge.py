@@ -15,6 +15,7 @@ from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
+    plot_benchmark,
     setup_memory_pool,
 )
 from dask_cuda.utils import all_to_all
@@ -253,6 +254,7 @@ def main(args):
         for (w1, w2), nb in total_nbytes.items()
     }
 
+    t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
     print("Merge benchmark")
@@ -272,14 +274,18 @@ def main(args):
     print("===============================")
     print("Wall-clock     | Throughput")
     print("-------------------------------")
-    for data_processed, took in took_list:
+    for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
         m += " " * (15 - len(m))
         print(f"{m}| {format_bytes(throughput)}/s")
+        t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     print("===============================")
     if args.markdown:
         print("\n```")
+
+    if args.plot is not None:
+        plot_benchmark(t_runs, args.plot, historical=True)
 
     if args.backend == "dask":
         if args.markdown:
