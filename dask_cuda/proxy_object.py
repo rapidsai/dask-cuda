@@ -185,7 +185,7 @@ class ProxyObject:
         with self._obj_pxy_lock:
             if (
                 self._obj_pxy["serializers"] is not None
-                and self._obj_pxy["serializers"] != serializers
+                and tuple(self._obj_pxy["serializers"]) != tuple(serializers)
             ):
                 # The proxied object is serialized with other serializers
                 self._obj_pxy_deserialize()
