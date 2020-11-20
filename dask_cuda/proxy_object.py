@@ -148,12 +148,12 @@ class ProxyObject:
             return self._obj_pxy["obj"]
 
     def _obj_pxy_is_cuda_object(self):
-        """Inplace deserialization of the proxied object
+        """Return whether the proxied object is a CUDA or not
 
         Returns
         -------
-        ret : object
-            The proxied object (deserialized)
+        ret : boolean
+            Is the proxied object a CUDA object?
         """
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
