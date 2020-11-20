@@ -86,7 +86,8 @@ class ProxyObject:
     """Object wrapper/proxy for serializable objects
 
     This is used by DeviceHostFile to delay deserialization of returned objects.
-   Objects proxied by an instance of this class will be JIT-deserialized when
+
+    Objects proxied by an instance of this class will be JIT-deserialized when
     accessed. The instance behaves as the proxied object and can be accessed/used
     just like the proxied object.
 
@@ -183,10 +184,9 @@ class ProxyObject:
             raise ValueError("Please specify a list of serializers")
 
         with self._obj_pxy_lock:
-            if (
-                self._obj_pxy["serializers"] is not None
-                and tuple(self._obj_pxy["serializers"]) != tuple(serializers)
-            ):
+            if self._obj_pxy["serializers"] is not None and tuple(
+                self._obj_pxy["serializers"]
+            ) != tuple(serializers):
                 # The proxied object is serialized with other serializers
                 self._obj_pxy_deserialize()
 
