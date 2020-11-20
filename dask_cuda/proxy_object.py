@@ -1,6 +1,5 @@
 import operator
 import pickle
-import sys
 import threading
 
 import dask
@@ -8,6 +7,7 @@ import dask.dataframe.methods
 import dask.dataframe.utils
 import distributed.protocol
 import distributed.utils
+from dask.sizeof import sizeof
 
 from .is_device_object import is_device_object
 
@@ -202,7 +202,7 @@ class ProxyObject:
                 frames = self._obj_pxy["obj"][1]
                 return sum(map(distributed.utils.nbytes, frames))
             else:
-                return sys.getsizeof(self._obj_pxy_deserialize())
+                return sizeof(self._obj_pxy_deserialize())
 
     def __len__(self):
         return len(self._obj_pxy_deserialize())
