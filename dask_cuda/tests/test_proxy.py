@@ -23,6 +23,16 @@ def test_proxy_object(serializers):
     assert org[0] == pxy[0]
     assert 1 in pxy
     assert -1 not in pxy
+    assert str(org) == str(pxy)
+    assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
+    assert "list at " in repr(pxy)
+
+    pxy._obj_pxy_serialize(serializers=["dask", "pickle"])
+    assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
+    assert "list (serialized=['dask', 'pickle'])" in repr(pxy)
+
+    assert org == proxy_object.unproxy(pxy)
+    assert org == proxy_object.unproxy(org)
 
 
 @pytest.mark.parametrize("serializers_first", [None, ["dask", "pickle"]])
@@ -100,8 +110,12 @@ def test_proxy_object_of_numpy(serializers):
         "truediv",
         "xor",
         "iadd",
+        "ior",
+        "iand",
         "ifloordiv",
         "ilshift",
+        "irshift",
+        "ipow",
         "imod",
         "imul",
         "isub",
@@ -130,6 +144,27 @@ def test_proxy_object_of_numpy(serializers):
         assert type(expect) == type(got)
         assert expect == got
 
+    # Check reflected methods
+    for op_str in [
+        "__radd__",
+        "__rsub__",
+        "__rmul__",
+        "__rtruediv__",
+        "__rfloordiv__",
+        "__rmod__",
+        "__rpow__",
+        "__rlshift__",
+        "__rrshift__",
+        "__rxor__",
+        "__ror__",
+    ]:
+        org = np.arange(10) + 1
+        pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
+        expect = getattr(org, op_str)(org)
+        got = getattr(org, op_str)(pxy)
+        assert isinstance(got, type(expect))
+        assert all(expect == got)
+
 
 @pytest.mark.parametrize("serializers", [None, ["dask"]])
 def test_proxy_object_of_cudf(serializers):
@@ -157,7 +192,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
 def test_spilling_local_cuda_cluster(jit_unspill):
-    """Testing spelling of a proxied cudf dataframe in a local cuda cluster"""
+    """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
 
     def task(x):
