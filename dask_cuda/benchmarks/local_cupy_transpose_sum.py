@@ -3,6 +3,8 @@ from collections import defaultdict
 from time import perf_counter as clock
 from warnings import filterwarnings
 
+import numpy as np
+
 from dask import array as da
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
