@@ -4,8 +4,7 @@ from random import randint
 import numpy as np
 import pytest
 
-import dask
-from dask import array as da
+import dask.array
 from distributed.protocol import (
     deserialize,
     deserialize_bytes,
@@ -23,6 +22,12 @@ from dask_cuda.device_host_file import (
 cupy = pytest.importorskip("cupy")
 
 
+def assert_eq(x, y):
+    # Explicitly calling "cupy.asnumpy" to support `ProxyObject` because
+    # "cupy" is hardcoded in `dask.array.normalize_to_array()`
+    return dask.array.assert_eq(cupy.asnumpy(x), cupy.asnumpy(y))
+
+
 def test_device_host_file_config(tmp_path):
     dhf_disk_path = str(tmp_path / "dask-worker-space" / "storage")
     with dask.config.set(temporary_directory=str(tmp_path)):
@@ -34,13 +39,17 @@ def test_device_host_file_config(tmp_path):
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
 @pytest.mark.parametrize("num_device_arrays", [1, 10, 100])
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
+@pytest.mark.parametrize("jit_unspill", [True, False])
 def test_device_host_file_short(
-    tmp_path, num_device_arrays, num_host_arrays, array_size_range
+    tmp_path, num_device_arrays, num_host_arrays, array_size_range, jit_unspill
 ):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
+        device_memory_limit=1024 * 16,
+        memory_limit=1024 * 16,
+        local_directory=tmpdir,
+        jit_unspill=jit_unspill,
     )
 
     host = [
@@ -64,7 +73,7 @@ def test_device_host_file_short(
 
     for k, original in full:
         acquired = dhf[k]
-        da.assert_eq(original, acquired)
+        assert_eq(original, acquired)
         del dhf[k]
 
     assert set(dhf.device.keys()) == set()
@@ -72,11 +81,15 @@ def test_device_host_file_short(
     assert set(dhf.disk.keys()) == set()
 
 
-def test_device_host_file_step_by_step(tmp_path):
+@pytest.mark.parametrize("jit_unspill", [True, False])
+def test_device_host_file_step_by_step(tmp_path, jit_unspill):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
+        device_memory_limit=1024 * 16,
+        memory_limit=1024 * 16,
+        local_directory=tmpdir,
+        jit_unspill=jit_unspill,
     )
 
     a = np.random.random(1000)
@@ -119,17 +132,17 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
-    da.assert_eq(dhf["a1"], a)
+    assert_eq(dhf["a1"], a)
     del dhf["a1"]
-    da.assert_eq(dhf["a2"], a)
+    assert_eq(dhf["a2"], a)
     del dhf["a2"]
-    da.assert_eq(dhf["b1"], b)
+    assert_eq(dhf["b1"], b)
     del dhf["b1"]
-    da.assert_eq(dhf["b2"], b)
+    assert_eq(dhf["b2"], b)
     del dhf["b2"]
-    da.assert_eq(dhf["b3"], b)
+    assert_eq(dhf["b3"], b)
     del dhf["b3"]
-    da.assert_eq(dhf["b4"], b)
+    assert_eq(dhf["b4"], b)
     del dhf["b4"]
 
     assert set(dhf.device.keys()) == set()
@@ -152,7 +165,7 @@ def test_serialize_cupy_collection(collection, length, value):
         assert_func = dd.assert_eq
     else:
         x = cupy.arange(10)
-        assert_func = da.assert_eq
+        assert_func = assert_eq
 
     if length == 0:
         obj = device_to_host(x)

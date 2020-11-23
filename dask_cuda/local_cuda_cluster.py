@@ -92,6 +92,8 @@ class LocalCUDACluster(LocalCluster):
         but in that case with default (non-managed) memory type.
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
+    jit_unspill: bool
+        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
 
     Examples
     --------
@@ -133,6 +135,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
+        jit_unspill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -182,6 +185,11 @@ class LocalCUDACluster(LocalCluster):
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
         if data is None:
             data = (
                 DeviceHostFile,
@@ -191,6 +199,7 @@ class LocalCUDACluster(LocalCluster):
                     "local_directory": local_directory
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
+                    "jit_unspill": self.jit_unspill,
                 },
             )
 

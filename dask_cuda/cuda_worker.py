@@ -71,6 +71,7 @@ class CUDAWorker:
         enable_nvlink=False,
         enable_rdmacm=False,
         net_devices=None,
+        jit_unspill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -177,6 +178,11 @@ class CUDAWorker:
             cuda_device_index=0,
         )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
         self.nannies = [
             t(
                 scheduler,
@@ -216,6 +222,7 @@ class CUDAWorker:
                         ),
                         "memory_limit": memory_limit,
                         "local_directory": local_directory,
+                        "jit_unspill": self.jit_unspill,
                     },
                 ),
                 **kwargs,
