@@ -3,9 +3,6 @@ from collections import defaultdict
 from time import perf_counter as clock
 from warnings import filterwarnings
 
-import cupy
-import numpy as np
-
 from dask import array as da
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
@@ -19,8 +16,13 @@ from dask_cuda.benchmarks.utils import (
 
 
 async def _run(client, args):
+    if args.type == "gpu":
+        import cupy as xp
+    else:
+        import numpy as xp
+
     # Create a simple random array
-    rs = da.random.RandomState(RandomState=cupy.random.RandomState)
+    rs = da.random.RandomState(RandomState=xp.random.RandomState)
     x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
     await wait(x)
 
@@ -137,6 +139,13 @@ def parse_args():
             "metavar": "n",
             "type": int,
             "help": "The size n in n^2 (default 10000)",
+        },
+        {
+            "name": ["-t", "--type",],
+            "choices": ["cpu", "gpu"],
+            "default": "gpu",
+            "type": str,
+            "help": "Do merge with GPU or CPU dataframes",
         },
         {
             "name": ["-c", "--chunk-size",],
