@@ -118,3 +118,8 @@ else
         py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
     fi
 fi
+
+if [ -n "\${CODECOV_TOKEN}" ]; then
+    codecov -t \$CODECOV_TOKEN
+fi
+
