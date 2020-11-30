@@ -5,3 +5,4 @@ channels:
 dependencies:
 - rapids-doc-env
 - pandas
+- dask
