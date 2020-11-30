@@ -20,10 +20,10 @@ build:
 
 requirements:
   build:
-    - python x.x
+    - python
     - setuptools
   run:
-    - python x.x
+    - python
     - dask >=2.4.0
     - distributed >=2.18.0
     - pynvml >=8.0.3
