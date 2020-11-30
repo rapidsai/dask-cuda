@@ -19,7 +19,7 @@ build:
     - VERSION_SUFFIX
 
 requirements:
-  build:
+  host:
     - python
     - setuptools
   run:
