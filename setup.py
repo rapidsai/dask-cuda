@@ -9,17 +9,11 @@ import versioneer
 with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
     long_description = f.read()
 
-if "GIT_DESCRIBE_TAG" in os.environ:
-    version = os.environ["GIT_DESCRIBE_TAG"] + os.environ.get("VERSION_SUFFIX", "")
-    cmdclass = {}
-else:
-    version = versioneer.get_version()
-    cmdclass = versioneer.get_cmdclass()
 
 setup(
     name="dask-cuda",
-    version=version,
-    cmdclass=cmdclass,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description="Utilities for Dask and CUDA interactions",
     long_description=long_description,
     long_description_content_type="text/markdown",
