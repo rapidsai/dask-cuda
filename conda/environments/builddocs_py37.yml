@@ -4,6 +4,4 @@ channels:
 - conda-forge
 dependencies:
 - rapids-doc-env
-- distributed
-- dask
 - pandas
