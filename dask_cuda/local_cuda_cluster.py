@@ -210,6 +210,7 @@ class LocalCUDACluster(LocalCluster):
                     "local_directory": local_directory
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
+                    "log_spilling": log_spilling,
                 },
             )
 

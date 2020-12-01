@@ -148,10 +148,18 @@ class DeviceHostFile(ZictBase):
         implies no spilling to disk.
     local_directory: path
         Path where to store serialized objects on disk
+    log_spilling: bool
+        If True, all spilling operations will be logged directly to
+        distributed.worker with an INFO loglevel. This will eventually be
+        replaced by a Dask configuration flag.
     """
 
     def __init__(
-        self, device_memory_limit=None, memory_limit=None, local_directory=None,
+        self,
+        device_memory_limit=None,
+        memory_limit=None,
+        local_directory=None,
+        log_spilling=False,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
@@ -168,28 +176,35 @@ class DeviceHostFile(ZictBase):
             deserialize_bytes,
             File(self.disk_func_path),
         )
+
+        host_buffer_kwargs = {}
+        device_buffer_kwargs = {}
+        buffer_class = Buffer
+        if log_spilling is True:
+            buffer_class = LoggedBuffer
+            host_buffer_kwargs = {"fast_name": "Host", "slow_name": "Disk"}
+            device_buffer_kwargs = {"fast_name": "Device", "slow_name": "Host"}
+
         if memory_limit == 0:
             self.host_buffer = self.host_func
         else:
-            self.host_buffer = LoggedBuffer(
+            self.host_buffer = buffer_class(
                 self.host_func,
                 self.disk_func,
                 memory_limit,
                 weight=weight,
-                fast_name="Host",
-                slow_name="Disk",
+                **host_buffer_kwargs,
             )
 
         self.device_keys = set()
         self.device_func = dict()
         self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
-        self.device_buffer = LoggedBuffer(
+        self.device_buffer = buffer_class(
             self.device_func,
             self.device_host_func,
             device_memory_limit,
             weight=weight,
-            fast_name="Device",
-            slow_name="Host",
+            **device_buffer_kwargs,
         )
 
         self.device = self.device_buffer.fast.d
