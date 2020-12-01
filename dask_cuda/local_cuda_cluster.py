@@ -142,6 +142,9 @@ class LocalCUDACluster(LocalCluster):
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
 
+        if threads_per_worker < 1:
+            raise ValueError("threads_per_worker must be higher than 0.")
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
