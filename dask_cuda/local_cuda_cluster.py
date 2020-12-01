@@ -162,8 +162,10 @@ class LocalCUDACluster(LocalCluster):
         CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
+        if n_workers < 1:
+            raise RuntimeError("Number of workers cannot be less than 1.")
         self.host_memory_limit = parse_memory_limit(
-            memory_limit, threads_per_worker, n_workers or 1
+            memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = device_memory_limit
 
@@ -283,9 +285,7 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": visible_devices,
-                },
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),

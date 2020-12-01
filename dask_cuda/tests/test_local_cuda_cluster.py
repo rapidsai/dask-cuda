@@ -151,13 +151,10 @@ async def test_rmm_managed():
 @gen_test(timeout=20)
 async def test_cluster_worker():
     async with LocalCUDACluster(
-        scheduler_port=0,
-        asynchronous=True,
-        device_memory_limit=1,
-        n_workers=0,
+        scheduler_port=0, asynchronous=True, device_memory_limit=1, n_workers=1,
     ) as cluster:
-        assert len(cluster.workers) == 0
+        assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:
             new_worker = CUDAWorker(cluster)
-            await client.wait_for_workers(1)
+            await client.wait_for_workers(2)
             await new_worker.close()
