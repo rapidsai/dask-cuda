@@ -12,8 +12,9 @@ from distributed.utils_test import popen
 from dask_cuda.utils import get_n_gpus, wait_workers
 
 
-def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
+def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
     os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
+    nthreads = 4
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
@@ -24,6 +25,8 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
                     "127.0.0.1",
                     "--device-memory-limit",
                     "1 MB",
+                    "--nthreads",
+                    str(nthreads),
                     "--no-dashboard",
                 ]
             ):
@@ -41,7 +44,7 @@ def test_cuda_visible_devices_and_memory_limit(loop):  # noqa: F811
 
                     workers = client.scheduler_info()["workers"]
                     for w in workers.values():
-                        assert w["memory_limit"] == MEMORY_LIMIT // len(workers)
+                        assert w["memory_limit"] == MEMORY_LIMIT // len(workers) * nthreads
 
                     assert len(expected) == 0
     finally:
