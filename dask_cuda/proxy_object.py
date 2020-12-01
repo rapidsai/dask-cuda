@@ -585,13 +585,6 @@ def obj_pxy_hash_object(obj: ProxyObject, index=True):
     return dask.dataframe.utils.hash_object_dispatch(obj._obj_pxy_deserialize(), index)
 
 
-@dask.dataframe.utils.group_split_dispatch.register(ProxyObject)
-def obj_pxy_group_split(obj: ProxyObject, c, k, ignore_index=False):
-    return dask.dataframe.utils.group_split_dispatch(
-        obj._obj_pxy_deserialize(), c, k, ignore_index
-    )
-
-
 @dask.dataframe.utils.make_scalar.register(ProxyObject)
 def obj_pxy_make_scalar(obj: ProxyObject):
     return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize())
@@ -609,8 +602,15 @@ def obj_pxy_concat(objs, *args, **kwargs):
         except AttributeError:
             pass
 
+    # Proxify the result before returning
     ret = asproxy(dask.dataframe.methods.concat(objs, *args, **kwargs))
     ret._obj_pxy["hostfile"] = weakref.ref(hostfile)
     ret._obj_pxy["last_access"] = time.time()
     return ret
-    # return dask.dataframe.methods.concat(objs, *args, **kwargs)
+
+
+@dask.dataframe.utils.group_split_dispatch.register(ProxyObject)
+def obj_pxy_group_split(obj: ProxyObject, c, k, ignore_index=False):
+    return dask.dataframe.utils.group_split_dispatch(
+        obj._obj_pxy_deserialize(), c, k, ignore_index
+    )
