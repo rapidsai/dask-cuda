@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
-import multiprocessing
 import os
 import warnings
 

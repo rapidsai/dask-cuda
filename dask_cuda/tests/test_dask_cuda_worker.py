@@ -44,7 +44,9 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
 
                     workers = client.scheduler_info()["workers"]
                     for w in workers.values():
-                        assert w["memory_limit"] == MEMORY_LIMIT // len(workers) * nthreads
+                        assert (
+                            w["memory_limit"] == MEMORY_LIMIT // len(workers) * nthreads
+                        )
 
                     assert len(expected) == 0
     finally:

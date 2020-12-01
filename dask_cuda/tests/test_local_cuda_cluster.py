@@ -109,14 +109,8 @@ async def test_n_workers():
 
 @gen_test(timeout=20)
 async def test_threads_per_worker():
-    async with LocalCUDACluster(
-        threads_per_worker=4, asynchronous=True
-    ) as cluster:
-        assert all(
-            ws.nthreads == 4 for ws in cluster.scheduler.workers.values()
-        )
-        #assert len(cluster.workers) == 2
-        #assert len(cluster.worker_spec) == 2
+    async with LocalCUDACluster(threads_per_worker=4, asynchronous=True) as cluster:
+        assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
 
 
 @gen_test(timeout=20)
