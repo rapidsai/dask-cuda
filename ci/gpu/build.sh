@@ -120,6 +120,6 @@ else
 fi
 
 if [ -n "\${CODECOV_TOKEN}" ]; then
-    codecov -t \$CODECOV_TOKEN
+    codecov -t $CODECOV_TOKEN
 fi
 
