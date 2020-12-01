@@ -4,8 +4,8 @@ import weakref
 from typing import MutableMapping
 from dask.sizeof import sizeof
 
-
 from .proxify_device_object import proxify_device_object
+from .get_device_memory_objects import get_device_memory_objects
 
 
 class DynamicHostFile(MutableMapping):
@@ -60,19 +60,28 @@ class DynamicHostFile(MutableMapping):
         assert len(ret) == len(set(id(p) for p in ret))  # No duplicates
         return ret
 
-    def proxied_id_to_proxy(self):
-        ret = {}
+    def obj_mappings(self):
+        proxied_id_to_proxy = {}
+        buffer_to_proxies = {}
+
         for p in self.unspilled_proxies():
-            _id = id(p._obj_pxy["obj"])
-            assert _id not in ret
-            ret[_id] = p
-        return ret
+            proxied = p._obj_pxy["obj"]
+            proxied_id = id(proxied)
+            assert proxied_id not in proxied_id_to_proxy
+            proxied_id_to_proxy[proxied_id] = p
+            for buf in get_device_memory_objects(proxied):
+                l = buffer_to_proxies.get(buf, [])
+                if p not in l:
+                    l.append(p)
+                buffer_to_proxies[buf] = l
+        return proxied_id_to_proxy, buffer_to_proxies
 
     def __setitem__(self, key, value):
         with self.lock:
             found_proxies = []
+            proxied_id_to_proxy, _ = self.obj_mappings()
             self.store[key] = proxify_device_object(
-                value, self.proxied_id_to_proxy(), found_proxies
+                value, proxied_id_to_proxy, found_proxies
             )
             last_access = time.time()
             self_weakref = weakref.ref(self)
@@ -89,45 +98,26 @@ class DynamicHostFile(MutableMapping):
         del self.store[key]
 
     def evict(self, proxy):
-        proxy._obj_pxy_serialize(serializers=["dask", "pickle"], check_leak=True)
+        proxy._obj_pxy_serialize(serializers=["dask", "pickle"])
 
-    def evict_all(self, ignores=()):
-        ignores = set(id(p) for p in ignores)
-        for p in self.unspilled_proxies():
-            if id(p) not in ignores:
-                self.evict(p)
-
-    def evict_oldest(self):
-        with self.lock:
-            in_dev_mem = []
-            total_dev_mem = 0
-            for p in self.unspilled_proxies():
-                last_access = p._obj_pxy.get("last_access", 0)
-                size = sizeof(p._obj_pxy["obj"])
-                in_dev_mem.append((last_access, size, p))
-                total_dev_mem += size
-            sorted(in_dev_mem, key=lambda x: (x[0], -x[1]))
-            last_access, size, p = in_dev_mem[0]
-            self.evict(p)
-            return p
+    def buffer_info(self, ignores=()):
+        buffers = []
+        dev_mem_usage = 0
+        for buf, proxies in self.obj_mappings()[1].items():
+            last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
+            size = sizeof(buf)
+            buffers.append((last_access, size, proxies))
+            dev_mem_usage += size
+        return buffers, dev_mem_usage
 
     def maybe_evict(self, extra_dev_mem=0, ignores=()):
-        with self.lock:
-            in_dev_mem = []
-            total_dev_mem = 0
-            ignores = set(id(p) for p in ignores)
-            for p in list(self.unspilled_proxies()):
-                if id(p) not in ignores:
-                    last_access = p._obj_pxy.get("last_access", 0)
-                    size = sizeof(p._obj_pxy["obj"])
-                    in_dev_mem.append((last_access, size, p))
-                    total_dev_mem += size
-
-            total_dev_mem += extra_dev_mem
-            if total_dev_mem > self.device_memory_limit:
-                sorted(in_dev_mem, key=lambda x: (x[0], -x[1]))
-                for last_access, size, p in in_dev_mem:
+        buffers, dev_mem_usage = self.buffer_info()
+        dev_mem_usage += extra_dev_mem
+        if dev_mem_usage > self.device_memory_limit:
+            buffers.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxies in buffers:
+                for p in proxies:
                     self.evict(p)
-                    total_dev_mem -= size
-                    if total_dev_mem <= self.device_memory_limit:
-                        break
+                dev_mem_usage -= size
+                if dev_mem_usage <= self.device_memory_limit:
+                    break

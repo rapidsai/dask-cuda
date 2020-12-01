@@ -187,7 +187,7 @@ class ProxyObject:
     def _obj_pxy_serialized(self):
         return self._obj_pxy["serializers"] is not None
 
-    def _obj_pxy_serialize(self, serializers, check_leak=False):
+    def _obj_pxy_serialize(self, serializers):
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters

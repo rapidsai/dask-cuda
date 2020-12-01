@@ -1,11 +1,13 @@
 import pytest
 
 from pandas.testing import assert_frame_equal
+from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
 import dask_cuda
 from dask_cuda.dynamic_host_file import DynamicHostFile
 
 cupy = pytest.importorskip("cupy")
+cupy.cuda.set_allocator(None)
 itemsize = cupy.arange(1).nbytes
 
 
@@ -73,3 +75,29 @@ def test_local_cuda_cluster(dynamic_spill):
             ddf = ddf.map_partitions(task, meta=df.head())
             got = ddf.compute()
             assert_frame_equal(got.to_pandas(), df.to_pandas())
+
+
+def test_dataframes_share_dev_mem():
+    cudf = pytest.importorskip("cudf")
+
+    df = cudf.DataFrame({"a": range(10)})
+    grouped = shuffle_group(df, "a", 0, 2, 2, False, 2)
+    view1 = grouped[0]
+    view2 = grouped[1]
+    # Even though the two dataframe doesn't point to the same cudf.Buffer object
+    assert view1["a"].data is not view2["a"].data
+    # They still share the same underlying device memory
+    assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
+
+    dhf = DynamicHostFile(device_memory_limit=160)
+    dhf["v1"] = view1
+    dhf["v2"] = view2
+    v1 = dhf["v1"]
+    v2 = dhf["v2"]
+    # The device_memory_limit is not exceeded since both dataframes share device memory
+    assert not v1._obj_pxy_serialized()
+    assert not v2._obj_pxy_serialized()
+    # Now the device_memory_limit is exceeded, which should evict both dataframes
+    dhf["k1"] = cupy.arange(1)
+    assert v1._obj_pxy_serialized()
+    assert v2._obj_pxy_serialized()
