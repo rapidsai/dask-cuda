@@ -19,6 +19,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
+from .dynamic_host_file import DynamicHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
@@ -72,6 +73,7 @@ class CUDAWorker:
         enable_rdmacm=False,
         net_devices=None,
         jit_unspill=None,
+        dynamic_spill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -126,7 +128,6 @@ class CUDAWorker:
 
         preload_argv = kwargs.get("preload_argv", [])
         kwargs = {"worker_port": None, "listen_address": None}
-        t = Nanny
 
         if (
             not scheduler
@@ -186,8 +187,15 @@ class CUDAWorker:
         else:
             self.jit_unspill = jit_unspill
 
+        if dynamic_spill is None:
+            self.dynamic_spill = dask.config.get("dynamic-spill", default=False)
+        else:
+            self.dynamic_spill = dynamic_spill
+
+        hostfile = DynamicHostFile if self.dynamic_spill else DeviceHostFile
+
         self.nannies = [
-            t(
+            Nanny(
                 scheduler,
                 scheduler_file=scheduler_file,
                 nthreads=nthreads,
@@ -218,7 +226,7 @@ class CUDAWorker:
                     )
                 },
                 data=(
-                    DeviceHostFile,
+                    hostfile,
                     {
                         "device_memory_limit": parse_device_memory_limit(
                             device_memory_limit, device_index=i

@@ -8,6 +8,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
+from .dynamic_host_file import DynamicHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
@@ -138,6 +139,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_pool_size=None,
         rmm_managed_memory=False,
         jit_unspill=None,
+        dynamic_spill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -197,9 +199,16 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
+        if dynamic_spill is None:
+            self.dynamic_spill = dask.config.get("dynamic-spill", default=False)
+        else:
+            self.dynamic_spill = dynamic_spill
+
+        hostfile = DynamicHostFile if self.dynamic_spill else DeviceHostFile
+
         if data is None:
             data = (
-                DeviceHostFile,
+                hostfile,
                 {
                     "device_memory_limit": self.device_memory_limit,
                     "memory_limit": self.host_memory_limit,
@@ -282,7 +291,9 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": visible_devices,
+                },
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),

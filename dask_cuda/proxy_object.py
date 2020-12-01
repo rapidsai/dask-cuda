@@ -2,6 +2,8 @@ import operator
 import pickle
 import threading
 from collections import OrderedDict
+import time
+import weakref
 
 import dask
 import dask.dataframe.methods
@@ -129,6 +131,7 @@ class ProxyObject:
     """
 
     __slots__ = [
+        "__weakref__",
         "_obj_pxy",  # A dict that holds the state of the proxy object
         "_obj_pxy_lock",  # Threading lock for all obj_pxy access
         "__obj_pxy_cache",  # A dict used for caching attributes
@@ -181,7 +184,10 @@ class ProxyObject:
         ]
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
-    def _obj_pxy_serialize(self, serializers):
+    def _obj_pxy_serialized(self):
+        return self._obj_pxy["serializers"] is not None
+
+    def _obj_pxy_serialize(self, serializers, check_leak=False):
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters
@@ -214,7 +220,7 @@ class ProxyObject:
 
             return self._obj_pxy["obj"]
 
-    def _obj_pxy_deserialize(self):
+    def _obj_pxy_deserialize(self, extra_dev_mem=0, ignores=()):
         """Inplace deserialization of the proxied object
 
         Returns
@@ -224,9 +230,17 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy["serializers"] is not None:
+                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+                if hostfile is not None:
+                    hostfile.maybe_evict(
+                        self.__sizeof__() + extra_dev_mem, ignores=ignores
+                    )
+
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
                 self._obj_pxy["serializers"] = None
+
+            self._obj_pxy["last_access"] = time.time()
             return self._obj_pxy["obj"]
 
     def _obj_pxy_is_cuda_object(self):
@@ -274,9 +288,7 @@ class ProxyObject:
     def __repr__(self):
         with self._obj_pxy_lock:
             typename = self._obj_pxy["typename"]
-            ret = (
-                f"<{dask.utils.typename(type(self))} at {hex(id(self))} for {typename}"
-            )
+            ret = f"<{dask.utils.typename(type(self))} at {hex(id(self))} of {typename}"
             if self._obj_pxy["serializers"] is not None:
                 ret += f" (serialized={repr(self._obj_pxy['serializers'])})>"
             else:
@@ -587,10 +599,18 @@ def obj_pxy_make_scalar(obj: ProxyObject):
 
 @dask.dataframe.methods.concat_dispatch.register(ProxyObject)
 def obj_pxy_concat(objs, *args, **kwargs):
+    hostfile = objs[0]._obj_pxy.get("hostfile")()
+    assert hostfile is not None
+
     # Deserialize concat inputs (in-place)
     for i in range(len(objs)):
         try:
             objs[i] = objs[i]._obj_pxy_deserialize()
         except AttributeError:
             pass
-    return dask.dataframe.methods.concat(objs, *args, **kwargs)
+
+    ret = asproxy(dask.dataframe.methods.concat(objs, *args, **kwargs))
+    ret._obj_pxy["hostfile"] = weakref.ref(hostfile)
+    ret._obj_pxy["last_access"] = time.time()
+    return ret
+    # return dask.dataframe.methods.concat(objs, *args, **kwargs)

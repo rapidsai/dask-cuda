@@ -198,6 +198,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,  # If not specified, use Dask config
     help="Enable just-in-time unspilling",
 )
+@click.option(
+    "--enable-dynamic-spill/--disable-dynamic-spill",
+    default=None,  # If not specified, use Dask config
+    help="Enable dynamic spilling",
+)
 def main(
     scheduler,
     host,
@@ -226,11 +231,14 @@ def main(
     enable_rdmacm,
     net_devices,
     enable_jit_unspill,
+    enable_dynamic_spill,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
-            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key,
+            tls_ca_file=tls_ca_file,
+            tls_worker_cert=tls_cert,
+            tls_worker_key=tls_key,
         )
     else:
         security = None
@@ -261,6 +269,7 @@ def main(
         enable_rdmacm,
         net_devices,
         enable_jit_unspill,
+        enable_dynamic_spill,
         **kwargs,
     )
 

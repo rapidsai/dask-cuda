@@ -22,7 +22,7 @@ from .utils import nvtx_annotate
 
 
 class DeviceSerialized:
-    """ Store device object on the host
+    """Store device object on the host
     This stores a device-side object as
     1.  A msgpack encodable header
     2.  A list of `bytes`-like objects (like NumPy arrays)
@@ -67,6 +67,7 @@ def host_to_device(s: DeviceSerialized) -> object:
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
+    assert False
     try:
         # Never re-serialize proxy objects.
         if obj._obj_pxy["serializers"] is None:
@@ -87,7 +88,7 @@ def pxy_obj_host_to_device(s: proxy_object.ProxyObject) -> object:
 
 
 class DeviceHostFile(ZictBase):
-    """ Manages serialization/deserialization of objects.
+    """Manages serialization/deserialization of objects.
 
     Three LRU cache levels are controlled, for device, host and disk.
     Each level takes care of serializing objects once its limit has been
