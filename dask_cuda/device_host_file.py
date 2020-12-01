@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import time
 
 from zict import Buffer, File, Func
 from zict.common import ZictBase
@@ -34,7 +35,9 @@ class LoggedBuffer(Buffer):
         self.addr = "Unknown Address" if addr is None else addr
         self.fast_name = fast_name
         self.slow_name = slow_name
-        self.msg_template = "Worker at <%s>: Spilling key %s from %s to %s"
+        self.msg_template = (
+            "Worker at <%s>: Spilled key %s with %s bytes from %s to %s in %s seconds"
+        )
 
         # It is a bit hacky to forcefully capture the "distributed.worker" logger,
         # eventually it would be better to have a different logger. For now this
@@ -45,16 +48,35 @@ class LoggedBuffer(Buffer):
         super().__init__(*args, **kwargs)
 
     def fast_to_slow(self, key, value):
+        start = time.time()
+        ret = super().fast_to_slow(key, value)
+        total = time.time() - start
+
         self.logger.info(
-            self.msg_template % (self.addr, key, self.fast_name, self.slow_name)
+            self.msg_template
+            % (
+                self.addr,
+                key,
+                weight(key, value),
+                self.fast_name,
+                self.slow_name,
+                total,
+            )
         )
-        return super().fast_to_slow(key, value)
+
+        return ret
 
     def slow_to_fast(self, key):
+        start = time.time()
+        ret = super().slow_to_fast(key)
+        total = time.time() - start
+
         self.logger.info(
-            self.msg_template % (self.addr, key, self.slow_name, self.fast_name)
+            self.msg_template
+            % (self.addr, key, weight(key, ret), self.slow_name, self.fast_name, total)
         )
-        return super().slow_to_fast(key)
+
+        return ret
 
     def set_address(self, addr):
         self.addr = addr
