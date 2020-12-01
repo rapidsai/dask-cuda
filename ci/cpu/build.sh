@@ -42,6 +42,7 @@ conda list
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
+pip install git+https://github.com/dask/dask.git@master
 pip install git+https://github.com/dask/distributed.git@master
 
 # If nightly build, append current YYMMDD to version

@@ -74,10 +74,10 @@ conda list
 
 # Install the master version of dask and distributed
 if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
-    logger "pip install git+https://github.com/dask/distributed.git --upgrade"
-    pip install "git+https://github.com/dask/distributed.git" --upgrade
-    logger "pip install git+https://github.com/dask/dask.git --upgrade"
-    pip install "git+https://github.com/dask/dask.git" --upgrade
+    logger "pip install git+https://github.com/dask/distributed.git@master --upgrade"
+    pip install "git+https://github.com/dask/distributed.git@master" --upgrade
+    logger "pip install git+https://github.com/dask/dask.git@master --upgrade"
+    pip install "git+https://github.com/dask/dask.git@master" --upgrade
 fi
 
 logger "Check versions..."
