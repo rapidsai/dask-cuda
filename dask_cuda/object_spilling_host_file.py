@@ -8,7 +8,7 @@ from .proxify_device_object import proxify_device_object
 from .get_device_memory_objects import get_device_memory_objects
 
 
-class DynamicHostFile(MutableMapping):
+class ObjectSpillingHostFile(MutableMapping):
     """Manages serialization/deserialization of objects.
 
     TODO: Three LRU cache levels are controlled, for device, host and disk.

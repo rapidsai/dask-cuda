@@ -8,7 +8,7 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
-from .dynamic_host_file import DynamicHostFile
+from .object_spilling_host_file import ObjectSpillingHostFile
 from .initialize import initialize
 from .utils import (
     CPUAffinity,
@@ -139,7 +139,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_pool_size=None,
         rmm_managed_memory=False,
         jit_unspill=None,
-        dynamic_spill=None,
+        object_spilling=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -199,12 +199,12 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
-        if dynamic_spill is None:
-            self.dynamic_spill = dask.config.get("dynamic-spill", default=False)
+        if object_spilling is None:
+            self.object_spilling = dask.config.get("object-spilling", default=False)
         else:
-            self.dynamic_spill = dynamic_spill
+            self.object_spilling = object_spilling
 
-        hostfile = DynamicHostFile if self.dynamic_spill else DeviceHostFile
+        hostfile = ObjectSpillingHostFile if self.object_spilling else DeviceHostFile
 
         if data is None:
             data = (

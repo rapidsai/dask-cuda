@@ -199,9 +199,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="Enable just-in-time unspilling",
 )
 @click.option(
-    "--enable-dynamic-spill/--disable-dynamic-spill",
+    "--enable-object-spilling/--disable-object-spilling",
     default=None,  # If not specified, use Dask config
-    help="Enable dynamic spilling",
+    help="Enable object spilling",
 )
 def main(
     scheduler,
@@ -231,7 +231,7 @@ def main(
     enable_rdmacm,
     net_devices,
     enable_jit_unspill,
-    enable_dynamic_spill,
+    enable_object_spilling,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -269,7 +269,7 @@ def main(
         enable_rdmacm,
         net_devices,
         enable_jit_unspill,
-        enable_dynamic_spill,
+        enable_object_spilling,
         **kwargs,
     )
 
