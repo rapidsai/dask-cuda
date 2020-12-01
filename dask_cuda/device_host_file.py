@@ -225,5 +225,6 @@ class DeviceHostFile(ZictBase):
         del self.device_buffer[key]
 
     def set_address(self, addr):
-        self.host_buffer.set_address(addr)
+        if isinstance(self.host_buffer, LoggedBuffer):
+            self.host_buffer.set_address(addr)
         self.device_buffer.set_address(addr)
