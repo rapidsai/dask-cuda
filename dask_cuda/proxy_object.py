@@ -1,6 +1,7 @@
 import operator
 import pickle
 import threading
+from collections import OrderedDict
 
 import dask
 import dask.dataframe.methods
@@ -155,15 +156,30 @@ class ProxyObject:
         self._obj_pxy_lock = threading.RLock()
         self.__obj_pxy_cache = {}
 
-    def _obj_pxy_get_meta(self):
-        """Return the metadata of the proxy object.
+    def _obj_pxy_get_init_args(self, include_obj=True):
+        """Return the attributes needed to initialize a ProxyObject
+
+        Notice, the returned dictionary is ordered as the __init__() arguments
+
+        Parameters
+        ----------
+        include_obj: bool
+            Whether to include the "obj" argument or not
 
         Returns
         -------
-        Dictionary of metadata
+        Dictionary of attributes
         """
-        with self._obj_pxy_lock:
-            return {k: self._obj_pxy[k] for k in self._obj_pxy.keys() if k != "obj"}
+        args = ["obj"] if include_obj else []
+        args += [
+            "fixed_attr",
+            "type_serialized",
+            "typename",
+            "is_cuda_object",
+            "subclass",
+            "serializers",
+        ]
+        return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
     def _obj_pxy_serialize(self, serializers):
         """Inplace serialization of the proxied object using the `serializers`
@@ -192,7 +208,7 @@ class ProxyObject:
 
             if self._obj_pxy["serializers"] is None:
                 self._obj_pxy["obj"] = distributed.protocol.serialize(
-                    self._obj_pxy["obj"], serializers
+                    self._obj_pxy["obj"], serializers, on_error="raise"
                 )
                 self._obj_pxy["serializers"] = serializers
 
@@ -223,6 +239,21 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
+
+    def __reduce__(self):
+        """Serialization of ProxyObject that uses pickle"""
+        self._obj_pxy_serialize(serializers=["pickle"])
+        args = self._obj_pxy_get_init_args()
+        if args["subclass"]:
+            subclass = pickle.loads(args["subclass"])
+        else:
+            subclass = ProxyObject
+
+        # Make sure the frames are all bytes
+        header, frames = args["obj"]
+        args["obj"] = (header, [bytes(f) for f in frames])
+
+        return (subclass, tuple(args.values()))
 
     def __getattr__(self, name):
         with self._obj_pxy_lock:
@@ -500,7 +531,8 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
     that proxied CUDA objects are spilled to main memory before communicated.
     """
     header, frames = obj._obj_pxy_serialize(serializers=["dask", "pickle"])
-    return {"proxied-header": header, "obj-pxy-meta": obj._obj_pxy_get_meta()}, frames
+    meta = obj._obj_pxy_get_init_args(include_obj=False)
+    return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
@@ -515,7 +547,8 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
         header, frames = obj._obj_pxy["obj"]
     else:
         header, frames = obj._obj_pxy_serialize(serializers=["cuda", "dask", "pickle"])
-    return {"proxied-header": header, "obj-pxy-meta": obj._obj_pxy_get_meta()}, frames
+    meta = obj._obj_pxy_get_init_args(include_obj=False)
+    return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 
 
 @distributed.protocol.dask_deserialize.register(ProxyObject)
@@ -532,7 +565,10 @@ def obj_pxy_dask_deserialize(header, frames):
         subclass = ProxyObject
     else:
         subclass = pickle.loads(meta["subclass"])
-    return subclass(obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],)
+    return subclass(
+        obj=(header["proxied-header"], frames),
+        **header["obj-pxy-meta"],
+    )
 
 
 @dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)

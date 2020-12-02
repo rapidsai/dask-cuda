@@ -191,7 +191,7 @@ def test_serialize_cupy_collection(collection, length, value):
         values = res.values() if collection is dict else res
         [assert_func(v, x) for v in values]
 
-    header, frames = serialize(obj, serializers=["pickle"])
+    header, frames = serialize(obj, serializers=["pickle"], on_error="raise")
 
     if HIGHEST_PROTOCOL >= 5:
         assert len(frames) == (1 + len(obj.frames))
