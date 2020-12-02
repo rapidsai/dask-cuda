@@ -13,6 +13,7 @@ from dask_cuda.utils import (
     get_ucx_config,
     get_ucx_net_devices,
     parse_cuda_visible_device,
+    parse_device_memory_limit,
     unpack_bitmask,
 )
 
@@ -219,3 +220,15 @@ def test_parse_visible_devices():
     with pytest.raises(TypeError):
         parse_cuda_visible_device(None)
         parse_cuda_visible_device([])
+
+
+def test_parse_device_memory_limit():
+    total = get_device_total_memory(0)
+
+    assert parse_device_memory_limit(None) == total
+    assert parse_device_memory_limit(0) == total
+    assert parse_device_memory_limit("auto") == total
+
+    assert parse_device_memory_limit(0.8) == int(total * 0.8)
+    assert parse_device_memory_limit(1000000000) == 1000000000
+    assert parse_device_memory_limit("1GB") == 1000000000

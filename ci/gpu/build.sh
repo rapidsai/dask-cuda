@@ -74,10 +74,10 @@ conda list --show-channel-urls
 
 # Install the master version of dask and distributed
 if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
-    gpuci_logger "pip install git+https://github.com/dask/distributed.git --upgrade"
-    pip install "git+https://github.com/dask/distributed.git" --upgrade
-    gpuci_logger "pip install git+https://github.com/dask/dask.git --upgrade"
-    pip install "git+https://github.com/dask/dask.git" --upgrade
+    gpuci_logger "pip install git+https://github.com/dask/distributed.git@master --upgrade"
+    pip install "git+https://github.com/dask/distributed.git@master" --upgrade
+    gpuci_logger "pip install git+https://github.com/dask/dask.git@master --upgrade"
+    pip install "git+https://github.com/dask/dask.git@master" --upgrade
 fi
 
 gpuci_logger "Check versions"

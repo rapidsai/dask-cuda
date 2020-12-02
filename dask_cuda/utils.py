@@ -2,13 +2,15 @@ import math
 import os
 import time
 import warnings
+from contextlib import suppress
 from multiprocessing import cpu_count
 
 import numpy as np
 import pynvml
 import toolz
 
-from dask.distributed import wait
+from distributed import wait
+from distributed.utils import parse_bytes
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -442,3 +444,42 @@ def cuda_visible_devices(i, visible=None):
 
     L = visible[i:] + visible[:i]
     return ",".join(map(str, L))
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0):
+    """Parse memory limit to be used by a CUDA device.
+
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        This can be a float (fraction of total device memory), an integer (bytes),
+        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
+        size.
+    device_index: int
+        The index of device from which to obtain the total memory amount.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_memory_limit(None)
+    34089730048
+    >>> parse_device_memory_limit(0.8)
+    27271784038
+    >>> parse_device_memory_limit(1000000000)
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    """
+    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
+        return get_device_total_memory(device_index)
+
+    with suppress(ValueError, TypeError):
+        device_memory_limit = float(device_memory_limit)
+        if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
+            return int(get_device_total_memory(device_index) * device_memory_limit)
+
+    if isinstance(device_memory_limit, str):
+        return parse_bytes(device_memory_limit)
+    else:
+        return int(device_memory_limit)

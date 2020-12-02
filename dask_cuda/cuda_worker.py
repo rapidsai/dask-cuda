@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
-import multiprocessing
 import os
 import warnings
 
@@ -25,10 +24,10 @@ from .utils import (
     RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    parse_device_memory_limit,
 )
 
 
@@ -49,7 +48,7 @@ class CUDAWorker:
         self,
         scheduler=None,
         host=None,
-        nthreads=0,
+        nthreads=1,
         name=None,
         memory_limit="auto",
         device_memory_limit="auto",
@@ -71,6 +70,7 @@ class CUDAWorker:
         enable_nvlink=False,
         enable_rdmacm=False,
         net_devices=None,
+        jit_unspill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -85,8 +85,8 @@ class CUDAWorker:
         except KeyError:
             nprocs = get_n_gpus()
 
-        if not nthreads:
-            nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+        if nthreads < 1:
+            raise ValueError("nthreads must be higher than 0.")
 
         memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
 
@@ -177,6 +177,11 @@ class CUDAWorker:
             cuda_device_index=0,
         )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
         self.nannies = [
             t(
                 scheduler,
@@ -211,14 +216,12 @@ class CUDAWorker:
                 data=(
                     DeviceHostFile,
                     {
-                        "device_memory_limit": get_device_total_memory(index=i)
-                        if (
-                            device_memory_limit == "auto"
-                            or device_memory_limit == int(0)
-                        )
-                        else parse_bytes(device_memory_limit),
+                        "device_memory_limit": parse_device_memory_limit(
+                            device_memory_limit, device_index=i
+                        ),
                         "memory_limit": memory_limit,
                         "local_directory": local_directory,
+                        "jit_unspill": self.jit_unspill,
                     },
                 ),
                 **kwargs,
