@@ -75,9 +75,13 @@ def get_device_memory_objects_register_cudf():
 
 
 @sizeof.register_lazy("cupy")
-def register_cupy():
-    from cupy.cuda.memory import BaseMemory
+def register_cupy():  # NB: this overwrites dask.sizeof.register_cupy()
+    import cupy.cuda.memory
 
-    @sizeof.register(BaseMemory)
-    def sizeof_cupy_ndarray(x):
+    @sizeof.register(cupy.cuda.memory.BaseMemory)
+    def sizeof_cupy_base_memory(x):
         return int(x.size)
+
+    @sizeof.register(cupy.ndarray)
+    def sizeof_cupy_ndarray(x):
+        return int(x.nbytes)
