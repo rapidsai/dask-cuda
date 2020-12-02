@@ -300,6 +300,24 @@ class ProxyObject:
     def __array__(self):
         return getattr(self._obj_pxy_deserialize(), "__array__")()
 
+    def __lt__(self, other):
+        return self._obj_pxy_deserialize() < other
+
+    def __le__(self, other):
+        return self._obj_pxy_deserialize() <= other
+
+    def __eq__(self, other):
+        return self._obj_pxy_deserialize() == other
+
+    def __ne__(self, other):
+        return self._obj_pxy_deserialize() != other
+
+    def __gt__(self, other):
+        return self._obj_pxy_deserialize() > other
+
+    def __ge__(self, other):
+        return self._obj_pxy_deserialize() >= other
+
     def __add__(self, other):
         return self._obj_pxy_deserialize() + other
 
