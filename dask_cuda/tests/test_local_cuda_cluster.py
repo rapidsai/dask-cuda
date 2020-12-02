@@ -108,6 +108,12 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
+async def test_threads_per_worker():
+    async with LocalCUDACluster(threads_per_worker=4, asynchronous=True) as cluster:
+        assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
+
+
+@gen_test(timeout=20)
 async def test_all_to_all():
     async with LocalCUDACluster(
         CUDA_VISIBLE_DEVICES="0,1", asynchronous=True

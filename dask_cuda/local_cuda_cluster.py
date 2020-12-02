@@ -142,6 +142,9 @@ class LocalCUDACluster(LocalCluster):
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
 
+        if threads_per_worker < 1:
+            raise ValueError("threads_per_worker must be higher than 0.")
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
@@ -211,8 +214,7 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import \
-                    TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "

@@ -64,7 +64,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "an ethernet interface is used for connection, and not an InfiniBand "
     "interface (if one is available).",
 )
-@click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
+@click.option("--nthreads", type=int, default=1, help="Number of threads per process.")
 @click.option(
     "--name",
     type=str,

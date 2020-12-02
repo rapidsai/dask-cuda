@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
-import multiprocessing
 import os
 import warnings
 
@@ -49,7 +48,7 @@ class CUDAWorker:
         self,
         scheduler=None,
         host=None,
-        nthreads=0,
+        nthreads=1,
         name=None,
         memory_limit="auto",
         device_memory_limit="auto",
@@ -86,8 +85,8 @@ class CUDAWorker:
         except KeyError:
             nprocs = get_n_gpus()
 
-        if not nthreads:
-            nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+        if nthreads < 1:
+            raise ValueError("nthreads must be higher than 0.")
 
         memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
 

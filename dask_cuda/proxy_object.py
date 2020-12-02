@@ -514,10 +514,7 @@ def obj_pxy_dask_deserialize(header, frames):
         subclass = ProxyObject
     else:
         subclass = pickle.loads(meta["subclass"])
-    return subclass(
-        obj=(header["proxied-header"], frames),
-        **header["obj-pxy-meta"],
-    )
+    return subclass(obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],)
 
 
 @dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)
