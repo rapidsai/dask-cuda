@@ -1,3 +1,4 @@
+import pickle
 import operator
 
 import pytest
@@ -191,7 +192,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df, serializers=proxy_serializers)
-    header, frames = serialize(pxy, serializers=dask_serializers)
+    header, frames = serialize(pxy, serializers=dask_serializers, on_error="raise")
     pxy = deserialize(header, frames)
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
@@ -206,7 +207,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) is proxy_object.ProxyObject
-            assert x._obj_pxy_get_meta()["serializers"] == ["dask", "pickle"]
+            assert x._obj_pxy["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -250,7 +251,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializers_used = list(x._obj_pxy_get_meta()["serializers"])
+        serializers_used = list(x._obj_pxy["serializers"])
 
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
@@ -280,3 +281,18 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
+
+
+@pytest.mark.parametrize("array_module", ["numpy", "cupy"])
+@pytest.mark.parametrize(
+    "serializers", [None, ["dask", "pickle"], ["cuda", "dask", "pickle"]]
+)
+def test_pickle_proxy_object(array_module, serializers):
+    """Check pickle of the proxy object"""
+    array_module = pytest.importorskip(array_module)
+    org = array_module.arange(10)
+    pxy = proxy_object.asproxy(org, serializers=serializers)
+    data = pickle.dumps(pxy)
+    restored = pickle.loads(data)
+    repr(restored)
+    assert all(org == restored)
