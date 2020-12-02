@@ -134,6 +134,12 @@ def test_proxy_object_of_numpy(serializers):
         assert isinstance(got, type(expect))
         assert all(expect == got)
 
+        # Check proxy-proxy operations
+        if "i" != op_str[0]:  # Skip in-place operators
+            expect = op(org.copy(), org)
+            got = op(pxy, proxy_object.asproxy(org.copy()))
+            assert all(expect == got)
+
     # Check unary truth operators
     for op_str in ["not_", "truth"]:
         op = getattr(operator, op_str)
