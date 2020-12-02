@@ -61,6 +61,7 @@ class ObjectSpillingHostFile(MutableMapping):
         return ret
 
     def obj_mappings(self):
+        # TODO: simplify and optimize
         proxied_id_to_proxy = {}
         buffer_to_proxies = {}
 
@@ -71,7 +72,7 @@ class ObjectSpillingHostFile(MutableMapping):
             proxied_id_to_proxy[proxied_id] = p
             for buf in get_device_memory_objects(proxied):
                 l = buffer_to_proxies.get(buf, [])
-                if p not in l:
+                if id(p) not in set(id(i) for i in l):
                     l.append(p)
                 buffer_to_proxies[buf] = l
         return proxied_id_to_proxy, buffer_to_proxies
