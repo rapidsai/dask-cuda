@@ -1,3 +1,4 @@
+import pickle
 import operator
 
 import pytest
@@ -274,3 +275,18 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
+
+
+@pytest.mark.parametrize("array_module", ["numpy", "cupy"])
+@pytest.mark.parametrize(
+    "serializers", [None, ["dask", "pickle"], ["cuda", "dask", "pickle"]]
+)
+def test_pickle_proxy_object(array_module, serializers):
+    """Check pickle of the proxy object"""
+    array_module = pytest.importorskip(array_module)
+    org = array_module.arange(10)
+    pxy = proxy_object.asproxy(org, serializers=serializers)
+    data = pickle.dumps(pxy)
+    restored = pickle.loads(data)
+    repr(restored)
+    assert all(org == restored)

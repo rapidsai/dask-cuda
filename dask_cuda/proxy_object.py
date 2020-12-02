@@ -241,6 +241,21 @@ class ProxyObject:
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
 
+    def __reduce__(self):
+        """Serialization of ProxyObject that uses pickle"""
+        self._obj_pxy_serialize(serializers=["pickle"])
+        args = self._obj_pxy_get_init_args()
+        if args["subclass"]:
+            subclass = pickle.loads(args["subclass"])
+        else:
+            subclass = ProxyObject
+
+        # Make sure the frames are all bytes
+        header, frames = args["obj"]
+        args["obj"] = (header, [bytes(f) for f in frames])
+
+        return (subclass, tuple(args.values()))
+
     def __getattr__(self, name):
         with self._obj_pxy_lock:
             typename = self._obj_pxy["typename"]
