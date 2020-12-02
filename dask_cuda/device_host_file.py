@@ -67,7 +67,6 @@ def host_to_device(s: DeviceSerialized) -> object:
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
-    assert False
     try:
         # Never re-serialize proxy objects.
         if obj._obj_pxy["serializers"] is None:
