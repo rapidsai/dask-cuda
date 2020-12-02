@@ -185,7 +185,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df, serializers=proxy_serializers)
-    header, frames = serialize(pxy, serializers=dask_serializers)
+    header, frames = serialize(pxy, serializers=dask_serializers, on_error="raise")
     pxy = deserialize(header, frames)
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 

@@ -56,7 +56,7 @@ def device_deserialize(header, frames):
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
-    header, frames = serialize(obj, serializers=["dask", "pickle"])
+    header, frames = serialize(obj, serializers=["dask", "pickle"], on_error="raise")
     return DeviceSerialized(header, frames)
 
 
