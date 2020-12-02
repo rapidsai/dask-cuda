@@ -170,7 +170,8 @@ class ProxyObject:
         -------
         Dictionary of attributes
         """
-        args = [
+        args = ["obj"] if include_obj else []
+        args += [
             "fixed_attr",
             "type_serialized",
             "typename",
@@ -178,8 +179,6 @@ class ProxyObject:
             "subclass",
             "serializers",
         ]
-        if include_obj:
-            args.insert(0, "obj")
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
     def _obj_pxy_serialize(self, serializers):
