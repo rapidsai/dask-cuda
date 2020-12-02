@@ -200,7 +200,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) is proxy_object.ProxyObject
-            assert x._obj_pxy_get_meta()["serializers"] == ["dask", "pickle"]
+            assert x._obj_pxy["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -244,7 +244,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializers_used = list(x._obj_pxy_get_meta()["serializers"])
+        serializers_used = list(x._obj_pxy["serializers"])
 
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
