@@ -51,6 +51,7 @@ def get_device_memory_objects_register_cupy():
 
 @get_device_memory_objects.register_lazy("cudf")
 def get_device_memory_objects_register_cudf():
+    import cudf.core.multiindex
     import cudf.core.index
     import cudf.core.dataframe
     import cudf.core.series
@@ -72,6 +73,10 @@ def get_device_memory_objects_register_cudf():
     @get_device_memory_objects.register(cudf.core.index.Index)
     def get_device_memory_objects_cudf_index(obj):
         return get_device_memory_objects(obj._values)
+
+    @get_device_memory_objects.register(cudf.core.multiindex.MultiIndex)
+    def get_device_memory_objects_cudf_multiindex(obj):
+        return get_device_memory_objects(obj._columns)
 
 
 @sizeof.register_lazy("cupy")

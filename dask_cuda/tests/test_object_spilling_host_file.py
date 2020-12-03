@@ -4,6 +4,7 @@ from pandas.testing import assert_frame_equal
 from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
 import dask_cuda
+from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.object_spilling_host_file import ObjectSpillingHostFile
 
 cupy = pytest.importorskip("cupy")
@@ -101,3 +102,15 @@ def test_dataframes_share_dev_mem():
     dhf["k1"] = cupy.arange(1)
     assert v1._obj_pxy_serialized()
     assert v2._obj_pxy_serialized()
+
+
+def test_cudf_get_device_memory_objects():
+    cudf = pytest.importorskip("cudf")
+    objects = [
+        cudf.DataFrame({"a": range(10), "b": range(10)}),
+        cudf.MultiIndex(
+            levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
+        ),
+    ]
+    res = get_device_memory_objects(objects)
+    assert len(res) == 4, "We expect four buffer objects"
