@@ -5,6 +5,7 @@ import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
+import dask
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
@@ -301,3 +302,34 @@ def test_pickle_proxy_object(array_module, serializers):
     restored = pickle.loads(data)
     repr(restored)
     assert all(org == restored)
+
+
+def test_pandas():
+    """Check pandas operations on proxy objects"""
+    pandas = pytest.importorskip("pandas")
+
+    df1 = pandas.DataFrame({"a": range(10)})
+    df2 = pandas.DataFrame({"a": range(10)})
+
+    res = dask.dataframe.methods.concat([df1, df2])
+    got = dask.dataframe.methods.concat([df1, df2])
+    assert_frame_equal(res, got)
+
+    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    assert_frame_equal(res, got)
+
+    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    assert_frame_equal(res, got)
+
+    df1 = pandas.Series(range(10))
+    df2 = pandas.Series(range(10))
+
+    res = dask.dataframe.methods.concat([df1, df2])
+    got = dask.dataframe.methods.concat([df1, df2])
+    assert all(res == got)
+
+    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    assert all(res == got)
+
+    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    assert all(res == got)

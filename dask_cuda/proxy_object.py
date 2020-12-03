@@ -5,6 +5,7 @@ from collections import OrderedDict
 import time
 import weakref
 
+import pandas
 import dask
 import dask.dataframe.methods
 import dask.dataframe.utils
@@ -615,4 +616,19 @@ def obj_pxy_concat(objs, *args, **kwargs):
 def obj_pxy_group_split(obj: ProxyObject, c, k, ignore_index=False):
     return dask.dataframe.utils.group_split_dispatch(
         obj._obj_pxy_deserialize(), c, k, ignore_index
+    )
+
+
+@dask.dataframe.methods.concat_dispatch.register(
+    (pandas.DataFrame, pandas.Series, pandas.Index)
+)
+def concat_pandas(dfs, *args, **kwargs):
+    """
+    We overwrite the Dask dispatch of Pandas objects in order to
+    deserialize all ProxyObjects before concatenating
+    """
+    return dask.dataframe.methods.concat_pandas(
+        [(d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in dfs],
+        *args,
+        **kwargs,
     )
