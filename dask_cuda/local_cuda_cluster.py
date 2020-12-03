@@ -86,7 +86,8 @@ class LocalCUDACluster(LocalCluster):
     rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M).
-        NOTE: This size is a per worker (i.e., per GPU), and not cluster-wide!
+        NOTE: The size is a per worker (i.e., per GPU) configuration, and
+        not cluster-wide!
     rmm_managed_memory: bool
         If True, initialize each worker with RMM and set it to use managed
         memory. If False, RMM may still be used if `rmm_pool_size` is specified,

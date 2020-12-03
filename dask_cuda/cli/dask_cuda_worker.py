@@ -99,8 +99,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="If specified, initialize each worker with an RMM pool of "
     "the given size, otherwise no RMM pool is created. This can be "
     "an integer (bytes) or string (like 5GB or 5000M)."
-    "NOTE: This size is a per worker (i.e., per GPU), and not "
-    "cluster-wide!",
+    "NOTE: This size is a per worker (i.e., per GPU) configuration, "
+    "and not cluster-wide!",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
