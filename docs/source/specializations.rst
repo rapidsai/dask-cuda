@@ -17,7 +17,7 @@ Users can control the number of workers by explicitly defining the `environment 
 
     LocalCUDACluster(CUDA_VISIBLE_DEVICES='0,1,2')
     or
-    CUDA_VISIBLE_DEVICES=0,1,2 dask-cuda-workewr
+    CUDA_VISIBLE_DEVICES=0,1,2 dask-cuda-worker
 
 Users can also use UUID of the device as an inputs to ``CUDA_VISIBLE_DEVICES``.  UUIDs should begin with the `prefix 'GPU-' or 'MIG-GPU' <https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#env-vars>`_ : `GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005`, for example.
 
