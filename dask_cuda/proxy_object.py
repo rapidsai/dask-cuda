@@ -283,6 +283,16 @@ class ProxyObject:
 
             return getattr(self._obj_pxy_deserialize(), name)
 
+    def __setattr__(self, name, val):
+        if name in self.__slots__:
+            return object.__setattr__(self, name, val)
+
+        with self._obj_pxy_lock:
+            if name in _FIXED_ATTRS:
+                self._obj_pxy["fixed_attr"][name] = val
+            else:
+                object.__setattr__(self._obj_pxy_deserialize(), name, val)
+
     def __str__(self):
         return str(self._obj_pxy_deserialize())
 

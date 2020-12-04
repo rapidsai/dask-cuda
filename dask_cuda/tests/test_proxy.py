@@ -360,3 +360,11 @@ def test_proxy_object_parquet(tmp_path):
     pxy.to_parquet(str(tmp_path))
     df2 = dask.dataframe.read_parquet(tmp_path)
     assert_frame_equal(df.to_pandas(), df2.compute())
+
+
+def test_assignments():
+    """Check assignment to a proxied dataframe"""
+    cudf = pytest.importorskip("cudf")
+
+    df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
+    df.index = df["a"].copy(deep=False)
