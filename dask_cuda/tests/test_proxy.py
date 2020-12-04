@@ -348,3 +348,15 @@ def test_from_cudf_of_proxy_object():
 
     # Notice, the output is a dask-cudf dataframe and not a proxy object
     assert type(ddf) is dask_cudf.core.DataFrame
+
+
+def test_proxy_object_parquet(tmp_path):
+    """Check parquet read/write of a proxy object"""
+    cudf = pytest.importorskip("cudf")
+    tmp_path = tmp_path / "proxy_test.parquet"
+
+    df = cudf.DataFrame({"a": range(10)})
+    pxy = proxy_object.asproxy(df)
+    pxy.to_parquet(str(tmp_path))
+    df2 = dask.dataframe.read_parquet(tmp_path)
+    assert_frame_equal(df.to_pandas(), df2.compute())
