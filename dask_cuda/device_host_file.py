@@ -47,10 +47,14 @@ class LoggedBuffer(Buffer):
 
         super().__init__(*args, **kwargs)
 
+        self.total_time_fast_to_slow = 0.0
+        self.total_time_slow_to_fast = 0.0
+
     def fast_to_slow(self, key, value):
         start = time.time()
         ret = super().fast_to_slow(key, value)
         total = time.time() - start
+        self.total_time_fast_to_slow += total
 
         self.logger.info(
             self.msg_template
@@ -70,6 +74,7 @@ class LoggedBuffer(Buffer):
         start = time.time()
         ret = super().slow_to_fast(key)
         total = time.time() - start
+        self.total_time_slow_to_fast += total
 
         self.logger.info(
             self.msg_template
@@ -81,9 +86,19 @@ class LoggedBuffer(Buffer):
     def set_address(self, addr):
         self.addr = addr
 
+    def get_total_spilling_time(self):
+        return {
+            (
+                "Total spilling time from %s to %s" % (self.fast_name, self.slow_name)
+            ): self.total_time_fast_to_slow,
+            (
+                "Total spilling time from %s to %s" % (self.slow_name, self.fast_name)
+            ): self.total_time_slow_to_fast,
+        }
+
 
 class DeviceSerialized:
-    """ Store device object on the host
+    """Store device object on the host
 
     This stores a device-side object as
 
@@ -129,7 +144,7 @@ def host_to_device(s: DeviceSerialized) -> object:
 
 
 class DeviceHostFile(ZictBase):
-    """ Manages serialization/deserialization of objects.
+    """Manages serialization/deserialization of objects.
 
     Three LRU cache levels are controlled, for device, host and disk.
     Each level takes care of serializing objects once its limit has been
@@ -243,3 +258,11 @@ class DeviceHostFile(ZictBase):
         if isinstance(self.host_buffer, LoggedBuffer):
             self.host_buffer.set_address(addr)
         self.device_buffer.set_address(addr)
+
+    def get_total_spilling_time(self):
+        ret = {}
+        if isinstance(self.device_buffer, LoggedBuffer):
+            ret = {**ret, **self.device_buffer.get_total_spilling_time()}
+        if isinstance(self.host_buffer, LoggedBuffer):
+            ret = {**ret, **self.host_buffer.get_total_spilling_time()}
+        return ret
