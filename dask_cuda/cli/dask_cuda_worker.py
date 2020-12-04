@@ -64,7 +64,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "an ethernet interface is used for connection, and not an InfiniBand "
     "interface (if one is available).",
 )
-@click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
+@click.option("--nthreads", type=int, default=1, help="Number of threads per process.")
 @click.option(
     "--name",
     type=str,
@@ -98,7 +98,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     help="If specified, initialize each worker with an RMM pool of "
     "the given size, otherwise no RMM pool is created. This can be "
-    "an integer (bytes) or string (like 5GB or 5000M).",
+    "an integer (bytes) or string (like 5GB or 5000M)."
+    "NOTE: This size is a per worker (i.e., per GPU) configuration, "
+    "and not cluster-wide!",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
@@ -191,6 +193,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
     "interfaces are connected and properly configured.",
 )
+@click.option(
+    "--enable-jit-unspill/--disable-jit-unspill",
+    default=None,  # If not specified, use Dask config
+    help="Enable just-in-time unspilling",
+)
 def main(
     scheduler,
     host,
@@ -218,6 +225,7 @@ def main(
     enable_nvlink,
     enable_rdmacm,
     net_devices,
+    enable_jit_unspill,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -252,6 +260,7 @@ def main(
         enable_nvlink,
         enable_rdmacm,
         net_devices,
+        enable_jit_unspill,
         **kwargs,
     )
 

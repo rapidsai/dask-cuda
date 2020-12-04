@@ -100,6 +100,8 @@ class LocalCUDACluster(LocalCluster):
     rmm_pool_size: None, int or str
         When None (default), no RMM pool is initialized. If a different value
         is given, it can be an integer (bytes) or string (like 5GB or 5000M).
+        NOTE: The size is a per worker (i.e., per GPU) configuration, and
+        not cluster-wide!
     rmm_managed_memory: bool
         If True, initialize each worker with RMM and set it to use managed
         memory. If False, RMM may still be used if `rmm_pool_size` is specified,
@@ -110,6 +112,8 @@ class LocalCUDACluster(LocalCluster):
         If True, all spilling operations will be logged directly to
         distributed.worker with an INFO loglevel. This will eventually be
         replaced by a Dask configuration flag.
+    jit_unspill: bool
+        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
 
     Examples
     --------
@@ -152,11 +156,15 @@ class LocalCUDACluster(LocalCluster):
         rmm_pool_size=None,
         rmm_managed_memory=False,
         log_spilling=False,
+        jit_unspill=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
+        if threads_per_worker < 1:
+            raise ValueError("threads_per_worker must be higher than 0.")
 
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
@@ -201,6 +209,11 @@ class LocalCUDACluster(LocalCluster):
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
         if data is None:
             data = (
                 DeviceHostFile,
@@ -211,6 +224,7 @@ class LocalCUDACluster(LocalCluster):
                     or dask.config.get("temporary-directory")
                     or os.getcwd(),
                     "log_spilling": log_spilling,
+                    "jit_unspill": self.jit_unspill,
                 },
             )
 

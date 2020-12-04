@@ -1,0 +1,2 @@
+include versioneer.py
+include dask_cuda/_version.py

@@ -1,4 +1,6 @@
 import argparse
+import os
+from datetime import datetime
 
 from dask.distributed import SSHCluster
 
@@ -109,6 +111,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
     )
+    parser.add_argument(
+        "--plot",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Generate plot output written to defined directory",
+    )
 
     for args in args_list:
         name = args.pop("name")
@@ -197,3 +206,59 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
             pool_allocator=True, devices=0, initial_pool_size=pool_size,
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+
+def plot_benchmark(t_runs, path, historical=False):
+    """
+    Plot the throughput the benchmark for each run.  If historical=True,
+    Load historical data from ~/benchmark-historic-runs.csv
+    """
+    try:
+        import pandas as pd
+        import seaborn as sns
+    except ImportError:
+        print(
+            "Plotting libraries are not installed.  Please install pandas, "
+            "seaborn, and matplotlib"
+        )
+        return
+
+    x = [str(x) for x in range(len(t_runs))]
+    df = pd.DataFrame(dict(t_runs=t_runs, x=x))
+    avg = round(df.t_runs.mean(), 2)
+
+    ax = sns.barplot(x="x", y="t_runs", data=df, color="purple")
+
+    ax.set(
+        xlabel="Run Iteration",
+        ylabel="Merge Throughput in GB/s",
+        title=f"cudf Merge Throughput -- Average {avg} GB/s",
+    )
+    fig = ax.get_figure()
+    today = datetime.now().strftime("%Y%m%d")
+    fname_bench = today + "-benchmark.png"
+    d = os.path.expanduser(path)
+    bench_path = os.path.join(d, fname_bench)
+    fig.savefig(bench_path)
+
+    if historical:
+        # record average tohroughput and plot historical averages
+        history_file = os.path.join(
+            os.path.expanduser("~"), "benchmark-historic-runs.csv"
+        )
+        with open(history_file, "a+") as f:
+            f.write(f"{today},{avg}\n")
+
+        df = pd.read_csv(
+            history_file, names=["date", "throughput"], parse_dates=["date"]
+        )
+        ax = df.plot(
+            x="date", y="throughput", marker="o", title="Historical Throughput"
+        )
+
+        ax.set_ylim(0, 30)
+
+        fig = ax.get_figure()
+        fname_hist = today + "-benchmark-history.png"
+        hist_path = os.path.join(d, fname_hist)
+        fig.savefig(hist_path)
