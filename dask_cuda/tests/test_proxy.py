@@ -6,6 +6,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 import dask
+from dask.dataframe.core import has_parallel_type
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
@@ -333,3 +334,17 @@ def test_pandas():
 
     got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
     assert all(res == got)
+
+
+def test_from_cudf_of_proxy_object():
+    """Check from_cudf() of a proxy object"""
+    cudf = pytest.importorskip("cudf")
+
+    df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
+    assert has_parallel_type(df)
+
+    ddf = dask_cudf.from_cudf(df, npartitions=1)
+    assert has_parallel_type(ddf)
+
+    # Notice, the output is a dask-cudf dataframe and not a proxy object
+    assert type(ddf) is dask_cudf.core.DataFrame

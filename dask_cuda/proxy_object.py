@@ -581,6 +581,19 @@ def obj_pxy_dask_deserialize(header, frames):
     return subclass(obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],)
 
 
+@dask.dataframe.utils.make_meta.register(ProxyObject)
+def make_meta_proxy_object(obj: ProxyObject, index=None):
+    return dask.dataframe.utils.make_meta(obj._obj_pxy_deserialize(), index)
+
+
+@dask.dataframe.core.get_parallel_type.register(ProxyObject)
+def get_parallel_type_proxy_object(obj: ProxyObject):
+    obj_type = pickle.loads(obj._obj_pxy["type_serialized"])
+    # Notice, `get_parallel_type()` needs a instance not a type object
+    return dask.dataframe.core.get_parallel_type(obj_type.__new__(obj_type))
+    # return dask.dataframe.core.get_parallel_type(obj._obj_pxy_deserialize())
+
+
 @dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)
 def obj_pxy_hash_object(obj: ProxyObject, index=True):
     return dask.dataframe.utils.hash_object_dispatch(obj._obj_pxy_deserialize(), index)
