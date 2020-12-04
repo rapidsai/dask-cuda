@@ -135,7 +135,7 @@ class ProxyObject:
         "__weakref__",
         "_obj_pxy",  # A dict that holds the state of the proxy object
         "_obj_pxy_lock",  # Threading lock for all obj_pxy access
-        "__obj_pxy_cache",  # A dict used for caching attributes
+        "_obj_pxy_cache",  # A dict used for caching attributes
     ]
 
     def __init__(
@@ -158,7 +158,7 @@ class ProxyObject:
             "serializers": serializers,
         }
         self._obj_pxy_lock = threading.RLock()
-        self.__obj_pxy_cache = {}
+        self._obj_pxy_cache = {}
 
     def _obj_pxy_get_init_args(self, include_obj=True):
         """Return the attributes needed to initialize a ProxyObject
@@ -310,10 +310,10 @@ class ProxyObject:
     def __class__(self):
         with self._obj_pxy_lock:
             try:
-                return self.__obj_pxy_cache["type_serialized"]
+                return self._obj_pxy_cache["type_serialized"]
             except KeyError:
                 ret = pickle.loads(self._obj_pxy["type_serialized"])
-                self.__obj_pxy_cache["type_serialized"] = ret
+                self._obj_pxy_cache["type_serialized"] = ret
                 return ret
 
     def __sizeof__(self):
