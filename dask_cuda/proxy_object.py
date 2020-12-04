@@ -351,8 +351,8 @@ class ProxyObject:
     def __iter__(self):
         return iter(self._obj_pxy_deserialize())
 
-    def __array__(self):
-        return getattr(self._obj_pxy_deserialize(), "__array__")()
+    def __array__(self, *args, **kwargs):
+        return getattr(self._obj_pxy_deserialize(), "__array__")(*args, **kwargs)
 
     def __lt__(self, other):
         return self._obj_pxy_deserialize() < other
