@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2018, NVIDIA CORPORATION.
+# Copyright (c) 2020, NVIDIA CORPORATION.
 ##############################################
 # dask-cuda GPU build and test script for CI #
 ##############################################
@@ -7,19 +7,14 @@ set -e
 NUMARGS=$#
 ARGS=$*
 
-# Logger function for build status output
-function logger() {
-  echo -e "\n>>>> $@\n"
-}
-
 # Arg parsing function
 function hasArg {
     (( ${NUMARGS} != 0 )) && (echo " ${ARGS} " | grep -q " $1 ")
 }
 
 # Set path and build parallel level
-export PATH=/conda/bin:/usr/local/cuda/bin:$PATH
-export PARALLEL_LEVEL=4
+export PATH=/opt/conda/bin:/usr/local/cuda/bin:$PATH
+export PARALLEL_LEVEL=${PARALLEL_LEVEL:-4}
 export CUDA_REL=${CUDA_VERSION%.*}
 export CUDA_REL2=${CUDA//./}
 
@@ -44,53 +39,60 @@ export INSTALL_DASK_MASTER=1
 # SETUP - Check environment
 ################################################################################
 
-logger "Check environment..."
+gpuci_logger "Check environment"
 env
 
-logger "Check GPU usage..."
+gpuci_logger "Check GPU usage"
 nvidia-smi
 
-logger "Activate conda env..."
-source activate gdf
-conda list
+gpuci_logger "Activate conda env"
+. /opt/conda/etc/profile.d/conda.sh
+conda activate rapids
+conda info
+conda config --show-sources
+conda list --show-channel-urls
 
 # Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
-conda install "cudatoolkit=$CUDA_REL" \
+gpuci_conda_retry install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
               "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
 # Pin pytest-asyncio because latest versions modify the default asyncio
 # `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
-conda install "pytest-asyncio=<0.14.0"
+gpuci_conda_retry install "pytest-asyncio=<0.14.0"
 
 # https://docs.rapids.ai/maintainers/depmgmt/ 
-# conda remove -f rapids-build-env
-# conda install "your-pkg=1.0.0"
+# gpuci_conda_retry remove -f rapids-build-env
+# gpuci_conda_retry install "your-pkg=1.0.0"
 
 
-conda list
+conda info
+conda config --show-sources
+conda list --show-channel-urls
 
 # Install the master version of dask and distributed
 if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
-    logger "pip install git+https://github.com/dask/distributed.git@master --upgrade"
+    gpuci_logger "pip install git+https://github.com/dask/distributed.git@master --upgrade"
     pip install "git+https://github.com/dask/distributed.git@master" --upgrade
-    logger "pip install git+https://github.com/dask/dask.git@master --upgrade"
+    gpuci_logger "pip install git+https://github.com/dask/dask.git@master --upgrade"
     pip install "git+https://github.com/dask/dask.git@master" --upgrade
 fi
 
-logger "Check versions..."
+gpuci_logger "Check versions"
 python --version
 $CC --version
 $CXX --version
-conda list
+conda info
+conda config --show-sources
+conda list --show-channel-urls
 
 ################################################################################
 # BUILD - Build dask-cuda
 ################################################################################
 
-logger "Build dask-cuda..."
+gpuci_logger "Build dask-cuda"
 cd $WORKSPACE
 python -m pip install -e .
 
@@ -99,17 +101,17 @@ python -m pip install -e .
 ################################################################################
 
 if hasArg --skip-tests; then
-    logger "Skipping Tests..."
+    gpuci_logger "Skipping Tests"
 else
-    logger "Python py.test for dask-cuda..."
+    gpuci_logger "Python py.test for dask-cuda"
     cd $WORKSPACE
     ls dask_cuda/tests/
     UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp=${WORKSPACE}/dask-cuda-tmp --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
 
-    logger "Running dask.distributed GPU tests"
+    gpuci_logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
     if [ $(python -c "import sys; print(sys.version_info[1])") -ge "7" ]; then
-        logger "TEST OF DASK/UCX..."
+        gpuci_logger "TEST OF DASK/UCX"
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
