@@ -392,3 +392,16 @@ def test_tensordot_of_proxied_cupy_arrays():
     res1 = tensordot_lookup(a, b).flatten()
     res2 = tensordot_lookup(org.copy(), org.copy()).flatten()
     assert all(res1 == res2)
+
+
+def test_einsum_of_proxied_cupy_arrays():
+    """Check tensordot of cupy arrays"""
+    from dask.array.core import einsum_lookup
+
+    cupy = pytest.importorskip("cupy")
+
+    org = cupy.arange(25).reshape(5, 5)
+    res1 = einsum_lookup.dispatch(type(org))("ii", org)
+    a = proxy_object.asproxy(org.copy())
+    res2 = einsum_lookup.dispatch(type(a))("ii", a)
+    assert all(res1.flatten() == res2.flatten())

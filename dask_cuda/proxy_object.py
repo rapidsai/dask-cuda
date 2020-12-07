@@ -683,3 +683,11 @@ def tensordot_array(a, b, *args, **kwargs):
         *args,
         **kwargs,
     )
+
+
+@dask.array.core.einsum_lookup.register(ProxyObject)
+def einsum_array(*args, **kwargs):
+    return dask.array.core.einsum_lookup(
+        *[(a._obj_pxy_deserialize() if type(a) == ProxyObject else a) for a in args],
+        **kwargs,
+    )
