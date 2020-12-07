@@ -1,3 +1,31 @@
+0.17
+----
+
+- Fix benchmark output when scheduler address is specified (#414) `Benjamin Zaitlen`_
+- Fix typo in benchmark utils (#416) `Benjamin Zaitlen`_
+- More RMM options in benchmarks (#419) `Benjamin Zaitlen`_
+- Add utility function to establish all-to-all connectivity upon request (#420) `Benjamin Zaitlen`_
+- Filter `rmm_pool_size` warnings in benchmarks (#422) `Peter Andreas Entschev`_
+- Add functionality to plot cuDF benchmarks (#423) `Benjamin Zaitlen`_
+- Decrease data size to shorten spilling tests time (#422) `Peter Andreas Entschev`_
+- Temporarily xfail explicit-comms tests (#432) `Peter Andreas Entschev`_
+- Add codecov.yml and ignore uncovered files (#433) `Peter Andreas Entschev`_
+- Do not skip DGX/TCP tests when ucp is not installed (#436) `Peter Andreas Entschev`_
+- Support UUID in CUDA_VISIBLE_DEVICES (#437) `Peter Andreas Entschev`_
+- Unify `device_memory_limit` parsing and set default to 0.8 (#439) `Peter Andreas Entschev`_
+- Update and clean gpuCI scripts (#440) `Mark Sadang`_
+- Add notes on controlling number of workers to docs (#441) `Benjamin Zaitlen`_
+- Add CPU support to CuPy transpose sum benchmark (#444) `Peter Andreas Entschev`_
+- Update builddocs dependency requirements (#447) `Benjamin Zaitlen`_
+- Fix versioneer (#448) `John Kirkham`_
+- Cleanup conda recipe (#449) `John Kirkham`_
+- Fix `pip install` issues with new resolver (#454) `John Kirkham`_
+- Make threads per worker consistent (#456) `Peter Andreas Entschev`_
+- Support for ProxyObject binary operations (#458) `Mads R. B. Kristensen`_
+- Support for ProxyObject pickling (#459) `Mads R. B. Kristensen`_
+- Clarify RMM pool is a per-worker attribute on docs (#462) `Peter Andreas Entschev`_
+- Fix typo on specializations docs (#463) `vfdev`_
+
 0.16
 ----
 - Parse pool size only when set (#396) `Benjamin Zaitlen`_
@@ -34,7 +62,6 @@
 - Use get_n_gpus for RMM test with dask-cuda-worker (#356) `Peter Andreas Entschev`_
 - Update RMM tests based on deprecated CNMeM (#359) `John Kirkham`_
 - Fix a black error in explicit comms (#360) `John Kirkham`_
-- Fix an `isort` error (#360) `John Kirkham`_
 - Fix an `isort` error (#360) `John Kirkham`_
 - Set `RMM_NO_INITIALIZE` environment variable (#363) `Benjamin Zaitlen`_
 - Fix bash lines in docs (#369) `Benjamin Zaitlen`_
@@ -193,3 +220,5 @@
 .. _`Jacob Tomlinson`: https://github.com/jacobtomlinson
 .. _`Sean Frye`: https://github.com/sean-frye
 .. _`Rami Chowdhury`: https://github.com/necaris
+.. _`Mark Sadang`: https://github.com/msadang
+.. _`vfdev`: https://github.com/vfdev-5
