@@ -674,3 +674,12 @@ def concat_array(arrays, *args, **kwargs):
         *args,
         **kwargs,
     )
+
+
+@dask.array.core.tensordot_lookup.register(ProxyObject)
+def tensordot_array(a, b, *args, **kwargs):
+    return dask.array.core.tensordot_lookup(
+        *((d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in (a, b)),
+        *args,
+        **kwargs,
+    )

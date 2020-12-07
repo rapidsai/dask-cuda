@@ -379,3 +379,16 @@ def test_concatenate3_of_proxied_cupy_arrays():
     a = proxy_object.asproxy(org.copy())
     b = proxy_object.asproxy(org.copy())
     assert all(concatenate3([a, b]) == concatenate3([org.copy(), org.copy()]))
+
+
+def test_tensordot_of_proxied_cupy_arrays():
+    """Check tensordot of cupy arrays"""
+    from dask.array.core import tensordot_lookup
+
+    cupy = pytest.importorskip("cupy")
+    org = cupy.arange(9).reshape((3, 3))
+    a = proxy_object.asproxy(org.copy())
+    b = proxy_object.asproxy(org.copy())
+    res1 = tensordot_lookup(a, b).flatten()
+    res2 = tensordot_lookup(org.copy(), org.copy()).flatten()
+    assert all(res1 == res2)
