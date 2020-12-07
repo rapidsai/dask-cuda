@@ -7,6 +7,7 @@ import weakref
 
 import pandas
 import dask
+import dask.array.core
 import dask.dataframe.methods
 import dask.dataframe.utils
 import distributed.protocol
@@ -601,7 +602,11 @@ def get_parallel_type_proxy_object(obj: ProxyObject):
     obj_type = pickle.loads(obj._obj_pxy["type_serialized"])
     # Notice, `get_parallel_type()` needs a instance not a type object
     return dask.dataframe.core.get_parallel_type(obj_type.__new__(obj_type))
-    # return dask.dataframe.core.get_parallel_type(obj._obj_pxy_deserialize())
+
+
+#
+#  The following implement the type dispatch of DataFrames
+#
 
 
 @dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)
@@ -652,6 +657,20 @@ def concat_pandas(dfs, *args, **kwargs):
     """
     return dask.dataframe.methods.concat_pandas(
         [(d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in dfs],
+        *args,
+        **kwargs,
+    )
+
+
+#
+#  The following implement the type dispatch of arrays
+#
+
+
+@dask.array.core.concatenate_lookup.register(ProxyObject)
+def concat_array(arrays, *args, **kwargs):
+    return dask.array.core.concatenate_lookup(
+        [(d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in arrays],
         *args,
         **kwargs,
     )

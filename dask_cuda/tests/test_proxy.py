@@ -368,3 +368,14 @@ def test_assignments():
 
     df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
     df.index = df["a"].copy(deep=False)
+
+
+def test_concatenate3_of_proxied_cupy_arrays():
+    """Check concatenate of cupy arrays"""
+    from dask.array.core import concatenate3
+
+    cupy = pytest.importorskip("cupy")
+    org = cupy.arange(10)
+    a = proxy_object.asproxy(org.copy())
+    b = proxy_object.asproxy(org.copy())
+    assert all(concatenate3([a, b]) == concatenate3([org.copy(), org.copy()]))
