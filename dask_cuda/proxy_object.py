@@ -69,7 +69,8 @@ def asproxy(obj, serializers=None, subclass=None):
 def unproxy(obj):
     """Unwrap ProxyObject objects and pass-through anything else.
 
-    Use this function to retrieve the proxied object.
+    Use this function to retrieve the proxied object. Notice, unproxy()
+    search through list, tuples, sets, and frozensets.
 
     Parameters
     ----------
@@ -83,7 +84,8 @@ def unproxy(obj):
     try:
         obj = obj._obj_pxy_deserialize()
     except AttributeError:
-        pass
+        if type(obj) in (list, tuple, set, frozenset):
+            return type(obj)(unproxy(o) for o in obj)
     return obj
 
 
@@ -604,19 +606,27 @@ def get_parallel_type_proxy_object(obj: ProxyObject):
     return dask.dataframe.core.get_parallel_type(obj_type.__new__(obj_type))
 
 
-#
-#  The following implement the type dispatch of DataFrames
-#
+def unproxify_input_wrapper(func):
+    """Unproxify the input of `func`"""
+
+    def wrapper(*args, **kwargs):
+        args = [unproxy(d) for d in args]
+        kwargs = {k: unproxy(v) for k, v in kwargs.items()}
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
-@dask.dataframe.utils.hash_object_dispatch.register(ProxyObject)
-def obj_pxy_hash_object(obj: ProxyObject, index=True):
-    return dask.dataframe.utils.hash_object_dispatch(obj._obj_pxy_deserialize(), index)
-
-
-@dask.dataframe.utils.make_scalar.register(ProxyObject)
-def obj_pxy_make_scalar(obj: ProxyObject):
-    return dask.dataframe.utils.make_scalar(obj._obj_pxy_deserialize())
+# Register dispatch of ProxyObject on all known dispatch objects
+for dispatch in (
+    dask.dataframe.utils.hash_object_dispatch,
+    dask.dataframe.utils.make_scalar,
+    dask.dataframe.utils.group_split_dispatch,
+    dask.array.core.tensordot_lookup,
+    dask.array.core.einsum_lookup,
+    dask.array.core.concatenate_lookup,
+):
+    dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
 
 
 @dask.dataframe.methods.concat_dispatch.register(ProxyObject)
@@ -640,54 +650,16 @@ def obj_pxy_concat(objs, *args, **kwargs):
     return ret
 
 
-@dask.dataframe.utils.group_split_dispatch.register(ProxyObject)
-def obj_pxy_group_split(obj: ProxyObject, c, k, ignore_index=False):
-    return dask.dataframe.utils.group_split_dispatch(
-        obj._obj_pxy_deserialize(), c, k, ignore_index
-    )
-
-
-@dask.dataframe.methods.concat_dispatch.register(
-    (pandas.DataFrame, pandas.Series, pandas.Index)
+# We overwrite the Dask dispatch of Pandas objects in order to
+# deserialize all ProxyObjects before concatenating
+dask.dataframe.methods.concat_dispatch.register(
+    (pandas.DataFrame, pandas.Series, pandas.Index),
+    unproxify_input_wrapper(dask.dataframe.methods.concat_pandas),
 )
-def concat_pandas(dfs, *args, **kwargs):
-    """
-    We overwrite the Dask dispatch of Pandas objects in order to
-    deserialize all ProxyObjects before concatenating
-    """
-    return dask.dataframe.methods.concat_pandas(
-        [(d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in dfs],
-        *args,
-        **kwargs,
-    )
 
 
-#
-#  The following implement the type dispatch of arrays
-#
-
-
-@dask.array.core.concatenate_lookup.register(ProxyObject)
-def concat_array(arrays, *args, **kwargs):
-    return dask.array.core.concatenate_lookup(
-        [(d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in arrays],
-        *args,
-        **kwargs,
-    )
-
-
-@dask.array.core.tensordot_lookup.register(ProxyObject)
-def tensordot_array(a, b, *args, **kwargs):
-    return dask.array.core.tensordot_lookup(
-        *((d._obj_pxy_deserialize() if type(d) == ProxyObject else d) for d in (a, b)),
-        *args,
-        **kwargs,
-    )
-
-
-@dask.array.core.einsum_lookup.register(ProxyObject)
-def einsum_array(*args, **kwargs):
-    return dask.array.core.einsum_lookup(
-        *[(a._obj_pxy_deserialize() if type(a) == ProxyObject else a) for a in args],
-        **kwargs,
-    )
+# TODO:
+# empty_lookup
+# divide_lookup
+# meta_nonempty
+# make_array_nonempty
