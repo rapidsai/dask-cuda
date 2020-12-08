@@ -163,7 +163,7 @@ class LocalCUDACluster(LocalCluster):
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
-            raise RuntimeError("Number of workers cannot be less than 1.")
+            raise ValueError("Number of workers cannot be less than 1.")
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
