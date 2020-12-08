@@ -244,7 +244,7 @@ class _PxyObjTest(proxy_object.ProxyObject):
         return 42
 
     def _obj_pxy_deserialize(self):
-        if self.assert_on_deserializing:
+        if self._obj_pxy["assert_on_deserializing"]:
             assert self._obj_pxy["serializers"] is None
         return super()._obj_pxy_deserialize()
 
@@ -282,9 +282,9 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             # Since "tcp" cannot send device memory directly, it will be re-serialized
             # using the default dask serializers that spill the data to main memory.
             if protocol == "tcp" and send_serializers == ["cuda"]:
-                df.assert_on_deserializing = False
+                df._obj_pxy["assert_on_deserializing"] = False
             else:
-                df.assert_on_deserializing = True
+                df._obj_pxy["assert_on_deserializing"] = True
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
