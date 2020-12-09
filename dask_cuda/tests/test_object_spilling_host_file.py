@@ -4,6 +4,8 @@ from pandas.testing import assert_frame_equal
 from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
 import dask_cuda
+import dask_cuda.proxy_object
+import dask_cuda.proxify_device_object
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.object_spilling_host_file import ObjectSpillingHostFile
 
@@ -59,7 +61,7 @@ def test_local_cuda_cluster(object_spilling):
         assert isinstance(x, cudf.DataFrame)
         if object_spilling:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) is dask_cuda.proxy_object.ProxyObject
+            assert type(x) is dask_cuda.proxify_device_object.FrameProxyObject
             assert x._obj_pxy["serializers"] == ["dask", "pickle"]
         else:
             assert type(x) == cudf.DataFrame

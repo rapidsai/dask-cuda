@@ -14,6 +14,7 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
+from dask_cuda.proxify_device_object import proxify_device_object
 
 
 @pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
@@ -405,3 +406,12 @@ def test_einsum_of_proxied_cupy_arrays():
     a = proxy_object.asproxy(org.copy())
     res2 = einsum_lookup.dispatch(type(a))("ii", a)
     assert all(res1.flatten() == res2.flatten())
+
+
+def test_merge_sorted_of_proxied_cudf_dataframes():
+    cudf = pytest.importorskip("cudf")
+
+    dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
+    got = cudf.merge_sorted(proxify_device_object(dfs, {}, []))
+    expected = cudf.merge_sorted(dfs)
+    assert_frame_equal(got.to_pandas(), expected.to_pandas())
