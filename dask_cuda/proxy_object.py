@@ -15,6 +15,7 @@ import distributed.utils
 from dask.sizeof import sizeof
 
 from .is_device_object import is_device_object
+from .get_device_memory_objects import get_device_memory_objects
 
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
@@ -229,6 +230,8 @@ class ProxyObject:
                 )
                 self._obj_pxy["serializers"] = serializers
 
+            # Invalidate the (possible) cached "device_memory_objects"
+            self._obj_pxy_cache.pop("device_memory_objects", None)
             return self._obj_pxy["obj"]
 
     def _obj_pxy_deserialize(self, extra_dev_mem=0, ignores=()):
@@ -264,6 +267,25 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
+
+    def _obj_pxy_get_device_memory_objects(self):
+        """Return all device memory objects within the proxied object.
+
+        Calling this when the proxied object is serialized returns the
+        empty list.
+
+        Returns
+        -------
+        ret : list
+            List of device memory objects
+        """
+        with self._obj_pxy_lock:
+            try:
+                return self._obj_pxy_cache["device_memory_objects"]
+            except KeyError:
+                ret = get_device_memory_objects(self._obj_pxy["obj"])
+                self._obj_pxy_cache["device_memory_objects"] = ret
+                return ret
 
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""

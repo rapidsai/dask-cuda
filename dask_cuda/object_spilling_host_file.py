@@ -5,7 +5,6 @@ from typing import MutableMapping
 from dask.sizeof import sizeof
 
 from .proxify_device_object import proxify_device_object
-from .get_device_memory_objects import get_device_memory_objects
 
 
 class ObjectSpillingHostFile(MutableMapping):
@@ -70,7 +69,7 @@ class ObjectSpillingHostFile(MutableMapping):
             proxied_id = id(proxied)
             assert proxied_id not in proxied_id_to_proxy
             proxied_id_to_proxy[proxied_id] = p
-            for buf in get_device_memory_objects(proxied):
+            for buf in p._obj_pxy_get_device_memory_objects():
                 l = buffer_to_proxies.get(buf, [])
                 if id(p) not in set(id(i) for i in l):
                     l.append(p)
