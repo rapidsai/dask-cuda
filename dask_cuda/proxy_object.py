@@ -195,6 +195,7 @@ class ProxyObject:
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
     def _obj_pxy_serialized(self):
+        """Return whether the proxied object is serialized or not"""
         return self._obj_pxy["serializers"] is not None
 
     def _obj_pxy_serialize(self, serializers):
