@@ -113,6 +113,19 @@ class ProxyObject:
     >>>  type(asproxy(x)) is type(x)
     False
 
+    Attributes
+    ----------
+    _obj_pxy: dict
+        Dictionary of all proxy information of the underlaying proxied object.
+        Access to the dictionary is not pass-through to the proxied object,
+        which is the case for most other access to the ProxyObject.
+
+    _obj_pxy_lock: threading.RLock
+        Threading lock for `self._obj_pxy` access
+
+    _obj_pxy_cache: dict
+        A dictionary used for caching attributes
+
     Parameters
     ----------
     obj: object
@@ -133,13 +146,6 @@ class ProxyObject:
         List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
     """
-
-    __slots__ = [
-        "__weakref__",
-        "_obj_pxy",  # A dict that holds the state of the proxy object
-        "_obj_pxy_lock",  # Threading lock for all obj_pxy access
-        "_obj_pxy_cache",  # A dict used for caching attributes
-    ]
 
     def __init__(
         self,
@@ -287,7 +293,7 @@ class ProxyObject:
             return getattr(self._obj_pxy_deserialize(), name)
 
     def __setattr__(self, name, val):
-        if name in self.__slots__:
+        if name in ("_obj_pxy", "_obj_pxy_lock", "_obj_pxy_cache"):
             return object.__setattr__(self, name, val)
 
         with self._obj_pxy_lock:
