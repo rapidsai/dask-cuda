@@ -22,6 +22,11 @@ export GPUCI_CONDA_RETRY_SLEEP=30
 # Switch to project root; also root of repo checkout
 cd $WORKSPACE
 
+# While conda provides these during conda-build, they are also necessary during
+# the setup.py build for PyPI
+export GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`
+export GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`
+
 # If nightly build, append current YYMMDD to version
 if [[ "$BUILD_MODE" = "branch" && "$SOURCE_BRANCH" = branch-* ]] ; then
   export VERSION_SUFFIX=`date +%y%m%d`
