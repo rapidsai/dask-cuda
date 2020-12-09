@@ -4,12 +4,12 @@ from .proxy_object import ProxyObject, asproxy
 proxify_device_object = Dispatch(name="proxify_device_object")
 
 
-def proxify(obj, proxied_id_to_proxy, found_proxies):
+def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
     if _id in proxied_id_to_proxy:
         ret = proxied_id_to_proxy[_id]
     else:
-        proxied_id_to_proxy[_id] = ret = asproxy(obj)
+        proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
     found_proxies.append(ret)
     return ret
 
