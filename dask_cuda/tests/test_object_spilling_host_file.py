@@ -62,7 +62,7 @@ def test_local_cuda_cluster(object_spilling):
         if object_spilling:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) is dask_cuda.proxify_device_object.FrameProxyObject
-            assert x._obj_pxy["serializers"] == ["dask", "pickle"]
+            assert x._obj_pxy["serializers"] == ("dask", "pickle")
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization

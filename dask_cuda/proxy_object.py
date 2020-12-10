@@ -224,23 +224,27 @@ class ProxyObject:
 
         Parameters
         ----------
-        serializers: list(str)
+        serializers: tuple[str]
             List of serializers to use to serialize the proxied object.
 
         Returns
         -------
         header: dict
             The header of the serialized frames
-        frames: list(bytes)
+        frames: list[bytes]
             List of frames that make up the serialized object
         """
         if not serializers:
             raise ValueError("Please specify a list of serializers")
 
+        if type(serializers) is not tuple:
+            serializers = tuple(serializers)
+
         with self._obj_pxy_lock:
-            if self._obj_pxy["serializers"] is not None and tuple(
-                self._obj_pxy["serializers"]
-            ) != tuple(serializers):
+            if (
+                self._obj_pxy["serializers"] is not None
+                and self._obj_pxy["serializers"] != serializers
+            ):
                 # The proxied object is serialized with other serializers
                 self._obj_pxy_deserialize()
 
@@ -304,7 +308,7 @@ class ProxyObject:
 
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""
-        self._obj_pxy_serialize(serializers=["pickle"])
+        self._obj_pxy_serialize(serializers=("pickle",))
         args = self._obj_pxy_get_init_args()
         if args["subclass"]:
             subclass = pickle.loads(args["subclass"])
@@ -601,7 +605,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
     ProxyObject. As serializers, it uses "dask" or "pickle", which means
     that proxied CUDA objects are spilled to main memory before communicated.
     """
-    header, frames = obj._obj_pxy_serialize(serializers=["dask", "pickle"])
+    header, frames = obj._obj_pxy_serialize(serializers=("dask", "pickle"))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
     return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 
@@ -617,7 +621,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     if obj._obj_pxy["serializers"] is not None:  # Already serialized
         header, frames = obj._obj_pxy["obj"]
     else:
-        header, frames = obj._obj_pxy_serialize(serializers=["cuda", "dask", "pickle"])
+        header, frames = obj._obj_pxy_serialize(serializers=("cuda", "dask", "pickle"))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
     return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 

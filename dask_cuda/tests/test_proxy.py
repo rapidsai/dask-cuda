@@ -17,7 +17,7 @@ from dask_cuda import proxy_object
 from dask_cuda.proxify_device_object import proxify_device_object
 
 
-@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
 def test_proxy_object(serializers):
     """Check "transparency" of the proxy object"""
 
@@ -32,16 +32,16 @@ def test_proxy_object(serializers):
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
     assert "list at " in repr(pxy)
 
-    pxy._obj_pxy_serialize(serializers=["dask", "pickle"])
+    pxy._obj_pxy_serialize(serializers=("dask", "pickle"))
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
-    assert "list (serialized=['dask', 'pickle'])" in repr(pxy)
+    assert "list (serialized=('dask', 'pickle'))" in repr(pxy)
 
     assert org == proxy_object.unproxy(pxy)
     assert org == proxy_object.unproxy(org)
 
 
-@pytest.mark.parametrize("serializers_first", [None, ["dask", "pickle"]])
-@pytest.mark.parametrize("serializers_second", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers_first", [None, ("dask", "pickle")])
+@pytest.mark.parametrize("serializers_second", [None, ("dask", "pickle")])
 def test_double_proxy_object(serializers_first, serializers_second):
     """Check asproxy() when creating a proxy object of a proxy object"""
     org = list(range(10))
@@ -56,7 +56,7 @@ def test_double_proxy_object(serializers_first, serializers_second):
     assert pxy1 is pxy2
 
 
-@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
 def test_proxy_object_of_numpy(serializers):
     """Check that a proxied numpy array behaves as a regular dataframe"""
 
@@ -211,7 +211,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) is proxy_object.ProxyObject
-            assert x._obj_pxy["serializers"] == ["dask", "pickle"]
+            assert x._obj_pxy["serializers"] == ("dask", "pickle")
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -250,7 +250,7 @@ class _PxyObjTest(proxy_object.ProxyObject):
         return super()._obj_pxy_deserialize()
 
 
-@pytest.mark.parametrize("send_serializers", [None, ["dask", "pickle"], ["cuda"]])
+@pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
@@ -259,16 +259,16 @@ def test_communicating_proxy_objects(protocol, send_serializers):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializers_used = list(x._obj_pxy["serializers"])
+        serializers_used = x._obj_pxy["serializers"]
 
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
             if send_serializers is None:
-                assert serializers_used == ["cuda", "dask", "pickle"]
+                assert serializers_used == ("cuda", "dask", "pickle")
             else:
                 assert serializers_used == send_serializers
         else:
-            assert serializers_used == ["dask", "pickle"]
+            assert serializers_used == ("dask", "pickle")
 
     with dask_cuda.LocalCUDACluster(
         n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
@@ -282,7 +282,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             # Notice, in one case we expect deserialization when communicating.
             # Since "tcp" cannot send device memory directly, it will be re-serialized
             # using the default dask serializers that spill the data to main memory.
-            if protocol == "tcp" and send_serializers == ["cuda"]:
+            if protocol == "tcp" and send_serializers == ("cuda",):
                 df._obj_pxy["assert_on_deserializing"] = False
             else:
                 df._obj_pxy["assert_on_deserializing"] = True
@@ -293,7 +293,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 
 @pytest.mark.parametrize("array_module", ["numpy", "cupy"])
 @pytest.mark.parametrize(
-    "serializers", [None, ["dask", "pickle"], ["cuda", "dask", "pickle"]]
+    "serializers", [None, ("dask", "pickle"), ("cuda", "dask", "pickle")]
 )
 def test_pickle_proxy_object(array_module, serializers):
     """Check pickle of the proxy object"""

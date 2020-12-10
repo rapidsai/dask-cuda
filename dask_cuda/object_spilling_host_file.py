@@ -98,7 +98,7 @@ class ObjectSpillingHostFile(MutableMapping):
         del self.store[key]
 
     def evict(self, proxy):
-        proxy._obj_pxy_serialize(serializers=["dask", "pickle"])
+        proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
 
     def buffer_info(self, ignores=()):
         buffers = []
