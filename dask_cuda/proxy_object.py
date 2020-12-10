@@ -358,9 +358,15 @@ class ProxyObject:
     def __class__(self):
         return pickle.loads(self._obj_pxy["type_serialized"])
 
+    @_obj_pxy_cache_wrapper("sizeof")
     def __sizeof__(self):
+        """Returns either the size of the proxied object serialized or not
+
+        Notice, we cache the result eventhough the size of proxied object
+        when serialized or not serialized might slightly differ.
+        """
         with self._obj_pxy_lock:
-            if self._obj_pxy["serializers"] is not None:
+            if self._obj_pxy_serialized():
                 frames = self._obj_pxy["obj"][1]
                 return sum(map(distributed.utils.nbytes, frames))
             else:
