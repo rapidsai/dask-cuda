@@ -4,6 +4,7 @@ import threading
 from collections import OrderedDict
 import time
 import weakref
+import functools
 
 import pandas
 import dask
@@ -88,6 +89,25 @@ def unproxy(obj):
         if type(obj) in (list, tuple, set, frozenset):
             return type(obj)(unproxy(o) for o in obj)
     return obj
+
+
+def _obj_pxy_cache_wrapper(attr_name):
+    """Caching the access of attr_name in ProxyObject._obj_pxy_cache"""
+
+    def wrapper1(func):
+        @functools.wraps(func)
+        def wrapper2(self: "ProxyObject"):
+            with self._obj_pxy_lock:
+                try:
+                    return self._obj_pxy_cache[attr_name]
+                except KeyError:
+                    ret = func(self)
+                    self._obj_pxy_cache[attr_name] = ret
+                    return ret
+
+        return wrapper2
+
+    return wrapper1
 
 
 class ProxyObject:
@@ -268,6 +288,7 @@ class ProxyObject:
         with self._obj_pxy_lock:
             return self._obj_pxy["is_cuda_object"]
 
+    @_obj_pxy_cache_wrapper("device_memory_objects")
     def _obj_pxy_get_device_memory_objects(self):
         """Return all device memory objects within the proxied object.
 
@@ -279,13 +300,7 @@ class ProxyObject:
         ret : list
             List of device memory objects
         """
-        with self._obj_pxy_lock:
-            try:
-                return self._obj_pxy_cache["device_memory_objects"]
-            except KeyError:
-                ret = get_device_memory_objects(self._obj_pxy["obj"])
-                self._obj_pxy_cache["device_memory_objects"] = ret
-                return ret
+        return get_device_memory_objects(self._obj_pxy["obj"])
 
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""
@@ -339,14 +354,9 @@ class ProxyObject:
             return ret
 
     @property
+    @_obj_pxy_cache_wrapper("type_serialized")
     def __class__(self):
-        with self._obj_pxy_lock:
-            try:
-                return self._obj_pxy_cache["type_serialized"]
-            except KeyError:
-                ret = pickle.loads(self._obj_pxy["type_serialized"])
-                self._obj_pxy_cache["type_serialized"] = ret
-                return ret
+        return pickle.loads(self._obj_pxy["type_serialized"])
 
     def __sizeof__(self):
         with self._obj_pxy_lock:
@@ -638,6 +648,7 @@ def get_parallel_type_proxy_object(obj: ProxyObject):
 def unproxify_input_wrapper(func):
     """Unproxify the input of `func`"""
 
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         args = [unproxy(d) for d in args]
         kwargs = {k: unproxy(v) for k, v in kwargs.items()}
