@@ -264,7 +264,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
             if send_serializers is None:
-                assert serializers_used == ("cuda", "dask", "pickle")
+                assert serializers_used == ("cuda",)
             else:
                 assert serializers_used == send_serializers
         else:

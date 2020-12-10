@@ -268,11 +268,14 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy["serializers"] is not None:
-                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
-                if hostfile is not None:
-                    hostfile.maybe_evict(
-                        self.__sizeof__() + extra_dev_mem, ignores=ignores
-                    )
+                # When not deserializing a CUDA-serialized proxied, we might have
+                # to evict because of the increased device memory usage.
+                if "cuda" not in self._obj_pxy["serializers"]:
+                    hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+                    if hostfile is not None:
+                        hostfile.maybe_evict(
+                            self.__sizeof__() + extra_dev_mem, ignores=ignores
+                        )
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
@@ -615,13 +618,12 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     """
     The CUDA serialization of ProxyObject used by Dask when communicating using UCX
     or another CUDA friendly communication library. As serializers, it uses "cuda",
-    "dask" or "pickle", which means that proxied CUDA objects are _not_ spilled to
-    main memory.
+    which means that proxied CUDA objects are _not_ spilled to main memory.
     """
     if obj._obj_pxy["serializers"] is not None:  # Already serialized
         header, frames = obj._obj_pxy["obj"]
     else:
-        header, frames = obj._obj_pxy_serialize(serializers=("cuda", "dask", "pickle"))
+        header, frames = obj._obj_pxy_serialize(serializers=("cuda",))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
     return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 

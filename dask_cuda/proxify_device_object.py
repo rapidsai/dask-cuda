@@ -24,6 +24,12 @@ def proxify_device_object_default(obj, proxied_id_to_proxy, found_proxies):
 @proxify_device_object.register(ProxyObject)
 def proxify_device_object_proxy_object(obj, proxied_id_to_proxy, found_proxies):
     found_proxies.append(obj)
+
+    # We deserialize CUDA-serialized objects since it is very cheap and
+    # makes it easy to administrate device memory usage
+    if obj._obj_pxy_serialized() and "cuda" in obj._obj_pxy["serializers"]:
+        obj._obj_pxy_deserialize()
+
     if not obj._obj_pxy_serialized():
         return proxify(obj, proxied_id_to_proxy, found_proxies)
     return obj
@@ -41,8 +47,6 @@ def proxify_device_object_python_collection(seq, proxied_id_to_proxy, found_prox
 
 @proxify_device_object.register(dict)
 def proxify_device_object_python_dict(seq, proxied_id_to_proxy, found_proxies):
-    for k, v in seq.items():
-        assert v is not seq
     return {
         k: proxify_device_object(v, proxied_id_to_proxy, found_proxies)
         for k, v in seq.items()
