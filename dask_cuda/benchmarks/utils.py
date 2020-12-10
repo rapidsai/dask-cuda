@@ -1,4 +1,6 @@
 import argparse
+import os
+from datetime import datetime
 
 from dask.distributed import SSHCluster
 
@@ -26,7 +28,17 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--rmm-pool-size",
+        default=None,
+        type=float,
+        help="The size of the RMM memory pool. By default, 1/2 of "
+        "the total GPU memory is used.",
+    )
+    parser.add_argument(
+        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+    )
+    parser.add_argument(
+        "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -72,12 +84,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Ignored if protocol is 'tcp'",
     )
     parser.add_argument(
-        "--single-node",
-        action="store_true",
-        dest="multi_node",
-        help="Runs a single-node cluster on the current host.",
-    )
-    parser.add_argument(
         "--multi-node",
         action="store_true",
         dest="multi_node",
@@ -104,6 +110,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "'10.10.10.10', and 'dgx13'. "
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
+    )
+    parser.add_argument(
+        "--plot",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Generate plot output written to defined directory",
     )
 
     for args in args_list:
@@ -188,7 +201,64 @@ def setup_memory_pool(pool_size=None, disable_pool=False):
 
     import rmm
 
-    rmm.reinitialize(
-        pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
+    if not disable_pool:
+        rmm.reinitialize(
+            pool_allocator=True, devices=0, initial_pool_size=pool_size,
+        )
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+
+def plot_benchmark(t_runs, path, historical=False):
+    """
+    Plot the throughput the benchmark for each run.  If historical=True,
+    Load historical data from ~/benchmark-historic-runs.csv
+    """
+    try:
+        import pandas as pd
+        import seaborn as sns
+    except ImportError:
+        print(
+            "Plotting libraries are not installed.  Please install pandas, "
+            "seaborn, and matplotlib"
+        )
+        return
+
+    x = [str(x) for x in range(len(t_runs))]
+    df = pd.DataFrame(dict(t_runs=t_runs, x=x))
+    avg = round(df.t_runs.mean(), 2)
+
+    ax = sns.barplot(x="x", y="t_runs", data=df, color="purple")
+
+    ax.set(
+        xlabel="Run Iteration",
+        ylabel="Merge Throughput in GB/s",
+        title=f"cudf Merge Throughput -- Average {avg} GB/s",
     )
-    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    fig = ax.get_figure()
+    today = datetime.now().strftime("%Y%m%d")
+    fname_bench = today + "-benchmark.png"
+    d = os.path.expanduser(path)
+    bench_path = os.path.join(d, fname_bench)
+    fig.savefig(bench_path)
+
+    if historical:
+        # record average tohroughput and plot historical averages
+        history_file = os.path.join(
+            os.path.expanduser("~"), "benchmark-historic-runs.csv"
+        )
+        with open(history_file, "a+") as f:
+            f.write(f"{today},{avg}\n")
+
+        df = pd.read_csv(
+            history_file, names=["date", "throughput"], parse_dates=["date"]
+        )
+        ax = df.plot(
+            x="date", y="throughput", marker="o", title="Historical Throughput"
+        )
+
+        ax.set_ylim(0, 30)
+
+        fig = ax.get_figure()
+        fname_hist = today + "-benchmark-history.png"
+        hist_path = os.path.join(d, fname_hist)
+        fig.savefig(hist_path)

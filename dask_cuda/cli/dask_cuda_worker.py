@@ -64,7 +64,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "an ethernet interface is used for connection, and not an InfiniBand "
     "interface (if one is available).",
 )
-@click.option("--nthreads", type=int, default=0, help="Number of threads per process.")
+@click.option("--nthreads", type=int, default=1, help="Number of threads per process.")
 @click.option(
     "--name",
     type=str,
@@ -84,20 +84,23 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--device-memory-limit",
-    default="auto",
-    help="Bytes of memory per CUDA device that the worker can use. "
-    "This can be an integer (bytes), "
-    "float (fraction of total device memory), "
-    "string (like 5GB or 5000M), "
-    "'auto', or zero for no memory management "
-    "(i.e., allow full device memory usage).",
+    default="0.8",
+    help="Specifies the size of the CUDA device LRU cache, which "
+    "is used to determine when the worker starts spilling to host "
+    "memory.  This can be a float (fraction of total device "
+    "memory), an integer (bytes), a string (like 5GB or 5000M), "
+    "and 'auto' or 0 to disable spilling to host (i.e., allow "
+    "full device memory usage). Default is 0.8, 80% of the "
+    "worker's total device memory.",
 )
 @click.option(
     "--rmm-pool-size",
     default=None,
     help="If specified, initialize each worker with an RMM pool of "
     "the given size, otherwise no RMM pool is created. This can be "
-    "an integer (bytes) or string (like 5GB or 5000M).",
+    "an integer (bytes) or string (like 5GB or 5000M)."
+    "NOTE: This size is a per worker (i.e., per GPU) configuration, "
+    "and not cluster-wide!",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
@@ -190,6 +193,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "InfiniBand only and will still cause unpredictable errors if not _ALL_ "
     "interfaces are connected and properly configured.",
 )
+@click.option(
+    "--enable-jit-unspill/--disable-jit-unspill",
+    default=None,  # If not specified, use Dask config
+    help="Enable just-in-time unspilling",
+)
 def main(
     scheduler,
     host,
@@ -217,6 +225,7 @@ def main(
     enable_nvlink,
     enable_rdmacm,
     net_devices,
+    enable_jit_unspill,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -251,6 +260,7 @@ def main(
         enable_nvlink,
         enable_rdmacm,
         net_devices,
+        enable_jit_unspill,
         **kwargs,
     )
 

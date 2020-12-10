@@ -1,6 +1,7 @@
 import math
 from collections import defaultdict
 from time import perf_counter as clock
+from warnings import filterwarnings
 
 import numpy
 
@@ -14,8 +15,10 @@ from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
+    plot_benchmark,
     setup_memory_pool,
 )
+from dask_cuda.utils import all_to_all
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
@@ -167,7 +170,6 @@ def run(client, args, n_workers, write_profile=None):
     ).persist()
     wait(ddf_base)
     wait(ddf_other)
-    client.wait_for_workers(n_workers)
 
     assert len(ddf_base.dtypes) == 2
     assert len(ddf_other.dtypes) == 2
@@ -192,6 +194,10 @@ def main(args):
     if args.sched_addr:
         client = Client(args.sched_addr)
     else:
+        filterwarnings(
+            "ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning
+        )
+
         cluster = Cluster(*cluster_args, **cluster_kwargs)
         if args.multi_node:
             import time
@@ -203,13 +209,23 @@ def main(args):
         client = Client(scheduler_addr if args.multi_node else cluster)
 
     if args.type == "gpu":
-        client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
+        client.run(
+            setup_memory_pool,
+            pool_size=args.rmm_pool_size,
+            disable_pool=args.disable_rmm_pool,
+        )
         # Create an RMM pool on the scheduler due to occasional deserialization
         # of CUDA objects. May cause issues with InfiniBand otherwise.
-        client.run_on_scheduler(setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool)
+        client.run_on_scheduler(
+            setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+        )
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
+    client.wait_for_workers(n_workers)
+
+    if args.all_to_all:
+        all_to_all(client)
 
     took_list = []
     for _ in range(args.runs - 1):
@@ -238,6 +254,7 @@ def main(args):
         for (w1, w2), nb in total_nbytes.items()
     }
 
+    t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
     print("Merge benchmark")
@@ -247,7 +264,7 @@ def main(args):
     print(f"rows-per-chunk | {args.chunk_size}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
-    print(f"rmm-pool       | {(not args.no_rmm_pool)}")
+    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
     print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
         print(f"tcp            | {args.enable_tcp_over_ucx}")
@@ -257,14 +274,18 @@ def main(args):
     print("===============================")
     print("Wall-clock     | Throughput")
     print("-------------------------------")
-    for data_processed, took in took_list:
+    for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
         m += " " * (15 - len(m))
         print(f"{m}| {format_bytes(throughput)}/s")
+        t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     print("===============================")
     if args.markdown:
         print("\n```")
+
+    if args.plot is not None:
+        plot_benchmark(t_runs, args.plot, historical=True)
 
     if args.backend == "dask":
         if args.markdown:
@@ -274,7 +295,7 @@ def main(args):
         for (d1, d2), bw in sorted(bandwidths.items()):
             fmt = (
                 "(%s,%s)     | %s %s %s (%s)"
-                if args.multi_node
+                if args.multi_node or args.sched_addr
                 else "(%02d,%02d)     | %s %s %s (%s)"
             )
             print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))

@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 from time import perf_counter as clock
+from warnings import filterwarnings
 
 import cupy as cp
 import numpy as np
@@ -58,6 +59,8 @@ async def run(args):
     cluster_kwargs = cluster_options["kwargs"]
     scheduler_addr = cluster_options["scheduler_addr"]
 
+    filterwarnings("ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning)
+
     async with Cluster(*cluster_args, **cluster_kwargs, asynchronous=True) as cluster:
         if args.multi_node:
             import time
@@ -73,11 +76,11 @@ async def run(args):
         ) as client:
             scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
 
-            await client.run(setup_memory_pool, disable_pool=args.no_rmm_pool)
+            await client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(
-                setup_memory_pool, 1e9, disable_pool=args.no_rmm_pool
+                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
             )
 
             took_list = []
@@ -129,7 +132,7 @@ async def run(args):
             for (d1, d2), bw in sorted(bandwidths.items()):
                 fmt = (
                     "(%s,%s)     | %s %s %s (%s)"
-                    if args.multi_node
+                    if args.multi_node or args.sched_addr
                     else "(%02d,%02d)     | %s %s %s (%s)"
                 )
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))

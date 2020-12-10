@@ -108,6 +108,27 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
+async def test_threads_per_worker():
+    async with LocalCUDACluster(threads_per_worker=4, asynchronous=True) as cluster:
+        assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
+
+
+@gen_test(timeout=20)
+async def test_all_to_all():
+    async with LocalCUDACluster(
+        CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            workers = list(client.scheduler_info()["workers"])
+            n_workers = len(workers)
+            await utils.all_to_all(client)
+            # assert all to all has resulted in all data on every worker
+            data = await client.has_what()
+            all_data = [v for w in data.values() for v in w if "lambda" in v]
+            assert all(all_data.count(i) == n_workers for i in all_data)
+
+
+@gen_test(timeout=20)
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 

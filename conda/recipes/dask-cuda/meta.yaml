@@ -19,12 +19,12 @@ build:
     - VERSION_SUFFIX
 
 requirements:
-  build:
-    - python x.x
+  host:
+    - python
     - setuptools
   run:
-    - python x.x
-    - dask-core >=2.4.0
+    - python
+    - dask >=2.4.0
     - distributed >=2.18.0
     - pynvml >=8.0.3
     - numpy >=1.16.0
