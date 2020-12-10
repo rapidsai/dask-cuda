@@ -225,7 +225,7 @@ class ProxyObject:
         Parameters
         ----------
         serializers: tuple[str]
-            List of serializers to use to serialize the proxied object.
+            Tuple of serializers to use to serialize the proxied object.
 
         Returns
         -------
