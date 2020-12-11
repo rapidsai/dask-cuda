@@ -5,6 +5,7 @@ from collections import OrderedDict
 import time
 import weakref
 import functools
+import copy
 
 import pandas
 import dask
@@ -214,6 +215,19 @@ class ProxyObject:
             "serializers",
         ]
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
+
+    def _obj_pxy_copy(self) -> "ProxyObject":
+        """Return a deepcopy of the proxy meta data
+
+        Use this to copy the proxy without coping the proxied object.
+
+        Returns
+        -------
+        Copy of the proxy object that points to the same proxied object
+        """
+        args = copy.deepcopy(self._obj_pxy_get_init_args(include_obj=False))
+        args["obj"] = self._obj_pxy["obj"]
+        return type(self)(**args)
 
     def _obj_pxy_serialized(self):
         """Return whether the proxied object is serialized or not"""
@@ -623,6 +637,10 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     if obj._obj_pxy["serializers"] is not None:  # Already serialized
         header, frames = obj._obj_pxy["obj"]
     else:
+        # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
+        # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
+        # the worker's data store.
+        obj = obj._obj_pxy_copy()
         header, frames = obj._obj_pxy_serialize(serializers=("cuda",))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
     return {"proxied-header": header, "obj-pxy-meta": meta}, frames
