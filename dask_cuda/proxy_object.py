@@ -21,7 +21,7 @@ from .get_device_memory_objects import get_device_memory_objects
 
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
-_FIXED_ATTRS = ["name"]
+_FIXED_ATTRS = ["name", "__len__"]
 
 
 def asproxy(obj, serializers=None, subclass=None):
@@ -49,7 +49,10 @@ def asproxy(obj, serializers=None, subclass=None):
         fixed_attr = {}
         for attr in _FIXED_ATTRS:
             try:
-                fixed_attr[attr] = getattr(obj, attr)
+                val = getattr(obj, attr)
+                if callable(val):
+                    val = val()
+                fixed_attr[attr] = val
             except AttributeError:
                 pass
 
@@ -394,7 +397,12 @@ class ProxyObject:
                 return sizeof(self._obj_pxy_deserialize())
 
     def __len__(self):
-        return len(self._obj_pxy_deserialize())
+        with self._obj_pxy_lock:
+            ret = self._obj_pxy["fixed_attr"].get("__len__", None)
+            if ret is None:
+                ret = len(self._obj_pxy_deserialize())
+                self._obj_pxy["fixed_attr"]["__len__"] = ret
+            return ret
 
     def __contains__(self, value):
         return value in self._obj_pxy_deserialize()
