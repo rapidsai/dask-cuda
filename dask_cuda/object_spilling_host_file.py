@@ -1,10 +1,11 @@
 import threading
 import time
 import weakref
-from typing import MutableMapping
+from typing import DefaultDict, Dict, Hashable, List, MutableMapping
 from dask.sizeof import sizeof
 
 from .proxify_device_object import proxify_device_object
+from .proxy_object import ProxyObject
 
 
 class ObjectSpillingHostFile(MutableMapping):
@@ -38,9 +39,8 @@ class ObjectSpillingHostFile(MutableMapping):
         self.store = {}
         self.lock = threading.RLock()
 
-        # self.proxied_id_to_proxy = Dict[int, proxy_object.ProxyObject] = {}
-        # self.proxy_id_to_proxy: Dict[int, proxy_object.ProxyObject] = {}
-        # self.proxies: Dict[int, proxy_object.ProxyObject] = {}
+        self.key_to_proxies: DefaultDict[Hashable, List] = DefaultDict(list)
+        self.proxied_id_to_proxy: Dict[int, ProxyObject] = {}
 
     def __contains__(self, key):
         return key in self.store
@@ -52,7 +52,7 @@ class ObjectSpillingHostFile(MutableMapping):
         with self.lock:
             return iter(self.store)
 
-    def unspilled_proxies(self):
+    def unspilled_proxies(self) -> List[ProxyObject]:
         with self.lock:
             found_proxies = []
             proxied_id_to_proxy = {}
@@ -78,10 +78,24 @@ class ObjectSpillingHostFile(MutableMapping):
                 buffer_to_proxies[buf] = l
         return proxied_id_to_proxy, buffer_to_proxies
 
+    def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
+        with self.lock:
+            ret = {}
+            for proxies in self.key_to_proxies.values():
+                for proxy in proxies:
+                    if not proxy._obj_pxy_serialized():
+                        proxied_id = id(proxy._obj_pxy["obj"])
+                        p = ret.get(proxied_id, None)
+                        if p is None:
+                            ret[proxied_id] = proxy
+                        else:
+                            assert id(p) == id(proxy)  # No duplicates
+            return ret
+
     def __setitem__(self, key, value):
         with self.lock:
             found_proxies = []
-            proxied_id_to_proxy, _ = self.obj_mappings()
+            proxied_id_to_proxy = self.get_proxied_id_to_proxy()
             self.store[key] = proxify_device_object(
                 value, proxied_id_to_proxy, found_proxies
             )
@@ -90,6 +104,7 @@ class ObjectSpillingHostFile(MutableMapping):
             for p in found_proxies:
                 p._obj_pxy["hostfile"] = self_weakref
                 p._obj_pxy["last_access"] = last_access
+                self.key_to_proxies[key].append(p)
 
             self.maybe_evict()
 
@@ -100,6 +115,7 @@ class ObjectSpillingHostFile(MutableMapping):
     def __delitem__(self, key):
         with self.lock:
             del self.store[key]
+            self.key_to_proxies.pop(key, None)
 
     def evict(self, proxy):
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
