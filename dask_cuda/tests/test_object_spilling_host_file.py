@@ -109,7 +109,7 @@ def test_dataframes_share_dev_mem():
 def test_cudf_get_device_memory_objects():
     cudf = pytest.importorskip("cudf")
     objects = [
-        cudf.DataFrame({"a": range(10), "b": range(10)}),
+        cudf.DataFrame({"a": range(10), "b": range(10)}, index=reversed(range(10))),
         cudf.MultiIndex(
             levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
         ),
