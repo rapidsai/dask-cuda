@@ -49,15 +49,17 @@ class ObjectSpillingHostFile(MutableMapping):
         return len(self.store)
 
     def __iter__(self):
-        return iter(self.store)
+        with self.lock:
+            return iter(self.store)
 
     def unspilled_proxies(self):
-        found_proxies = []
-        proxied_id_to_proxy = {}
-        proxify_device_object(self.store, proxied_id_to_proxy, found_proxies)
-        ret = list(proxied_id_to_proxy.values())
-        assert len(ret) == len(set(id(p) for p in ret))  # No duplicates
-        return ret
+        with self.lock:
+            found_proxies = []
+            proxied_id_to_proxy = {}
+            proxify_device_object(self.store, proxied_id_to_proxy, found_proxies)
+            ret = list(proxied_id_to_proxy.values())
+            assert len(ret) == len(set(id(p) for p in ret))  # No duplicates
+            return ret
 
     def obj_mappings(self):
         # TODO: simplify and optimize
@@ -92,10 +94,12 @@ class ObjectSpillingHostFile(MutableMapping):
             self.maybe_evict()
 
     def __getitem__(self, key):
-        return self.store[key]
+        with self.lock:
+            return self.store[key]
 
     def __delitem__(self, key):
-        del self.store[key]
+        with self.lock:
+            del self.store[key]
 
     def evict(self, proxy):
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
