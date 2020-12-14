@@ -258,12 +258,12 @@ class ProxyObject:
             serializers = tuple(serializers)
 
         with self._obj_pxy_lock:
-            if (
-                self._obj_pxy["serializers"] is not None
-                and self._obj_pxy["serializers"] != serializers
-            ):
-                # The proxied object is serialized with other serializers
-                self._obj_pxy_deserialize()
+            if self._obj_pxy["serializers"] is not None:
+                if self._obj_pxy["serializers"] == serializers:
+                    return self._obj_pxy["obj"]  # Nothing to be done
+                else:
+                    # The proxied object is serialized with other serializers
+                    self._obj_pxy_deserialize()
 
             if self._obj_pxy["serializers"] is None:
                 self._obj_pxy["obj"] = distributed.protocol.serialize(

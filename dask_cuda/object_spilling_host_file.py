@@ -66,16 +66,13 @@ class ObjectSpillingHostFile(MutableMapping):
                             assert id(p) == id(proxy)  # No duplicates
             return ret
 
-    def get_dev_buffer_to_proxies(self) -> Dict[Hashable, List[ProxyObject]]:
+    def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
         # Notice, multiple proxy object can point to different non-overlapping
         # parts of the same device buffer.
-        ret = {}
+        ret = DefaultDict(list)
         for proxy in self.get_proxied_id_to_proxy().values():
             for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
-                proxies = ret.get(dev_buffer, [])
-                if id(proxy) not in set(id(i) for i in proxies):  # Avoid duplicates
-                    proxies.append(proxy)
-                ret[dev_buffer] = proxies
+                ret[dev_buffer].append(proxy)
         return ret
 
     def get_access_info(self) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
