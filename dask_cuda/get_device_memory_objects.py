@@ -72,9 +72,9 @@ def get_device_memory_objects_register_cudf():
 
     @get_device_memory_objects.register(cudf.core.index.RangeIndex)
     def get_device_memory_objects_cudf_range_index(obj):
-        # Avoid materializing a column.arange(). This introduce some inaccuracies
-        # in device memory ussage but we except the memory use of RangeIndexes are
-        # limited.
+        # Avoid materializing RangeIndex. This introduce some inaccuracies
+        # in total device memory usage but we except the memory use of
+        # RangeIndexes are limited.
         return []
     @get_device_memory_objects.register(cudf.core.index.Index)
     def get_device_memory_objects_cudf_index(obj):
