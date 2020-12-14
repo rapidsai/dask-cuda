@@ -1,7 +1,7 @@
 import threading
 import time
 import weakref
-from typing import DefaultDict, Dict, Hashable, List, MutableMapping
+from typing import DefaultDict, Dict, Hashable, List, MutableMapping, Tuple
 from dask.sizeof import sizeof
 
 from .proxify_device_object import proxify_device_object
@@ -52,32 +52,6 @@ class ObjectSpillingHostFile(MutableMapping):
         with self.lock:
             return iter(self.store)
 
-    def unspilled_proxies(self) -> List[ProxyObject]:
-        with self.lock:
-            found_proxies = []
-            proxied_id_to_proxy = {}
-            proxify_device_object(self.store, proxied_id_to_proxy, found_proxies)
-            ret = list(proxied_id_to_proxy.values())
-            assert len(ret) == len(set(id(p) for p in ret))  # No duplicates
-            return ret
-
-    def obj_mappings(self):
-        # TODO: simplify and optimize
-        proxied_id_to_proxy = {}
-        buffer_to_proxies = {}
-
-        for p in self.unspilled_proxies():
-            proxied = p._obj_pxy["obj"]
-            proxied_id = id(proxied)
-            assert proxied_id not in proxied_id_to_proxy
-            proxied_id_to_proxy[proxied_id] = p
-            for buf in p._obj_pxy_get_device_memory_objects():
-                l = buffer_to_proxies.get(buf, [])
-                if id(p) not in set(id(i) for i in l):
-                    l.append(p)
-                buffer_to_proxies[buf] = l
-        return proxied_id_to_proxy, buffer_to_proxies
-
     def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
         with self.lock:
             ret = {}
@@ -91,6 +65,28 @@ class ObjectSpillingHostFile(MutableMapping):
                         else:
                             assert id(p) == id(proxy)  # No duplicates
             return ret
+
+    def get_dev_buffer_to_proxies(self) -> Dict[Hashable, List[ProxyObject]]:
+        # Notice, multiple proxy object can point to different non-overlapping
+        # parts of the same device buffer.
+        ret = {}
+        for proxy in self.get_proxied_id_to_proxy().values():
+            for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
+                proxies = ret.get(dev_buffer, [])
+                if id(proxy) not in set(id(i) for i in proxies):  # Avoid duplicates
+                    proxies.append(proxy)
+                ret[dev_buffer] = proxies
+        return ret
+
+    def get_access_info(self) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
+        total_dev_mem_usage = 0
+        dev_buf_access = []
+        for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
+            last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
+            size = sizeof(dev_buf)
+            dev_buf_access.append((last_access, size, proxies))
+            total_dev_mem_usage += size
+        return total_dev_mem_usage, dev_buf_access
 
     def __setitem__(self, key, value):
         with self.lock:
@@ -120,24 +116,14 @@ class ObjectSpillingHostFile(MutableMapping):
     def evict(self, proxy):
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
 
-    def buffer_info(self, ignores=()):
-        buffers = []
-        dev_mem_usage = 0
-        for buf, proxies in self.obj_mappings()[1].items():
-            last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
-            size = sizeof(buf)
-            buffers.append((last_access, size, proxies))
-            dev_mem_usage += size
-        return buffers, dev_mem_usage
-
-    def maybe_evict(self, extra_dev_mem=0, ignores=()):
-        buffers, dev_mem_usage = self.buffer_info()
-        dev_mem_usage += extra_dev_mem
-        if dev_mem_usage > self.device_memory_limit:
-            buffers.sort(key=lambda x: (x[0], -x[1]))
-            for _, size, proxies in buffers:
+    def maybe_evict(self, extra_dev_mem=0):
+        total_dev_mem_usage, dev_buf_access = self.get_access_info()
+        total_dev_mem_usage += extra_dev_mem
+        if total_dev_mem_usage > self.device_memory_limit:
+            dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxies in dev_buf_access:
                 for p in proxies:
                     self.evict(p)
-                dev_mem_usage -= size
-                if dev_mem_usage <= self.device_memory_limit:
+                total_dev_mem_usage -= size
+                if total_dev_mem_usage <= self.device_memory_limit:
                     break

@@ -275,7 +275,7 @@ class ProxyObject:
             self._obj_pxy_cache.pop("device_memory_objects", None)
             return self._obj_pxy["obj"]
 
-    def _obj_pxy_deserialize(self, extra_dev_mem=0, ignores=()):
+    def _obj_pxy_deserialize(self):
         """Inplace deserialization of the proxied object
 
         Returns
@@ -290,9 +290,7 @@ class ProxyObject:
                 if "cuda" not in self._obj_pxy["serializers"]:
                     hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                     if hostfile is not None:
-                        hostfile.maybe_evict(
-                            self.__sizeof__() + extra_dev_mem, ignores=ignores
-                        )
+                        hostfile.maybe_evict(self.__sizeof__())
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
