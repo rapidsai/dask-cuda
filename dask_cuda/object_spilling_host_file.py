@@ -19,8 +19,8 @@ from .proxy_object import ProxyObject
 
 
 class ProxiesTally:
-    def __init__(self, lock: threading.RLock):
-        self.lock = lock
+    def __init__(self):
+        self.lock = threading.RLock()
         self.proxy_id_to_proxy: Dict[int, ProxyObject] = {}
         self.key_to_proxy_ids: DefaultDict[Hashable, Set[int]] = defaultdict(set)
         self.proxy_id_to_keys: DefaultDict[int, Set[Hashable]] = defaultdict(set)
@@ -97,7 +97,7 @@ class ObjectSpillingHostFile(MutableMapping):
         self.device_memory_limit = device_memory_limit
         self.store = {}
         self.lock = threading.RLock()
-        self.proxies_tally = ProxiesTally(self.lock)
+        self.proxies_tally = ProxiesTally()
 
     def __contains__(self, key):
         return key in self.store
