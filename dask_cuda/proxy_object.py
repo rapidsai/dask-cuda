@@ -1,12 +1,13 @@
+import copy
+import functools
 import operator
 import pickle
 import threading
-from collections import OrderedDict
 import time
-import functools
-import copy
+from collections import OrderedDict
 
 import pandas
+
 import dask
 import dask.array.core
 import dask.dataframe.methods
@@ -15,8 +16,8 @@ import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
 
-from .is_device_object import is_device_object
 from .get_device_memory_objects import get_device_memory_objects
+from .is_device_object import is_device_object
 
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
