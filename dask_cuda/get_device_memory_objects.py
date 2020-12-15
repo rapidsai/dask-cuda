@@ -76,6 +76,7 @@ def get_device_memory_objects_register_cudf():
         # in total device memory usage but we except the memory use of
         # RangeIndexes are limited.
         return []
+
     @get_device_memory_objects.register(cudf.core.index.Index)
     def get_device_memory_objects_cudf_index(obj):
         return get_device_memory_objects(obj._values)

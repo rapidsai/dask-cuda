@@ -19,27 +19,52 @@ from .proxy_object import ProxyObject
 
 
 class ProxiesTally:
-    def __init__(self):
+    def __init__(self, lock: threading.RLock):
+        self.lock = lock
         self.proxy_id_to_proxy: Dict[int, ProxyObject] = {}
         self.key_to_proxy_ids: DefaultDict[Hashable, Set[int]] = defaultdict(set)
         self.proxy_id_to_keys: DefaultDict[int, Set[Hashable]] = defaultdict(set)
+        self.unspilled_proxy_ids: Set = set()
 
     def add_key(self, key, proxies: List[ProxyObject]):
-        for proxy in proxies:
-            proxy_id = id(proxy)
-            self.proxy_id_to_proxy[proxy_id] = proxy
-            self.key_to_proxy_ids[key].add(proxy_id)
-            self.proxy_id_to_keys[proxy_id].add(key)
+        with self.lock:
+            for proxy in proxies:
+                proxy_id = id(proxy)
+                self.proxy_id_to_proxy[proxy_id] = proxy
+                self.key_to_proxy_ids[key].add(proxy_id)
+                self.proxy_id_to_keys[proxy_id].add(key)
+                if not proxy._obj_pxy_serialized():
+                    self.unspilled_proxy_ids.add(proxy_id)
 
     def del_key(self, key):
-        for proxy_id in self.key_to_proxy_ids.pop(key, ()):
-            self.proxy_id_to_keys[proxy_id].remove(key)
-            if len(self.proxy_id_to_keys[proxy_id]) == 0:
-                del self.proxy_id_to_keys[proxy_id]
-                del self.proxy_id_to_proxy[proxy_id]
+        with self.lock:
+            for proxy_id in self.key_to_proxy_ids.pop(key, ()):
+                self.proxy_id_to_keys[proxy_id].remove(key)
+                if len(self.proxy_id_to_keys[proxy_id]) == 0:
+                    del self.proxy_id_to_keys[proxy_id]
+                    del self.proxy_id_to_proxy[proxy_id]
+                    self.unspilled_proxy_ids.discard(proxy_id)
 
-    def get_proxies(self):
-        return self.proxy_id_to_proxy.values()
+    def spill_proxy(self, proxy: ProxyObject):
+        with self.lock:
+            proxy_id = id(proxy)
+            assert proxy_id in self.proxy_id_to_proxy
+            assert proxy_id in self.unspilled_proxy_ids
+            self.unspilled_proxy_ids.remove(proxy_id)
+
+    def unspill_proxy(self, proxy: ProxyObject):
+        with self.lock:
+            proxy_id = id(proxy)
+            assert proxy_id in self.proxy_id_to_proxy
+            assert proxy_id not in self.unspilled_proxy_ids
+            self.unspilled_proxy_ids.add(proxy_id)
+
+    def get_unspilled_proxies(self):
+        with self.lock:
+            for proxy_id in self.unspilled_proxy_ids:
+                ret = self.proxy_id_to_proxy[proxy_id]
+                assert not ret._obj_pxy_serialized()
+                yield ret
 
 
 class ObjectSpillingHostFile(MutableMapping):
@@ -72,8 +97,7 @@ class ObjectSpillingHostFile(MutableMapping):
         self.device_memory_limit = device_memory_limit
         self.store = {}
         self.lock = threading.RLock()
-
-        self.proxies_tally = ProxiesTally()
+        self.proxies_tally = ProxiesTally(self.lock)
 
     def __contains__(self, key):
         return key in self.store
@@ -88,14 +112,13 @@ class ObjectSpillingHostFile(MutableMapping):
     def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
         with self.lock:
             ret = {}
-            for proxy in self.proxies_tally.get_proxies():
-                if not proxy._obj_pxy_serialized():
-                    proxied_id = id(proxy._obj_pxy["obj"])
-                    p = ret.get(proxied_id, None)
-                    if p is None:
-                        ret[proxied_id] = proxy
-                    else:
-                        assert id(p) == id(proxy)  # No duplicates
+            for proxy in self.proxies_tally.get_unspilled_proxies():
+                proxied_id = id(proxy._obj_pxy["obj"])
+                p = ret.get(proxied_id, None)
+                if p is None:
+                    ret[proxied_id] = proxy
+                else:
+                    assert id(p) == id(proxy)  # No duplicates
             return ret
 
     def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:

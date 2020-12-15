@@ -270,6 +270,9 @@ class ProxyObject:
                     self._obj_pxy["obj"], serializers, on_error="raise"
                 )
                 self._obj_pxy["serializers"] = serializers
+                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+                if hostfile is not None:
+                    hostfile.proxies_tally.spill_proxy(self)
 
             # Invalidate the (possible) cached "device_memory_objects"
             self._obj_pxy_cache.pop("device_memory_objects", None)
@@ -285,16 +288,18 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy["serializers"] is not None:
+                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 # When not deserializing a CUDA-serialized proxied, we might have
                 # to evict because of the increased device memory usage.
                 if "cuda" not in self._obj_pxy["serializers"]:
-                    hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                     if hostfile is not None:
                         hostfile.maybe_evict(self.__sizeof__())
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
                 self._obj_pxy["serializers"] = None
+                if hostfile is not None:
+                    hostfile.proxies_tally.unspill_proxy(self)
 
             self._obj_pxy["last_access"] = time.time()
             return self._obj_pxy["obj"]
