@@ -3,7 +3,6 @@ import pickle
 import threading
 from collections import OrderedDict
 import time
-import weakref
 import functools
 import copy
 
@@ -704,26 +703,9 @@ for dispatch in (
 ):
     dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
 
-
-@dask.dataframe.methods.concat_dispatch.register(ProxyObject)
-def obj_pxy_concat(objs, *args, **kwargs):
-    hostfile = objs[0]._obj_pxy.get("hostfile", lambda: None)()
-
-    # Deserialize concat inputs (in-place)
-    for i in range(len(objs)):
-        try:
-            objs[i] = objs[i]._obj_pxy_deserialize()
-        except AttributeError:
-            pass
-
-    ret = dask.dataframe.methods.concat(objs, *args, **kwargs)
-
-    # Proxify the result before returning
-    if hostfile is not None:
-        ret = asproxy(dask.dataframe.methods.concat(objs, *args, **kwargs))
-        ret._obj_pxy["hostfile"] = weakref.ref(hostfile)
-        ret._obj_pxy["last_access"] = time.time()
-    return ret
+dask.dataframe.methods.concat_dispatch.register(
+    ProxyObject, unproxify_input_wrapper(dask.dataframe.methods.concat)
+)
 
 
 # We overwrite the Dask dispatch of Pandas objects in order to
