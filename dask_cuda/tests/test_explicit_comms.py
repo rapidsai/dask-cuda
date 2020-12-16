@@ -10,11 +10,7 @@ from dask.dataframe.shuffle import partitioning_index
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
-from dask_cuda.explicit_comms import (
-    CommsContext,
-    dataframe_merge,
-    dataframe_shuffle,
-)
+from dask_cuda.explicit_comms import CommsContext, dataframe_merge, dataframe_shuffle
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
