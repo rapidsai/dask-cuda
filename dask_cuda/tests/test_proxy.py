@@ -1,6 +1,7 @@
-import pickle
 import operator
+import pickle
 
+import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -222,6 +223,10 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             ddf = dask_cudf.from_cudf(df, npartitions=1)
             ddf = ddf.map_partitions(task, meta=df.head())
             got = ddf.compute()
+            if isinstance(got, pandas.Series):
+                pytest.xfail(
+                    "BUG fixed by <https://github.com/rapidsai/dask-cuda/pull/451>"
+                )
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 

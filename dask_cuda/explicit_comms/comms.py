@@ -5,11 +5,7 @@ import uuid
 
 import distributed.comm
 from distributed import default_client, get_worker
-from distributed.comm.addressing import (
-    parse_address,
-    parse_host_port,
-    unparse_address,
-)
+from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 from . import utils
 

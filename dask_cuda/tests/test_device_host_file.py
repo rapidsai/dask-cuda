@@ -13,11 +13,7 @@ from distributed.protocol import (
 )
 from distributed.protocol.pickle import HIGHEST_PROTOCOL
 
-from dask_cuda.device_host_file import (
-    DeviceHostFile,
-    device_to_host,
-    host_to_device,
-)
+from dask_cuda.device_host_file import DeviceHostFile, device_to_host, host_to_device
 
 cupy = pytest.importorskip("cupy")
 
