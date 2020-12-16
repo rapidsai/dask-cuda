@@ -2,15 +2,7 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import (
-    DefaultDict,
-    Dict,
-    Hashable,
-    List,
-    MutableMapping,
-    Set,
-    Tuple,
-)
+from typing import DefaultDict, Dict, Hashable, List, MutableMapping, Set, Tuple
 
 from dask.sizeof import sizeof
 
@@ -19,6 +11,8 @@ from .proxy_object import ProxyObject
 
 
 class UnspilledProxies:
+    """Class to track current unspilled proxies"""
+
     def __init__(self):
         self.dev_mem_usage = 0
         self.proxy_id_to_dev_mems: DefaultDict[int, Set[Hashable]] = defaultdict(set)
@@ -48,6 +42,28 @@ class UnspilledProxies:
 
 
 class ProxiesTally:
+    """
+    This class together with UnspilledProxies implements the tracking of current
+    objects in device memory and the total memory usage. In turns out having to
+    re-calculate device memory usage continuously is too expensive.
+
+    We have to track four events:
+    - When adding a new key to the host file
+    - When removing a key from the host file
+    - When a proxy in the host file deserialize
+    - When a proxy in the host file serialize
+
+    However, it gets a bit complicated because:
+    - The value of a key in the host file can contain many proxy objects and a single
+      proxy object can be referred from many keys
+    - Multiple proxy objects can refer to the same underlying device memory object
+    - Proxy objects are not hashable thus we have to use the `id()` as key in
+      dictionaries
+
+    ProxiesTally and UnspilledProxies implements this by carefully maintaining
+    dictionaries that maps to/from keys, proxy objects, and device memory objects.
+    """
+
     def __init__(self):
         self.lock = threading.RLock()
         self.proxy_id_to_proxy: Dict[int, ProxyObject] = {}
