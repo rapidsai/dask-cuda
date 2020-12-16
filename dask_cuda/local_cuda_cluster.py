@@ -8,8 +8,8 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
-from .object_spilling_host_file import ObjectSpillingHostFile
 from .initialize import initialize
+from .object_spilling_host_file import ObjectSpillingHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -227,7 +227,8 @@ class LocalCUDACluster(LocalCluster):
 
         if ucx_net_devices == "auto":
             try:
-                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
+                from ucp._libs.topological_distance import \
+                    TopologicalDistance  # NOQA
             except ImportError:
                 raise ValueError(
                     "ucx_net_devices set to 'auto' but UCX-Py is not "
@@ -291,9 +292,7 @@ class LocalCUDACluster(LocalCluster):
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
         spec["options"].update(
             {
-                "env": {
-                    "CUDA_VISIBLE_DEVICES": visible_devices,
-                },
+                "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),

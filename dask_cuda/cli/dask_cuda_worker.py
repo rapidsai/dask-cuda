@@ -236,9 +236,7 @@ def main(
 ):
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
-            tls_ca_file=tls_ca_file,
-            tls_worker_cert=tls_cert,
-            tls_worker_key=tls_key,
+            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key,
         )
     else:
         security = None

@@ -19,8 +19,8 @@ from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
-from .object_spilling_host_file import ObjectSpillingHostFile
 from .initialize import initialize
+from .object_spilling_host_file import ObjectSpillingHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,

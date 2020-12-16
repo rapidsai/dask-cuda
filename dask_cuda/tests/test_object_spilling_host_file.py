@@ -1,11 +1,12 @@
 import pytest
-
 from pandas.testing import assert_frame_equal
+
 from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
+
 import dask_cuda
-import dask_cuda.proxy_object
 import dask_cuda.proxify_device_object
+import dask_cuda.proxy_object
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.object_spilling_host_file import ObjectSpillingHostFile
 

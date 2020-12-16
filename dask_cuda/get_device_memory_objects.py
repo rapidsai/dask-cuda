@@ -1,6 +1,5 @@
-from dask.utils import Dispatch
 from dask.sizeof import sizeof
-
+from dask.utils import Dispatch
 
 get_device_memory_objects = Dispatch(name="get_device_memory_objects")
 
@@ -51,9 +50,9 @@ def get_device_memory_objects_register_cupy():
 
 @get_device_memory_objects.register_lazy("cudf")
 def get_device_memory_objects_register_cudf():
-    import cudf.core.multiindex
-    import cudf.core.index
     import cudf.core.dataframe
+    import cudf.core.index
+    import cudf.core.multiindex
     import cudf.core.series
 
     @get_device_memory_objects.register(cudf.core.dataframe.DataFrame)

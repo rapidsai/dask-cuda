@@ -1,4 +1,5 @@
 from dask.utils import Dispatch
+
 from .proxy_object import ProxyObject, asproxy
 
 proxify_device_object = Dispatch(name="proxify_device_object")

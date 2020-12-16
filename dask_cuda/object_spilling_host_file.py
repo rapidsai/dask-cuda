@@ -115,9 +115,7 @@ class ObjectSpillingHostFile(MutableMapping):
     """
 
     def __init__(
-        self,
-        device_memory_limit: int,
-        **kwargs,
+        self, device_memory_limit: int, **kwargs,
     ):
         self.device_memory_limit = device_memory_limit
         self.store = {}
@@ -195,7 +193,7 @@ class ObjectSpillingHostFile(MutableMapping):
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
 
     def maybe_evict(self, extra_dev_mem=0):
-        if ( # Shortcut when not evicting
+        if (  # Shortcut when not evicting
             self.proxies_tally.get_dev_mem_usage() + extra_dev_mem
             <= self.device_memory_limit
         ):
