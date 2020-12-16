@@ -6,7 +6,7 @@ from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
 
-from dask_cuda import LocalCUDACluster, CUDAWorker, utils
+from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
 
 

@@ -10,11 +10,11 @@ from tornado.ioloop import IOLoop
 
 import dask
 from distributed import Nanny
+from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
-from distributed.deploy.cluster import Cluster
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
