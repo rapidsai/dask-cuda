@@ -117,7 +117,7 @@ def _obj_pxy_cache_wrapper(attr_name):
 class ProxyObject:
     """Object wrapper/proxy for serializable objects
 
-    This is used by DeviceHostFile to delay deserialization of returned objects.
+    This is used by ProxifyHostFile to delay deserialization of returned objects.
 
     Objects proxied by an instance of this class will be JIT-deserialized when
     accessed. The instance behaves as the proxied object and can be accessed/used

@@ -14,7 +14,7 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
-from dask_cuda.proxify_device_object import proxify_device_object, FrameProxyObject
+from dask_cuda.proxify_device_object import FrameProxyObject, proxify_device_object
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])

@@ -121,29 +121,31 @@ class ProxiesTally:
 
 
 class ProxifyHostFile(MutableMapping):
-    """Manages serialization/deserialization of objects.
+    """Host file for that proxify stored data
 
-    TODO: Three LRU cache levels are controlled, for device, host and disk.
-    Each level takes care of serializing objects once its limit has been
-    reached and pass it to the subsequent level. Similarly, each cache
-    may deserialize the object, but storing it back in the appropriate
-    cache, depending on the type of object being deserialized.
+    This class is an alternate to the default disk-backed LRU dict used by
+    workers in Distributed.
+
+    It wraps all CUDA device objects in a ProxyObject instance and maintains
+    `device_memory_limit` by spilling ProxyObject on-the-fly. This addresses
+    some issues with the default DeviceHostFile host, which tracks device
+    memory inaccurately. See <https://github.com/rapidsai/dask-cuda/pull/451>
+
+    Limitations
+    -----------
+    - For now, ProxifyHostFile doesn't support spilling to disk.
+    - ProxyObject has some limitations and doesn't mimic the proxied object
+      perfectly. See docs of ProxyObject for detail.
+    - This is still experimental, expect bugs and API changes.
 
     Parameters
     ----------
     device_memory_limit: int
-        Number of bytes of CUDA device memory for device LRU cache,
-        spills to host cache once filled.
-    TODO: memory_limit: int
-        Number of bytes of host memory for host LRU cache, spills to
-        disk once filled. Setting this to 0 means unlimited host memory,
-        implies no spilling to disk.
-    local_directory: path
-        Path where to store serialized objects on disk
+        Number of bytes of CUDA device memory used before spilling to host.
     """
 
     def __init__(
-        self, device_memory_limit: int, **kwargs,
+        self, device_memory_limit=None,
     ):
         self.device_memory_limit = device_memory_limit
         self.store = {}

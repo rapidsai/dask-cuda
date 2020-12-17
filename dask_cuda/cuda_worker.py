@@ -181,11 +181,26 @@ class CUDAWorker:
             cuda_device_index=0,
         )
 
-        if jit_unspill is None:
-            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        if self.jit_unspill:
+            data = lambda i: (
+                ProxifyHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                },
+            )
         else:
-            self.jit_unspill = jit_unspill
-        hostfile = ProxifyHostFile if self.jit_unspill else DeviceHostFile
+            data = lambda i: (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                },
+            )
 
         self.nannies = [
             Nanny(
@@ -218,17 +233,7 @@ class CUDAWorker:
                         cuda_device_index=i,
                     )
                 },
-                data=(
-                    hostfile,
-                    {
-                        "device_memory_limit": parse_device_memory_limit(
-                            device_memory_limit, device_index=i
-                        ),
-                        "memory_limit": memory_limit,
-                        "local_directory": local_directory,
-                        "jit_unspill": self.jit_unspill,
-                    },
-                ),
+                data=data(i),
                 **kwargs,
             )
             for i in range(nprocs)

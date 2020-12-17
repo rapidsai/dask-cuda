@@ -106,16 +106,10 @@ class DeviceHostFile(ZictBase):
         implies no spilling to disk.
     local_directory: path
         Path where to store serialized objects on disk
-    jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
     """
 
     def __init__(
-        self,
-        device_memory_limit=None,
-        memory_limit=None,
-        local_directory=None,
-        jit_unspill=False,
+        self, device_memory_limit=None, memory_limit=None, local_directory=None,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
@@ -141,14 +135,7 @@ class DeviceHostFile(ZictBase):
 
         self.device_keys = set()
         self.device_func = dict()
-        if jit_unspill:
-            self.device_host_func = Func(
-                pxy_obj_device_to_host, pxy_obj_host_to_device, self.host_buffer
-            )
-        else:
-            self.device_host_func = Func(
-                device_to_host, host_to_device, self.host_buffer
-            )
+        self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
         self.device_buffer = Buffer(
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
