@@ -20,7 +20,7 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .object_spilling_host_file import ObjectSpillingHostFile
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -192,7 +192,7 @@ class CUDAWorker:
         else:
             self.object_spilling = object_spilling
 
-        hostfile = ObjectSpillingHostFile if self.object_spilling else DeviceHostFile
+        hostfile = ProxifyHostFile if self.object_spilling else DeviceHostFile
 
         self.nannies = [
             Nanny(

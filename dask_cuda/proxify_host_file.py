@@ -120,7 +120,7 @@ class ProxiesTally:
         return self.unspilled_proxies.dev_mem_usage
 
 
-class ObjectSpillingHostFile(MutableMapping):
+class ProxifyHostFile(MutableMapping):
     """Manages serialization/deserialization of objects.
 
     TODO: Three LRU cache levels are controlled, for device, host and disk.

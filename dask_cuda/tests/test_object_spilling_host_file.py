@@ -8,7 +8,7 @@ import dask_cuda
 import dask_cuda.proxify_device_object
 import dask_cuda.proxy_object
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
-from dask_cuda.object_spilling_host_file import ObjectSpillingHostFile
+from dask_cuda.proxify_host_file import ProxifyHostFile
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -16,7 +16,7 @@ itemsize = cupy.arange(1).nbytes
 
 
 def test_one_item_limit():
-    dhf = ObjectSpillingHostFile(device_memory_limit=itemsize)
+    dhf = ProxifyHostFile(device_memory_limit=itemsize)
     dhf["k1"] = cupy.arange(1) + 1
     dhf["k2"] = cupy.arange(1) + 2
 
@@ -93,7 +93,7 @@ def test_dataframes_share_dev_mem():
     # They still share the same underlying device memory
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
-    dhf = ObjectSpillingHostFile(device_memory_limit=160)
+    dhf = ProxifyHostFile(device_memory_limit=160)
     dhf["v1"] = view1
     dhf["v2"] = view2
     v1 = dhf["v1"]
