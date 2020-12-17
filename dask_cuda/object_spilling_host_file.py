@@ -2,7 +2,16 @@ import threading
 import time
 import weakref
 from collections import defaultdict
-from typing import DefaultDict, Dict, Hashable, List, MutableMapping, Set, Tuple
+from typing import (
+    DefaultDict,
+    Dict,
+    Hashable,
+    Iterator,
+    List,
+    MutableMapping,
+    Set,
+    Tuple,
+)
 
 from dask.sizeof import sizeof
 
@@ -97,14 +106,17 @@ class ProxiesTally:
         with self.lock:
             self.unspilled_proxies.add(proxy)
 
-    def get_unspilled_proxies(self):
+    def get_unspilled_proxies(self) -> Iterator[ProxyObject]:
         with self.lock:
             for proxy_id in self.unspilled_proxies:
                 ret = self.proxy_id_to_proxy[proxy_id]
                 assert not ret._obj_pxy_serialized()
                 yield ret
 
-    def get_dev_mem_usage(self):
+    def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
+        return {id(p._obj_pxy["obj"]): p for p in self.get_unspilled_proxies()}
+
+    def get_dev_mem_usage(self) -> int:
         return self.unspilled_proxies.dev_mem_usage
 
 
@@ -148,24 +160,12 @@ class ObjectSpillingHostFile(MutableMapping):
         with self.lock:
             return iter(self.store)
 
-    def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
-        with self.lock:
-            ret = {}
-            for proxy in self.proxies_tally.get_unspilled_proxies():
-                proxied_id = id(proxy._obj_pxy["obj"])
-                p = ret.get(proxied_id, None)
-                if p is None:
-                    ret[proxied_id] = proxy
-                else:
-                    assert id(p) == id(proxy)  # No duplicates
-            return ret
-
     def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
         with self.lock:
             # Notice, multiple proxy object can point to different non-overlapping
             # parts of the same device buffer.
             ret = DefaultDict(list)
-            for proxy in self.get_proxied_id_to_proxy().values():
+            for proxy in self.proxies_tally.get_unspilled_proxies():
                 for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
                     ret[dev_buffer].append(proxy)
             return ret
@@ -184,7 +184,7 @@ class ObjectSpillingHostFile(MutableMapping):
     def __setitem__(self, key, value):
         with self.lock:
             found_proxies = []
-            proxied_id_to_proxy = self.get_proxied_id_to_proxy()
+            proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
             self.store[key] = proxify_device_object(
                 value, proxied_id_to_proxy, found_proxies
             )
