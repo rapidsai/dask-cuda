@@ -181,6 +181,11 @@ class CUDAWorker:
             cuda_device_index=0,
         )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
         if self.jit_unspill:
             data = lambda i: (
                 ProxifyHostFile,

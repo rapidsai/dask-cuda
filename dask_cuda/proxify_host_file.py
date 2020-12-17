@@ -53,7 +53,7 @@ class UnspilledProxies:
 class ProxiesTally:
     """
     This class together with UnspilledProxies implements the tracking of current
-    objects in device memory and the total memory usage. In turns out having to
+    objects in device memory and the total memory usage. It turns out having to
     re-calculate device memory usage continuously is too expensive.
 
     We have to track four events:
@@ -121,7 +121,7 @@ class ProxiesTally:
 
 
 class ProxifyHostFile(MutableMapping):
-    """Host file for that proxify stored data
+    """Host file that proxify stored data
 
     This class is an alternate to the default disk-backed LRU dict used by
     workers in Distributed.
