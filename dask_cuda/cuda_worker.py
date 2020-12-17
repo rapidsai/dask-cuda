@@ -73,7 +73,6 @@ class CUDAWorker:
         enable_rdmacm=False,
         net_devices=None,
         jit_unspill=None,
-        object_spilling=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -186,13 +185,7 @@ class CUDAWorker:
             self.jit_unspill = dask.config.get("jit-unspill", default=False)
         else:
             self.jit_unspill = jit_unspill
-
-        if object_spilling is None:
-            self.object_spilling = dask.config.get("object-spilling", default=False)
-        else:
-            self.object_spilling = object_spilling
-
-        hostfile = ProxifyHostFile if self.object_spilling else DeviceHostFile
+        hostfile = ProxifyHostFile if self.jit_unspill else DeviceHostFile
 
         self.nannies = [
             Nanny(

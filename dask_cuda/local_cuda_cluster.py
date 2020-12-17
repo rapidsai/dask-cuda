@@ -139,7 +139,6 @@ class LocalCUDACluster(LocalCluster):
         rmm_pool_size=None,
         rmm_managed_memory=False,
         jit_unspill=None,
-        object_spilling=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -198,13 +197,7 @@ class LocalCUDACluster(LocalCluster):
             self.jit_unspill = dask.config.get("jit-unspill", default=False)
         else:
             self.jit_unspill = jit_unspill
-
-        if object_spilling is None:
-            self.object_spilling = dask.config.get("object-spilling", default=False)
-        else:
-            self.object_spilling = object_spilling
-
-        hostfile = ProxifyHostFile if self.object_spilling else DeviceHostFile
+        hostfile = ProxifyHostFile if self.jit_unspill else DeviceHostFile
 
         if data is None:
             data = (

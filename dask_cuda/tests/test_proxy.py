@@ -14,7 +14,7 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
-from dask_cuda.proxify_device_object import proxify_device_object
+from dask_cuda.proxify_device_object import proxify_device_object, FrameProxyObject
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
@@ -210,7 +210,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) is proxy_object.ProxyObject
+            assert type(x) is FrameProxyObject
             assert x._obj_pxy["serializers"] == ("dask", "pickle")
         else:
             assert type(x) == cudf.DataFrame

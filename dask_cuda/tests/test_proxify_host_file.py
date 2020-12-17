@@ -52,15 +52,15 @@ def test_one_item_limit():
     assert not dhf["k3"][1]._obj_pxy_serialized()
 
 
-@pytest.mark.parametrize("object_spilling", [True, False])
-def test_local_cuda_cluster(object_spilling):
+@pytest.mark.parametrize("jit_unspill", [True, False])
+def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
-        if object_spilling:
+        if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert type(x) is dask_cuda.proxify_device_object.FrameProxyObject
             assert x._obj_pxy["serializers"] == ("dask", "pickle")
@@ -71,7 +71,7 @@ def test_local_cuda_cluster(object_spilling):
 
     # Notice, setting `device_memory_limit=1B` to trigger spilling
     with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", object_spilling=object_spilling
+        n_workers=1, device_memory_limit="1B", jit_unspill=jit_unspill
     ) as cluster:
         with Client(cluster):
             df = cudf.DataFrame({"a": range(10)})
