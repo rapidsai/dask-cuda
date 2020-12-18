@@ -123,7 +123,7 @@ class ProxiesTally:
 class ProxifyHostFile(MutableMapping):
     """Host file that proxify stored data
 
-    This class is an alternate to the default disk-backed LRU dict used by
+    This class is an alternativ to the default disk-backed LRU dict used by
     workers in Distributed.
 
     It wraps all CUDA device objects in a ProxyObject instance and maintains
