@@ -5,6 +5,7 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
+from typing import Set
 
 import pandas
 
@@ -316,7 +317,7 @@ class ProxyObject:
             return self._obj_pxy["is_cuda_object"]
 
     @_obj_pxy_cache_wrapper("device_memory_objects")
-    def _obj_pxy_get_device_memory_objects(self):
+    def _obj_pxy_get_device_memory_objects(self) -> Set:
         """Return all device memory objects within the proxied object.
 
         Calling this when the proxied object is serialized returns the
@@ -324,8 +325,8 @@ class ProxyObject:
 
         Returns
         -------
-        ret : list
-            List of device memory objects
+        ret : set
+            Set of device memory objects
         """
         return get_device_memory_objects(self._obj_pxy["obj"])
 
