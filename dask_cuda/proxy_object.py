@@ -5,7 +5,7 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
-from typing import Set
+from typing import Any, Dict, List, Optional, Set
 
 import pandas
 
@@ -25,7 +25,7 @@ from .is_device_object import is_device_object
 _FIXED_ATTRS = ["name", "__len__"]
 
 
-def asproxy(obj, serializers=None, subclass=None):
+def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
     """Wrap `obj` in a ProxyObject object if it isn't already.
 
     Parameters
@@ -168,20 +168,20 @@ class ProxyObject:
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
-    serializers: list(str), optional
+    serializers: list(str)
         List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
     """
 
     def __init__(
         self,
-        obj,
-        fixed_attr,
-        type_serialized,
-        typename,
-        is_cuda_object,
-        subclass,
-        serializers,
+        obj: Any,
+        fixed_attr: Dict[str, Any],
+        type_serialized: bytes,
+        typename: str,
+        is_cuda_object: bool,
+        subclass: bytes,
+        serializers: Optional[List[str]],
     ):
         self._obj_pxy = {
             "obj": obj,
@@ -305,7 +305,7 @@ class ProxyObject:
             self._obj_pxy["last_access"] = time.time()
             return self._obj_pxy["obj"]
 
-    def _obj_pxy_is_cuda_object(self):
+    def _obj_pxy_is_cuda_object(self) -> bool:
         """Return whether the proxied object is a CUDA or not
 
         Returns

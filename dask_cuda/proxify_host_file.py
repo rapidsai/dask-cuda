@@ -129,7 +129,7 @@ class ProxifyHostFile(MutableMapping):
     It wraps all CUDA device objects in a ProxyObject instance and maintains
     `device_memory_limit` by spilling ProxyObject on-the-fly. This addresses
     some issues with the default DeviceHostFile host, which tracks device
-    memory inaccurately. See <https://github.com/rapidsai/dask-cuda/pull/451>
+    memory inaccurately see <https://github.com/rapidsai/dask-cuda/pull/451>
 
     Limitations
     -----------
@@ -144,9 +144,7 @@ class ProxifyHostFile(MutableMapping):
         Number of bytes of CUDA device memory used before spilling to host.
     """
 
-    def __init__(
-        self, device_memory_limit=None,
-    ):
+    def __init__(self, device_memory_limit: int):
         self.device_memory_limit = device_memory_limit
         self.store = {}
         self.lock = threading.RLock()
