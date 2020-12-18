@@ -14,7 +14,7 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
-from dask_cuda.proxify_device_object import FrameProxyObject, proxify_device_object
+from dask_cuda.proxify_device_objects import FrameProxyObject, proxify_device_objects
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
@@ -412,6 +412,6 @@ def test_merge_sorted_of_proxied_cudf_dataframes():
     cudf = pytest.importorskip("cudf")
 
     dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
-    got = cudf.merge_sorted(proxify_device_object(dfs, {}, []))
+    got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
     expected = cudf.merge_sorted(dfs)
     assert_frame_equal(got.to_pandas(), expected.to_pandas())

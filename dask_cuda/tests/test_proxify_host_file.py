@@ -5,7 +5,7 @@ from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
 
 import dask_cuda
-import dask_cuda.proxify_device_object
+import dask_cuda.proxify_device_objects
 import dask_cuda.proxy_object
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
@@ -62,7 +62,7 @@ def test_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) is dask_cuda.proxify_device_object.FrameProxyObject
+            assert type(x) is dask_cuda.proxify_device_objects.FrameProxyObject
             assert x._obj_pxy["serializers"] == ("dask", "pickle")
         else:
             assert type(x) == cudf.DataFrame

@@ -15,7 +15,7 @@ from typing import (
 
 from dask.sizeof import sizeof
 
-from .proxify_device_object import proxify_device_object
+from .proxify_device_objects import proxify_device_objects
 from .proxy_object import ProxyObject
 
 
@@ -187,7 +187,7 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             found_proxies = []
             proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
-            self.store[key] = proxify_device_object(
+            self.store[key] = proxify_device_objects(
                 value, proxied_id_to_proxy, found_proxies
             )
             last_access = time.time()
