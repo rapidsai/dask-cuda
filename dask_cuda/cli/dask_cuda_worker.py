@@ -235,6 +235,13 @@ def main(
     else:
         security = None
 
+    if isinstance(scheduler, str) and scheduler.startswith("-"):
+        raise ValueError(
+            "The scheduler address can't start with '-'. Please check "
+            "your command line arguments, you probably attempted to use "
+            "unsupported one. Scheduler address: %s" % scheduler
+        )
+
     worker = CUDAWorker(
         scheduler,
         host,
