@@ -359,7 +359,7 @@ def test_proxy_object_parquet(tmp_path):
 
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df)
-    pxy.to_parquet(str(tmp_path))
+    pxy.to_parquet(str(tmp_path), engine="pyarrow")
     df2 = dask.dataframe.read_parquet(tmp_path)
     assert_frame_equal(df.to_pandas(), df2.compute())
 
