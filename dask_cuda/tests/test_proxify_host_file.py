@@ -42,14 +42,22 @@ def test_one_item_limit():
     assert k2._obj_pxy_serialized()
     assert not dhf["k4"]._obj_pxy_serialized()
 
-    # Deleting k2 does change anything since k3 still holds a
-    # reference to the underlying proxy object
-    dhf["k2"][0]
-    assert dhf["k1"]._obj_pxy_serialized()
-    assert not dhf["k2"]._obj_pxy_serialized()
+    # Accessing k2 spills k1 and k4
+    k2[0]
+    assert k1._obj_pxy_serialized()
     assert dhf["k4"]._obj_pxy_serialized()
+    assert not k2._obj_pxy_serialized()
+
+    # Deleting k2 does not change anything since k3 still holds a
+    # reference to the underlying proxy object
+    assert dhf.proxies_tally.get_dev_mem_usage() == 8
+    p1 = list(dhf.proxies_tally.get_unspilled_proxies())
+    assert len(p1) == 1
     del dhf["k2"]
-    assert not dhf["k3"][1]._obj_pxy_serialized()
+    assert dhf.proxies_tally.get_dev_mem_usage() == 8
+    p2 = list(dhf.proxies_tally.get_unspilled_proxies())
+    assert len(p2) == 1
+    assert p1[0] is p2[0]
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
