@@ -168,7 +168,7 @@ class ProxyObject:
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
-    serializers: list(str)
+    serializers: list(str), optional
         List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
     """
