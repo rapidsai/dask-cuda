@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import subprocess
 
 import pytest
 
@@ -98,3 +99,9 @@ def test_rmm_managed(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.ManagedMemoryResource
+
+
+def test_unknown_argument():
+    ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
+    assert ret.returncode != 0
+    assert b"Scheduler address: --my-argument" in ret.stderr
