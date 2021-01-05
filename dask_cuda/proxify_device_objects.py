@@ -59,11 +59,11 @@ def proxify_device_object_proxy_object(obj, proxied_id_to_proxy, found_proxies):
 
     # We deserialize CUDA-serialized objects since it is very cheap and
     # makes it easy to administrate device memory usage
-    if obj._obj_pxy_serialized() and "cuda" in obj._obj_pxy["serializers"]:
+    if obj._obj_pxy_is_serialized() and "cuda" in obj._obj_pxy["serializers"]:
         obj._obj_pxy_deserialize()
 
     # Check if `obj` is already known
-    if not obj._obj_pxy_serialized():
+    if not obj._obj_pxy_is_serialized():
         _id = id(obj._obj_pxy["obj"])
         if _id in proxied_id_to_proxy:
             obj = proxied_id_to_proxy[_id]

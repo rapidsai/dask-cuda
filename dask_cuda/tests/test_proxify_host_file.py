@@ -22,31 +22,31 @@ def test_one_item_limit():
 
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
-    assert k1._obj_pxy_serialized()
-    assert not dhf["k2"]._obj_pxy_serialized()
+    assert k1._obj_pxy_is_serialized()
+    assert not dhf["k2"]._obj_pxy_is_serialized()
 
     # Accessing k1 spills k2 and unspill k1
     k1_val = k1[0]
     assert k1_val == 1
     k2 = dhf["k2"]
-    assert k2._obj_pxy_serialized()
+    assert k2._obj_pxy_is_serialized()
 
     # Duplicate arrays changes nothing
     dhf["k3"] = [k1, k2]
-    assert not k1._obj_pxy_serialized()
-    assert k2._obj_pxy_serialized()
+    assert not k1._obj_pxy_is_serialized()
+    assert k2._obj_pxy_is_serialized()
 
     # Adding a new array spills k1 and k2
     dhf["k4"] = cupy.arange(1) + 4
-    assert k1._obj_pxy_serialized()
-    assert k2._obj_pxy_serialized()
-    assert not dhf["k4"]._obj_pxy_serialized()
+    assert k1._obj_pxy_is_serialized()
+    assert k2._obj_pxy_is_serialized()
+    assert not dhf["k4"]._obj_pxy_is_serialized()
 
     # Accessing k2 spills k1 and k4
     k2[0]
-    assert k1._obj_pxy_serialized()
-    assert dhf["k4"]._obj_pxy_serialized()
-    assert not k2._obj_pxy_serialized()
+    assert k1._obj_pxy_is_serialized()
+    assert dhf["k4"]._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
@@ -107,12 +107,12 @@ def test_dataframes_share_dev_mem():
     v1 = dhf["v1"]
     v2 = dhf["v2"]
     # The device_memory_limit is not exceeded since both dataframes share device memory
-    assert not v1._obj_pxy_serialized()
-    assert not v2._obj_pxy_serialized()
+    assert not v1._obj_pxy_is_serialized()
+    assert not v2._obj_pxy_is_serialized()
     # Now the device_memory_limit is exceeded, which should evict both dataframes
     dhf["k1"] = cupy.arange(1)
-    assert v1._obj_pxy_serialized()
-    assert v2._obj_pxy_serialized()
+    assert v1._obj_pxy_is_serialized()
+    assert v2._obj_pxy_is_serialized()
 
 
 def test_cudf_get_device_memory_objects():

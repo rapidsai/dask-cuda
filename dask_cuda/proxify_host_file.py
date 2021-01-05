@@ -87,7 +87,7 @@ class ProxiesTally:
                 self.proxy_id_to_proxy[proxy_id] = proxy
                 self.key_to_proxy_ids[key].add(proxy_id)
                 self.proxy_id_to_keys[proxy_id].add(key)
-                if not proxy._obj_pxy_serialized():
+                if not proxy._obj_pxy_is_serialized():
                     self.unspilled_proxies.add(proxy)
 
     def del_key(self, key):
@@ -110,7 +110,7 @@ class ProxiesTally:
         with self.lock:
             for proxy_id in self.unspilled_proxies:
                 ret = self.proxy_id_to_proxy[proxy_id]
-                assert not ret._obj_pxy_serialized()
+                assert not ret._obj_pxy_is_serialized()
                 yield ret
 
     def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:

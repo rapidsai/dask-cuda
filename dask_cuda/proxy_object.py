@@ -233,7 +233,7 @@ class ProxyObject:
         args["obj"] = self._obj_pxy["obj"]
         return type(self)(**args)
 
-    def _obj_pxy_serialized(self):
+    def _obj_pxy_is_serialized(self):
         """Return whether the proxied object is serialized or not"""
         return self._obj_pxy["serializers"] is not None
 
@@ -394,7 +394,7 @@ class ProxyObject:
         when serialized or not serialized might slightly differ.
         """
         with self._obj_pxy_lock:
-            if self._obj_pxy_serialized():
+            if self._obj_pxy_is_serialized():
                 frames = self._obj_pxy["obj"][1]
                 return sum(map(distributed.utils.nbytes, frames))
             else:
