@@ -195,8 +195,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
-    default=None,  # If not specified, use Dask config
-    help="Enable just-in-time unspilling",
+    default=None,
+    help="Enable just-in-time unspilling. This is experimental and doesn't "
+    "support memory spilling to disk Please see proxy_object.ProxyObject "
+    "and proxify_host_file.ProxifyHostFile.",
 )
 def main(
     scheduler,
