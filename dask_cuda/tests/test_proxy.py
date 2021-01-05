@@ -6,6 +6,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 import dask
+import dask.array
 from dask.dataframe.core import has_parallel_type
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
@@ -384,27 +385,24 @@ def test_concatenate3_of_proxied_cupy_arrays():
 
 def test_tensordot_of_proxied_cupy_arrays():
     """Check tensordot of cupy arrays"""
-    from dask.array.core import tensordot_lookup
-
     cupy = pytest.importorskip("cupy")
+
     org = cupy.arange(9).reshape((3, 3))
     a = proxy_object.asproxy(org.copy())
     b = proxy_object.asproxy(org.copy())
-    res1 = tensordot_lookup(a, b).flatten()
-    res2 = tensordot_lookup(org.copy(), org.copy()).flatten()
+    res1 = dask.array.tensordot(a, b).flatten()
+    res2 = dask.array.tensordot(org.copy(), org.copy()).flatten()
     assert all(res1 == res2)
 
 
 def test_einsum_of_proxied_cupy_arrays():
     """Check tensordot of cupy arrays"""
-    from dask.array.core import einsum_lookup
-
     cupy = pytest.importorskip("cupy")
 
     org = cupy.arange(25).reshape(5, 5)
-    res1 = einsum_lookup.dispatch(type(org))("ii", org)
+    res1 = dask.array.einsum("ii", org)
     a = proxy_object.asproxy(org.copy())
-    res2 = einsum_lookup.dispatch(type(a))("ii", a)
+    res2 = dask.array.einsum("ii", a)
     assert all(res1.flatten() == res2.flatten())
 
 
