@@ -59,8 +59,8 @@ class ProxiesTally:
     We have to track four events:
     - When adding a new key to the host file
     - When removing a key from the host file
-    - When a proxy in the host file deserialize
-    - When a proxy in the host file serialize
+    - When a proxy in the host file is deserialized
+    - When a proxy in the host file is serialized
 
     However, it gets a bit complicated because:
     - The value of a key in the host file can contain many proxy objects and a single
@@ -123,7 +123,7 @@ class ProxiesTally:
 class ProxifyHostFile(MutableMapping):
     """Host file that proxify stored data
 
-    This class is an alternativ to the default disk-backed LRU dict used by
+    This class is an alternative to the default disk-backed LRU dict used by
     workers in Distributed.
 
     It wraps all CUDA device objects in a ProxyObject instance and maintains

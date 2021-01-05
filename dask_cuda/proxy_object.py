@@ -223,7 +223,7 @@ class ProxyObject:
     def _obj_pxy_copy(self) -> "ProxyObject":
         """Return a deepcopy of the proxy meta data
 
-        Use this to copy the proxy without coping the proxied object.
+        Use this to copy the proxy without copying the proxied object.
 
         Returns
         -------
@@ -388,9 +388,9 @@ class ProxyObject:
 
     @_obj_pxy_cache_wrapper("sizeof")
     def __sizeof__(self):
-        """Returns either the size of the proxied object serialized or not
+        """Returns either the size of the proxied object
 
-        Notice, we cache the result eventhough the size of proxied object
+        Notice, we cache the result even though the size of proxied object
         when serialized or not serialized might slightly differ.
         """
         with self._obj_pxy_lock:

@@ -9,7 +9,7 @@ dispatch = Dispatch(name="get_device_memory_objects")
 def get_device_memory_objects(obj: Any) -> Set:
     """ Find all CUDA device objects in `obj`
 
-    Search though `obj` and find all CUDA device objects, which are objects
+    Search through `obj` and find all CUDA device objects, which are objects
     that either are known to `dispatch` or implement `__cuda_array_interface__`.
 
     Notice, the CUDA device objects must be hashable.
@@ -93,7 +93,7 @@ def get_device_memory_objects_register_cudf():
     @dispatch.register(cudf.core.index.RangeIndex)
     def get_device_memory_objects_cudf_range_index(obj):
         # Avoid materializing RangeIndex. This introduce some inaccuracies
-        # in total device memory usage but we except the memory use of
+        # in total device memory usage but we accept the memory use of
         # RangeIndexes are limited.
         return []
 

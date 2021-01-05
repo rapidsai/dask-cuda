@@ -14,7 +14,7 @@ def proxify_device_objects(
 ):
     """ Wrap device objects in ProxyObject
 
-    Search though `obj` and wraps all CUDA device objects in ProxyObject.
+    Search through `obj` and wraps all CUDA device objects in ProxyObject.
     It uses `proxied_id_to_proxy` to make sure that identical CUDA device
     objects found in `obj` are wrapped by the same ProxyObject.
 
@@ -26,8 +26,8 @@ def proxify_device_objects(
         Dict mapping the id() of proxied objects (CUDA device objects) to
         their proxy and is updated with all new proxied objects found in `obj`.
     found_proxies: List[ProxyObject]
-        List of found proxies in `obj`. Notice, this includes all proxies found
-        also proxies already in `proxied_id_to_proxy`.
+        List of found proxies in `obj`. Notice, this includes all proxies found,
+        including those already in `proxied_id_to_proxy`.
 
     Returns
     -------
