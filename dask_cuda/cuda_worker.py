@@ -101,8 +101,6 @@ class CUDAWorker:
 
             atexit.register(del_pid_file)
 
-        services = {}
-
         if resources:
             resources = resources.replace(",", " ").split()
             resources = dict(pair.split("=") for pair in resources)
