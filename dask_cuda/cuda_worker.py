@@ -102,20 +102,6 @@ class CUDAWorker:
 
             atexit.register(del_pid_file)
 
-        services = {}
-
-        if dashboard:
-            try:
-                from distributed.dashboard import BokehWorker
-            except ImportError:
-                pass
-            else:
-                if dashboard_prefix:
-                    result = (BokehWorker, {"prefix": dashboard_prefix})
-                else:
-                    result = BokehWorker
-                services[("dashboard", dashboard_address)] = result
-
         if resources:
             resources = resources.replace(",", " ").split()
             resources = dict(pair.split("=") for pair in resources)
@@ -212,7 +198,9 @@ class CUDAWorker:
                 scheduler,
                 scheduler_file=scheduler_file,
                 nthreads=nthreads,
-                services=services,
+                dashboard=dashboard,
+                dashboard_address=dashboard_address,
+                http_prefix=dashboard_prefix,
                 loop=loop,
                 resources=resources,
                 memory_limit=memory_limit,
