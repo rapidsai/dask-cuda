@@ -25,21 +25,65 @@ async def _run(client, args):
 
     # Create a simple random array
     rs = da.random.RandomState(RandomState=xp.random.RandomState)
-    x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
-    await wait(x)
+
+    if args.operation == "transpose_sum":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: (x + x.T).sum()
+    elif args.operation == "dot":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        y = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        await wait(y)
+
+        func_args = (x, y)
+
+        func = lambda x, y: x.dot(y)
+    elif args.operation == "svd":
+        x = rs.random(
+            (args.size, args.second_size),
+            chunks=(int(args.chunk_size), args.second_size),
+        ).persist()
+        await wait(x)
+
+        func_args = (x,)
+
+        func = lambda x: np.linalg.svd(x)
+    elif args.operation == "fft":
+        x = rs.random(
+            (args.size, args.size), chunks=(args.size, args.chunk_size)
+        ).persist()
+        await wait(x)
+
+        func_args = (x,)
+
+        func = lambda x: np.fft.fft(x, axis=0)
+
+    shape = x.shape
+    chunksize = x.chunksize
 
     # Execute the operations to benchmark
     if args.profile is not None:
         async with performance_report(filename=args.profile):
             t1 = clock()
-            await client.compute((x + x.T).sum())
+            await client.compute(func(*func_args))
             took = clock() - t1
     else:
         t1 = clock()
-        await client.compute((x + x.T).sum())
+        res = client.compute(func(*func_args))
+        await client.gather(res)
+        if args.type == "gpu":
+            await client.run(xp.cuda.Device().synchronize)
         took = clock() - t1
 
-    return (took, x.npartitions)
+    return {
+        "took": took,
+        "npartitions": x.npartitions,
+        "shape": shape,
+        "chunksize": chunksize,
+    }
 
 
 async def run(args):
@@ -75,7 +119,10 @@ async def run(args):
 
             took_list = []
             for i in range(args.runs):
-                took_list.append(await _run(client, args))
+                res = await _run(client, args)
+                took_list.append((res["took"], res["npartitions"]))
+                size = res["shape"]
+                chunksize = res["chunksize"]
 
             # Collect, aggregate, and print peer-to-peer bandwidths
             incoming_logs = await client.run(
@@ -104,26 +151,31 @@ async def run(args):
 
             print("Roundtrip benchmark")
             print("--------------------------")
-            print(f"Size        | {args.size}*{args.size}")
-            print(f"Chunk-size  | {args.chunk_size}")
-            print(f"Ignore-size | {format_bytes(args.ignore_size)}")
-            print(f"Protocol    | {args.protocol}")
-            print(f"Device(s)   | {args.devs}")
+            print(f"Operation          | {args.operation}")
+            print(f"User size          | {args.size}")
+            print(f"User second size   | {args.second_size}")
+            print(f"User chunk-size    | {args.chunk_size}")
+            print(f"Compute shape      | {size}")
+            print(f"Compute chunk-size | {chunksize}")
+            print(f"Ignore-size        | {format_bytes(args.ignore_size)}")
+            print(f"Protocol           | {args.protocol}")
+            print(f"Device(s)          | {args.devs}")
+            print(f"Worker Thread(s)   | {args.threads_per_worker}")
             print("==========================")
-            print("Wall-clock  | npartitions")
+            print("Wall-clock         | npartitions")
             print("--------------------------")
             for (took, npartitions) in took_list:
                 t = format_time(took)
                 t += " " * (11 - len(t))
-                print(f"{t} | {npartitions}")
+                print(f"{t}        | {npartitions}")
             print("==========================")
-            print("(w1,w2)     | 25% 50% 75% (total nbytes)")
+            print("(w1,w2)            | 25% 50% 75% (total nbytes)")
             print("--------------------------")
             for (d1, d2), bw in sorted(bandwidths.items()):
                 fmt = (
-                    "(%s,%s)     | %s %s %s (%s)"
+                    "(%s,%s)            | %s %s %s (%s)"
                     if args.multi_node or args.sched_addr
-                    else "(%02d,%02d)     | %s %s %s (%s)"
+                    else "(%02d,%02d)            | %s %s %s (%s)"
                 )
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
 
@@ -140,7 +192,14 @@ def parse_args():
             "default": "10000",
             "metavar": "n",
             "type": int,
-            "help": "The size n in n^2 (default 10000)",
+            "help": "The array size n in n^2 (default 10000). For 'svd' operation "
+            "the second dimension is given by --second-size.",
+        },
+        {
+            "name": ["-2", "--second-size",],
+            "default": "1000",
+            "type": int,
+            "help": "The second dimension size for 'svd' operation (default 1000).",
         },
         {
             "name": ["-t", "--type",],
@@ -150,11 +209,17 @@ def parse_args():
             "help": "Do merge with GPU or CPU dataframes",
         },
         {
-            "name": ["-c", "--chunk-size",],
-            "default": "128 MiB",
-            "metavar": "nbytes",
+            "name": ["-o", "--operation",],
+            "default": "transpose_sum",
             "type": str,
-            "help": "Chunk size (default '128 MiB')",
+            "help": "The operation to run, valid options are: "
+            "'transpose_sum' (default), 'dot', 'fft', 'svd'.",
+        },
+        {
+            "name": ["-c", "--chunk-size",],
+            "default": "2500",
+            "type": int,
+            "help": "Chunk size (default 2500)",
         },
         {
             "name": "--ignore-size",
