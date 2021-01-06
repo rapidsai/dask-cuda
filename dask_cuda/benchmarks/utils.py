@@ -13,6 +13,12 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "-d", "--devs", default="0", type=str, help='GPU devices to use (default "0").'
     )
     parser.add_argument(
+        "--threads-per-worker",
+        default=1,
+        type=int,
+        help="Number of Dask threads per worker (i.e., GPU).",
+    )
+    parser.add_argument(
         "-p",
         "--protocol",
         choices=["tcp", "ucx"],
@@ -177,6 +183,7 @@ def get_cluster_options(args):
         cluster_kwargs = {
             "protocol": args.protocol,
             "n_workers": len(args.devs.split(",")),
+            "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
             "ucx_net_devices": args.ucx_net_devices,
             "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
