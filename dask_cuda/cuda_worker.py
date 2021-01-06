@@ -20,6 +20,7 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -126,7 +127,6 @@ class CUDAWorker:
 
         preload_argv = kwargs.get("preload_argv", [])
         kwargs = {"worker_port": None, "listen_address": None}
-        t = Nanny
 
         if (
             not scheduler
@@ -186,8 +186,29 @@ class CUDAWorker:
         else:
             self.jit_unspill = jit_unspill
 
+        if self.jit_unspill:
+            data = lambda i: (
+                ProxifyHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                },
+            )
+        else:
+            data = lambda i: (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                },
+            )
+
         self.nannies = [
-            t(
+            Nanny(
                 scheduler,
                 scheduler_file=scheduler_file,
                 nthreads=nthreads,
@@ -217,17 +238,7 @@ class CUDAWorker:
                         cuda_device_index=i,
                     )
                 },
-                data=(
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": parse_device_memory_limit(
-                            device_memory_limit, device_index=i
-                        ),
-                        "memory_limit": memory_limit,
-                        "local_directory": local_directory,
-                        "jit_unspill": self.jit_unspill,
-                    },
-                ),
+                data=data(i),
                 **kwargs,
             )
             for i in range(nprocs)

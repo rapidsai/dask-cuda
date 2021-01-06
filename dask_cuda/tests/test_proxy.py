@@ -5,6 +5,9 @@ import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
+import dask
+import dask.array
+from dask.dataframe.core import has_parallel_type
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
@@ -12,9 +15,10 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
+from dask_cuda.proxify_device_objects import FrameProxyObject, proxify_device_objects
 
 
-@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
 def test_proxy_object(serializers):
     """Check "transparency" of the proxy object"""
 
@@ -29,16 +33,16 @@ def test_proxy_object(serializers):
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
     assert "list at " in repr(pxy)
 
-    pxy._obj_pxy_serialize(serializers=["dask", "pickle"])
+    pxy._obj_pxy_serialize(serializers=("dask", "pickle"))
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
-    assert "list (serialized=['dask', 'pickle'])" in repr(pxy)
+    assert "list (serialized=('dask', 'pickle'))" in repr(pxy)
 
     assert org == proxy_object.unproxy(pxy)
     assert org == proxy_object.unproxy(org)
 
 
-@pytest.mark.parametrize("serializers_first", [None, ["dask", "pickle"]])
-@pytest.mark.parametrize("serializers_second", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers_first", [None, ("dask", "pickle")])
+@pytest.mark.parametrize("serializers_second", [None, ("dask", "pickle")])
 def test_double_proxy_object(serializers_first, serializers_second):
     """Check asproxy() when creating a proxy object of a proxy object"""
     org = list(range(10))
@@ -53,7 +57,7 @@ def test_double_proxy_object(serializers_first, serializers_second):
     assert pxy1 is pxy2
 
 
-@pytest.mark.parametrize("serializers", [None, ["dask", "pickle"]])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
 def test_proxy_object_of_numpy(serializers):
     """Check that a proxied numpy array behaves as a regular dataframe"""
 
@@ -207,8 +211,8 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert type(x) is proxy_object.ProxyObject
-            assert x._obj_pxy["serializers"] == ["dask", "pickle"]
+            assert type(x) is FrameProxyObject
+            assert x._obj_pxy["serializers"] == ("dask", "pickle")
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -242,12 +246,12 @@ class _PxyObjTest(proxy_object.ProxyObject):
         return 42
 
     def _obj_pxy_deserialize(self):
-        if self.assert_on_deserializing:
+        if self._obj_pxy["assert_on_deserializing"]:
             assert self._obj_pxy["serializers"] is None
         return super()._obj_pxy_deserialize()
 
 
-@pytest.mark.parametrize("send_serializers", [None, ["dask", "pickle"], ["cuda"]])
+@pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
@@ -256,16 +260,16 @@ def test_communicating_proxy_objects(protocol, send_serializers):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializers_used = list(x._obj_pxy["serializers"])
+        serializers_used = x._obj_pxy["serializers"]
 
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
             if send_serializers is None:
-                assert serializers_used == ["cuda", "dask", "pickle"]
+                assert serializers_used == ("cuda",)
             else:
                 assert serializers_used == send_serializers
         else:
-            assert serializers_used == ["dask", "pickle"]
+            assert serializers_used == ("dask", "pickle")
 
     with dask_cuda.LocalCUDACluster(
         n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
@@ -279,10 +283,10 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             # Notice, in one case we expect deserialization when communicating.
             # Since "tcp" cannot send device memory directly, it will be re-serialized
             # using the default dask serializers that spill the data to main memory.
-            if protocol == "tcp" and send_serializers == ["cuda"]:
-                df.assert_on_deserializing = False
+            if protocol == "tcp" and send_serializers == ("cuda",):
+                df._obj_pxy["assert_on_deserializing"] = False
             else:
-                df.assert_on_deserializing = True
+                df._obj_pxy["assert_on_deserializing"] = True
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
@@ -290,7 +294,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 
 @pytest.mark.parametrize("array_module", ["numpy", "cupy"])
 @pytest.mark.parametrize(
-    "serializers", [None, ["dask", "pickle"], ["cuda", "dask", "pickle"]]
+    "serializers", [None, ("dask", "pickle"), ("cuda", "dask", "pickle")]
 )
 def test_pickle_proxy_object(array_module, serializers):
     """Check pickle of the proxy object"""
@@ -301,3 +305,111 @@ def test_pickle_proxy_object(array_module, serializers):
     restored = pickle.loads(data)
     repr(restored)
     assert all(org == restored)
+
+
+def test_pandas():
+    """Check pandas operations on proxy objects"""
+    pandas = pytest.importorskip("pandas")
+
+    df1 = pandas.DataFrame({"a": range(10)})
+    df2 = pandas.DataFrame({"a": range(10)})
+
+    res = dask.dataframe.methods.concat([df1, df2])
+    got = dask.dataframe.methods.concat([df1, df2])
+    assert_frame_equal(res, got)
+
+    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    assert_frame_equal(res, got)
+
+    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    assert_frame_equal(res, got)
+
+    df1 = pandas.Series(range(10))
+    df2 = pandas.Series(range(10))
+
+    res = dask.dataframe.methods.concat([df1, df2])
+    got = dask.dataframe.methods.concat([df1, df2])
+    assert all(res == got)
+
+    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    assert all(res == got)
+
+    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    assert all(res == got)
+
+
+def test_from_cudf_of_proxy_object():
+    """Check from_cudf() of a proxy object"""
+    cudf = pytest.importorskip("cudf")
+
+    df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
+    assert has_parallel_type(df)
+
+    ddf = dask_cudf.from_cudf(df, npartitions=1)
+    assert has_parallel_type(ddf)
+
+    # Notice, the output is a dask-cudf dataframe and not a proxy object
+    assert type(ddf) is dask_cudf.core.DataFrame
+
+
+def test_proxy_object_parquet(tmp_path):
+    """Check parquet read/write of a proxy object"""
+    cudf = pytest.importorskip("cudf")
+    tmp_path = tmp_path / "proxy_test.parquet"
+
+    df = cudf.DataFrame({"a": range(10)})
+    pxy = proxy_object.asproxy(df)
+    pxy.to_parquet(str(tmp_path), engine="pyarrow")
+    df2 = dask.dataframe.read_parquet(tmp_path)
+    assert_frame_equal(df.to_pandas(), df2.compute())
+
+
+def test_assignments():
+    """Check assignment to a proxied dataframe"""
+    cudf = pytest.importorskip("cudf")
+
+    df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
+    df.index = df["a"].copy(deep=False)
+
+
+def test_concatenate3_of_proxied_cupy_arrays():
+    """Check concatenate of cupy arrays"""
+    from dask.array.core import concatenate3
+
+    cupy = pytest.importorskip("cupy")
+    org = cupy.arange(10)
+    a = proxy_object.asproxy(org.copy())
+    b = proxy_object.asproxy(org.copy())
+    assert all(concatenate3([a, b]) == concatenate3([org.copy(), org.copy()]))
+
+
+def test_tensordot_of_proxied_cupy_arrays():
+    """Check tensordot of cupy arrays"""
+    cupy = pytest.importorskip("cupy")
+
+    org = cupy.arange(9).reshape((3, 3))
+    a = proxy_object.asproxy(org.copy())
+    b = proxy_object.asproxy(org.copy())
+    res1 = dask.array.tensordot(a, b).flatten()
+    res2 = dask.array.tensordot(org.copy(), org.copy()).flatten()
+    assert all(res1 == res2)
+
+
+def test_einsum_of_proxied_cupy_arrays():
+    """Check tensordot of cupy arrays"""
+    cupy = pytest.importorskip("cupy")
+
+    org = cupy.arange(25).reshape(5, 5)
+    res1 = dask.array.einsum("ii", org)
+    a = proxy_object.asproxy(org.copy())
+    res2 = dask.array.einsum("ii", a)
+    assert all(res1.flatten() == res2.flatten())
+
+
+def test_merge_sorted_of_proxied_cudf_dataframes():
+    cudf = pytest.importorskip("cudf")
+
+    dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
+    got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
+    expected = cudf.merge_sorted(dfs)
+    assert_frame_equal(got.to_pandas(), expected.to_pandas())
