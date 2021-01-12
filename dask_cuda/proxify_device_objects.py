@@ -88,11 +88,10 @@ def proxify_device_object_python_dict(seq, proxied_id_to_proxy, found_proxies):
 
 
 # Implement cuDF specific proxification
-try:
+@dispatch.register_lazy("cudf")
+def _register_cudf():
+    import cudf
     import cudf._lib.table
-except ImportError:
-    pass
-else:
 
     # In order to support the cuDF API implemented in Cython, we inherit from
     # `cudf._lib.table.Table`, which is the base class of Index, Series, and
