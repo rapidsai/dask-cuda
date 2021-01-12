@@ -4,7 +4,8 @@ import time
 import uuid
 
 import distributed.comm
-from distributed import default_client, get_worker
+from dask import dataframe as dd
+from distributed import default_client, get_worker, wait
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 from . import utils
@@ -12,7 +13,7 @@ from . import utils
 _default_comms = None
 
 
-def default_comms(client=None):
+def default_comms(client=None) -> "CommsContext":
     """ Return a comms instance if one has been initialized.
         Otherwise, initialize a new comms instance.
     """
@@ -80,7 +81,7 @@ async def _create_endpoints(session_state, peers):
     myrank = session_state["rank"]
     peers = list(enumerate(peers))
 
-    # Create endpoints to workers with a greater rank the my rank
+    # Create endpoints to workers with a greater rank than my rank
     for rank, address in peers[myrank + 1 :]:
         ep = await distributed.comm.connect(address)
         await ep.write(session_state["rank"])
@@ -189,20 +190,21 @@ class CommsContext:
             )
         return self.client.gather(ret)
 
-    def dataframe_operation(self, coroutine, df_list, extra_args=tuple()):
+    def dataframe_operation(self, coroutine, df_list, extra_args=()) -> dd.DataFrame:
         """Submit an operation on a list of Dask dataframe
 
         Parameters
         ----------
         coroutine: coroutine
-            The function to run on each worker
+            The function to run on each worker.
         df_list: list of Dask.dataframe.Dataframe
             Input dataframes
         extra_args: tuple
             Extra function input
+
         Returns
         -------
-        dataframe: Dask.dataframe.Dataframe
+        dataframe: dask.dataframe.DataFrame
             The resulting dataframe
         """
         df_parts_list = []
@@ -233,4 +235,5 @@ class CommsContext:
                 ret.append(
                     self.submit(worker, coroutine, world, dfs_nparts, dfs, *extra_args)
                 )
-        return utils.dataframes_to_dask_dataframe(ret)
+        wait(ret)
+        return dd.from_delayed(ret)
