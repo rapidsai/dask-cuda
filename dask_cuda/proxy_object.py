@@ -16,6 +16,7 @@ import dask.dataframe.utils
 import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
+from distributed.worker import dumps_function, loads_function
 
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
@@ -59,13 +60,17 @@ def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
 
         if subclass is None:
             subclass = ProxyObject
+            subclass_serialized = None
+        else:
+            subclass_serialized = dumps_function(subclass)
+
         ret = subclass(
             obj=obj,
             fixed_attr=fixed_attr,
             type_serialized=pickle.dumps(type(obj)),
             typename=dask.utils.typename(type(obj)),
             is_cuda_object=is_device_object(obj),
-            subclass=pickle.dumps(subclass) if subclass else None,
+            subclass=subclass_serialized,
             serializers=None,
         )
     if serializers is not None:
@@ -335,7 +340,7 @@ class ProxyObject:
         self._obj_pxy_serialize(serializers=("pickle",))
         args = self._obj_pxy_get_init_args()
         if args["subclass"]:
-            subclass = pickle.loads(args["subclass"])
+            subclass = loads_function(args["subclass"])
         else:
             subclass = ProxyObject
 
@@ -671,7 +676,7 @@ def obj_pxy_dask_deserialize(header, frames):
     if meta["subclass"] is None:
         subclass = ProxyObject
     else:
-        subclass = pickle.loads(meta["subclass"])
+        subclass = loads_function(meta["subclass"])
     return subclass(obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],)
 
 
