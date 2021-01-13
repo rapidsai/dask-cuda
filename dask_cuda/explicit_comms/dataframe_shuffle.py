@@ -6,52 +6,11 @@ from typing import Dict, List, Set
 import dask
 import distributed
 from dask.dataframe.core import DataFrame, _concat
-from dask.dataframe.shuffle import partitioning_index, shuffle_group
+from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import delayed
 from distributed.protocol import nested_deserialize, to_serialize
 
 from . import comms, utils
-
-
-def partition_by_hash(df, columns, n_chunks, ignore_index=False):
-    """Splits dataframe into partitions
-
-    The partitions is determined by the hash value of the rows in `columns`.
-
-    Parameters
-    ----------
-    df: DataFrame
-    columns: label or list
-        Column names on which to split the dataframe
-    npartition: int
-        Number of partitions
-    ignore_index : bool, default False
-        Set True to ignore the index of `df`
-
-    Returns
-    -------
-    out: Dict[int, DataFrame]
-        A dictionary mapping integers in {0..npartition} to dataframes.
-    """
-    if df is None:
-        return [None] * n_chunks
-
-    # Hashing `columns` in `df` and assing it to the "_partitions" column
-    df["_partitions"] = partitioning_index(df[columns], n_chunks)
-    # Split `df` based on the hash values in the "_partitions" column
-    try:
-        # For Dask < 2.17 compatibility
-        ret = shuffle_group(df, "_partitions", 0, n_chunks, n_chunks, ignore_index)
-    except TypeError:
-        ret = shuffle_group(
-            df, "_partitions", 0, n_chunks, n_chunks, ignore_index, n_chunks
-        )
-
-    # Let's remove the partition column and return the partitions
-    del df["_partitions"]
-    for df in ret.values():
-        del df["_partitions"]
-    return ret
 
 
 async def _shuffle(
@@ -104,7 +63,9 @@ async def _shuffle(
     bins_list = []  # list of [part_id -> dataframe]
     for df in in_parts:
         bins_list.append(
-            partition_by_hash(df, column_names, npartitions, ignore_index=ignore_index)
+            shuffle_group(
+                df, column_names, 0, npartitions, npartitions, ignore_index, npartitions
+            )
         )
 
     out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
