@@ -1,63 +1,16 @@
 import asyncio
-from typing import List
+from collections import defaultdict
+from operator import getitem
+from typing import Dict, List, Set
 
+import dask
+import distributed
 from dask.dataframe.core import DataFrame, _concat
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
-from distributed.protocol import to_serialize
+from dask.delayed import delayed
+from distributed.protocol import nested_deserialize, to_serialize
 
-from . import comms
-
-
-async def send_df(ep, df):
-    if df is None:
-        return await ep.write("empty")
-    else:
-        return await ep.write([to_serialize(df)])
-
-
-async def recv_df(ep):
-    ret = await ep.read()
-    if ret == "empty":
-        return None
-    else:
-        return ret[0]
-
-
-async def barrier(rank, eps):
-    if rank == 0:
-        await asyncio.gather(*[ep.read() for ep in eps.values()])
-    else:
-        await eps[0].write("dummy")
-
-
-async def send_bins(eps, bins):
-    futures = []
-    for rank, ep in eps.items():
-        futures.append(send_df(ep, bins[rank]))
-    await asyncio.gather(*futures)
-
-
-async def recv_bins(eps, bins):
-    futures = []
-    for ep in eps.values():
-        futures.append(recv_df(ep))
-    bins.extend(await asyncio.gather(*futures))
-
-
-async def exchange_and_concat_bins(rank, eps, bins):
-    ret = [bins[rank]]
-    await asyncio.gather(recv_bins(eps, ret), send_bins(eps, bins))
-    return _concat([df for df in ret if df is not None])
-
-
-def df_concat(df_parts):
-    """Making sure df_parts is a single dataframe or None"""
-    if len(df_parts) == 0:
-        return None
-    elif len(df_parts) == 1:
-        return df_parts[0]
-    else:
-        return _concat(df_parts)
+from . import comms, utils
 
 
 def partition_by_hash(df, columns, n_chunks, ignore_index=False):
@@ -101,12 +54,16 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
     return ret
 
 
-async def shuffle(n_chunks, rank, eps, left_table, column):
-    left_bins = partition_by_hash(left_table, column, n_chunks, ignore_index=True)
-    return await exchange_and_concat_bins(rank, eps, left_bins)
-
-
-async def _shuffle(s, workers, dfs_nparts, dfs_parts, column):
+async def _shuffle(
+    s,
+    workers: Set[int],
+    npartitions: int,
+    in_nparts: Dict[int, int],
+    in_parts: List[DataFrame],
+    rank_to_out_part_ids: Dict[int, List[int]],
+    column_names: List[str],
+    ignore_index: bool,
+) -> List[DataFrame]:
     """
     Parameters
     ----------
@@ -114,35 +71,125 @@ async def _shuffle(s, workers, dfs_nparts, dfs_parts, column):
         Worker session state
     workers: set
         Set of ranks of all the participants
-    dfs_nparts: list of dict
-        List of dict that for each worker rank specifices the
-        number of partitions that worker has. If the worker doesn't
-        have any partitions, it is excluded from the dict.
-        E.g. `dfs_nparts[0][1]` is how many partitions of the "left"
-        dataframe worker 1 has.
-    dfs_parts: list of lists of Dataframes
-        List of inputs, which in this case are two dataframe lists.
-    column : label or list, or array-like
-        The bases of the rearrangement.
+    in_nparts: dict
+        dict that for each worker rank specifices the
+        number of partitions that worker has of the input dataframe.
+        If the worker doesn't have any partitions, it is excluded from the dict.
+    in_parts: list of dataframes
+        List of input dataframes on this worker.
+    rank_to_out_part_ids: dict
+        dict that for each worker rank specifices a list of partition IDs that
+        worker should return.
+    column_names: list of strings
+        List of column names on which we want to split.
+    ignore_index: bool
+        Ignore index during shuffle.  If ``True``, performance may improve,
+        but index values will not be preserved.
+
+    Returns
+    -------
+    partitions: list of DataFrames
+        List of partitions
     """
     assert s["rank"] in workers
-    df_parts = dfs_parts[0]
 
     # Trimming such that all participanting workers get a rank within 0..len(workers)
     trim_map = {}
     for i in range(s["nworkers"]):
         if i in workers:
             trim_map[i] = len(trim_map)
-
-    rank = trim_map[s["rank"]]
+    myrank = trim_map[s["rank"]]
     eps = {trim_map[i]: s["eps"][trim_map[i]] for i in workers if i != s["rank"]}
 
-    df = df_concat(df_parts)
+    bins_list = []  # list of [part_id -> dataframe]
+    for df in in_parts:
+        bins_list.append(
+            partition_by_hash(df, column_names, npartitions, ignore_index=ignore_index)
+        )
 
-    return await shuffle(len(workers), rank, eps, df, column)
+    out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
+    for bins in bins_list:
+        for k, v in bins.items():
+            out_part_id_to_dataframes[k].append(v)
+
+    rank_to_out_parts_list: Dict[
+        int, List[List[DataFrame]]
+    ] = {}  # rank -> list of [list of dataframes]
+    for rank, part_ids in rank_to_out_part_ids.items():
+        rank_to_out_parts_list[rank] = [
+            list(out_part_id_to_dataframes[i]) for i in part_ids
+        ]
+
+    debug_str = (
+        f"[{myrank}] workers: {workers}, in_nparts: {in_nparts}, "
+        f"rank_to_out_part_ids: {rank_to_out_part_ids}\n"
+    )
+    for rank, parts in rank_to_out_parts_list.items():
+        debug_str += f"  {rank}: ["
+        for chunks in parts:
+            debug_str += "["
+            for df in chunks:
+                debug_str += (
+                    f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
+                )
+                if df is chunks[-1]:
+                    debug_str = debug_str[:-2]
+            debug_str += "], "
+            if chunks is parts[-1]:
+                debug_str = debug_str[:-2]
+        debug_str += "]\n"
+    # print(debug_str)
+
+    async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
+        futures = []
+        for rank, ep in eps.items():
+            futures.append(ep.write(to_serialize(rank_to_out_parts_list[rank])))
+        await asyncio.gather(*futures)
+
+    async def recv(eps, out_parts_list: List[List[List[DataFrame]]]):
+        out_parts_list.extend(
+            nested_deserialize(
+                await asyncio.gather(*[ep.read() for ep in eps.values()])
+            )
+        )
+
+    # For each worker, for each output partition, list of dataframes
+    out_parts_list: List[List[List[DataFrame]]] = []
+    await asyncio.gather(recv(eps, out_parts_list), send(eps, rank_to_out_parts_list))
+
+    debug_str = f"[{myrank}] out_parts_list:\n"
+    for parts in out_parts_list:
+        debug_str += " ["
+        for chunks in parts:
+            debug_str += "["
+            for df in chunks:
+                debug_str += (
+                    f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
+                )
+                if df is chunks[-1]:
+                    debug_str = debug_str[:-2]
+            debug_str += "], "
+            if chunks is parts[-1]:
+                debug_str = debug_str[:-2]
+        debug_str += "]\n"
+    # print(debug_str)
+
+    ret = []
+    for i in range(len(rank_to_out_part_ids[myrank])):
+        dfs = []
+        for out_parts in out_parts_list:
+            dfs.extend(out_parts[i])
+        dfs.extend(rank_to_out_parts_list[myrank][i])
+        if len(dfs) > 1:
+            ret.append(dfs[0])
+        else:
+            ret.append(_concat(dfs, ignore_index=ignore_index))
+    return ret
 
 
-def dataframe_shuffle(df: DataFrame, column_names: List[str]) -> DataFrame:
+def dataframe_shuffle(
+    df: DataFrame, column_names: List[str], npartitions=None, ignore_index=False
+) -> DataFrame:
     """Order divisions of DataFrame so that all values within column(s) align
 
     This enacts a task-based shuffle using explicit-comms. It requires a full
@@ -154,15 +201,10 @@ def dataframe_shuffle(df: DataFrame, column_names: List[str]) -> DataFrame:
 
     Requires an activate client.
 
-    Notice
-    ------
-    As a side effect, this operation concatenate all partitions located on
-    the same worker thus npartitions of the returned dataframe equals number
-    of available workers.
-
     Parameters
     ----------
     df: dask.dataframe.DataFrame
+        Dataframe to shuffle
     column_names: list of strings
         List of column names on which we want to split.
 
@@ -172,6 +214,53 @@ def dataframe_shuffle(df: DataFrame, column_names: List[str]) -> DataFrame:
         Shuffled dataframe
     """
 
-    return comms.default_comms().dataframe_operation(
-        _shuffle, df_list=(df,), extra_args=(column_names,),
-    )
+    c = comms.default_comms()
+    in_parts = utils.extract_ddf_partitions(df)  # worker -> [list of futures]
+
+    # Let's create a dict that specifices the number of partitions each worker has
+    in_nparts = {}
+    workers = set()  # All ranks that have a partition of `df`
+    for rank, worker in enumerate(c.worker_addresses):
+        nparts = len(in_parts.get(worker, ()))
+        if nparts > 0:
+            in_nparts[rank] = nparts
+            workers.add(rank)
+
+    # As default we preserve number of partitions
+    if npartitions is None:
+        npartitions = df.npartitions
+
+    # Find the number of output partitions for each worker
+    div = npartitions // len(workers)
+    rank_to_out_part_ids = {}  # rank -> [list of partition id]
+    for i, rank in enumerate(workers):
+        rank_to_out_part_ids[rank] = list(range(div * rank, div * (rank + 1)))
+
+    for rank, i in enumerate(range(div * len(workers), npartitions)):
+        rank_to_out_part_ids[rank].append(i)
+
+    # print(f"in_nparts: {in_nparts}, out_nparts: {rank_to_out_part_ids}")
+
+    result_futures = {}
+    for rank, worker in enumerate(c.worker_addresses):
+        if rank in workers:
+            result_futures[rank] = c.submit(
+                worker,
+                _shuffle,
+                workers,
+                npartitions,
+                in_nparts,
+                in_parts[worker],
+                rank_to_out_part_ids,
+                column_names,
+                ignore_index,
+            )
+    distributed.wait(result_futures.values())
+
+    ret = []
+    for rank, parts in rank_to_out_part_ids.items():
+        for i in range(len(parts)):
+            ret.append(delayed(getitem)(result_futures[rank], i))
+    ret = dask.dataframe.from_delayed(ret).persist()
+    distributed.wait(ret)
+    return ret

@@ -162,21 +162,29 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
         processes=True,
     ) as cluster:
         with Client(cluster):
-            nrows_per_worker = 5
             np.random.seed(42)
-            df = pd.DataFrame({"key": np.random.random(n_workers * nrows_per_worker)})
+            df = pd.DataFrame({"key": np.random.random(100)})
             if backend == "cudf":
                 df = cudf.DataFrame.from_pandas(df)
-            ddf = dd.from_pandas(df, npartitions=n_workers)
 
-            ddf = dataframe_shuffle(ddf, ["key"])
+            for input_nparts in range(1, 5):
+                for output_nparts in range(1, 5):
 
-            # Check that each partition of `ddf` hashes to the same value
-            result = ddf.map_partitions(check_partitions, n_workers).compute()
-            assert all(result.to_list())
+                    ddf = dd.from_pandas(df, npartitions=input_nparts)
+                    ddf = dataframe_shuffle(
+                        ddf, ["key"], npartitions=output_nparts
+                    ).persist()
+
+                    assert ddf.npartitions == output_nparts
+
+                    # Check that each partition of `ddf` hashes to the same value
+                    result = ddf.map_partitions(
+                        check_partitions, output_nparts
+                    ).compute()
+                    assert all(result.to_list())
 
 
-@pytest.mark.parametrize("nworkers", [1, 2, 4])
+@pytest.mark.parametrize("nworkers", [1, 2, 3])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_shuffle(backend, protocol, nworkers):
