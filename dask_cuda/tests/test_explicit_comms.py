@@ -10,7 +10,12 @@ from dask.dataframe.shuffle import partitioning_index
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
-from dask_cuda.explicit_comms import CommsContext, dataframe_merge, dataframe_shuffle
+from dask_cuda.explicit_comms import (
+    CommsContext,
+    comms,
+    dataframe_merge,
+    dataframe_shuffle,
+)
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -161,7 +166,9 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster):
+        with Client(cluster) as client:
+            all_workers = list(client.get_worker_logs().keys())
+            comms.default_comms()
             np.random.seed(42)
             df = pd.DataFrame({"key": np.random.random(100)})
             if backend == "cudf":
@@ -169,8 +176,9 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
 
             for input_nparts in range(1, 5):
                 for output_nparts in range(1, 5):
-
-                    ddf = dd.from_pandas(df, npartitions=input_nparts)
+                    ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
+                        workers=all_workers
+                    )
                     ddf = dataframe_shuffle(
                         ddf, ["key"], npartitions=output_nparts
                     ).persist()
@@ -182,6 +190,11 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                         check_partitions, output_nparts
                     ).compute()
                     assert all(result.to_list())
+
+                    # Check the values of `ddf` (ignoring the row order)
+                    expected = df.sort_values("key")
+                    got = ddf.compute().sort_values("key")
+                    pd.testing.assert_frame_equal(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 3])

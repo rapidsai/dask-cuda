@@ -13,6 +13,24 @@ from distributed.protocol import nested_deserialize, to_serialize
 from . import comms, utils
 
 
+async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
+    futures = []
+    for rank, ep in eps.items():
+        if rank in rank_to_out_parts_list:
+            futures.append(ep.write(to_serialize(rank_to_out_parts_list[rank])))
+    await asyncio.gather(*futures)
+
+
+async def recv(
+    eps, in_nparts: Dict[int, int], out_parts_list: List[List[List[DataFrame]]]
+):
+    futures = []
+    for rank, ep in eps.items():
+        if rank in in_nparts:
+            futures.append(ep.read())
+    out_parts_list.extend(nested_deserialize(await asyncio.gather(*futures)))
+
+
 async def _shuffle(
     s,
     workers: Set[int],
@@ -38,7 +56,8 @@ async def _shuffle(
         List of input dataframes on this worker.
     rank_to_out_part_ids: dict
         dict that for each worker rank specifices a list of partition IDs that
-        worker should return.
+        worker should return. If the worker shouldn't return any partitions,
+        it is excluded from the dict.
     column_names: list of strings
         List of column names on which we want to split.
     ignore_index: bool
@@ -50,15 +69,9 @@ async def _shuffle(
     partitions: list of DataFrames
         List of partitions
     """
+    myrank = s["rank"]
+    eps = s["eps"]
     assert s["rank"] in workers
-
-    # Trimming such that all participanting workers get a rank within 0..len(workers)
-    trim_map = {}
-    for i in range(s["nworkers"]):
-        if i in workers:
-            trim_map[i] = len(trim_map)
-    myrank = trim_map[s["rank"]]
-    eps = {trim_map[i]: s["eps"][trim_map[i]] for i in workers if i != s["rank"]}
 
     bins_list = []  # list of [part_id -> dataframe]
     for df in in_parts:
@@ -73,66 +86,58 @@ async def _shuffle(
         for k, v in bins.items():
             out_part_id_to_dataframes[k].append(v)
 
-    rank_to_out_parts_list: Dict[
-        int, List[List[DataFrame]]
-    ] = {}  # rank -> list of [list of dataframes]
+    # Create mapping: rank -> list of [list of dataframes]
+    rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
     for rank, part_ids in rank_to_out_part_ids.items():
         rank_to_out_parts_list[rank] = [
             list(out_part_id_to_dataframes[i]) for i in part_ids
         ]
 
-    debug_str = (
-        f"[{myrank}] workers: {workers}, in_nparts: {in_nparts}, "
-        f"rank_to_out_part_ids: {rank_to_out_part_ids}\n"
-    )
-    for rank, parts in rank_to_out_parts_list.items():
-        debug_str += f"  {rank}: ["
-        for chunks in parts:
-            debug_str += "["
-            for df in chunks:
-                debug_str += (
-                    f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
-                )
-                if df is chunks[-1]:
-                    debug_str = debug_str[:-2]
-            debug_str += "], "
-            if chunks is parts[-1]:
-                debug_str = debug_str[:-2]
-        debug_str += "]\n"
+    # debug_str = (
+    #     f"[{myrank}] workers: {workers}, in_nparts: {in_nparts}, "
+    #     f"len(in_parts): {len(in_parts)}, "
+    #     f"rank_to_out_part_ids: {rank_to_out_part_ids}, rank_to_out_parts_list:\n"
+    # )
+    # for rank, parts in rank_to_out_parts_list.items():
+    #     debug_str += f"  {rank}: ["
+    #     for chunks in parts:
+    #         debug_str += "["
+    #         for df in chunks:
+    #             debug_str += (
+    #                 f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
+    #             )
+    #             if df is chunks[-1]:
+    #                 debug_str = debug_str[:-2]
+    #         debug_str += "], "
+    #         if chunks is parts[-1]:
+    #             debug_str = debug_str[:-2]
+    #     debug_str += "]\n"
     # print(debug_str)
-
-    async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
-        futures = []
-        for rank, ep in eps.items():
-            futures.append(ep.write(to_serialize(rank_to_out_parts_list[rank])))
-        await asyncio.gather(*futures)
-
-    async def recv(eps, out_parts_list: List[List[List[DataFrame]]]):
-        out_parts_list.extend(
-            nested_deserialize(
-                await asyncio.gather(*[ep.read() for ep in eps.values()])
-            )
-        )
 
     # For each worker, for each output partition, list of dataframes
     out_parts_list: List[List[List[DataFrame]]] = []
-    await asyncio.gather(recv(eps, out_parts_list), send(eps, rank_to_out_parts_list))
+    futures = []
+    if myrank in in_nparts:
+        futures.append(send(eps, rank_to_out_parts_list))
+    if myrank in rank_to_out_parts_list:
+        futures.append(recv(eps, in_nparts, out_parts_list))
+    await asyncio.gather(*futures)
 
-    debug_str = f"[{myrank}] out_parts_list:\n"
-    for parts in out_parts_list:
-        debug_str += " ["
-        for chunks in parts:
-            debug_str += "["
-            for df in chunks:
-                debug_str += (
-                    f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
-                )
-                if df is chunks[-1]:
-                    debug_str = debug_str[:-2]
-            debug_str += "], "
-            if chunks is parts[-1]:
-                debug_str = debug_str[:-2]
-        debug_str += "]\n"
+    # debug_str = f"[{myrank}] out_parts_list:\n"
+    # for parts in out_parts_list:
+    #     debug_str += " ["
+    #     for chunks in parts:
+    #         debug_str += "["
+    #         for df in chunks:
+    #             debug_str += (
+    #                 f"{type(df).__name__}(id: {hex(id(df))}, nrows: {len(df)}), "
+    #             )
+    #             if df is chunks[-1]:
+    #                 debug_str = debug_str[:-2]
+    #         debug_str += "], "
+    #         if chunks is parts[-1]:
+    #             debug_str = debug_str[:-2]
+    #     debug_str += "]\n"
     # print(debug_str)
 
     ret = []
@@ -142,9 +147,9 @@ async def _shuffle(
             dfs.extend(out_parts[i])
         dfs.extend(rank_to_out_parts_list[myrank][i])
         if len(dfs) > 1:
-            ret.append(dfs[0])
-        else:
             ret.append(_concat(dfs, ignore_index=ignore_index))
+        else:
+            ret.append(dfs[0])
     return ret
 
 
@@ -191,16 +196,15 @@ def dataframe_shuffle(
     if npartitions is None:
         npartitions = df.npartitions
 
-    # Find the number of output partitions for each worker
+    # Find the output partitions for each worker
     div = npartitions // len(workers)
     rank_to_out_part_ids = {}  # rank -> [list of partition id]
     for i, rank in enumerate(workers):
-        rank_to_out_part_ids[rank] = list(range(div * rank, div * (rank + 1)))
-
-    for rank, i in enumerate(range(div * len(workers), npartitions)):
+        rank_to_out_part_ids[rank] = list(range(div * i, div * (i + 1)))
+    for rank, i in zip(workers, range(div * len(workers), npartitions)):
         rank_to_out_part_ids[rank].append(i)
 
-    # print(f"in_nparts: {in_nparts}, out_nparts: {rank_to_out_part_ids}")
+    # print(f"in_nparts: {in_nparts}, rank_to_out_part_ids: {rank_to_out_part_ids}")
 
     result_futures = {}
     for rank, worker in enumerate(c.worker_addresses):
