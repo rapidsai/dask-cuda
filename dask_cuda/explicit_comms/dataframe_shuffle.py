@@ -17,7 +17,9 @@ async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
     futures = []
     for rank, ep in eps.items():
         if rank in rank_to_out_parts_list:
-            futures.append(ep.write(to_serialize(rank_to_out_parts_list[rank])))
+            futures.append(
+                ep.write([to_serialize(f) for f in rank_to_out_parts_list[rank]])
+            )
     await asyncio.gather(*futures)
 
 
