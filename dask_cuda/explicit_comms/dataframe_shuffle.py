@@ -1,7 +1,7 @@
 import asyncio
 from collections import defaultdict
 from operator import getitem
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import dask
 import distributed
@@ -156,7 +156,10 @@ async def _shuffle(
 
 
 def dataframe_shuffle(
-    df: DataFrame, column_names: List[str], npartitions=None, ignore_index=False
+    df: DataFrame,
+    column_names: List[str],
+    npartitions: Optional[int] = None,
+    ignore_index: bool = False,
 ) -> DataFrame:
     """Order divisions of DataFrame so that all values within column(s) align
 
@@ -175,6 +178,12 @@ def dataframe_shuffle(
         Dataframe to shuffle
     column_names: list of strings
         List of column names on which we want to split.
+    npartitions: int or None
+        The desired number of output partitions. If None, the number of output
+        partitions equals `df.npartitions`
+    ignore_index: bool
+        Ignore index during shuffle.  If True, performance may improve,
+        but index values will not be preserved.
 
     Returns
     -------
@@ -222,7 +231,7 @@ def dataframe_shuffle(
                 column_names,
                 ignore_index,
             )
-    distributed.wait(result_futures.values())
+    distributed.wait(list(result_futures.values()))
 
     ret = []
     for rank, parts in rank_to_out_part_ids.items():
