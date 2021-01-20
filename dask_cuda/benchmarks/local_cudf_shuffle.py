@@ -140,7 +140,7 @@ def main(args):
     t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
-    print("Merge benchmark")
+    print("Shuffle benchmark")
     print("-------------------------------")
     print(f"backend        | {args.backend}")
     print(f"partition-size | {format_bytes(args.partition_size)}")
