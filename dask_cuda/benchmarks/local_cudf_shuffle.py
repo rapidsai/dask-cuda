@@ -26,25 +26,11 @@ def shuffle_dask(args, df, write_profile):
     if write_profile is not None:
         with performance_report(filename=args.profile):
             t1 = clock()
-            wait(
-                shuffle(
-                    df,
-                    index="data",
-                    shuffle="tasks",
-                    ignore_index=False,
-                ).persist()
-            )
+            wait(shuffle(df, index="data", shuffle="tasks").persist())
             took = clock() - t1
     else:
         t1 = clock()
-        wait(
-            shuffle(
-                df,
-                index="data",
-                shuffle="tasks",
-                ignore_index=False,
-            ).persist()
-        )
+        wait(shuffle(df, index="data", shuffle="tasks").persist())
         took = clock() - t1
     return took
 
