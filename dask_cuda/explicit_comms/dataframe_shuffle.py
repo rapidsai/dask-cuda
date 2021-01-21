@@ -46,14 +46,14 @@ def partition_by_hash(
     This local operation hash each dataframe in `in_parts` by hashing the
     values in the columns specified in `column_names`.
 
-    It returns a dict that for each worker rank specifies the output partitions:
+    It returns a dict that for each worker-rank specifies the output partitions:
     '''
         for each worker:
             for each output partition:
                 list of dataframes that makes of an output partition
     '''
     If `concat_dfs_of_same_output_partition` is True, all the dataframes of an
-    output partition are concatinated.
+    output partition are concatenated.
 
     Parameters
     ----------
