@@ -94,7 +94,6 @@ def _test_dataframe_merge(backend, protocol, n_workers):
 
             if backend == "cudf":
                 assert_eq(got, expected)
-
             else:
                 pd.testing.assert_frame_equal(got, expected)
 
@@ -152,6 +151,9 @@ def check_partitions(df, npartitions):
 def _test_dataframe_shuffle(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
+        from cudf.tests.utils import assert_eq
+    else:
+        from dask.dataframe.utils import assert_eq
 
     dask.config.update(
         dask.config.global_config,
@@ -194,7 +196,10 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                     # Check the values of `ddf` (ignoring the row order)
                     expected = df.sort_values("key")
                     got = ddf.compute().sort_values("key")
-                    pd.testing.assert_frame_equal(got, expected)
+                    if backend == "cudf":
+                        assert_eq(got, expected)
+                    else:
+                        pd.testing.assert_frame_equal(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 3])
