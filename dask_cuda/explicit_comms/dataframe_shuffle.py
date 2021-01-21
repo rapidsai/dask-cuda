@@ -273,3 +273,25 @@ def dataframe_shuffle(
     ret = dask.dataframe.from_delayed(ret).persist()
     distributed.wait(ret)
     return ret
+
+
+def rearrange_by_column_tasks_wrapper(
+    df, column, max_branch=32, npartitions=None, ignore_index=False
+):
+    if dask.config.get("explicit-comms", False):
+        try:
+            import distributed.worker
+
+            distributed.worker.get_client()
+        except (ImportError, ValueError):
+            pass
+        else:
+            if isinstance(column, str):
+                column = [column]
+            return dataframe_shuffle(df, column, npartitions, ignore_index)
+
+    from dask.dataframe.shuffle import rearrange_by_column_task_org
+
+    return rearrange_by_column_task_org(
+        df, column, max_branch, npartitions, ignore_index
+    )

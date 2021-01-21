@@ -213,3 +213,40 @@ def test_dataframe_shuffle(backend, protocol, nworkers):
     p.start()
     p.join()
     assert not p.exitcode
+
+
+def _test_dask_use_explicit_comms():
+    def check_shuffle(in_cluster):
+        """Check if shuffle use explicit-comms by search for keys named "shuffle"
+
+        The explicit-comms implemention of shuffle doesn't produce any keys
+        named "shuffle"
+        """
+        ddf = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
+        with dask.config.set(explicit_comms=False):
+            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            assert any(["shuffle" in str(key) for key in res.dask])
+        with dask.config.set(explicit_comms=True):
+            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            if in_cluster:
+                assert all(["shuffle" not in str(key) for key in res.dask])
+            else:  # If not in cluster, we cannot use explicit comms
+                assert any(["shuffle" in str(key) for key in res.dask])
+
+    with LocalCluster(
+        protocol="tcp",
+        dashboard_address=None,
+        n_workers=2,
+        threads_per_worker=1,
+        processes=True,
+    ) as cluster:
+        with Client(cluster):
+            check_shuffle(True)
+    check_shuffle(False)
+
+
+def test_dask_use_explicit_comms():
+    p = mp.Process(target=_test_dask_use_explicit_comms)
+    p.start()
+    p.join()
+    assert not p.exitcode
