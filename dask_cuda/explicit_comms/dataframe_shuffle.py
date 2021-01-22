@@ -79,26 +79,23 @@ def partition_by_hash(
         Dict that maps each worker rank to its output partitions.
     """
 
-    bins_list = []  # list of [part_id -> dataframe]
-    for df in in_parts:
-        bins_list.append(
-            shuffle_group(
-                df, column_names, 0, npartitions, npartitions, ignore_index, npartitions
-            )
-        )
-
     out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
-    for bins in bins_list:
+    for df in in_parts:
+        # shuffle_group() returns the mapping: part_id -> dataframe
+        bins = shuffle_group(
+            df, column_names, 0, npartitions, npartitions, ignore_index, npartitions
+        )
         for k, v in bins.items():
             out_part_id_to_dataframes[k].append(v)
+        del bins
 
     # Create mapping: rank -> list of [list of dataframes]
     rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
     for rank, part_ids in rank_to_out_part_ids.items():
-        rank_to_out_parts_list[rank] = [
-            list(out_part_id_to_dataframes[i]) for i in part_ids
-        ]
+        rank_to_out_parts_list[rank] = [out_part_id_to_dataframes[i] for i in part_ids]
+    del out_part_id_to_dataframes
 
+    # Concatenate all dataframes of the same output partition.
     if concat_dfs_of_same_output_partition:
         for rank in rank_to_out_part_ids.keys():
             for i in range(len(rank_to_out_parts_list[rank])):
@@ -108,7 +105,6 @@ def partition_by_hash(
                             rank_to_out_parts_list[rank][i], ignore_index=ignore_index
                         )
                     ]
-
     return rank_to_out_parts_list
 
 
