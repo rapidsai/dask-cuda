@@ -4,6 +4,7 @@ from operator import getitem
 from typing import Dict, List, Optional, Set
 
 import dask
+import dask.dataframe
 import distributed
 from dask.dataframe.core import DataFrame, _concat
 from dask.dataframe.shuffle import shuffle_group
@@ -266,7 +267,7 @@ def dataframe_shuffle(
     for rank, parts in rank_to_out_part_ids.items():
         for i in range(len(parts)):
             ret.append(delayed(getitem)(result_futures[rank], i))
-    ret = dask.dataframe.from_delayed(ret).persist()
+    ret = dask.dataframe.from_delayed(ret, verify_meta=False).persist()
     distributed.wait(ret)
     return ret
 

@@ -10,6 +10,7 @@ from dask.dataframe.shuffle import partitioning_index
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
+import dask_cuda
 from dask_cuda.explicit_comms import (
     CommsContext,
     comms,
@@ -247,6 +248,49 @@ def _test_dask_use_explicit_comms():
 
 def test_dask_use_explicit_comms():
     p = mp.Process(target=_test_dask_use_explicit_comms)
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_jit_unspill(protocol):
+    import cudf
+    from cudf.tests.utils import assert_eq
+
+    dask.config.update(
+        dask.config.global_config,
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
+        priority="new",
+    )
+
+    with dask_cuda.LocalCUDACluster(
+        protocol=protocol,
+        dashboard_address=None,
+        n_workers=1,
+        threads_per_worker=1,
+        processes=True,
+        jit_unspill=True,
+        device_memory_limit="1B",
+    ) as cluster:
+        with Client(cluster):
+            np.random.seed(42)
+            df = cudf.DataFrame.from_pandas(
+                pd.DataFrame({"key": np.random.random(100)})
+            )
+            ddf = dd.from_pandas(df.copy(), npartitions=4)
+            ddf = dataframe_shuffle(ddf, ["key"])
+
+            # Check the values of `ddf` (ignoring the row order)
+            expected = df.sort_values("key")
+            got = ddf.compute().sort_values("key")
+            assert_eq(got, expected)
+
+
+@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+def test_jit_unspill(protocol):
+    pytest.importorskip("cudf")
+
+    p = mp.Process(target=_test_jit_unspill, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
