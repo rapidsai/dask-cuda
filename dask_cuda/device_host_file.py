@@ -148,6 +148,10 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
 
     def __setitem__(self, key, value):
+        if key in self.device_buffer:
+            # Make sure we register the removal of an existing key
+            del self[key]
+
         if is_device_object(value):
             self.device_keys.add(key)
             self.device_buffer[key] = value

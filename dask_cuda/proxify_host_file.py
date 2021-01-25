@@ -183,6 +183,10 @@ class ProxifyHostFile(MutableMapping):
 
     def __setitem__(self, key, value):
         with self.lock:
+            if key in self.store:
+                # Make sure we register the removal of an existing key
+                del self[key]
+
             found_proxies = []
             proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
             self.store[key] = proxify_device_objects(
