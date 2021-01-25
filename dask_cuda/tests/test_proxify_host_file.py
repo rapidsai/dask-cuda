@@ -59,6 +59,10 @@ def test_one_item_limit():
     assert len(p2) == 1
     assert p1[0] is p2[0]
 
+    # Overwriting "k3" with a non-cuda object, should be noticed
+    dhf["k3"] = "non-cuda-object"
+    assert dhf.proxies_tally.get_dev_mem_usage() == 0
+
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
 def test_local_cuda_cluster(jit_unspill):
