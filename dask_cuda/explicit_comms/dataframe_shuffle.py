@@ -15,18 +15,19 @@ from . import comms, utils
 
 
 async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
+    """Notice, items send are removed from `rank_to_out_parts_list`"""
     futures = []
     for rank, ep in eps.items():
-        if rank in rank_to_out_parts_list:
-            futures.append(
-                ep.write([to_serialize(f) for f in rank_to_out_parts_list[rank]])
-            )
+        out_parts_list = rank_to_out_parts_list.pop(rank, None)
+        if out_parts_list is not None:
+            futures.append(ep.write([to_serialize(f) for f in out_parts_list]))
     await asyncio.gather(*futures)
 
 
 async def recv(
     eps, in_nparts: Dict[int, int], out_parts_list: List[List[List[DataFrame]]]
 ):
+    """Notice, received items are appended to `out_parts_list`"""
     futures = []
     for rank, ep in eps.items():
         if rank in in_nparts:
@@ -168,10 +169,10 @@ async def local_shuffle(
     # For each worker, for each output partition, list of dataframes
     out_parts_list: List[List[List[DataFrame]]] = []
     futures = []
-    if myrank in in_nparts:
-        futures.append(send(eps, rank_to_out_parts_list))
     if myrank in rank_to_out_parts_list:
         futures.append(recv(eps, in_nparts, out_parts_list))
+    if myrank in in_nparts:
+        futures.append(send(eps, rank_to_out_parts_list))
     await asyncio.gather(*futures)
 
     ret = []
