@@ -4,22 +4,17 @@
 
 Python:
  - 'dask_cuda/**'
- - 'notebooks/**'
 
-libdaskcuda:
+cpp:
  - 'cpp/**'
 
 CMake:
  - '**/CMakeLists.txt'
  - '**/cmake/**'
 
-Java:
- - 'java/**'
+ci:
+  - 'ci/**'
 
-Ops:
- - '.github/**'
- - 'ci/**'
- - 'conda/**'
- - '**/Dockerfile'
- - '**/.dockerignore'
- - 'docker/**'
+conda:
+  - 'conda/**'
+
