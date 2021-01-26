@@ -137,6 +137,11 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
 
+    dhf["x"] = b
+    dhf["x"] = a
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set(["x"])
+
 
 @pytest.mark.parametrize("collection", [dict, list, tuple])
 @pytest.mark.parametrize("length", [0, 1, 3, 6])
