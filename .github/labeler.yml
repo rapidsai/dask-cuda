@@ -2,7 +2,7 @@
 # Adapted from https://github.com/rapidsai/dask-cuda/blob/main/.github/CODEOWNERS
 # Labels culled from https://github.com/rapidsai/dask-cuda/labels
 
-Python:
+python:
  - 'dask_cuda/**'
 
 cpp:
