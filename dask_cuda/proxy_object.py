@@ -107,13 +107,12 @@ def _obj_pxy_cache_wrapper(attr_name):
     def wrapper1(func):
         @functools.wraps(func)
         def wrapper2(self: "ProxyObject"):
-            with self._obj_pxy_lock:
-                try:
-                    return self._obj_pxy_cache[attr_name]
-                except KeyError:
-                    ret = func(self)
-                    self._obj_pxy_cache[attr_name] = ret
-                    return ret
+            try:
+                return self._obj_pxy_cache[attr_name]
+            except KeyError:
+                ret = func(self)
+                self._obj_pxy_cache[attr_name] = ret
+                return ret
 
         return wrapper2
 
@@ -299,7 +298,14 @@ class ProxyObject:
                 # to evict because of the increased device memory usage.
                 if "cuda" not in self._obj_pxy["serializers"]:
                     if hostfile is not None:
-                        hostfile.maybe_evict(self.__sizeof__())
+                        # In order to avoid a potential deadlock, we skip the
+                        # `maybe_evict()` call if another thread is also accessing
+                        # the hostfile.
+                        if hostfile.lock.acquire(blocking=False):
+                            try:
+                                hostfile.maybe_evict(self.__sizeof__())
+                            finally:
+                                hostfile.lock.release()
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)

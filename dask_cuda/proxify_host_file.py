@@ -209,7 +209,7 @@ class ProxifyHostFile(MutableMapping):
             del self.store[key]
             self.proxies_tally.del_key(key)
 
-    def evict(self, proxy):
+    def evict(self, proxy: ProxyObject):
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
 
     def maybe_evict(self, extra_dev_mem=0):
@@ -219,13 +219,14 @@ class ProxifyHostFile(MutableMapping):
         ):
             return
 
-        total_dev_mem_usage, dev_buf_access = self.get_access_info()
-        total_dev_mem_usage += extra_dev_mem
-        if total_dev_mem_usage > self.device_memory_limit:
-            dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
-            for _, size, proxies in dev_buf_access:
-                for p in proxies:
-                    self.evict(p)
-                total_dev_mem_usage -= size
-                if total_dev_mem_usage <= self.device_memory_limit:
-                    break
+        with self.lock:
+            total_dev_mem_usage, dev_buf_access = self.get_access_info()
+            total_dev_mem_usage += extra_dev_mem
+            if total_dev_mem_usage > self.device_memory_limit:
+                dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
+                for _, size, proxies in dev_buf_access:
+                    for p in proxies:
+                        self.evict(p)
+                    total_dev_mem_usage -= size
+                    if total_dev_mem_usage <= self.device_memory_limit:
+                        break
