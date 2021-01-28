@@ -5,13 +5,6 @@
 python:
  - 'dask_cuda/**'
 
-cpp:
- - 'cpp/**'
-
-CMake:
- - '**/CMakeLists.txt'
- - '**/cmake/**'
-
 ci:
   - 'ci/**'
 
