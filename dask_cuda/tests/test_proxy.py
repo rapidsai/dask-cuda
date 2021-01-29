@@ -58,10 +58,11 @@ def test_double_proxy_object(serializers_first, serializers_second):
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
-def test_proxy_object_of_numpy(serializers):
-    """Check that a proxied numpy array behaves as a regular dataframe"""
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_proxy_object_of_array(serializers, backend):
+    """Check that a proxied array behaves as a regular (numpy or cupy) array"""
 
-    np = pytest.importorskip("numpy")
+    np = pytest.importorskip(backend)
 
     # Make sure that equality works, which we use to test the other operators
     org = np.arange(10) + 1
@@ -200,6 +201,42 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
     header, frames = serialize(pxy, serializers=dask_serializers, on_error="raise")
     pxy = deserialize(header, frames)
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
+
+
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_fixed_attributes(backend):
+    """Test fixed attributes access (`x.__len__` and `x.name`).
+
+    Notice, accessing fixed attributes shouldn't de-serialize the proxied object
+    """
+    np = pytest.importorskip(backend)
+
+    # Access `len()`` of an array
+    pxy = proxy_object.asproxy(np.arange(10), serializers=("dask",))
+    assert len(pxy) == 10
+    # Accessing the length shouldn't de-serialize the proxied object
+    assert pxy._obj_pxy_is_serialized()
+
+    # Access `len()` of a scalar
+    pxy = proxy_object.asproxy(np.array(10), serializers=("dask",))
+    with pytest.raises(TypeError) as excinfo:
+        len(pxy)
+        assert "len() of unsized object" in str(excinfo.value)
+        assert pxy._obj_pxy_is_serialized()
+
+    # Access `name` of an array
+    pxy = proxy_object.asproxy(np.arange(10), serializers=("dask",))
+    with pytest.raises(AttributeError) as excinfo:
+        pxy.name
+        assert "has no attribute 'name'" in str(excinfo.value)
+        assert pxy._obj_pxy_is_serialized()
+
+    # Access `name` of a datatype
+    pxy = proxy_object.asproxy(
+        np.arange(10, dtype="int64").dtype, serializers=("pickle",)
+    )
+    assert pxy.name == "int64"
+    assert pxy._obj_pxy_is_serialized()
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
