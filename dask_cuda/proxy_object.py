@@ -55,7 +55,7 @@ def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
                 if callable(val):
                     val = val()
                 fixed_attr[attr] = val
-            except AttributeError:
+            except Exception:
                 pass
 
         if subclass is None:
