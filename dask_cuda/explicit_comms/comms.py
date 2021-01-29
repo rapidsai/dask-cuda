@@ -5,7 +5,7 @@ import uuid
 
 import distributed.comm
 from dask import dataframe as dd
-from distributed import default_client, get_worker, wait
+from distributed import Client, default_client, get_worker, wait
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 from . import utils
@@ -103,7 +103,7 @@ class CommsContext:
     """Communication handler for explicit communication"""
 
     def __init__(self, client=None):
-        self.client = client if client is not None else default_client()
+        self.client: Client = client if client is not None else default_client()
         self.sessionId = uuid.uuid4().bytes
 
         # Get address of all workers (not Nanny addresses)
