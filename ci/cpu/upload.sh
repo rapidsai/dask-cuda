@@ -36,9 +36,7 @@ export DASKCUDA_FILE=`conda build conda/recipes/dask-cuda --python=$PYTHON --out
 
 gpuci_logger "Starting conda uploads"
 
-if [ "$UPLOAD_DASKCUDA" == "1" ]; then
-  test -e ${DASKCUDA_FILE}
-  echo "Upload Dask-cuda"
-  echo ${DASKCUDA_FILE}
-  gpuci_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASKCUDA_FILE}
-fi
+test -e ${DASKCUDA_FILE}
+echo "Upload Dask-cuda"
+echo ${DASKCUDA_FILE}
+gpuci_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASKCUDA_FILE}
