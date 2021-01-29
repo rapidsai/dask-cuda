@@ -220,7 +220,7 @@ def dataframe_shuffle(
     The implementation consist of three steps:
       (a) Extend the dask graph of `df` with a call to `shuffle_group()` for each
           dataframe partition and submit the graph.
-      (b) Submit a task for on each worker that shuffle (all-to-all communicate)
+      (b) Submit a task on each worker that shuffle (all-to-all communicate)
           the groups from (a) and return a list of dataframe-partitions.
       (c) Submit a dask graph that extract (using `getitem()`) individual
           dataframe-partitions from (b).
@@ -310,10 +310,16 @@ def dataframe_shuffle(
 def rearrange_by_column_tasks_wrapper(
     df, column, max_branch=32, npartitions=None, ignore_index=False
 ):
+    """Function wrapper that dispatch the shuffle to explicit-comms.
+
+    Notice, this is monkey patched into Dask at dask_cuda import
+    """
+
     if dask.config.get("explicit-comms", False):
         try:
             import distributed.worker
 
+            # Make sure we have an activate client.
             distributed.worker.get_client()
         except (ImportError, ValueError):
             pass
