@@ -58,10 +58,11 @@ def test_double_proxy_object(serializers_first, serializers_second):
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
-def test_proxy_object_of_numpy(serializers):
-    """Check that a proxied numpy array behaves as a regular dataframe"""
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_proxy_object_of_array(serializers, backend):
+    """Check that a proxied array behaves as a regular (numpy or cupy) array"""
 
-    np = pytest.importorskip("numpy")
+    np = pytest.importorskip(backend)
 
     # Make sure that equality works, which we use to test the other operators
     org = np.arange(10) + 1
