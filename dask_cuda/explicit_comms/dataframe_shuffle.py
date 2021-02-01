@@ -19,7 +19,7 @@ from . import comms
 
 
 async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
-    """Notice, items send are removed from `rank_to_out_parts_list`"""
+    """Notice, items sent are removed from `rank_to_out_parts_list`"""
     futures = []
     for rank, ep in eps.items():
         out_parts_list = rank_to_out_parts_list.pop(rank, None)

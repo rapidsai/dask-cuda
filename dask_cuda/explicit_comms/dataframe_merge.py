@@ -90,7 +90,7 @@ def partition_by_hash(df, columns, n_chunks, ignore_index=False):
     if df is None:
         return [None] * n_chunks
 
-    # Hashing `columns` in `df` and assing it to the "_partitions" column
+    # Hashing `columns` in `df` and assign it to the "_partitions" column
     df["_partitions"] = partitioning_index(df[columns], n_chunks)
     # Split `df` based on the hash values in the "_partitions" column
     try:
