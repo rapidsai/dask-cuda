@@ -1,4 +1,6 @@
 import asyncio
+import functools
+import inspect
 from collections import defaultdict
 from operator import getitem
 from typing import Dict, List, Optional, Set
@@ -307,29 +309,35 @@ def dataframe_shuffle(
     return dask.dataframe.from_delayed(ret, verify_meta=False).persist()
 
 
-def rearrange_by_column_tasks_wrapper(
-    df, column, max_branch=32, npartitions=None, ignore_index=False
-):
-    """Function wrapper that dispatch the shuffle to explicit-comms.
+def get_rearrange_by_column_tasks_wrapper(func):
+    """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
     Notice, this is monkey patched into Dask at dask_cuda import
     """
 
-    if dask.config.get("explicit-comms", False):
-        try:
-            import distributed.worker
+    func_sig = inspect.signature(func)
 
-            # Make sure we have an activate client.
-            distributed.worker.get_client()
-        except (ImportError, ValueError):
-            pass
-        else:
-            if isinstance(column, str):
-                column = [column]
-            return dataframe_shuffle(df, column, npartitions, ignore_index)
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if dask.config.get("explicit-comms", False):
+            try:
+                import distributed.worker
 
-    from dask.dataframe.shuffle import rearrange_by_column_task_org
+                # Make sure we have an activate client.
+                distributed.worker.get_client()
+            except (ImportError, ValueError):
+                pass
+            else:
+                # Convert `*args, **kwargs` to a dict of `keyword -> values`
+                kw = func_sig.bind(*args, **kwargs)
+                kw.apply_defaults()
+                kw = kw.arguments
+                column = kw["column"]
+                if isinstance(column, str):
+                    column = [column]
+                return dataframe_shuffle(
+                    kw["df"], column, kw["npartitions"], kw["ignore_index"]
+                )
+        return func(*args, **kwargs)
 
-    return rearrange_by_column_task_org(
-        df, column, max_branch, npartitions, ignore_index
-    )
+    return wrapper
