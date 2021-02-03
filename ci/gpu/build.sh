@@ -119,7 +119,7 @@ else
     fi
 fi
 
-if [ -n "\${CODECOV_TOKEN}" ]; then
+if [ -n "${CODECOV_TOKEN}" ]; then
     codecov -t $CODECOV_TOKEN
 fi
 
