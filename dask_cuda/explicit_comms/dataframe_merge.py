@@ -22,13 +22,6 @@ async def recv_df(ep):
         return ret[0]
 
 
-async def barrier(rank, eps):
-    if rank == 0:
-        await asyncio.gather(*[ep.read() for ep in eps.values()])
-    else:
-        await eps[0].write("dummy")
-
-
 async def send_bins(eps, bins):
     futures = []
     for rank, ep in eps.items():
