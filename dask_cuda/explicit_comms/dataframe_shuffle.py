@@ -253,6 +253,10 @@ def dataframe_shuffle(
             npartitions,
         )
         output_keys.append(output_key)
+
+    # Compute `df_groups`, which is a list of futures, one future per partition in `df`.
+    # Each future points to a dict of length `df.npartitions` that maps each
+    # partition-id to a DataFrame.
     df_groups = compute_as_if_collection(type(df), dsk, output_keys, sync=False)
     wait(df_groups)
     for f in df_groups:  # Check for errors
