@@ -266,7 +266,7 @@ def dataframe_shuffle(
     # Step (b): find out which workers has what part of `df_groups`,
     #           find the number of output each worker should have,
     #           and submit `local_shuffle()` on each worker.
-    key_to_part = dict([(str(part.key), part) for part in df_groups])
+    key_to_part = {str(part.key): part for part in df_groups}
     in_parts = defaultdict(list)  # Map worker -> [list of futures]
     for key, workers in c.client.who_has(df_groups).items():
         # Note, if multiple workers have the part, we pick the first worker
