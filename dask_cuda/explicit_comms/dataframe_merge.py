@@ -9,14 +9,14 @@ from . import comms
 
 async def send_df(ep, df):
     if df is None:
-        return await ep.write("empty")
+        return await ep.write(None)
     else:
         return await ep.write([to_serialize(df)])
 
 
 async def recv_df(ep):
     ret = await ep.read()
-    if ret == "empty":
+    if ret is None:
         return None
     else:
         return ret[0]
