@@ -1,5 +1,6 @@
 import operator
 import pickle
+from types import SimpleNamespace
 
 import pandas
 import pytest
@@ -204,8 +205,8 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
-def test_fixed_attributes(backend):
-    """Test fixed attributes access (`x.__len__` and `x.name`).
+def test_fixed_attribute_length(backend):
+    """Test fixed attribute `x.__len__` access
 
     Notice, accessing fixed attributes shouldn't de-serialize the proxied object
     """
@@ -236,6 +237,27 @@ def test_fixed_attributes(backend):
         np.arange(10, dtype="int64").dtype, serializers=("pickle",)
     )
     assert pxy.name == "int64"
+    assert pxy._obj_pxy_is_serialized()
+
+
+def test_fixed_attribute_name():
+    """Test fixed attribute `x.name` access
+
+    Notice, accessing fixed attributes shouldn't de-serialize the proxied object
+    """
+    obj_without_name = SimpleNamespace()
+    obj_with_name = SimpleNamespace(name="I have a name")
+
+    # Access `name` of an array
+    pxy = proxy_object.asproxy(obj_without_name, serializers=("pickle",))
+    with pytest.raises(AttributeError) as excinfo:
+        pxy.name
+        assert "has no attribute 'name'" in str(excinfo.value)
+        assert pxy._obj_pxy_is_serialized()
+
+    # Access `name` of a datatype
+    pxy = proxy_object.asproxy(obj_with_name, serializers=("pickle",))
+    assert pxy.name == "I have a name"
     assert pxy._obj_pxy_is_serialized()
 
 
