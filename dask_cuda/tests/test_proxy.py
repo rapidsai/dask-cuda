@@ -225,20 +225,6 @@ def test_fixed_attribute_length(backend):
         assert "len() of unsized object" in str(excinfo.value)
         assert pxy._obj_pxy_is_serialized()
 
-    # Access `name` of an array
-    pxy = proxy_object.asproxy(np.arange(10), serializers=("dask",))
-    with pytest.raises(AttributeError) as excinfo:
-        pxy.name
-        assert "has no attribute 'name'" in str(excinfo.value)
-        assert pxy._obj_pxy_is_serialized()
-
-    # Access `name` of a datatype
-    pxy = proxy_object.asproxy(
-        np.arange(10, dtype="int64").dtype, serializers=("pickle",)
-    )
-    assert pxy.name == "int64"
-    assert pxy._obj_pxy_is_serialized()
-
 
 def test_fixed_attribute_name():
     """Test fixed attribute `x.name` access
