@@ -238,6 +238,7 @@ def dataframe_shuffle(
         "explicit-comms-shuffle-group-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
     )
+    df = df.persist()  # Making sure optimizations are apply on the existing graph
     dsk = dict(df.__dask_graph__())
     output_keys = []
     for input_key in df.__dask_keys__():
