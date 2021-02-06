@@ -124,3 +124,8 @@ else
     python dask_cuda/benchmarks/local_cudf_shuffle.py --partition-size="1 KiB" -d 0  --runs 1 --backend dask
     python dask_cuda/benchmarks/local_cudf_shuffle.py --partition-size="1 KiB" -d 0  --runs 1 --backend explicit-comms
 fi
+
+if [ -n "${CODECOV_TOKEN}" ]; then
+    codecov -t $CODECOV_TOKEN
+fi
+
