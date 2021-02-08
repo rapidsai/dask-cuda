@@ -35,7 +35,7 @@ def shuffle_dask(args, df, write_profile):
     return took
 
 
-def merge_explicit_comms(args, df):
+def shuffle_explicit_comms(args, df):
     t1 = clock()
     wait(explicit_comms_shuffle(df, column_names="data").persist())
     took = clock() - t1
@@ -62,7 +62,7 @@ def run(client, args, n_workers, write_profile=None):
     if args.backend == "dask":
         took = shuffle_dask(args, df, write_profile)
     else:
-        took = merge_explicit_comms(args, df)
+        took = shuffle_explicit_comms(args, df)
 
     return (data_processed, took)
 
