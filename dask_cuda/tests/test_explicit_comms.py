@@ -11,12 +11,9 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import dask_cuda
-from dask_cuda.explicit_comms import (
-    CommsContext,
-    comms,
-    dataframe_merge,
-    dataframe_shuffle,
-)
+from dask_cuda.explicit_comms import comms
+from dask_cuda.explicit_comms.dataframe.merge import merge as explicit_comms_merge
+from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -38,8 +35,8 @@ def _test_local_cluster(protocol):
         processes=True,
     ) as cluster:
         with Client(cluster) as client:
-            comms = CommsContext(client)
-            assert sum(comms.run(my_rank)) == sum(range(4))
+            c = comms.CommsContext(client)
+            assert sum(c.run(my_rank)) == sum(range(4))
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
@@ -90,7 +87,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
             ddf2 = dd.from_pandas(
                 df2, npartitions=n_workers - 1 if n_workers > 1 else 1
             )
-            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
+            ddf3 = explicit_comms_merge(ddf1, ddf2, on="key").set_index("key")
             got = ddf3.compute()
 
             if backend == "cudf":
@@ -127,7 +124,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             expected = df1.merge(df2).set_index("key")
             ddf1 = dd.from_pandas(df1, npartitions=npartitions)
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
-            ddf3 = dataframe_merge(ddf1, ddf2, on=["key"]).set_index("key")
+            ddf3 = explicit_comms_merge(ddf1, ddf2, on=["key"]).set_index("key")
             got = ddf3.compute()
             pd.testing.assert_frame_equal(got, expected)
 
@@ -182,7 +179,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                     ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
                         workers=all_workers
                     )
-                    ddf = dataframe_shuffle(
+                    ddf = explicit_comms_shuffle(
                         ddf, ["key"], npartitions=output_nparts
                     ).persist()
 
@@ -278,7 +275,7 @@ def _test_jit_unspill(protocol):
                 pd.DataFrame({"key": np.random.random(100)})
             )
             ddf = dd.from_pandas(df.copy(), npartitions=4)
-            ddf = dataframe_shuffle(ddf, ["key"])
+            ddf = explicit_comms_shuffle(ddf, ["key"])
 
             # Check the values of `ddf` (ignoring the row order)
             expected = df.sort_values("key")

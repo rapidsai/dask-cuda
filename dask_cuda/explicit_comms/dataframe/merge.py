@@ -9,7 +9,7 @@ from dask.dataframe.shuffle import partitioning_index, shuffle_group
 from distributed.client import get_client, wait
 from distributed.protocol import to_serialize
 
-from . import comms
+from .. import comms
 
 
 async def send_df(ep, df):
@@ -276,7 +276,7 @@ def submit_dataframe_operation(comms, coroutine, df_list, extra_args=()):
     return dd.from_delayed(ret)
 
 
-def dataframe_merge(left, right, on=None, left_on=None, right_on=None):
+def merge(left, right, on=None, left_on=None, right_on=None):
     """Merge two DataFrames using explicit-comms.
 
     This is an explicit-comms version of Dask's Dataframe.merge() that

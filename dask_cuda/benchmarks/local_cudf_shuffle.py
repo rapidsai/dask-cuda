@@ -37,7 +37,7 @@ def shuffle_dask(args, df, write_profile):
 
 def merge_explicit_comms(args, df):
     t1 = clock()
-    wait(explicit_comms.dataframe_shuffle(df, column_names="data").persist())
+    wait(explicit_comms.dataframe.shuffle(df, column_names="data").persist())
     took = clock() - t1
     return took
 
