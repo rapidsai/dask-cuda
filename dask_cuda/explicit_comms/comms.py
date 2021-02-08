@@ -4,11 +4,8 @@ import time
 import uuid
 
 import distributed.comm
-from dask import dataframe as dd
-from distributed import Client, default_client, get_worker, wait
+from distributed import Client, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
-
-from . import utils
 
 _default_comms = None
 
@@ -189,51 +186,3 @@ class CommsContext:
                 )
             )
         return self.client.gather(ret)
-
-    def dataframe_operation(self, coroutine, df_list, extra_args=()) -> dd.DataFrame:
-        """Submit an operation on a list of Dask dataframe
-
-        Parameters
-        ----------
-        coroutine: coroutine
-            The function to run on each worker.
-        df_list: list of Dask.dataframe.Dataframe
-            Input dataframes
-        extra_args: tuple
-            Extra function input
-
-        Returns
-        -------
-        dataframe: dask.dataframe.DataFrame
-            The resulting dataframe
-        """
-        df_parts_list = []
-        for df in df_list:
-            df_parts_list.append(utils.extract_ddf_partitions(df))
-
-        # Let's create a dict for each dataframe that specifices the
-        # number of partitions each worker has
-        world = set()
-        dfs_nparts = []
-        for df_parts in df_parts_list:
-            nparts = {}
-            for rank, worker in enumerate(self.worker_addresses):
-                npart = len(df_parts.get(worker, []))
-                if npart > 0:
-                    nparts[rank] = npart
-                    world.add(rank)
-            dfs_nparts.append(nparts)
-
-        # Submit `coroutine` on each worker given the df_parts that
-        # belong the specific worker as input
-        ret = []
-        for rank, worker in enumerate(self.worker_addresses):
-            if rank in world:
-                dfs = []
-                for df_parts in df_parts_list:
-                    dfs.append(df_parts.get(worker, []))
-                ret.append(
-                    self.submit(worker, coroutine, world, dfs_nparts, dfs, *extra_args)
-                )
-        wait(ret)
-        return dd.from_delayed(ret)
