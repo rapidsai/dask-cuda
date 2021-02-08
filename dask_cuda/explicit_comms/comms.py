@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import time
 import uuid
+from typing import List, Optional
 
 import distributed.comm
 from distributed import Client, default_client, get_worker
@@ -10,9 +11,21 @@ from distributed.comm.addressing import parse_address, parse_host_port, unparse_
 _default_comms = None
 
 
-def default_comms(client=None) -> "CommsContext":
-    """ Return a comms instance if one has been initialized.
-        Otherwise, initialize a new comms instance.
+def default_comms(client: Optional[Client] = None) -> "CommsContext":
+    """Return the default comms object
+
+    Creates a new default comms object if no one exist.
+
+    Parameters
+    ----------
+    client: Client, optional
+        If no default comm object exist, create the new comm on `client`
+        are returned.
+
+    Returns
+    -------
+    comms: CommsContext
+        The default comms object
     """
     global _default_comms
     if _default_comms is None:
@@ -20,19 +33,31 @@ def default_comms(client=None) -> "CommsContext":
     return _default_comms
 
 
-def worker_state(sessionId=None):
+def worker_state(sessionId: Optional[int] = None) -> dict:
+    """Retrieve the state(s) of the current worker
+
+    Parameters
+    ----------
+    sessionId: int, optional
+        Worker session state ID. If None, all states of the worker
+        are returned.
+
+    Returns
+    -------
+    state: dict
+        Either a single state dict or a dict of state dict
+    """
     worker = get_worker()
     if not hasattr(worker, "_explicit_comm_state"):
         worker._explicit_comm_state = {}
-    if sessionId is not None and sessionId not in worker._explicit_comm_state:
-        worker._explicit_comm_state[sessionId] = {
-            "ts": time.time(),
-            "eps": {},
-            "loop": worker.loop.asyncio_loop,
-            "worker": worker,
-        }
-
     if sessionId is not None:
+        if sessionId not in worker._explicit_comm_state:
+            worker._explicit_comm_state[sessionId] = {
+                "ts": time.time(),
+                "eps": {},
+                "loop": worker.loop.asyncio_loop,
+                "worker": worker,
+            }
         return worker._explicit_comm_state[sessionId]
     return worker._explicit_comm_state
 
@@ -97,11 +122,21 @@ async def _stop_ucp_listeners(session_state):
 
 
 class CommsContext:
-    """Communication handler for explicit communication"""
+    """Communication handler for explicit communication
 
-    def __init__(self, client=None):
-        self.client: Client = client if client is not None else default_client()
-        self.sessionId = uuid.uuid4().bytes
+        Parameters
+        ----------
+        client: Client, optional
+            Specify client to use for communication. If None, use the default client.
+    """
+
+    client: Client
+    sessionId: int
+    worker_addresses: List[str]
+
+    def __init__(self, client: Optional[Client] = None):
+        self.client = client if client is not None else default_client()
+        self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
         self.worker_addresses = list(self.client.run(lambda: 42).keys())
@@ -129,6 +164,9 @@ class CommsContext:
     def submit(self, worker, coroutine, *args, wait=False):
         """Run a coroutine on a single worker
 
+        The coroutine is given the worker's state dict as the first argument
+        and *args as the following arguments.
+
         Parameters
         ----------
         worker: str
@@ -139,6 +177,7 @@ class CommsContext:
             Arguments for `coroutine`
         wait: boolean, optional
             If True, waits for the coroutine to finished before returning.
+
         Returns
         -------
         ret: object or Future
@@ -156,7 +195,10 @@ class CommsContext:
         return ret.result() if wait else ret
 
     def run(self, coroutine, *args, workers=None):
-        """Run a coroutine on workers
+        """Run a coroutine on multiple workers
+
+        The coroutine is given the worker's state dict as the first argument
+        and *args as the following arguments.
 
         Parameters
         ----------
@@ -166,6 +208,7 @@ class CommsContext:
             Arguments for `coroutine`
         workers: list, optional
             List of workers. Default is all workers
+
         Returns
         -------
         ret: list
