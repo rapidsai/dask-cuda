@@ -19,7 +19,7 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     Parameters
     ----------
     client: Client, optional
-        If no default comm object exist, create the new comm on `client`
+        If no default comm object exists, create the new comm on `client`
         are returned.
 
     Returns
