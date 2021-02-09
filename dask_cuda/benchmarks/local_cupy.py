@@ -75,7 +75,7 @@ async def _run(client, args):
         res = client.compute(func(*func_args))
         await client.gather(res)
         if args.type == "gpu":
-            await client.run(xp.cuda.Device().synchronize)
+            await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
         took = clock() - t1
 
     return {
