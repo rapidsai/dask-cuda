@@ -10,6 +10,7 @@ from dask.dataframe.shuffle import shuffle
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
+import dask_cuda.explicit_comms.dataframe.shuffle
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -17,7 +18,6 @@ from dask_cuda.benchmarks.utils import (
     plot_benchmark,
     setup_memory_pool,
 )
-from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.utils import all_to_all
 
 
@@ -37,7 +37,11 @@ def shuffle_dask(args, df, write_profile):
 
 def shuffle_explicit_comms(args, df):
     t1 = clock()
-    wait(explicit_comms_shuffle(df, column_names="data").persist())
+    wait(
+        dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
+            df, column_names="data"
+        ).persist()
+    )
     took = clock() - t1
     return took
 

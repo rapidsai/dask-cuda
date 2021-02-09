@@ -10,6 +10,7 @@ from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
+import dask_cuda.explicit_comms.dataframe.merge
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -17,7 +18,6 @@ from dask_cuda.benchmarks.utils import (
     plot_benchmark,
     setup_memory_pool,
 )
-from dask_cuda.explicit_comms.dataframe.merge import merge as explicit_comms_merge
 from dask_cuda.utils import all_to_all
 
 # Benchmarking cuDF merge operation based on
@@ -155,7 +155,7 @@ def merge(args, ddf1, ddf2, write_profile):
 
 def merge_explicit_comms(args, ddf1, ddf2):
     t1 = clock()
-    wait(explicit_comms_merge(ddf1, ddf2, on="key").persist())
+    wait(dask_cuda.explicit_comms.dataframe.merge.merge(ddf1, ddf2, on="key").persist())
     took = clock() - t1
     return took
 
