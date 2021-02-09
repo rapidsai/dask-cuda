@@ -1,6 +1,6 @@
 import dask
 import dask.dataframe.shuffle
-from .explicit_comms.dataframe_shuffle import get_rearrange_by_column_tasks_wrapper
+from .explicit_comms.dataframe.shuffle import get_rearrange_by_column_tasks_wrapper
 from ._version import get_versions
 from .cuda_worker import CUDAWorker
 from .local_cuda_cluster import LocalCUDACluster

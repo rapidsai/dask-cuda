@@ -10,7 +10,7 @@ from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
-from dask_cuda import explicit_comms
+import dask_cuda.explicit_comms.dataframe.merge
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -155,7 +155,7 @@ def merge(args, ddf1, ddf2, write_profile):
 
 def merge_explicit_comms(args, ddf1, ddf2):
     t1 = clock()
-    wait(explicit_comms.dataframe_merge(ddf1, ddf2, on="key").persist())
+    wait(dask_cuda.explicit_comms.dataframe.merge.merge(ddf1, ddf2, on="key").persist())
     took = clock() - t1
     return took
 

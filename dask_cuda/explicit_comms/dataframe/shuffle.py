@@ -17,7 +17,7 @@ from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 
-from . import comms
+from .. import comms
 
 
 async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
@@ -182,7 +182,7 @@ async def local_shuffle(
     return ret
 
 
-def dataframe_shuffle(
+def shuffle(
     df: DataFrame,
     column_names: List[str],
     npartitions: Optional[int] = None,
@@ -340,9 +340,7 @@ def get_rearrange_by_column_tasks_wrapper(func):
                 column = kw["column"]
                 if isinstance(column, str):
                     column = [column]
-                return dataframe_shuffle(
-                    kw["df"], column, kw["npartitions"], kw["ignore_index"]
-                )
+                return shuffle(kw["df"], column, kw["npartitions"], kw["ignore_index"])
         return func(*args, **kwargs)
 
     return wrapper

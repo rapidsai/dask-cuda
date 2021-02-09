@@ -1,10 +1,15 @@
 import asyncio
+from collections import defaultdict
 
+from toolz import first
+
+from dask import dataframe as dd
 from dask.dataframe.core import _concat
 from dask.dataframe.shuffle import partitioning_index, shuffle_group
+from distributed.client import get_client, wait
 from distributed.protocol import to_serialize
 
-from . import comms
+from .. import comms
 
 
 async def send_df(ep, df):
@@ -130,7 +135,7 @@ async def single_partition_join(
     return left_table.merge(right_table, left_on=left_on, right_on=right_on)
 
 
-async def _dataframe_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on):
+async def local_df_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on):
     """Worker job that merge local DataFrames
 
     Parameters
@@ -205,7 +210,73 @@ async def _dataframe_merge(s, workers, dfs_nparts, dfs_parts, left_on, right_on)
         return await hash_join(len(workers), rank, eps, df1, df2, left_on, right_on)
 
 
-def dataframe_merge(left, right, on=None, left_on=None, right_on=None):
+def extract_ddf_partitions(ddf):
+    """ Returns the mapping: worker -> [list of futures]"""
+    client = get_client()
+    delayed_ddf = ddf.to_delayed()
+    parts = client.compute(delayed_ddf)
+    wait(parts)
+
+    key_to_part = dict([(str(part.key), part) for part in parts])
+    ret = defaultdict(list)  # Map worker -> [list of futures]
+    for key, workers in client.who_has(parts).items():
+        worker = first(
+            workers
+        )  # If multiple workers have the part, we pick the first worker
+        ret[worker].append(key_to_part[key])
+    return ret
+
+
+def submit_dataframe_operation(comms, coroutine, df_list, extra_args=()):
+    """Submit an operation on a list of Dask dataframe
+
+    Parameters
+    ----------
+    coroutine: coroutine
+        The function to run on each worker.
+    df_list: list of Dask.dataframe.Dataframe
+        Input dataframes
+    extra_args: tuple
+        Extra function input
+
+    Returns
+    -------
+    dataframe: dask.dataframe.DataFrame
+        The resulting dataframe
+    """
+    df_parts_list = []
+    for df in df_list:
+        df_parts_list.append(extract_ddf_partitions(df))
+
+    # Let's create a dict for each dataframe that specifices the
+    # number of partitions each worker has
+    world = set()
+    dfs_nparts = []
+    for df_parts in df_parts_list:
+        nparts = {}
+        for rank, worker in enumerate(comms.worker_addresses):
+            npart = len(df_parts.get(worker, []))
+            if npart > 0:
+                nparts[rank] = npart
+                world.add(rank)
+        dfs_nparts.append(nparts)
+
+    # Submit `coroutine` on each worker given the df_parts that
+    # belong the specific worker as input
+    ret = []
+    for rank, worker in enumerate(comms.worker_addresses):
+        if rank in world:
+            dfs = []
+            for df_parts in df_parts_list:
+                dfs.append(df_parts.get(worker, []))
+            ret.append(
+                comms.submit(worker, coroutine, world, dfs_nparts, dfs, *extra_args)
+            )
+    wait(ret)
+    return dd.from_delayed(ret)
+
+
+def merge(left, right, on=None, left_on=None, right_on=None):
     """Merge two DataFrames using explicit-comms.
 
     This is an explicit-comms version of Dask's Dataframe.merge() that
@@ -255,6 +326,9 @@ def dataframe_merge(left, right, on=None, left_on=None, right_on=None):
             "Some combination of the on, left_on, and right_on arguments must be set"
         )
 
-    return comms.default_comms().dataframe_operation(
-        _dataframe_merge, df_list=(left, right), extra_args=(left_on, right_on)
+    return submit_dataframe_operation(
+        comms.default_comms(),
+        local_df_merge,
+        df_list=(left, right),
+        extra_args=(left_on, right_on),
     )
