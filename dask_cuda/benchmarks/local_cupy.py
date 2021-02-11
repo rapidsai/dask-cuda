@@ -81,6 +81,12 @@ async def _run(client, args):
         func_args = (x,)
 
         func = lambda x: x.mean()
+    elif args.operation == "slice":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x[::3].copy()
 
     shape = x.shape
     chunksize = x.chunksize
@@ -254,7 +260,7 @@ def parse_args():
             "default": "transpose_sum",
             "type": str,
             "help": "The operation to run, valid options are: "
-            "'transpose_sum' (default), 'dot', 'cross', 'fft', 'svd', 'sum', 'mean'.",
+            "'transpose_sum' (default), 'dot', 'cross', 'fft', 'svd', 'sum', 'mean', 'slice'.",
         },
         {
             "name": ["-c", "--chunk-size",],
