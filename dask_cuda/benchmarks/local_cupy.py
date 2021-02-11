@@ -41,6 +41,15 @@ async def _run(client, args):
         func_args = (x, y)
 
         func = lambda x, y: x.dot(y)
+    elif args.operation == "cross":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        y = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        await wait(y)
+
+        func_args = (x, y)
+
+        func = lambda x, y: x.cross(y)
     elif args.operation == "svd":
         x = rs.random(
             (args.size, args.second_size),
@@ -60,6 +69,18 @@ async def _run(client, args):
         func_args = (x,)
 
         func = lambda x: np.fft.fft(x, axis=0)
+    elif args.operation == "sum":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x.sum()
+    elif args.operation == "mean":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x.mean()
 
     shape = x.shape
     chunksize = x.chunksize
@@ -213,7 +234,7 @@ def parse_args():
             "default": "transpose_sum",
             "type": str,
             "help": "The operation to run, valid options are: "
-            "'transpose_sum' (default), 'dot', 'fft', 'svd'.",
+            "'transpose_sum' (default), 'dot', 'cross', 'fft', 'svd', 'sum', 'mean'.",
         },
         {
             "name": ["-c", "--chunk-size",],
