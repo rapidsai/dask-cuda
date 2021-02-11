@@ -41,15 +41,6 @@ async def _run(client, args):
         func_args = (x, y)
 
         func = lambda x, y: x.dot(y)
-    elif args.operation == "cross":
-        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
-        y = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
-        await wait(x)
-        await wait(y)
-
-        func_args = (x, y)
-
-        func = lambda x, y: x.cross(y)
     elif args.operation == "svd":
         x = rs.random(
             (args.size, args.second_size),
@@ -260,7 +251,7 @@ def parse_args():
             "default": "transpose_sum",
             "type": str,
             "help": "The operation to run, valid options are: "
-            "'transpose_sum' (default), 'dot', 'cross', 'fft', 'svd', 'sum', 'mean', 'slice'.",
+            "'transpose_sum' (default), 'dot', 'fft', 'svd', 'sum', 'mean', 'slice'.",
         },
         {
             "name": ["-c", "--chunk-size",],
