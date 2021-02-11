@@ -200,6 +200,26 @@ async def run(args):
                 )
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
 
+            if args.benchmark_json:
+                import json
+
+                d = {
+                    "operation": args.operation,
+                    "size": args.size,
+                    "second_size": args.second_size,
+                    "chunk_size": args.chunk_size,
+                    "compute_size": size,
+                    "compute_chunk_size": chunksize,
+                    "ignore_size": format_bytes(args.ignore_size),
+                    "protocol": args.protocol,
+                    "devs": args.devs,
+                    "threads_per_worker": args.threads_per_worker,
+                    "times": took_list,
+                    "bandwiths": sorted(bandwidths.items()),
+                }
+                with open(args.benchmark_json, "w") as fp:
+                    json.dump(d, fp, indent=2)
+
             # An SSHCluster will not automatically shut down, we have to
             # ensure it does.
             if args.multi_node:
@@ -250,6 +270,12 @@ def parse_args():
             "help": "Ignore messages smaller than this (default '1 MB')",
         },
         {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
+        {
+            "name": "--benchmark-json",
+            "default": None,
+            "type": str,
+            "help": "Dump a JSON report of benchmarks (optional).",
+        },
     ]
 
     return parse_benchmark_args(
