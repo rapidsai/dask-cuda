@@ -5,7 +5,7 @@ import uuid
 from typing import List, Optional
 
 import distributed.comm
-from distributed import Client, default_client, get_worker
+from distributed import Client, MultiLock, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 _default_comms = None
@@ -194,7 +194,7 @@ class CommsContext:
         )
         return ret.result() if wait else ret
 
-    def run(self, coroutine, *args, workers=None):
+    def run(self, coroutine, *args, workers=None, lock_workers=False):
         """Run a coroutine on multiple workers
 
         The coroutine is given the worker's state dict as the first argument
@@ -216,6 +216,11 @@ class CommsContext:
         """
         if workers is None:
             workers = self.worker_addresses
+
+        if lock_workers:
+            lock = MultiLock(lock_names=workers)
+            lock.acquire()
+
         ret = []
         for worker in workers:
             ret.append(
@@ -228,4 +233,7 @@ class CommsContext:
                     pure=False,
                 )
             )
-        return self.client.gather(ret)
+        ret = self.client.gather(ret)
+        if lock_workers:
+            lock.release()
+        return ret
