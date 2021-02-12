@@ -211,8 +211,22 @@ async def run(args):
                     "protocol": args.protocol,
                     "devs": args.devs,
                     "threads_per_worker": args.threads_per_worker,
-                    "times": took_list,
-                    "bandwiths": sorted(bandwidths.items()),
+                    "times": [
+                        {"wall_clock": took, "npartitions": npartitions}
+                        for (took, npartitions) in took_list
+                    ],
+                    "bandwidths": {
+                        f"({d1},{d2})"
+                        if args.multi_node or args.sched_addr
+                        else "(%02d,%02d)"
+                        % (d1, d2): {
+                            "25%": bw[0],
+                            "50%": bw[1],
+                            "75%": bw[2],
+                            "total_nbytes": total_nbytes[(d1, d2)],
+                        }
+                        for (d1, d2), bw in sorted(bandwidths.items())
+                    },
                 }
                 with open(args.benchmark_json, "w") as fp:
                     json.dump(d, fp, indent=2)
@@ -244,7 +258,7 @@ def parse_args():
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
-            "help": "Do merge with GPU or CPU dataframes",
+            "help": "Do merge with GPU or CPU dataframes.",
         },
         {
             "name": ["-o", "--operation",],
@@ -257,16 +271,21 @@ def parse_args():
             "name": ["-c", "--chunk-size",],
             "default": "2500",
             "type": int,
-            "help": "Chunk size (default 2500)",
+            "help": "Chunk size (default 2500).",
         },
         {
             "name": "--ignore-size",
             "default": "1 MiB",
             "metavar": "nbytes",
             "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
+            "help": "Ignore messages smaller than this (default '1 MB').",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
+        {
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs (default 3).",
+        },
         {
             "name": "--benchmark-json",
             "default": None,
