@@ -314,11 +314,16 @@ def test_lock_workers():
     Testing `run(...,lock_workers=True)` by spawning 30 runs with overlapping
     and non-overlapping worker sets.
     """
+    try:
+        from distributed import MultiLock  # noqa F401
+    except ImportError as e:
+        pytest.skip(str(e))
+
     with LocalCluster(
         protocol="tcp",
         dashboard_address=None,
-        n_workers=4,
-        threads_per_worker=30,
+        n_workers=3,
+        threads_per_worker=10,
         processes=True,
     ) as cluster:
         ps = []
