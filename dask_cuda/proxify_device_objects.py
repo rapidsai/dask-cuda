@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, List, MutableMapping
 
 from dask.utils import Dispatch
 
@@ -9,7 +9,7 @@ dispatch = Dispatch(name="proxify_device_objects")
 
 def proxify_device_objects(
     obj: Any,
-    proxied_id_to_proxy: Dict[int, ProxyObject],
+    proxied_id_to_proxy: MutableMapping[int, ProxyObject],
     found_proxies: List[ProxyObject],
 ):
     """ Wrap device objects in ProxyObject
@@ -22,7 +22,7 @@ def proxify_device_objects(
     ----------
     obj: Any
         Object to search through or wrap in a ProxyObject.
-    proxied_id_to_proxy: Dict[int, ProxyObject]
+    proxied_id_to_proxy: MutableMapping[int, ProxyObject]
         Dict mapping the id() of proxied objects (CUDA device objects) to
         their proxy and is updated with all new proxied objects found in `obj`.
     found_proxies: List[ProxyObject]

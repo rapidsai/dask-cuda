@@ -164,7 +164,7 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             # Notice, multiple proxy object can point to different non-overlapping
             # parts of the same device buffer.
-            ret = DefaultDict(list)
+            ret = defaultdict(list)
             for proxy in self.proxies_tally.get_unspilled_proxies():
                 for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
                     ret[dev_buffer].append(proxy)
