@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from json import dump
 from time import perf_counter as clock
 from warnings import filterwarnings
 
@@ -198,7 +199,6 @@ async def run(args):
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
 
             if args.benchmark_json:
-                import json
 
                 d = {
                     "operation": args.operation,
@@ -229,7 +229,7 @@ async def run(args):
                     },
                 }
                 with open(args.benchmark_json, "w") as fp:
-                    json.dump(d, fp, indent=2)
+                    dump(d, fp, indent=2)
 
             # An SSHCluster will not automatically shut down, we have to
             # ensure it does.
