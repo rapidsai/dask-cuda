@@ -23,6 +23,13 @@ except ImportError:
         yield
 
 
+try:
+    import ucp
+    _ucx_110 = ucp.get_ucx_version() >= (1, 10, 0)
+except ImportError:
+    _ucx_110 = False
+
+
 class CPUAffinity:
     def __init__(self, cores):
         self.cores = cores
