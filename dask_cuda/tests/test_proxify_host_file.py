@@ -22,13 +22,13 @@ def test_one_item_limit():
 
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
+    k2 = dhf["k2"]
     assert k1._obj_pxy_is_serialized()
-    assert not dhf["k2"]._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
 
     # Accessing k1 spills k2 and unspill k1
     k1_val = k1[0]
     assert k1_val == 1
-    k2 = dhf["k2"]
     assert k2._obj_pxy_is_serialized()
 
     # Duplicate arrays changes nothing
@@ -50,11 +50,11 @@ def test_one_item_limit():
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
-    assert dhf.proxies_tally.get_dev_mem_usage() == 8
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
     p1 = list(dhf.proxies_tally.get_unspilled_proxies())
     assert len(p1) == 1
     del dhf["k2"]
-    assert dhf.proxies_tally.get_dev_mem_usage() == 8
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
     p2 = list(dhf.proxies_tally.get_unspilled_proxies())
     assert len(p2) == 1
     assert p1[0] is p2[0]
