@@ -129,3 +129,25 @@ def test_cudf_get_device_memory_objects():
     ]
     res = get_device_memory_objects(objects)
     assert len(res) == 4, "We expect four buffer objects"
+
+
+def test_externals():
+    dhf = ProxifyHostFile(device_memory_limit=itemsize)
+    dhf["k1"] = cupy.arange(1) + 1
+    k1 = dhf["k1"]
+    k2 = dhf.add_external(cupy.arange(1) + 1)
+    # `k2` isn't part of the store but still triggers spilling of `k1`
+    assert len(dhf) == 1
+    assert k1._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
+    k1[0]  # Trigger spilling of `k2`
+    assert not k1._obj_pxy_is_serialized()
+    assert k2._obj_pxy_is_serialized()
+    k2[0]  # Trigger spilling of `k1`
+    assert k1._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
+    # Removing `k2` also removes it from the tally
+    del k2
+    assert dhf.proxies_tally.get_dev_mem_usage() == 0
+    assert len(list(dhf.proxies_tally.get_unspilled_proxies())) == 0

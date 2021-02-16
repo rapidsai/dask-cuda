@@ -181,13 +181,32 @@ class ProxifyHostFile(MutableMapping):
                 total_dev_mem_usage += size
             return total_dev_mem_usage, dev_buf_access
 
+    def add_external(self, obj):
+        found_proxies: List[ProxyObject] = []
+        proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
+        ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
+        last_access = time.time()
+        self_weakref = weakref.ref(self)
+        for p in found_proxies:
+            weakref.finalize(p, self.del_external, id(p))
+            external = weakref.proxy(p)
+            p._obj_pxy["hostfile"] = self_weakref
+            p._obj_pxy["last_access"] = last_access
+            p._obj_pxy["external"] = external
+            self.proxies_tally.add_key(id(p), [external])
+        self.maybe_evict()
+        return ret
+
+    def del_external(self, name):
+        self.proxies_tally.del_key(name)
+
     def __setitem__(self, key, value):
         with self.lock:
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
 
-            found_proxies = []
+            found_proxies: List[ProxyObject] = []
             proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
             self.store[key] = proxify_device_objects(
                 value, proxied_id_to_proxy, found_proxies

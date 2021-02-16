@@ -277,7 +277,8 @@ class ProxyObject:
                 self._obj_pxy["serializers"] = serializers
                 hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 if hostfile is not None:
-                    hostfile.proxies_tally.spill_proxy(self)
+                    external = self._obj_pxy.get("external", self)
+                    hostfile.proxies_tally.spill_proxy(external)
 
             # Invalidate the (possible) cached "device_memory_objects"
             self._obj_pxy_cache.pop("device_memory_objects", None)
@@ -311,7 +312,8 @@ class ProxyObject:
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
                 self._obj_pxy["serializers"] = None
                 if hostfile is not None:
-                    hostfile.proxies_tally.unspill_proxy(self)
+                    external = self._obj_pxy.get("external", self)
+                    hostfile.proxies_tally.unspill_proxy(external)
 
             self._obj_pxy["last_access"] = time.time()
             return self._obj_pxy["obj"]
