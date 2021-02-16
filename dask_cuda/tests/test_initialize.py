@@ -9,7 +9,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_config
+from dask_cuda.utils import get_ucx_config, _ucx_110
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -40,9 +40,12 @@ def _test_initialize_ucx_tcp():
                 conf = ucp.get_config()
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                if _ucx_110:
+                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
+                else:
+                    assert "sockcm" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
@@ -77,9 +80,12 @@ def _test_initialize_ucx_nvlink():
                 assert "TLS" in conf
                 assert "cuda_ipc" in conf["TLS"]
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                if _ucx_110:
+                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
+                else:
+                    assert "sockcm" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
@@ -94,7 +100,9 @@ def test_initialize_ucx_nvlink():
 
 
 def _test_initialize_ucx_infiniband():
-    kwargs = {"enable_infiniband": True, "net_devices": "ib0"}
+    kwargs = {"enable_infiniband": True}
+    if not _ucx_110:
+        kwargs["net_devices"] = "ib0"
     initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
@@ -114,10 +122,13 @@ def _test_initialize_ucx_infiniband():
                 assert "TLS" in conf
                 assert "rc" in conf["TLS"]
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                assert conf["NET_DEVICES"] == "ib0"
+                if _ucx_110:
+                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
+                else:
+                    assert "sockcm" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                    assert conf["NET_DEVICES"] == "ib0"
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True

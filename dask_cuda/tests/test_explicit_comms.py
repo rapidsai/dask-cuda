@@ -14,6 +14,7 @@ import dask_cuda
 from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.merge import merge as explicit_comms_merge
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
+from dask_cuda.initialize import initialize
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -27,6 +28,8 @@ async def my_rank(state):
 
 
 def _test_local_cluster(protocol):
+    initialize(enable_tcp_over_ucx=True)
+
     with LocalCluster(
         protocol=protocol,
         dashboard_address=None,
@@ -54,11 +57,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
     else:
         from dask.dataframe.utils import assert_eq
 
-    dask.config.update(
-        dask.config.global_config,
-        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
-        priority="new",
-    )
+    initialize(enable_tcp_over_ucx=True)
 
     with LocalCluster(
         protocol=protocol,
@@ -153,11 +152,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
     else:
         from dask.dataframe.utils import assert_eq
 
-    dask.config.update(
-        dask.config.global_config,
-        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
-        priority="new",
-    )
+    initialize(enable_tcp_over_ucx=True)
 
     with LocalCluster(
         protocol=protocol,
@@ -254,12 +249,6 @@ def _test_jit_unspill(protocol):
     import cudf
     from cudf.tests.utils import assert_eq
 
-    dask.config.update(
-        dask.config.global_config,
-        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
-        priority="new",
-    )
-
     with dask_cuda.LocalCUDACluster(
         protocol=protocol,
         dashboard_address=None,
@@ -268,6 +257,7 @@ def _test_jit_unspill(protocol):
         processes=True,
         jit_unspill=True,
         device_memory_limit="1B",
+        enable_tcp_over_ucx=True if protocol == "ucx" else False,
     ) as cluster:
         with Client(cluster):
             np.random.seed(42)

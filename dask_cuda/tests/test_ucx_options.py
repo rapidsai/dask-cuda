@@ -5,6 +5,7 @@ import pytest
 
 import dask
 from dask import array as da
+from dask_cuda.utils import _ucx_110
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
@@ -19,13 +20,15 @@ ucp = pytest.importorskip("ucp")
 
 def _test_global_option(seg_size):
     """Test setting UCX options through dask's global config"""
+    tls = "tcp,cuda_copy" if _ucx_110 else "tcp,sockcm,cuda_copy"
+    tls_priority = "tcp" if _ucx_110 else "sockcm"
     dask.config.update(
         dask.config.global_config,
         {
             "ucx": {
                 "SEG_SIZE": seg_size,
-                "TLS": "tcp,sockcm,cuda_copy",
-                "SOCKADDR_TLS_PRIORITY": "sockcm",
+                "TLS": tls,
+                "SOCKADDR_TLS_PRIORITY": tls_priority,
             },
         },
         priority="new",
