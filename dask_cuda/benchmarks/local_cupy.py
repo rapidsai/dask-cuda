@@ -87,7 +87,10 @@ async def _run(client, args):
     if args.profile is not None:
         async with performance_report(filename=args.profile):
             t1 = clock()
-            await client.compute(func(*func_args))
+            res = client.compute(func(*func_args))
+            await client.gather(res)
+            if args.type == "gpu":
+                await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
             took = clock() - t1
     else:
         t1 = clock()
