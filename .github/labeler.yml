@@ -5,6 +5,9 @@
 python:
  - 'dask_cuda/**'
 
+doc:
+ - 'docs/**'
+
 gpuCI:
   - 'ci/**'
 
