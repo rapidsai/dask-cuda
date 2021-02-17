@@ -151,3 +151,15 @@ def test_externals():
     del k2
     assert dhf.proxies_tally.get_dev_mem_usage() == 0
     assert len(list(dhf.proxies_tally.get_unspilled_proxies())) == 0
+
+
+def test_externals_setitem():
+    dhf = ProxifyHostFile(device_memory_limit=itemsize)
+    k1 = dhf.add_external(cupy.arange(1) + 1)
+    assert len(dhf) == 0
+    assert "external" in k1._obj_pxy
+    assert "external_finalize" in k1._obj_pxy
+    dhf["k1"] = k1
+    assert len(dhf) == 1
+    assert "external" not in dhf["k1"]._obj_pxy
+    assert "external_finalize" not in dhf["k1"]._obj_pxy

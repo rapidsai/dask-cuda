@@ -188,12 +188,14 @@ class ProxifyHostFile(MutableMapping):
         last_access = time.time()
         self_weakref = weakref.ref(self)
         for p in found_proxies:
-            weakref.finalize(p, self.del_external, id(p))
+            name = id(p)
+            finalize = weakref.finalize(p, self.del_external, name)
             external = weakref.proxy(p)
             p._obj_pxy["hostfile"] = self_weakref
             p._obj_pxy["last_access"] = last_access
             p._obj_pxy["external"] = external
-            self.proxies_tally.add_key(id(p), [external])
+            p._obj_pxy["external_finalize"] = finalize
+            self.proxies_tally.add_key(name, [external])
         self.maybe_evict()
         return ret
 
@@ -216,6 +218,13 @@ class ProxifyHostFile(MutableMapping):
             for p in found_proxies:
                 p._obj_pxy["hostfile"] = self_weakref
                 p._obj_pxy["last_access"] = last_access
+
+                external_finalize = p._obj_pxy.get("external_finalize", None)
+                if external_finalize is not None:
+                    external_finalize()
+                    del p._obj_pxy["external"]
+                    del p._obj_pxy["external_finalize"]
+
             self.proxies_tally.add_key(key, found_proxies)
             self.maybe_evict()
 
