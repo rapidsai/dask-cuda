@@ -182,6 +182,7 @@ class ProxifyHostFile(MutableMapping):
             return total_dev_mem_usage, dev_buf_access
 
     def add_external(self, obj):
+        # Notice, since `self.store` isn't modified no lock is needed
         found_proxies: List[ProxyObject] = []
         proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
         ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
@@ -218,12 +219,7 @@ class ProxifyHostFile(MutableMapping):
             for p in found_proxies:
                 p._obj_pxy["hostfile"] = self_weakref
                 p._obj_pxy["last_access"] = last_access
-
-                external_finalize = p._obj_pxy.get("external_finalize", None)
-                if external_finalize is not None:
-                    external_finalize()
-                    del p._obj_pxy["external"]
-                    del p._obj_pxy["external_finalize"]
+                assert "external" not in p._obj_pxy
 
             self.proxies_tally.add_key(key, found_proxies)
             self.maybe_evict()
