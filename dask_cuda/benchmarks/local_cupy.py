@@ -88,6 +88,8 @@ async def _run(client, args):
         async with performance_report(filename=args.profile):
             t1 = clock()
             await wait(client.persist(func(*func_args)))
+            if args.type == "gpu":
+                await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
             took = clock() - t1
     else:
         t1 = clock()
