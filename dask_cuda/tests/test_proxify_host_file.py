@@ -155,7 +155,7 @@ def test_externals():
 
 def test_externals_setitem():
     dhf = ProxifyHostFile(device_memory_limit=itemsize)
-    k1 = dhf.add_external(cupy.arange(1) + 1)
+    k1 = dhf.add_external(cupy.arange(1))
     assert type(k1) is dask_cuda.proxy_object.ProxyObject
     assert len(dhf) == 0
     assert "external" in k1._obj_pxy
@@ -167,7 +167,7 @@ def test_externals_setitem():
     assert "external" not in k1._obj_pxy
     assert "external_finalize" not in k1._obj_pxy
 
-    k1 = dhf.add_external(cupy.arange(1) + 1)
+    k1 = dhf.add_external(cupy.arange(1))
     k1._obj_pxy_serialize(serializers=("dask", "pickle"))
     dhf["k1"] = k1
     k1 = dhf["k1"]
@@ -175,3 +175,13 @@ def test_externals_setitem():
     assert len(dhf) == 1
     assert "external" not in k1._obj_pxy
     assert "external_finalize" not in k1._obj_pxy
+
+    dhf["k1"] = cupy.arange(1)
+    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
+    k1 = dhf.add_external(k1)
+    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
+    k1 = dhf.add_external(dhf["k1"])
+    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
+    assert dhf.proxies_tally.get_dev_mem_usage() == itemsize
