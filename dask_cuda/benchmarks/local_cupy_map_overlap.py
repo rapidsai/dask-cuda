@@ -42,11 +42,15 @@ async def _run(client, args):
     if args.profile is not None:
         async with performance_report(filename=args.profile):
             t1 = clock()
-            await client.compute(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+            await wait(
+                client.persist(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+            )
             took = clock() - t1
     else:
         t1 = clock()
-        await client.compute(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+        await wait(
+            client.persist(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+        )
         took = clock() - t1
 
     return (took, x.npartitions)
