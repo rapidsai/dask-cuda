@@ -199,6 +199,12 @@ class ProxyObject:
         self._obj_pxy_lock = threading.RLock()
         self._obj_pxy_cache = {}
 
+    def __del__(self):
+        """In order to call `external_finalize()` ASAP, we call it here"""
+        external_finalize = self._obj_pxy.get("external_finalize", None)
+        if external_finalize is not None:
+            external_finalize()
+
     def _obj_pxy_get_init_args(self, include_obj=True):
         """Return the attributes needed to initialize a ProxyObject
 
