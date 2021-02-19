@@ -144,7 +144,10 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         parser.add_argument(*name, **args)
 
     parser.set_defaults(
-        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True, enable_rdmacm=False
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_nvlink=True,
+        enable_rdmacm=False,
     )
     args = parser.parse_args()
 
