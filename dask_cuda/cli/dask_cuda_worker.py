@@ -113,6 +113,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
+    "--rmm-logging/--no-rmm-logging",
+    default=None,
+    help="If enabled, generate RMM debug logs to file in the current "
+    "working directory. If left unspecified, falls back to the value "
+    "of rmm.logging in local Dask configuration."
+    "NOTE: Has no effect if --rmm-pool-size is not specified and "
+    "--rmm-managed-memory is not enabled.",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -209,6 +218,7 @@ def main(
     device_memory_limit,
     rmm_pool_size,
     rmm_managed_memory,
+    rmm_logging,
     pid_file,
     resources,
     dashboard,
@@ -253,6 +263,7 @@ def main(
         device_memory_limit,
         rmm_pool_size,
         rmm_managed_memory,
+        rmm_logging,
         pid_file,
         resources,
         dashboard,

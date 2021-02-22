@@ -32,20 +32,26 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory):
+    def __init__(self, nbytes, managed_memory, logging):
         self.nbytes = nbytes
         self.managed_memory = managed_memory
+        self.logging = logging
 
     def setup(self, worker=None):
         if self.nbytes is not None or self.managed_memory is True:
             import rmm
 
             pool_allocator = False if self.nbytes is None else True
+            worker.rmm_log_file_name = os.path.join(
+                worker.local_directory, "rmm_log.txt"
+            )
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
                 initial_pool_size=self.nbytes,
+                logging=self.logging,
+                log_file_name=worker.rmm_log_file_name,
             )
 
 
