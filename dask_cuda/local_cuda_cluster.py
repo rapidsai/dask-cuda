@@ -97,9 +97,10 @@ class LocalCUDACluster(LocalCluster):
         to enable both will result in an exception.
     rmm_logging: bool
         Enables per-worker RMM logging when set to ``True``. Default is
-        ``False``. If users want logging from the client or scheduler, that
-        would need to be set separately. Has no effect if `rmm_pool_size` is not
-        specified and `rmm_managed_memory` is disabled.
+        ``False``. Falls back on the value of  ``rmm.logging`` in local Dask
+        configuration if left unspecified. If users want logging from the client
+        or scheduler, that would need to be set separately. Has no effect if
+        `rmm_pool_size` is not specified and `rmm_managed_memory` is disabled.
     jit_unspill: bool
         If True, enable just-in-time unspilling. This is experimental and doesn't
         support memory spilling to disk. Please see proxy_object.ProxyObject and
