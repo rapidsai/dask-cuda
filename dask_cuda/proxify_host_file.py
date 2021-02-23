@@ -207,7 +207,7 @@ class ProxifyHostFile(MutableMapping):
         ret = proxify_device_objects(
             obj, proxied_id_to_proxy, found_proxies, excl_proxies=True
         )
-        last_access = time.time()
+        last_access = time.monotonic()
         self_weakref = weakref.ref(self)
         for p in found_proxies:
             name = id(p)
@@ -235,7 +235,7 @@ class ProxifyHostFile(MutableMapping):
             self.store[key] = proxify_device_objects(
                 value, proxied_id_to_proxy, found_proxies
             )
-            last_access = time.time()
+            last_access = time.monotonic()
             self_weakref = weakref.ref(self)
             for p in found_proxies:
                 p._obj_pxy["hostfile"] = self_weakref

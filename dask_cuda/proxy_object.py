@@ -321,7 +321,7 @@ class ProxyObject:
                     external = self._obj_pxy.get("external", self)
                     hostfile.proxies_tally.unspill_proxy(external)
 
-            self._obj_pxy["last_access"] = time.time()
+            self._obj_pxy["last_access"] = time.monotonic()
             return self._obj_pxy["obj"]
 
     def _obj_pxy_is_cuda_object(self) -> bool:
