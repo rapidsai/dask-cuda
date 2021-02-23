@@ -182,6 +182,24 @@ class ProxifyHostFile(MutableMapping):
             return total_dev_mem_usage, dev_buf_access
 
     def add_external(self, obj):
+        """Add an external object to the hostfile that count against the
+        device_memory_limit but isn't part of the store.
+
+        Normally, we use __setitem__ to store objects in the hostfile and make it
+        count against the device_memory_limit with the inherent consequence that
+        the objects are not freeable before subsequential calls to __delitem__.
+        This is a problem for long running tasks that want objects to count against
+        the device_memory_limit while freeing them ASAP without explicit calls to
+        __delitem__.
+
+        Developer Notes
+        ---------------
+        In order to avoid holding references to the found proxies in `obj`, we
+        wrap them in `weakref.proxy(p)` and adds them to the `proxies_tally`.
+        In order to remove them from the `proxies_tally` again, we attach a
+        finalize(p) on the wrapped proxies that calls del_external().
+        """
+
         # Notice, since `self.store` isn't modified, no lock is needed
         found_proxies: List[ProxyObject] = []
         proxied_id_to_proxy = {}
