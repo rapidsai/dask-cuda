@@ -113,11 +113,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
-    "--rmm-logging/--no-rmm-logging",
+    "--rmm-log-directory"
     default=None,
-    help="If enabled, generate RMM debug logs to file in the current "
-    "working directory. If left unspecified, falls back to the value "
-    "of rmm.logging in local Dask configuration."
+    help="Directory to write per-worker RMM log files to. If users "
+    "want logging from the client or scheduler, that must be set "
+    "separately."
     "NOTE: Has no effect if --rmm-pool-size is not specified and "
     "--rmm-managed-memory is not enabled.",
 )
@@ -218,7 +218,7 @@ def main(
     device_memory_limit,
     rmm_pool_size,
     rmm_managed_memory,
-    rmm_logging,
+    rmm_log_directory,
     pid_file,
     resources,
     dashboard,
@@ -263,7 +263,7 @@ def main(
         device_memory_limit,
         rmm_pool_size,
         rmm_managed_memory,
-        rmm_logging,
+        rmm_log_directory,
         pid_file,
         resources,
         dashboard,
