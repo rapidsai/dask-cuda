@@ -113,7 +113,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
-    "--rmm-log-directory"
+    "--rmm-log-directory",
     default=None,
     help="Directory to write per-worker RMM log files to. If users "
     "want logging from the client or scheduler, that must be set "

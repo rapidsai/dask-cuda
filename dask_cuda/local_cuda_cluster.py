@@ -300,7 +300,9 @@ class LocalCUDACluster(LocalCluster):
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(
-                        self.rmm_pool_size, self.rmm_managed_memory, self.rmm_log_directory
+                        self.rmm_pool_size,
+                        self.rmm_managed_memory,
+                        self.rmm_log_directory,
                     ),
                 },
             }
