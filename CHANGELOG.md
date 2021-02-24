@@ -1,6 +1,46 @@
-# 0.18.0
+# dask-cuda 0.18.0 (24 Feb 2021)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/branch-0.18-latest for the latest changes to this development branch.
+## Breaking Changes 🚨
+
+- Explicit-comms house cleaning (#515) @madsbk
+
+## Bug Fixes 🐛
+
+- Fix device synchronization in local_cupy benchmark (#518) @pentschev
+- Proxify register lazy (#492) @madsbk
+- Work on deadlock issue 431 (#490) @madsbk
+- Fix usage of --dashboard-address in dask-cuda-worker (#487) @pentschev
+- Fail if scheduler starts with &#39;-&#39; in dask-cuda-worker (#485) @pentschev
+
+## Documentation 📖
+
+- Add device synchonization for local CuPy benchmarks with Dask profiling (#533) @charlesbluca
+
+## New Features 🚀
+
+- Shuffle benchmark (#496) @madsbk
+
+## Improvements 🛠️
+
+- Update stale GHA with exemptions &amp; new labels (#531) @mike-wendt
+- Add GHA to mark issues/prs as stale/rotten (#528) @Ethyling
+- Add operations/arguments to local CuPy array benchmark (#524) @charlesbluca
+- Explicit-comms house cleaning (#515) @madsbk
+- Fixing fixed-attribute-proxy-object-test (#511) @madsbk
+- Prepare Changelog for Automation (#509) @ajschmidt8
+- remove conditional check to start conda uploads (#504) @jolorunyomi
+- ProxyObject: ignore initial fixed attribute errors (#503) @madsbk
+- JIT-unspill: fix potential deadlock (#501) @madsbk
+- Hostfile: register the removal of an existing key (#500) @madsbk
+- proxy_object: cleanup type dispatching (#497) @madsbk
+- Redesign and implementation of dataframe shuffle (#494) @madsbk
+- Add --threads-per-worker option to benchmarks (#489) @pentschev
+- Extend CuPy benchmark with more operations (#488) @pentschev
+- Auto-label PRs based on their content (#480) @jolorunyomi
+- CI: cleanup style check (#477) @madsbk
+- Individual CUDA object spilling (#451) @madsbk
+- FIX Move codecov upload to gpu build script (#450) @dillon-cullinan
+- Add support for connecting a CUDAWorker to a cluster object (#428) @jacobtomlinson
 
 # 0.17.0
 
