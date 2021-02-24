@@ -9,6 +9,7 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -95,7 +96,10 @@ class LocalCUDACluster(LocalCluster):
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
     jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
+        If True, enable just-in-time unspilling. This is experimental and doesn't
+        support memory spilling to disk. Please see proxy_object.ProxyObject and
+        proxify_host_file.ProxifyHostFile.
+
 
     Examples
     --------
@@ -156,6 +160,8 @@ class LocalCUDACluster(LocalCluster):
         )
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
+        if n_workers < 1:
+            raise ValueError("Number of workers cannot be less than 1.")
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
@@ -196,17 +202,22 @@ class LocalCUDACluster(LocalCluster):
             self.jit_unspill = jit_unspill
 
         if data is None:
-            data = (
-                DeviceHostFile,
-                {
-                    "device_memory_limit": self.device_memory_limit,
-                    "memory_limit": self.host_memory_limit,
-                    "local_directory": local_directory
-                    or dask.config.get("temporary-directory")
-                    or os.getcwd(),
-                    "jit_unspill": self.jit_unspill,
-                },
-            )
+            if self.jit_unspill:
+                data = (
+                    ProxifyHostFile,
+                    {"device_memory_limit": self.device_memory_limit,},
+                )
+            else:
+                data = (
+                    DeviceHostFile,
+                    {
+                        "device_memory_limit": self.device_memory_limit,
+                        "memory_limit": self.host_memory_limit,
+                        "local_directory": local_directory
+                        or dask.config.get("temporary-directory")
+                        or os.getcwd(),
+                    },
+                )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:

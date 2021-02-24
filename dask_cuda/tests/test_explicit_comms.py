@@ -10,11 +10,10 @@ from dask.dataframe.shuffle import partitioning_index
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
-from dask_cuda.explicit_comms import (
-    CommsContext,
-    dataframe_merge,
-    dataframe_shuffle,
-)
+import dask_cuda
+from dask_cuda.explicit_comms import comms
+from dask_cuda.explicit_comms.dataframe.merge import merge as explicit_comms_merge
+from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -36,11 +35,10 @@ def _test_local_cluster(protocol):
         processes=True,
     ) as cluster:
         with Client(cluster) as client:
-            comms = CommsContext(client)
-            assert sum(comms.run(my_rank)) == sum(range(4))
+            c = comms.CommsContext(client)
+            assert sum(c.run(my_rank)) == sum(range(4))
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_local_cluster(protocol):
     p = mp.Process(target=_test_local_cluster, args=(protocol,))
@@ -89,17 +87,15 @@ def _test_dataframe_merge(backend, protocol, n_workers):
             ddf2 = dd.from_pandas(
                 df2, npartitions=n_workers - 1 if n_workers > 1 else 1
             )
-            ddf3 = dataframe_merge(ddf1, ddf2, on="key").set_index("key")
+            ddf3 = explicit_comms_merge(ddf1, ddf2, on="key").set_index("key")
             got = ddf3.compute()
 
             if backend == "cudf":
                 assert_eq(got, expected)
-
             else:
                 pd.testing.assert_frame_equal(got, expected)
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
@@ -128,7 +124,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             expected = df1.merge(df2).set_index("key")
             ddf1 = dd.from_pandas(df1, npartitions=npartitions)
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
-            ddf3 = dataframe_merge(ddf1, ddf2, on=["key"]).set_index("key")
+            ddf3 = explicit_comms_merge(ddf1, ddf2, on=["key"]).set_index("key")
             got = ddf3.compute()
             pd.testing.assert_frame_equal(got, expected)
 
@@ -153,6 +149,9 @@ def check_partitions(df, npartitions):
 def _test_dataframe_shuffle(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
+        from cudf.tests.utils import assert_eq
+    else:
+        from dask.dataframe.utils import assert_eq
 
     dask.config.update(
         dask.config.global_config,
@@ -167,23 +166,41 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
         threads_per_worker=1,
         processes=True,
     ) as cluster:
-        with Client(cluster):
-            nrows_per_worker = 5
+        with Client(cluster) as client:
+            all_workers = list(client.get_worker_logs().keys())
+            comms.default_comms()
             np.random.seed(42)
-            df = pd.DataFrame({"key": np.random.random(n_workers * nrows_per_worker)})
+            df = pd.DataFrame({"key": np.random.random(100)})
             if backend == "cudf":
                 df = cudf.DataFrame.from_pandas(df)
-            ddf = dd.from_pandas(df, npartitions=n_workers)
 
-            ddf = dataframe_shuffle(ddf, ["key"])
+            for input_nparts in range(1, 5):
+                for output_nparts in range(1, 5):
+                    ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
+                        workers=all_workers
+                    )
+                    ddf = explicit_comms_shuffle(
+                        ddf, ["key"], npartitions=output_nparts
+                    ).persist()
 
-            # Check that each partition of `ddf` hashes to the same value
-            result = ddf.map_partitions(check_partitions, n_workers).compute()
-            assert all(result.to_list())
+                    assert ddf.npartitions == output_nparts
+
+                    # Check that each partition of `ddf` hashes to the same value
+                    result = ddf.map_partitions(
+                        check_partitions, output_nparts
+                    ).compute()
+                    assert all(result.to_list())
+
+                    # Check the values of `ddf` (ignoring the row order)
+                    expected = df.sort_values("key")
+                    got = ddf.compute().sort_values("key")
+                    if backend == "cudf":
+                        assert_eq(got, expected)
+                    else:
+                        pd.testing.assert_frame_equal(got, expected)
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/431")
-@pytest.mark.parametrize("nworkers", [1, 2, 4])
+@pytest.mark.parametrize("nworkers", [1, 2, 3])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_shuffle(backend, protocol, nworkers):
@@ -191,6 +208,86 @@ def test_dataframe_shuffle(backend, protocol, nworkers):
         pytest.importorskip("cudf")
 
     p = mp.Process(target=_test_dataframe_shuffle, args=(backend, protocol, nworkers))
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_dask_use_explicit_comms():
+    def check_shuffle(in_cluster):
+        """Check if shuffle use explicit-comms by search for keys named "shuffle"
+
+        The explicit-comms implemention of shuffle doesn't produce any keys
+        named "shuffle"
+        """
+        ddf = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
+        with dask.config.set(explicit_comms=False):
+            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            assert any(["shuffle" in str(key) for key in res.dask])
+        with dask.config.set(explicit_comms=True):
+            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            if in_cluster:
+                assert all(["shuffle" not in str(key) for key in res.dask])
+            else:  # If not in cluster, we cannot use explicit comms
+                assert any(["shuffle" in str(key) for key in res.dask])
+
+    with LocalCluster(
+        protocol="tcp",
+        dashboard_address=None,
+        n_workers=2,
+        threads_per_worker=1,
+        processes=True,
+    ) as cluster:
+        with Client(cluster):
+            check_shuffle(True)
+    check_shuffle(False)
+
+
+def test_dask_use_explicit_comms():
+    p = mp.Process(target=_test_dask_use_explicit_comms)
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_jit_unspill(protocol):
+    import cudf
+    from cudf.tests.utils import assert_eq
+
+    dask.config.update(
+        dask.config.global_config,
+        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
+        priority="new",
+    )
+
+    with dask_cuda.LocalCUDACluster(
+        protocol=protocol,
+        dashboard_address=None,
+        n_workers=1,
+        threads_per_worker=1,
+        processes=True,
+        jit_unspill=True,
+        device_memory_limit="1B",
+    ) as cluster:
+        with Client(cluster):
+            np.random.seed(42)
+            df = cudf.DataFrame.from_pandas(
+                pd.DataFrame({"key": np.random.random(100)})
+            )
+            ddf = dd.from_pandas(df.copy(), npartitions=4)
+            ddf = explicit_comms_shuffle(ddf, ["key"])
+
+            # Check the values of `ddf` (ignoring the row order)
+            expected = df.sort_values("key")
+            got = ddf.compute().sort_values("key")
+            assert_eq(got, expected)
+
+
+@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+def test_jit_unspill(protocol):
+    pytest.importorskip("cudf")
+
+    p = mp.Process(target=_test_jit_unspill, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode

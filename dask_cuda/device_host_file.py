@@ -22,7 +22,7 @@ from .utils import nvtx_annotate
 
 
 class DeviceSerialized:
-    """ Store device object on the host
+    """Store device object on the host
     This stores a device-side object as
     1.  A msgpack encodable header
     2.  A list of `bytes`-like objects (like NumPy arrays)
@@ -56,7 +56,7 @@ def device_deserialize(header, frames):
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
-    header, frames = serialize(obj, serializers=["dask", "pickle"], on_error="raise")
+    header, frames = serialize(obj, serializers=("dask", "pickle"), on_error="raise")
     return DeviceSerialized(header, frames)
 
 
@@ -76,7 +76,7 @@ def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
 
     # Notice, both the "dask" and the "pickle" serializer will
     # spill `obj` to main memory.
-    return proxy_object.asproxy(obj, serializers=["dask", "pickle"])
+    return proxy_object.asproxy(obj, serializers=("dask", "pickle"))
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
@@ -87,7 +87,7 @@ def pxy_obj_host_to_device(s: proxy_object.ProxyObject) -> object:
 
 
 class DeviceHostFile(ZictBase):
-    """ Manages serialization/deserialization of objects.
+    """Manages serialization/deserialization of objects.
 
     Three LRU cache levels are controlled, for device, host and disk.
     Each level takes care of serializing objects once its limit has been
@@ -106,16 +106,10 @@ class DeviceHostFile(ZictBase):
         implies no spilling to disk.
     local_directory: path
         Path where to store serialized objects on disk
-    jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
     """
 
     def __init__(
-        self,
-        device_memory_limit=None,
-        memory_limit=None,
-        local_directory=None,
-        jit_unspill=False,
+        self, device_memory_limit=None, memory_limit=None, local_directory=None,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
@@ -141,14 +135,7 @@ class DeviceHostFile(ZictBase):
 
         self.device_keys = set()
         self.device_func = dict()
-        if jit_unspill:
-            self.device_host_func = Func(
-                pxy_obj_device_to_host, pxy_obj_host_to_device, self.host_buffer
-            )
-        else:
-            self.device_host_func = Func(
-                device_to_host, host_to_device, self.host_buffer
-            )
+        self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
         self.device_buffer = Buffer(
             self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
@@ -161,6 +148,10 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
 
     def __setitem__(self, key, value):
+        if key in self.device_buffer:
+            # Make sure we register the removal of an existing key
+            del self[key]
+
         if is_device_object(value):
             self.device_keys.add(key)
             self.device_buffer[key] = value

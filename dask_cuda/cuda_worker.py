@@ -10,6 +10,7 @@ from tornado.ioloop import IOLoop
 
 import dask
 from distributed import Nanny
+from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
@@ -19,6 +20,7 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -100,20 +102,6 @@ class CUDAWorker:
 
             atexit.register(del_pid_file)
 
-        services = {}
-
-        if dashboard:
-            try:
-                from distributed.dashboard import BokehWorker
-            except ImportError:
-                pass
-            else:
-                if dashboard_prefix:
-                    result = (BokehWorker, {"prefix": dashboard_prefix})
-                else:
-                    result = BokehWorker
-                services[("dashboard", dashboard_address)] = result
-
         if resources:
             resources = resources.replace(",", " ").split()
             resources = dict(pair.split("=") for pair in resources)
@@ -125,7 +113,6 @@ class CUDAWorker:
 
         preload_argv = kwargs.get("preload_argv", [])
         kwargs = {"worker_port": None, "listen_address": None}
-        t = Nanny
 
         if (
             not scheduler
@@ -136,6 +123,9 @@ class CUDAWorker:
                 "Need to provide scheduler address like\n"
                 "dask-worker SCHEDULER_ADDRESS:8786"
             )
+
+        if isinstance(scheduler, Cluster):
+            scheduler = scheduler.scheduler_address
 
         if interface and host:
             raise ValueError("Can not specify both interface and host")
@@ -182,12 +172,35 @@ class CUDAWorker:
         else:
             self.jit_unspill = jit_unspill
 
+        if self.jit_unspill:
+            data = lambda i: (
+                ProxifyHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                },
+            )
+        else:
+            data = lambda i: (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                },
+            )
+
         self.nannies = [
-            t(
+            Nanny(
                 scheduler,
                 scheduler_file=scheduler_file,
                 nthreads=nthreads,
-                services=services,
+                dashboard=dashboard,
+                dashboard_address=dashboard_address,
+                http_prefix=dashboard_prefix,
                 loop=loop,
                 resources=resources,
                 memory_limit=memory_limit,
@@ -213,17 +226,7 @@ class CUDAWorker:
                         cuda_device_index=i,
                     )
                 },
-                data=(
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": parse_device_memory_limit(
-                            device_memory_limit, device_index=i
-                        ),
-                        "memory_limit": memory_limit,
-                        "local_directory": local_directory,
-                        "jit_unspill": self.jit_unspill,
-                    },
-                ),
+                data=data(i),
                 **kwargs,
             )
             for i in range(nprocs)

@@ -63,7 +63,7 @@ gpuci_conda_retry install "cudatoolkit=$CUDA_REL" \
 # `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
 gpuci_conda_retry install "pytest-asyncio=<0.14.0"
 
-# https://docs.rapids.ai/maintainers/depmgmt/ 
+# https://docs.rapids.ai/maintainers/depmgmt/
 # gpuci_conda_retry remove -f rapids-build-env
 # gpuci_conda_retry install "your-pkg=1.0.0"
 
@@ -119,4 +119,13 @@ else
         py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
     fi
+
+    logger "Run local benchmark..."
+    python dask_cuda/benchmarks/local_cudf_shuffle.py --partition-size="1 KiB" -d 0  --runs 1 --backend dask
+    python dask_cuda/benchmarks/local_cudf_shuffle.py --partition-size="1 KiB" -d 0  --runs 1 --backend explicit-comms
 fi
+
+if [ -n "${CODECOV_TOKEN}" ]; then
+    codecov -t $CODECOV_TOKEN
+fi
+

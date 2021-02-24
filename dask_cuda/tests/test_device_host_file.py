@@ -13,11 +13,7 @@ from distributed.protocol import (
 )
 from distributed.protocol.pickle import HIGHEST_PROTOCOL
 
-from dask_cuda.device_host_file import (
-    DeviceHostFile,
-    device_to_host,
-    host_to_device,
-)
+from dask_cuda.device_host_file import DeviceHostFile, device_to_host, host_to_device
 
 cupy = pytest.importorskip("cupy")
 
@@ -39,17 +35,13 @@ def test_device_host_file_config(tmp_path):
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
 @pytest.mark.parametrize("num_device_arrays", [1, 10, 100])
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
-@pytest.mark.parametrize("jit_unspill", [True, False])
 def test_device_host_file_short(
-    tmp_path, num_device_arrays, num_host_arrays, array_size_range, jit_unspill
+    tmp_path, num_device_arrays, num_host_arrays, array_size_range
 ):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16,
-        memory_limit=1024 * 16,
-        local_directory=tmpdir,
-        jit_unspill=jit_unspill,
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
     )
 
     host = [
@@ -81,15 +73,11 @@ def test_device_host_file_short(
     assert set(dhf.disk.keys()) == set()
 
 
-@pytest.mark.parametrize("jit_unspill", [True, False])
-def test_device_host_file_step_by_step(tmp_path, jit_unspill):
+def test_device_host_file_step_by_step(tmp_path):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16,
-        memory_limit=1024 * 16,
-        local_directory=tmpdir,
-        jit_unspill=jit_unspill,
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
     )
 
     a = np.random.random(1000)
@@ -148,6 +136,11 @@ def test_device_host_file_step_by_step(tmp_path, jit_unspill):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+
+    dhf["x"] = b
+    dhf["x"] = a
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set(["x"])
 
 
 @pytest.mark.parametrize("collection", [dict, list, tuple])
