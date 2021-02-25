@@ -95,10 +95,12 @@ class LocalCUDACluster(LocalCluster):
         but in that case with default (non-managed) memory type.
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
-    rmm_log_directory: str
-        Directory to write per-worker RMM log files to. If users want logging
-        from the client or scheduler, that must be set separately. Has no effect
-        if `rmm_pool_size` is not specified and `rmm_managed_memory` is disabled.
+    rmm_logging: bool
+        Enables per-worker RMM logging when set to ``True``. Default is
+        ``False``. Falls back on the value of  ``rmm.logging`` in local Dask
+        configuration if left unspecified. If users want logging from the client
+        or scheduler, that would need to be set separately. Has no effect if
+        `rmm_pool_size` is not specified and `rmm_managed_memory` is disabled.
     jit_unspill: bool
         If True, enable just-in-time unspilling. This is experimental and doesn't
         support memory spilling to disk. Please see proxy_object.ProxyObject and
@@ -145,7 +147,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
-        rmm_log_directory=None,
+        rmm_logging=None,
         jit_unspill=None,
         **kwargs,
     ):
@@ -195,6 +197,10 @@ class LocalCUDACluster(LocalCluster):
                     "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
                     "#important-notes for more details"
                 )
+
+        if rmm_logging is None:
+            rmm_logging = dask.config.get("rmm.logging", False)
+        self.rmm_logging = bool(rmm_logging)
 
         if not processes:
             raise ValueError(
@@ -300,9 +306,7 @@ class LocalCUDACluster(LocalCluster):
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(
-                        self.rmm_pool_size,
-                        self.rmm_managed_memory,
-                        self.rmm_log_directory,
+                        self.rmm_pool_size, self.rmm_managed_memory, self.rmm_logging
                     ),
                 },
             }

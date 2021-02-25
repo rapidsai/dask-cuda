@@ -56,7 +56,7 @@ class CUDAWorker:
         device_memory_limit="auto",
         rmm_pool_size=None,
         rmm_managed_memory=False,
-        rmm_log_directory=None,
+        rmm_logging=None,
         pid_file=None,
         resources=None,
         dashboard=True,
@@ -156,6 +156,10 @@ class CUDAWorker:
                 "RMM managed memory and NVLink are currently incompatible."
             )
 
+        if rmm_logging is None:
+            rmm_logging = dask.config.get("rmm.logging", False)
+        rmm_logging = bool(rmm_logging)
+
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
         initialize(
@@ -213,7 +217,7 @@ class CUDAWorker:
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
                     CPUAffinity(get_cpu_affinity(i)),
-                    RMMSetup(rmm_pool_size, rmm_managed_memory, rmm_log_directory),
+                    RMMSetup(rmm_pool_size, rmm_managed_memory, rmm_logging),
                 },
                 name=name if nprocs == 1 or not name else name + "-" + str(i),
                 local_directory=local_directory,
