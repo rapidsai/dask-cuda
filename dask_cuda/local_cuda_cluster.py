@@ -196,6 +196,8 @@ class LocalCUDACluster(LocalCluster):
                     "#important-notes for more details"
                 )
 
+        self.rmm_log_directory = rmm_log_directory
+
         if not processes:
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
