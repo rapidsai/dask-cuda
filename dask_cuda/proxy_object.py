@@ -199,6 +199,12 @@ class ProxyObject:
         self._obj_pxy_lock = threading.RLock()
         self._obj_pxy_cache = {}
 
+    def __del__(self):
+        """In order to call `external_finalize()` ASAP, we call it here"""
+        external_finalize = self._obj_pxy.get("external_finalize", None)
+        if external_finalize is not None:
+            external_finalize()
+
     def _obj_pxy_get_init_args(self, include_obj=True):
         """Return the attributes needed to initialize a ProxyObject
 
@@ -277,7 +283,8 @@ class ProxyObject:
                 self._obj_pxy["serializers"] = serializers
                 hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 if hostfile is not None:
-                    hostfile.proxies_tally.spill_proxy(self)
+                    external = self._obj_pxy.get("external", self)
+                    hostfile.proxies_tally.spill_proxy(external)
 
             # Invalidate the (possible) cached "device_memory_objects"
             self._obj_pxy_cache.pop("device_memory_objects", None)
@@ -311,9 +318,10 @@ class ProxyObject:
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
                 self._obj_pxy["serializers"] = None
                 if hostfile is not None:
-                    hostfile.proxies_tally.unspill_proxy(self)
+                    external = self._obj_pxy.get("external", self)
+                    hostfile.proxies_tally.unspill_proxy(external)
 
-            self._obj_pxy["last_access"] = time.time()
+            self._obj_pxy["last_access"] = time.monotonic()
             return self._obj_pxy["obj"]
 
     def _obj_pxy_is_cuda_object(self) -> bool:
