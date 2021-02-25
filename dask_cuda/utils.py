@@ -35,7 +35,7 @@ class RMMSetup:
     def __init__(self, nbytes, managed_memory, logging):
         self.nbytes = nbytes
         self.managed_memory = managed_memory
-        self.logging = logging
+        self.logging = (log_directory is not None)
 
     def setup(self, worker=None):
         if self.nbytes is not None or self.managed_memory is True:
@@ -43,8 +43,8 @@ class RMMSetup:
 
             pool_allocator = False if self.nbytes is None else True
             worker.rmm_log_file_name = os.path.join(
-                worker.local_directory, "rmm_log.txt"
-            )
+                log_directory, f"rmm_log_{worker.name}.txt"
+            ) if self.logging else None
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,

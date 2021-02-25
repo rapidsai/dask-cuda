@@ -113,7 +113,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
-    "--rmm-logging/--no-rmm-logging",
+    "--rmm-log-directory"
     default=None,
     help="If enabled, generate RMM debug logs to file in the current "
     "working directory. If left unspecified, falls back to the value "
