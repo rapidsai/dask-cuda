@@ -132,10 +132,7 @@ async def test_all_to_all():
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(
-        rmm_pool_size="2GB",
-        asynchronous=True,
-    ) as cluster:
+    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True,) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -148,10 +145,7 @@ async def test_rmm_pool():
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(
-        rmm_managed_memory=True,
-        asynchronous=True,
-    ) as cluster:
+    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True,) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -165,9 +159,7 @@ async def test_rmm_logging():
     rmm = pytest.importorskip("rmm")
 
     async with LocalCUDACluster(
-        rmm_pool_size="2GB",
-        rmm_log_directory=".",
-        asynchronous=True,
+        rmm_pool_size="2GB", rmm_log_directory=".", asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
