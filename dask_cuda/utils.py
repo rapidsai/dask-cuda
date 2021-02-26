@@ -43,18 +43,23 @@ class RMMSetup:
             import rmm
 
             pool_allocator = False if self.nbytes is None else True
-            worker.rmm_log_file_name = (
-                os.path.join(self.log_directory, f"rmm_log_{worker.name}.txt")
-                if self.logging
-                else None
-            )
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
                 initial_pool_size=self.nbytes,
                 logging=self.logging,
-                log_file_name=worker.rmm_log_file_name,
+                log_file_name=os.path.join(
+                    self.log_directory,
+                    "rmm_log_%s.txt"
+                    % (
+                        worker.name.split("/")[-1]
+                        if isinstance(worker.name, str)
+                        else worker.name
+                    ),
+                )
+                if self.logging
+                else None,
             )
 
 
