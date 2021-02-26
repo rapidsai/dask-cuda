@@ -44,6 +44,14 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
+        "--rmm-log-directory",
+        default=None,
+        type=str,
+        help="Directory to write per-worker RMM log files to. If users "
+        "want logging from the client or scheduler, that must be set "
+        "separately. Has no effect if RMM memory pool is disabled.",
+    )
+    parser.add_argument(
         "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
@@ -222,14 +230,36 @@ def get_scheduler_workers(dask_scheduler=None):
     return dask_scheduler.workers
 
 
-def setup_memory_pool(pool_size=None, disable_pool=False):
+def setup_memory_pool(
+    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+):
     import cupy
 
     import rmm
 
+    logging = log_directory is not None
+
     if not disable_pool:
         rmm.reinitialize(
-            pool_allocator=True, devices=0, initial_pool_size=pool_size,
+            pool_allocator=True,
+            devices=0,
+            initial_pool_size=pool_size,
+            logging=logging,
+            log_file_name=os.path.join(
+                log_directory,
+                "rmm_log_%s.txt"
+                % (
+                    (
+                        dask_worker.name.split("/")[-1]
+                        if isinstance(dask_worker.name, str)
+                        else dask_worker.name
+                    )
+                    if hasattr(dask_worker, "name")
+                    else "scheduler"
+                ),
+            )
+            if logging
+            else None,
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
