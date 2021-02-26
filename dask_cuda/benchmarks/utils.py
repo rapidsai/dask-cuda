@@ -48,7 +48,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         default=None,
         type=str,
         help="Directory to write worker and scheduler RMM log files to. "
-        "Has no effect if RMM memory pool is disabled.",
+        "Logging is only enabled if RMM memory pool is enabled.",
     )
     parser.add_argument(
         "--all-to-all", action="store_true", help="Run all-to-all before computation",
