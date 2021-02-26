@@ -236,6 +236,8 @@ def setup_memory_pool(
 
     import rmm
 
+    from dask_cuda.utils import get_rmm_log_file_name
+
     logging = log_directory is not None
 
     if not disable_pool:
@@ -244,21 +246,7 @@ def setup_memory_pool(
             devices=0,
             initial_pool_size=pool_size,
             logging=logging,
-            log_file_name=os.path.join(
-                log_directory,
-                "rmm_log_%s.txt"
-                % (
-                    (
-                        dask_worker.name.split("/")[-1]
-                        if isinstance(dask_worker.name, str)
-                        else dask_worker.name
-                    )
-                    if hasattr(dask_worker, "name")
-                    else "scheduler"
-                ),
-            )
-            if logging
-            else None,
+            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 

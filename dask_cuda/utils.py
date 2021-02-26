@@ -49,17 +49,9 @@ class RMMSetup:
                 managed_memory=self.managed_memory,
                 initial_pool_size=self.nbytes,
                 logging=self.logging,
-                log_file_name=os.path.join(
-                    self.log_directory,
-                    "rmm_log_%s.txt"
-                    % (
-                        worker.name.split("/")[-1]
-                        if isinstance(worker.name, str)
-                        else worker.name
-                    ),
-                )
-                if self.logging
-                else None,
+                log_file_name=get_rmm_log_file_name(
+                    worker, self.logging, self.log_directory
+                ),
             )
 
 
@@ -331,6 +323,26 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def get_rmm_log_file_name(dask_worker, logging=False, log_directory=None):
+    return (
+        os.path.join(
+            log_directory,
+            "rmm_log_%s.txt"
+            % (
+                (
+                    dask_worker.name.split("/")[-1]
+                    if isinstance(dask_worker.name, str)
+                    else dask_worker.name
+                )
+                if hasattr(dask_worker, "name")
+                else "scheduler"
+            ),
+        )
+        if logging
+        else None
+    )
 
 
 def wait_workers(
