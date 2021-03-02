@@ -213,11 +213,15 @@ def main(args):
             setup_memory_pool,
             pool_size=args.rmm_pool_size,
             disable_pool=args.disable_rmm_pool,
+            log_directory=args.rmm_log_directory,
         )
         # Create an RMM pool on the scheduler due to occasional deserialization
         # of CUDA objects. May cause issues with InfiniBand otherwise.
         client.run_on_scheduler(
-            setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+            setup_memory_pool,
+            pool_size=1e9,
+            disable_pool=args.disable_rmm_pool,
+            log_directory=args.rmm_log_directory,
         )
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)

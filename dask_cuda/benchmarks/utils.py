@@ -44,6 +44,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     parser.add_argument(
+        "--rmm-log-directory",
+        default=None,
+        type=str,
+        help="Directory to write worker and scheduler RMM log files to. "
+        "Logging is only enabled if RMM memory pool is enabled.",
+    )
+    parser.add_argument(
         "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
@@ -222,14 +229,24 @@ def get_scheduler_workers(dask_scheduler=None):
     return dask_scheduler.workers
 
 
-def setup_memory_pool(pool_size=None, disable_pool=False):
+def setup_memory_pool(
+    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+):
     import cupy
 
     import rmm
 
+    from dask_cuda.utils import get_rmm_log_file_name
+
+    logging = log_directory is not None
+
     if not disable_pool:
         rmm.reinitialize(
-            pool_allocator=True, devices=0, initial_pool_size=pool_size,
+            pool_allocator=True,
+            devices=0,
+            initial_pool_size=pool_size,
+            logging=logging,
+            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
