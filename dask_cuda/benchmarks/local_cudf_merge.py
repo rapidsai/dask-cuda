@@ -271,7 +271,7 @@ def main(args):
     }
 
     broadcast = (
-        "false" if args.shuffle_join else ("true" if args.broadcast_join else "default")
+        False if args.shuffle_join else (True if args.broadcast_join else "default")
     )
 
     t_runs = numpy.empty(len(took_list))
