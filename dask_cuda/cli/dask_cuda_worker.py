@@ -113,6 +113,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
+    "--rmm-log-directory",
+    default=None,
+    help="Directory to write per-worker RMM log files to; the client "
+    "and scheduler are not logged here."
+    "NOTE: Logging will only be enabled if --rmm-pool-size or "
+    "--rmm-managed-memory are specified.",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -209,6 +217,7 @@ def main(
     device_memory_limit,
     rmm_pool_size,
     rmm_managed_memory,
+    rmm_log_directory,
     pid_file,
     resources,
     dashboard,
@@ -253,6 +262,7 @@ def main(
         device_memory_limit,
         rmm_pool_size,
         rmm_managed_memory,
+        rmm_log_directory,
         pid_file,
         resources,
         dashboard,

@@ -10,7 +10,7 @@ from dask.dataframe.shuffle import shuffle
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
-from dask_cuda import explicit_comms
+import dask_cuda.explicit_comms.dataframe.shuffle
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -35,9 +35,13 @@ def shuffle_dask(args, df, write_profile):
     return took
 
 
-def merge_explicit_comms(args, df):
+def shuffle_explicit_comms(args, df):
     t1 = clock()
-    wait(explicit_comms.dataframe_shuffle(df, column_names="data").persist())
+    wait(
+        dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
+            df, column_names="data"
+        ).persist()
+    )
     took = clock() - t1
     return took
 
@@ -62,7 +66,7 @@ def run(client, args, n_workers, write_profile=None):
     if args.backend == "dask":
         took = shuffle_dask(args, df, write_profile)
     else:
-        took = merge_explicit_comms(args, df)
+        took = shuffle_explicit_comms(args, df)
 
     return (data_processed, took)
 
@@ -96,11 +100,15 @@ def main(args):
             setup_memory_pool,
             pool_size=args.rmm_pool_size,
             disable_pool=args.disable_rmm_pool,
+            log_directory=args.rmm_log_directory,
         )
         # Create an RMM pool on the scheduler due to occasional deserialization
         # of CUDA objects. May cause issues with InfiniBand otherwise.
         client.run_on_scheduler(
-            setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+            setup_memory_pool,
+            pool_size=1e9,
+            disable_pool=args.disable_rmm_pool,
+            log_directory=args.rmm_log_directory,
         )
 
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)

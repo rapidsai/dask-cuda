@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from json import dump
 from time import perf_counter as clock
 from warnings import filterwarnings
 
@@ -60,6 +61,24 @@ async def _run(client, args):
         func_args = (x,)
 
         func = lambda x: np.fft.fft(x, axis=0)
+    elif args.operation == "sum":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x.sum()
+    elif args.operation == "mean":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x.mean()
+    elif args.operation == "slice":
+        x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
+        await wait(x)
+        func_args = (x,)
+
+        func = lambda x: x[::3].copy()
 
     shape = x.shape
     chunksize = x.chunksize
@@ -68,14 +87,15 @@ async def _run(client, args):
     if args.profile is not None:
         async with performance_report(filename=args.profile):
             t1 = clock()
-            await client.compute(func(*func_args))
+            await wait(client.persist(func(*func_args)))
+            if args.type == "gpu":
+                await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
             took = clock() - t1
     else:
         t1 = clock()
-        res = client.compute(func(*func_args))
-        await client.gather(res)
+        await wait(client.persist(func(*func_args)))
         if args.type == "gpu":
-            await client.run(xp.cuda.Device().synchronize)
+            await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
         took = clock() - t1
 
     return {
@@ -110,11 +130,18 @@ async def run(args):
         ) as client:
             scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
 
-            await client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
+            await client.run(
+                setup_memory_pool,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
+            )
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(
-                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+                setup_memory_pool,
+                pool_size=1e9,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
             )
 
             took_list = []
@@ -179,6 +206,39 @@ async def run(args):
                 )
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
 
+            if args.benchmark_json:
+
+                d = {
+                    "operation": args.operation,
+                    "size": args.size,
+                    "second_size": args.second_size,
+                    "chunk_size": args.chunk_size,
+                    "compute_size": size,
+                    "compute_chunk_size": chunksize,
+                    "ignore_size": format_bytes(args.ignore_size),
+                    "protocol": args.protocol,
+                    "devs": args.devs,
+                    "threads_per_worker": args.threads_per_worker,
+                    "times": [
+                        {"wall_clock": took, "npartitions": npartitions}
+                        for (took, npartitions) in took_list
+                    ],
+                    "bandwidths": {
+                        f"({d1},{d2})"
+                        if args.multi_node or args.sched_addr
+                        else "(%02d,%02d)"
+                        % (d1, d2): {
+                            "25%": bw[0],
+                            "50%": bw[1],
+                            "75%": bw[2],
+                            "total_nbytes": total_nbytes[(d1, d2)],
+                        }
+                        for (d1, d2), bw in sorted(bandwidths.items())
+                    },
+                }
+                with open(args.benchmark_json, "w") as fp:
+                    dump(d, fp, indent=2)
+
             # An SSHCluster will not automatically shut down, we have to
             # ensure it does.
             if args.multi_node:
@@ -206,29 +266,40 @@ def parse_args():
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
-            "help": "Do merge with GPU or CPU dataframes",
+            "help": "Do merge with GPU or CPU dataframes.",
         },
         {
             "name": ["-o", "--operation",],
             "default": "transpose_sum",
             "type": str,
             "help": "The operation to run, valid options are: "
-            "'transpose_sum' (default), 'dot', 'fft', 'svd'.",
+            "'transpose_sum' (default), 'dot', 'fft', 'svd', 'sum', 'mean', 'slice'.",
         },
         {
             "name": ["-c", "--chunk-size",],
             "default": "2500",
             "type": int,
-            "help": "Chunk size (default 2500)",
+            "help": "Chunk size (default 2500).",
         },
         {
             "name": "--ignore-size",
             "default": "1 MiB",
             "metavar": "nbytes",
             "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
+            "help": "Ignore messages smaller than this (default '1 MB').",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
+        {
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs (default 3).",
+        },
+        {
+            "name": "--benchmark-json",
+            "default": None,
+            "type": str,
+            "help": "Dump a JSON report of benchmarks (optional).",
+        },
     ]
 
     return parse_benchmark_args(
