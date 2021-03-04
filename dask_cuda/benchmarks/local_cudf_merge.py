@@ -140,17 +140,10 @@ def merge(args, ddf1, ddf2, write_profile):
     # "--shuffle-join" or "--broadcast-join" was
     # specified (with "--shuffle-join" taking
     # precedence)
-    broadcast = False if args.shuffle_join else (
-        True if args.broadcast_join else None
-    )
+    broadcast = False if args.shuffle_join else (True if args.broadcast_join else None)
 
     # Lazy merge/join operation
-    ddf_join = ddf1.merge(
-        ddf2,
-        on=["key"],
-        how="inner",
-        broadcast=broadcast,
-    )
+    ddf_join = ddf1.merge(ddf2, on=["key"], how="inner", broadcast=broadcast,)
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
 
@@ -241,6 +234,9 @@ def main(args):
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
     n_workers = len(scheduler_workers)
     client.wait_for_workers(n_workers)
+
+    # Allow the number of chunks to vary between
+    # the "base" and "other" DataFrames
     args.base_chunks = args.base_chunks or n_workers
     args.other_chunks = args.other_chunks or n_workers
 
@@ -274,8 +270,8 @@ def main(args):
         for (w1, w2), nb in total_nbytes.items()
     }
 
-    broadcast = "false" if args.shuffle_join else (
-        "true" if args.broadcast_join else "default"
+    broadcast = (
+        "false" if args.shuffle_join else ("true" if args.broadcast_join else "default")
     )
 
     t_runs = numpy.empty(len(took_list))
