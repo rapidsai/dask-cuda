@@ -14,28 +14,63 @@ This integration is enabled through `UCX-Py <https://ucx-py.readthedocs.io/>`_, 
 Requirements
 ------------
 
-Software
-^^^^^^^^
-
-*Does UCX integration require anything else other than UCX-Py?*
-
 Hardware
 ^^^^^^^^
 
 *Go into more detail on what hardware is required for NVLink, InfiniBand support*
 
+Software
+^^^^^^^^
+
+*Does UCX integration require anything else other than UCX-Py?*
+
+When using UCX, each NVLink and InfiniBand memory buffer must create a mapping between each unique pair of processes they are transferred across; this can be quite costly, taking up to 100 ms per mapping.
+For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
+
 Configuration
--------------
+^^^^^^^^^^^^^
 
-In the list below we describe the relevant Dask configurations for using UCX with Dask-CUDA:
+In addition to installations of UCX and UCX-Py on your system, several options must be specified within your Dask configuration to enable the integration.
+Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
+However, some will affect related libraries, such as RMM:
 
-- ``DASK_UCX__CUDA_COPY=True`` (default: ``False``): *Always required for UCX*, adds ``cuda_copy`` to ``UCX_TLS`` -- required for all CUDA transfers in UCX, both intra- and inter-node;
-- ``DASK_UCX__TCP=True`` (default: ``False``): *Always required for UCX*, adds ``tcp`` to ``UCX_TLS`` -- required for all TCP transfers (e.g., where NVLink or IB is not available/disabled) in UCX, both intra- and inter-node;
-- ``DASK_UCX__NVLINK=True`` (default: ``False``): Adds ``cuda_ipc`` to ``UCX_TLS`` -- required for all NVLink transfers in UCX, only affects intra-node.
-- ``DASK_UCX__INFINIBAND=True`` (defalt: ``False``): Adds ``rc`` to ``UCX_TLS`` -- required for all InfiniBand transfers in UCX, only affects inter-node.
-- ``DASK_UCX__RDMACM=True`` (default: ``False``): Replaces ``sockcm`` by ``rdmacm`` in ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``. ``rdmacm`` is the recommended method by UCX to use with IB and currently won't work if ``DASK_UCX__INFINIBAND=False``.
-- ``DASK_UCX__NET_DEVICES=mlx5_0:1`` (default: ``None``, causes UCX to decide what device to use, possibly being suboptimal, implies ``UCX_NET_DEVICES=all``): this is very important when ``DASK_UCX__INFINIBAND=True`` to ensure the scheduler is connected over the InfiniBand interface. When ``DASK_UCX__INFINIBAND=False`` it's recommended to use the ethernet device instead, e.g., ``DASK_UCX__NET_DEVICES=enp1s0f0`` on a DGX-1.
-- ``DASK_RMM__POOL_SIZE=1GB``: allocates an RMM pool for the process. In some circumstances, the Dask scheduler will deserialize CUDA data and cause a crash if there's no pool.
+- ``ucx.cuda_copy: true`` -- **required.**
+    
+    Adds ``cuda_copy`` to ``UCX_TLS``, enabling *all* transfers over UCX.
+    *Is this accurate to say?*
+
+- ``ucx.tcp: true`` -- **required.**
+
+    Adds ``tcp`` to ``UCX_TLS``, enabling TCP transfers over UCX if NVLink or InfiniBand are unavailable or disabled.
+    *Why is this required if they are available and enabled?*
+
+- ``ucx.nvlink: true`` -- required for NVLink.
+
+    Adds ``cuda_ipc`` to ``UCX_TLS``, enabling NVLink transfers over UCX; affects intra-node communication only.
+
+- ``ucx.infiniband: true`` -- required for InfiniBand.
+
+    Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX; affects inter-node communication only.
+
+
+- ``ucx.rdmacm: true`` -- recommended for InfiniBand.
+
+    Replaces ``sockcm`` with ``rdmacm`` in ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, *enabling remote direct memory access (RDMA) for connection management.*
+    This is recommended by UCX for use with InfiniBand, and will have no effect if InfiniBand tranfers are disabled.
+
+- ``ucx.net-devices: <str>`` -- recommended.
+
+    Explicitly sets ``UCX_NET_DEVICES`` instead of defaulting to ``"all"``, which can result in suboptimal performance.
+    If using InfiniBand, set to the desired IB device, e.g. ``"mlx5_0:1"``.
+    If InfiniBand is disabled, set to the ethernet device, e.g. ``"enp1s0f0"`` on a DGX-1.
+    All available UCX-compatible devices can be listed by running ``ucx_info -d`` or ``ifconfig`` *(are all the options under ifconfig compatible)*.
+
+- ``rmm.pool-size: <str | int>`` -- recommended.
+
+    Allocates an RMM pool of the specified size for the process; size can be provided with an integer number of bytes or in human readable format, e.g. ``"4GB"``.
+    In addition to reducing the cost of mapping incurred by memory transfers, a pool can prevent the Dask scheduler from deserializing CUDA data and causing a crash.
+    It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
+
 
 .. note::
     These options can also be used with mainline Dask/Distributed.
@@ -45,8 +80,6 @@ In the list below we describe the relevant Dask configurations for using UCX wit
 
 Important notes
 ---------------
-
-- CUDA Memory Pool: With UCX, all NVLink and InfiniBand memory buffers have to be mapped from one process to another upon the first request for transfer of that buffer between a single pair of processes. This can be quite costly, consuming up to 100ms only for mapping, plus the transfer time itself. For this reason it is strongly recommended to use a `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ memory pool in such cases, incurring in a single mapping of the pool and all subsequent transfers will not be required to repeat that process. It is recommened to also keep the memory pool size to at least the minimum amount of memory used by the application, if possible one can map all GPU memory to a single pool and utilize that pool for the entire lifetime of the application.
 
 - Automatic detection of InfiniBand interfaces: it's especially important to note the usage of ``--net-devices="auto"`` in ``dask-cuda-worker``, which will automatically determine the InfiniBand interface that's closest to each GPU. For safety, this option can only be used if ``--enable-infiniband`` is specified. Be warned that this mode assumes all InfiniBand interfaces on the system are connected and properly configured, undefined behavior may occur otherwise.
 
