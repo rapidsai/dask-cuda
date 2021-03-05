@@ -1,19 +1,33 @@
 UCX Integration
 ===============
 
-Communication can be a major bottleneck in distributed systems, and that's no different in Dask and Dask-CUDA. To address that, Dask-CUDA provides integration with `UCX-Py <https://ucx-py.readthedocs.io/>`_, a Python interface for the `UCX <https://www.openucx.org/>`_ communication framework.  UCX is a low-level library that provides high-performance networking and supports several transports, including NVLink and InfiniBand for systems that have such specialized hardware, as well as TCP for those that do not.
+Communication can be a major bottleneck in distributed systems.
+Dask-CUDA addresses this by supporting integration with `UCX <https://www.openucx.org/>`_, an optimized communication framework that provides high-performance networking and supports a variety of transport methods, including:
+
+- NVLink for *something ubiquitous to NVLink systems*
+- InfiniBand for *something ubiquitous to InfiniBand systems*
+- TCP for systems that do not have specialized hardware
+
+This integration is enabled through `UCX-Py <https://ucx-py.readthedocs.io/>`_, an interface that provides Python bindings for UCX.
 
 
+Requirements
+------------
 
-Relevant Settings
------------------
+Software
+^^^^^^^^
 
-In this list below we shall see all the Dask configurations relevant for using with Dask-CUDA currently. Note that these options can also be used with mainline Dask/Distributed if you can't use Dask-CUDA for some reason. Note that many improvments for running GPU code is readily available in Dask-CUDA -- but not in mainline Dask/Distributed -- thus, we recommend using Dask-CUDA when possible.
-In the list below we describe the relevant Dask configurations for using UCX with Dask-CUDA.
+*Does UCX integration require anything else other than UCX-Py?*
 
-.. note::
-    These options can also be used with mainline Dask/Distributed outside of Dask-CUDA, however, we recommend using Dask-CUDA when possible. See the :doc:`Specializations for GPU Usage <specializations>` page for details on the benefits of using Dask-CUDA.
+Hardware
+^^^^^^^^
 
+*Go into more detail on what hardware is required for NVLink, InfiniBand support*
+
+Configuration
+-------------
+
+In the list below we describe the relevant Dask configurations for using UCX with Dask-CUDA:
 
 - ``DASK_UCX__CUDA_COPY=True`` (default: ``False``): *Always required for UCX*, adds ``cuda_copy`` to ``UCX_TLS`` -- required for all CUDA transfers in UCX, both intra- and inter-node;
 - ``DASK_UCX__TCP=True`` (default: ``False``): *Always required for UCX*, adds ``tcp`` to ``UCX_TLS`` -- required for all TCP transfers (e.g., where NVLink or IB is not available/disabled) in UCX, both intra- and inter-node;
@@ -23,13 +37,18 @@ In the list below we describe the relevant Dask configurations for using UCX wit
 - ``DASK_UCX__NET_DEVICES=mlx5_0:1`` (default: ``None``, causes UCX to decide what device to use, possibly being suboptimal, implies ``UCX_NET_DEVICES=all``): this is very important when ``DASK_UCX__INFINIBAND=True`` to ensure the scheduler is connected over the InfiniBand interface. When ``DASK_UCX__INFINIBAND=False`` it's recommended to use the ethernet device instead, e.g., ``DASK_UCX__NET_DEVICES=enp1s0f0`` on a DGX-1.
 - ``DASK_RMM__POOL_SIZE=1GB``: allocates an RMM pool for the process. In some circumstances, the Dask scheduler will deserialize CUDA data and cause a crash if there's no pool.
 
+.. note::
+    These options can also be used with mainline Dask/Distributed.
+    However, this may disable a variety of features, such as *put some features exclusive to Dask-CUDA here*. 
+    See :doc:`Specializations for GPU Usage <specializations>` for more details on the benefits of using Dask-CUDA.
+
 
 Important notes
 ---------------
 
-* CUDA Memory Pool: With UCX, all NVLink and InfiniBand memory buffers have to be mapped from one process to another upon the first request for transfer of that buffer between a single pair of processes. This can be quite costly, consuming up to 100ms only for mapping, plus the transfer time itself. For this reason it is strongly recommended to use a `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ memory pool in such cases, incurring in a single mapping of the pool and all subsequent transfers will not be required to repeat that process. It is recommened to also keep the memory pool size to at least the minimum amount of memory used by the application, if possible one can map all GPU memory to a single pool and utilize that pool for the entire lifetime of the application.
+- CUDA Memory Pool: With UCX, all NVLink and InfiniBand memory buffers have to be mapped from one process to another upon the first request for transfer of that buffer between a single pair of processes. This can be quite costly, consuming up to 100ms only for mapping, plus the transfer time itself. For this reason it is strongly recommended to use a `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ memory pool in such cases, incurring in a single mapping of the pool and all subsequent transfers will not be required to repeat that process. It is recommened to also keep the memory pool size to at least the minimum amount of memory used by the application, if possible one can map all GPU memory to a single pool and utilize that pool for the entire lifetime of the application.
 
-* Automatic detection of InfiniBand interfaces: it's especially important to note the usage of ``--net-devices="auto"`` in ``dask-cuda-worker``, which will automatically determine the InfiniBand interface that's closest to each GPU. For safety, this option can only be used if ``--enable-infiniband`` is specified. Be warned that this mode assumes all InfiniBand interfaces on the system are connected and properly configured, undefined behavior may occur otherwise.
+- Automatic detection of InfiniBand interfaces: it's especially important to note the usage of ``--net-devices="auto"`` in ``dask-cuda-worker``, which will automatically determine the InfiniBand interface that's closest to each GPU. For safety, this option can only be used if ``--enable-infiniband`` is specified. Be warned that this mode assumes all InfiniBand interfaces on the system are connected and properly configured, undefined behavior may occur otherwise.
 
 
 Launching Scheduler, Workers and Clients Separately
