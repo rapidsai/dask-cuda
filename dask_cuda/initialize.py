@@ -1,28 +1,3 @@
-"""
-This initialization scripts will create CUDA context and initialize UCX-Py,
-depending on user parameters.
-
-It is sometimes convenient to initialize the CUDA context, particularly before
-starting up Dask workers which create a variety of threads.
-
-To ensure UCX works correctly, it is important to ensure it is initialized with
-the correct options. This is important for scheduler, workers and client. This
-initialization script will ensure that based on the flags and options passed by
-the user.
-
-This module is intended to be used within a Worker preload script.
-https://docs.dask.org/en/latest/setup/custom-startup.html
-
-You can add it to your global config with the following yaml
-
-    distributed:
-      worker:
-        preload:
-          - dask_cuda.initialize_ucx
-
-See https://docs.dask.org/en/latest/configuration.html for more information
-about Dask configuration.
-"""
 import logging
 
 import click
@@ -44,6 +19,59 @@ def initialize(
     net_devices="",
     cuda_device_index=None,
 ):
+    """Create CUDA context and initialize UCX-Py, depending on user parameters.
+
+    Sometimes it is convenient to initialize the CUDA context, particularly before
+    starting up Dask workers which create a variety of threads.
+
+    To ensure UCX works correctly, it is important to ensure it is initialized with
+    the correct options. This is important for scheduler, workers, and client. This
+    function will ensure that based on the flags and options passed by the user.
+
+    This function can also be used within a Worker preload script.
+    https://docs.dask.org/en/latest/setup/custom-startup.html
+
+    You can add it to your global config with the following YAML:
+
+    .. code-block:: yaml
+
+        distributed:
+          worker:
+            preload:
+              - dask_cuda.initialize
+
+    See https://docs.dask.org/en/latest/configuration.html for more information
+    about Dask configuration.
+
+    Parameters
+    ----------
+    create_cuda_context: bool
+        Create CUDA context on initialization.
+        Default is ``True``.
+    enable_tcp_over_ucx: bool
+        Set environment variables to enable TCP over UCX, even if InfiniBand
+        and NVLink are not supported or disabled.
+        Default is ``False``.
+    enable_infiniband: bool
+        Set environment variables to enable UCX InfiniBand support, implies
+        ``enable_tcp_over_ucx=True``.
+        Default is ``False``.
+    enable_nvlink: bool
+        Set environment variables to enable UCX NVLink support, implies
+        ``enable_tcp_over_ucx=True``.
+        Default is ``False``.
+    enable_rdmacm: bool
+        Set environment variables to enable UCX RDMA connection manager support,
+        implies ``enable_infiniband=True``.
+        Default is ``False``.
+    net_devices: str
+        Explicit interface name, such as ``"ib0"`` for InfiniBand or ``"eth0"``
+        if InfiniBand is disabled.
+        Default is ``""``, which will result in all available devices being used.
+    cuda_device_index: None or int
+        What does this argument control?
+    """
+
     if create_cuda_context:
         try:
             numba.cuda.current_context()
