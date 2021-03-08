@@ -64,12 +64,18 @@ def initialize(
         Set environment variables to enable UCX RDMA connection manager support,
         implies ``enable_infiniband=True``.
         Default is ``False``.
-    net_devices: str
-        Explicit interface name, such as ``"ib0"`` for InfiniBand or ``"eth0"``
-        if InfiniBand is disabled.
+    net_devices: callable or str
+        If callable, the function must take exactly one argument (the index of
+        current GPU) that will be used to get the interface name, such as
+        ``lambda dev: "mlx5_%d:1" % (dev // 2)``, which would return
+        ``"mlx5_1:1"`` for GPU 3.
+        If a string, must be an explicit interface name, such as ``"ib0"``
+        for InfiniBand or ``"eth0"`` if InfiniBand is disabled.
         Default is ``""``, which will result in all available devices being used.
     cuda_device_index: None or int
-        What does this argument control?
+        Index of the current GPU, which will be supplied to ``net_devices`` if
+        it is callable.
+        Default is ``None``.
     """
 
     if create_cuda_context:
