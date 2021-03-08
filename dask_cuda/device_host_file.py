@@ -236,7 +236,11 @@ class DeviceHostFile(ZictBase):
         self.device_func = dict()
         self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
         self.device_buffer = Buffer(
-            self.device_func, self.device_host_func, device_memory_limit, weight=weight
+            self.device_func,
+            self.device_host_func,
+            device_memory_limit,
+            weight=weight,
+            **device_buffer_kwargs,
         )
 
         self.device = self.device_buffer.fast.d
