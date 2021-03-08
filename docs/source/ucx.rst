@@ -169,9 +169,9 @@ To start a cluster and client with all supported transports and a 1 gigabyte RMM
 
 .. code-block:: python
 
-    from dask.distributed import Client
     from dask_cuda import LocalCUDACluster
     from dask_cuda.initialize import initialize
+    from distributed import Client
 
     initialize(
         enable_tcp_over_ucx=True,
