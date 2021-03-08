@@ -6,6 +6,7 @@ from .cuda_worker import CUDAWorker
 from .explicit_comms.dataframe.shuffle import get_rearrange_by_column_tasks_wrapper
 from .local_cuda_cluster import LocalCUDACluster
 
+
 __version__ = get_versions()["version"]
 del get_versions
 
