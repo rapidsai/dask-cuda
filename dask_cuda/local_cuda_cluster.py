@@ -9,6 +9,7 @@ from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
@@ -103,17 +104,24 @@ class LocalCUDACluster(LocalCluster):
         NOTE: The size is a per worker (i.e., per GPU) configuration, and
         not cluster-wide!
     rmm_managed_memory: bool
-        If True, initialize each worker with RMM and set it to use managed
-        memory. If False, RMM may still be used if `rmm_pool_size` is specified,
+        If ``True``, initialize each worker with RMM and set it to use managed
+        memory. If ``False``, RMM may still be used if `rmm_pool_size` is specified,
         but in that case with default (non-managed) memory type.
         WARNING: managed memory is currently incompatible with NVLink, trying
         to enable both will result in an exception.
+    rmm_log_directory: str
+        Directory to write per-worker RMM log files to; the client and scheduler
+        are not logged here. Logging will only be enabled if `rmm_pool_size` or
+        `rmm_managed_memory` are specified.
+    jit_unspill: bool
+        If True, enable just-in-time unspilling. This is experimental and doesn't
+        support memory spilling to disk. Please see proxy_object.ProxyObject and
+        proxify_host_file.ProxifyHostFile.
     log_spilling: bool
         If True, all spilling operations will be logged directly to
         distributed.worker with an INFO loglevel. This will eventually be
         replaced by a Dask configuration flag.
-    jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
+
 
     Examples
     --------
@@ -155,8 +163,9 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
-        log_spilling=False,
+        rmm_log_directory=None,
         jit_unspill=None,
+        log_spilling=False,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -175,6 +184,8 @@ class LocalCUDACluster(LocalCluster):
         )
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
+        if n_workers < 1:
+            raise ValueError("Number of workers cannot be less than 1.")
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
@@ -204,6 +215,8 @@ class LocalCUDACluster(LocalCluster):
                     "#important-notes for more details"
                 )
 
+        self.rmm_log_directory = rmm_log_directory
+
         if not processes:
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
@@ -215,18 +228,23 @@ class LocalCUDACluster(LocalCluster):
             self.jit_unspill = jit_unspill
 
         if data is None:
-            data = (
-                DeviceHostFile,
-                {
-                    "device_memory_limit": self.device_memory_limit,
-                    "memory_limit": self.host_memory_limit,
-                    "local_directory": local_directory
-                    or dask.config.get("temporary-directory")
-                    or os.getcwd(),
-                    "log_spilling": log_spilling,
-                    "jit_unspill": self.jit_unspill,
-                },
-            )
+            if self.jit_unspill:
+                data = (
+                    ProxifyHostFile,
+                    {"device_memory_limit": self.device_memory_limit,},
+                )
+            else:
+                data = (
+                    DeviceHostFile,
+                    {
+                        "device_memory_limit": self.device_memory_limit,
+                        "memory_limit": self.host_memory_limit,
+                        "local_directory": local_directory
+                        or dask.config.get("temporary-directory")
+                        or os.getcwd(),
+                        "log_spilling": log_spilling,
+                    },
+                )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
@@ -304,7 +322,11 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),
+                    RMMSetup(
+                        self.rmm_pool_size,
+                        self.rmm_managed_memory,
+                        self.rmm_log_directory,
+                    ),
                 },
             }
         )

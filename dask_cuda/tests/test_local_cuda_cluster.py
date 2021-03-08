@@ -6,7 +6,7 @@ from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
 
-from dask_cuda import LocalCUDACluster, utils
+from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
 
 
@@ -132,7 +132,7 @@ async def test_all_to_all():
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True) as cluster:
+    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True,) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -145,10 +145,38 @@ async def test_rmm_pool():
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True) as cluster:
+    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True,) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.ManagedMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_rmm_logging():
+    rmm = pytest.importorskip("rmm")
+
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB", rmm_log_directory=".", asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_type = await client.run(
+                rmm.mr.get_current_device_resource_type
+            )
+            for v in memory_resource_type.values():
+                assert v is rmm.mr.LoggingResourceAdaptor
+
+
+@gen_test(timeout=20)
+async def test_cluster_worker():
+    async with LocalCUDACluster(
+        scheduler_port=0, asynchronous=True, device_memory_limit=1, n_workers=1,
+    ) as cluster:
+        assert len(cluster.workers) == 1
+        async with Client(cluster, asynchronous=True) as client:
+            new_worker = CUDAWorker(cluster)
+            await new_worker
+            await client.wait_for_workers(2)
+            await new_worker.close()

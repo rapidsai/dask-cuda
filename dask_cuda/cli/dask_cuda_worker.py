@@ -113,6 +113,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "trying to enable both will result in an exception.",
 )
 @click.option(
+    "--rmm-log-directory",
+    default=None,
+    help="Directory to write per-worker RMM log files to; the client "
+    "and scheduler are not logged here."
+    "NOTE: Logging will only be enabled if --rmm-pool-size or "
+    "--rmm-managed-memory are specified.",
+)
+@click.option(
     "--reconnect/--no-reconnect",
     default=True,
     help="Reconnect to scheduler if disconnected",
@@ -195,8 +203,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
-    default=None,  # If not specified, use Dask config
-    help="Enable just-in-time unspilling",
+    default=None,
+    help="Enable just-in-time unspilling. This is experimental and doesn't "
+    "support memory spilling to disk Please see proxy_object.ProxyObject "
+    "and proxify_host_file.ProxifyHostFile.",
 )
 def main(
     scheduler,
@@ -207,6 +217,7 @@ def main(
     device_memory_limit,
     rmm_pool_size,
     rmm_managed_memory,
+    rmm_log_directory,
     pid_file,
     resources,
     dashboard,
@@ -235,6 +246,13 @@ def main(
     else:
         security = None
 
+    if isinstance(scheduler, str) and scheduler.startswith("-"):
+        raise ValueError(
+            "The scheduler address can't start with '-'. Please check "
+            "your command line arguments, you probably attempted to use "
+            "unsupported one. Scheduler address: %s" % scheduler
+        )
+
     worker = CUDAWorker(
         scheduler,
         host,
@@ -244,6 +262,7 @@ def main(
         device_memory_limit,
         rmm_pool_size,
         rmm_managed_memory,
+        rmm_log_directory,
         pid_file,
         resources,
         dashboard,

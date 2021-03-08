@@ -134,7 +134,7 @@ def device_deserialize(header, frames):
 
 @nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
 def device_to_host(obj: object) -> DeviceSerialized:
-    header, frames = serialize(obj, serializers=["dask", "pickle"], on_error="raise")
+    header, frames = serialize(obj, serializers=("dask", "pickle"), on_error="raise")
     return DeviceSerialized(header, frames)
 
 
@@ -154,7 +154,7 @@ def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
 
     # Notice, both the "dask" and the "pickle" serializer will
     # spill `obj` to main memory.
-    return proxy_object.asproxy(obj, serializers=["dask", "pickle"])
+    return proxy_object.asproxy(obj, serializers=("dask", "pickle"))
 
 
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
@@ -188,8 +188,6 @@ class DeviceHostFile(ZictBase):
         If True, all spilling operations will be logged directly to
         distributed.worker with an INFO loglevel. This will eventually be
         replaced by a Dask configuration flag.
-    jit_unspill: bool
-        If True, enable just-in-time unspilling (see proxy_object.ProxyObject).
     """
 
     def __init__(
@@ -198,7 +196,6 @@ class DeviceHostFile(ZictBase):
         memory_limit=None,
         local_directory=None,
         log_spilling=False,
-        jit_unspill=False,
     ):
         if local_directory is None:
             local_directory = dask.config.get("temporary-directory") or os.getcwd()
@@ -237,20 +234,9 @@ class DeviceHostFile(ZictBase):
 
         self.device_keys = set()
         self.device_func = dict()
-        if jit_unspill:
-            self.device_host_func = Func(
-                pxy_obj_device_to_host, pxy_obj_host_to_device, self.host_buffer
-            )
-        else:
-            self.device_host_func = Func(
-                device_to_host, host_to_device, self.host_buffer
-            )
-        self.device_buffer = buffer_class(
-            self.device_func,
-            self.device_host_func,
-            device_memory_limit,
-            weight=weight,
-            **device_buffer_kwargs,
+        self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
+        self.device_buffer = Buffer(
+            self.device_func, self.device_host_func, device_memory_limit, weight=weight
         )
 
         self.device = self.device_buffer.fast.d
@@ -261,6 +247,10 @@ class DeviceHostFile(ZictBase):
         self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
 
     def __setitem__(self, key, value):
+        if key in self.device_buffer:
+            # Make sure we register the removal of an existing key
+            del self[key]
+
         if is_device_object(value):
             self.device_keys.add(key)
             self.device_buffer[key] = value

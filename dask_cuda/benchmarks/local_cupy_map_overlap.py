@@ -42,11 +42,15 @@ async def _run(client, args):
     if args.profile is not None:
         async with performance_report(filename=args.profile):
             t1 = clock()
-            await client.compute(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+            await wait(
+                client.persist(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+            )
             took = clock() - t1
     else:
         t1 = clock()
-        await client.compute(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+        await wait(
+            client.persist(x.map_overlap(mean_filter, args.kernel_size, shape=ks))
+        )
         took = clock() - t1
 
     return (took, x.npartitions)
@@ -76,11 +80,18 @@ async def run(args):
         ) as client:
             scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
 
-            await client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
+            await client.run(
+                setup_memory_pool,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
+            )
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(
-                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+                setup_memory_pool,
+                pool_size=1e9,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
             )
 
             took_list = []

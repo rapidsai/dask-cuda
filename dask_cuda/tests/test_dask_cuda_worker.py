@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import subprocess
 
 import pytest
 
@@ -98,3 +99,56 @@ def test_rmm_managed(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.ManagedMemoryResource
+
+
+def test_rmm_logging(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--rmm-pool-size",
+                "2 GB",
+                "--rmm-log-directory",
+                ".",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                memory_resource_type = client.run(
+                    rmm.mr.get_current_device_resource_type
+                )
+                for v in memory_resource_type.values():
+                    assert v is rmm.mr.LoggingResourceAdaptor
+
+
+def test_dashboard_address(loop):  # noqa: F811
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--dashboard-address",
+                "127.0.0.1:9370",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                dashboard_addresses = client.run(
+                    lambda dask_worker: dask_worker._dashboard_address
+                )
+                for v in dashboard_addresses.values():
+                    assert v == "127.0.0.1:9370"
+
+
+def test_unknown_argument():
+    ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
+    assert ret.returncode != 0
+    assert b"Scheduler address: --my-argument" in ret.stderr
