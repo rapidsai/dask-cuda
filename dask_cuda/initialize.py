@@ -25,10 +25,13 @@ def initialize(
     starting up Dask workers which create a variety of threads.
 
     To ensure UCX works correctly, it is important to ensure it is initialized with
-    the correct options. This is important for scheduler, workers, and client. This
-    function will ensure that based on the flags and options passed by the user.
+    the correct options. This is especially important for the scheduler and client,
+    which cannot be configured to use UCX with arguments like ``LocalCUDACluster``
+    and ``dask-cuda-worker``. This function will ensure that they are provided a UCX
+    configuration based on the flags and options passed by the user.
 
-    This function can also be used within a Worker preload script.
+    This function can also be used within a worker preload script for UCX configuration
+    of mainline Dask/Distributed.
     https://docs.dask.org/en/latest/setup/custom-startup.html
 
     You can add it to your global config with the following YAML:
