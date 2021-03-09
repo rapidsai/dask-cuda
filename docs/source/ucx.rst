@@ -50,7 +50,7 @@ However, some will affect related libraries, such as RMM:
 - ``ucx.rdmacm: true`` -- **recommended for InfiniBand.**
 
   Replaces ``sockcm`` with ``rdmacm`` in ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
-  This is recommended by UCX for use with InfiniBand, and will not work it is disabled.
+  This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
 
 - ``ucx.net-devices: <str>`` -- **recommended.**
 
@@ -70,7 +70,7 @@ However, some will affect related libraries, such as RMM:
 
 .. note::
     These options can be used with mainline Dask/Distributed.
-    However, this will disable a variety of features, such as the automatic detection of InfiniBand interfaces. 
+    However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces. 
     See :doc:`Specializations for GPU Usage <specializations>` for more details on the benefits of using Dask-CUDA.
 
 
@@ -78,14 +78,13 @@ Usage
 -----
 
 Dask-CUDA workers using UCX communication can be started manually with the ``dask-cuda-worker`` CLI tool or automatically with ``LocalCUDACluster``.
-In either case, a ``distributed.Client`` must be made for the worker cluster using the same UCX configuration.
+In either case, a ``dask.distributed.Client`` must be made for the worker cluster using the same UCX configuration.
 
 dask-cuda-worker
 ^^^^^^^^^^^^^^^^
 
 A Dask cluster with UCX support can be started using the ``dask-cuda-worker`` CLI tool with a Dask scheduler which has been configured for UCX.
-
-*Do we want to include any reasons you would do this instead of using LocalCUDACluster?*
+This must be used for cases where a multi-node cluster is needed, as ``LocalCUDACluster`` will only start single-node clusters.
 
 Scheduler
 """""""""
@@ -105,7 +104,7 @@ To start a Dask scheduler using UCX with all supported transports and a 1 gigaby
     DASK_RMM__POOL_SIZE=1GB \
     dask-scheduler --protocol ucx --interface ib0
 
-Note the specification of ``mlx5_0:1`` as our UCX net device; because the scheduler does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly *(is this true?)*.
+Note the specification of ``mlx5_0:1`` as our UCX net device; because the scheduler does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
 We communicate to the scheduler that we will be using UCX with the ``--protocol`` option, and that we will be using InfiniBand with the ``--interface`` option.
 
 To start the same Dask scheduler as above but only using NVLink:
@@ -125,7 +124,7 @@ Workers
 
 All the relevant Dask configuration options for UCX have analogous parameters in ``dask-cuda-worker``; see :doc:`Worker <worker>` for a complete list of these options.
 
-To start workers with all supported transports and a 1 gigabyte RMM pool *(do we need to specify an interface here?)*:
+To start workers with all supported transports and a 1 gigabyte RMM pool:
 
 .. code-block:: bash
 
@@ -191,9 +190,4 @@ To start a cluster and client with all supported transports and a 1 gigabyte RMM
     )
     client = Client(cluster)
 
-Note the specification of ``"mlx5_0:1"`` as our net device in ``initialize()``; because the scheduler and client do not rely upon Dask-CUDA, they cannot automatically detect InfiniBand interfaces, so we must specify one explicitly (is this true?).
-
-Examples
---------
-
-More examples of Dask-CUDA configured with UCX integration can be found at *add link to examples in repo when this is done*.
+Note the specification of ``"mlx5_0:1"`` as our net device in ``initialize()``; because the scheduler and client do not rely upon Dask-CUDA, they cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
