@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 from dask.distributed import SSHCluster
+from dask.utils import parse_bytes
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -36,9 +37,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     parser.add_argument(
         "--rmm-pool-size",
         default=None,
-        type=float,
-        help="The size of the RMM memory pool. By default, 1/2 of "
-        "the total GPU memory is used.",
+        type=parse_bytes,
+        help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
     )
     parser.add_argument(
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
