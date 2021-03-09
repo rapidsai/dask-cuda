@@ -109,17 +109,6 @@ async def _run(client, args):
         func_args = (x, y)
 
         func = lambda x, y: x + y
-    elif args.operation == "col_mask":
-        rng = start_range(message="make array(s)", color="green")
-        x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
-        y = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
-        await wait(x)
-        await wait(y)
-        end_range(rng)
-
-        func_args = (x, y)
-
-        func = lambda x, y: x[y > 0]
     elif args.operation == "col_gather":
         rng = start_range(message="make array(s)", color="green")
         x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
