@@ -112,14 +112,14 @@ async def _run(client, args):
     elif args.operation == "col_gather":
         rng = start_range(message="make array(s)", color="green")
         x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
-        i = rs.randint(0, len(x), (args.second_size,), chunks=args.chunk_size).persist()
+        idx = rs.randint(0, len(x), (args.second_size,), chunks=args.chunk_size).persist()
         await wait(x)
-        await wait(i)
+        await wait(idx)
         end_range(rng)
 
-        func_args = (x, i)
+        func_args = (x, idx)
 
-        func = lambda x, y: x[i]
+        func = lambda x, idx: x[idx]
 
     shape = x.shape
     chunksize = x.chunksize
