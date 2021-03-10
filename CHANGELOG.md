@@ -1,6 +1,6 @@
 # dask-cuda 0.19.0 (Date TBD)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/branch-0.19-latest for the latest changes to this development branch.
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v0.19.0a for the latest changes to this development branch.
 
 # dask-cuda 0.18.0 (24 Feb 2021)
 
