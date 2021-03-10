@@ -98,6 +98,7 @@ def _test_dataframe_merge(backend, protocol, n_workers):
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/549")
 def test_dataframe_merge(backend, protocol, nworkers):
     if backend == "cudf":
         pytest.importorskip("cudf")
@@ -198,6 +199,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
 @pytest.mark.parametrize("nworkers", [1, 2, 3])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/549")
 def test_dataframe_shuffle(backend, protocol, nworkers):
     if backend == "cudf":
         pytest.importorskip("cudf")
@@ -238,6 +240,7 @@ def _test_dask_use_explicit_comms():
     check_shuffle(False)
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/549")
 def test_dask_use_explicit_comms():
     p = mp.Process(target=_test_dask_use_explicit_comms)
     p.start()

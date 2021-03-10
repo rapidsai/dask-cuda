@@ -24,7 +24,7 @@ copyright = "2020, NVIDIA"
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
-from dask_cuda import __version__ as release
+from dask_cuda import __version__ as release  # noqa: E402
 
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])

@@ -23,9 +23,9 @@ from .utils import (
 
 
 class LocalCUDACluster(LocalCluster):
-    """A variant of LocalCluster that uses one GPU per process
+    """A variant of ``dask.distributed.LocalCluster`` that uses one GPU per process.
 
-    This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
+    This assigns a different ``CUDA_VISIBLE_DEVICES`` environment variable to each
     worker process.
 
     For machines with a complex architecture mapping CPUs, GPUs, and network
@@ -46,9 +46,9 @@ class LocalCUDACluster(LocalCluster):
         Specifies the size of the CUDA device LRU cache, which is used to
         determine when the worker starts spilling to host memory.  This can be
         a float (fraction of total device memory), an integer (bytes), a string
-        (like 5GB or 5000M), and "auto", 0 or None to disable spilling to
-        host (i.e., allow full device memory usage). Default is 0.8, 80% of the
-        worker's total device memory.
+        (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, ``0``, or ``None`` to disable
+        spilling to host (i.e., allow full device memory usage). Default is ``0.8``,
+        80% of the worker's total device memory.
     interface: str
         The external interface used to connect to the scheduler, usually
         an ethernet interface is used for connection, and not an InfiniBand
@@ -56,49 +56,60 @@ class LocalCUDACluster(LocalCluster):
     threads_per_worker: int
         Number of threads to be used for each CUDA worker process.
     protocol: str
-        Protocol to use for communication, e.g., "tcp" or "ucx".
+        Protocol to use for communication, e.g., ``"tcp"`` or ``"ucx"``.
     enable_tcp_over_ucx: bool
         Set environment variables to enable TCP over UCX, even if InfiniBand
         and NVLink are not supported or disabled.
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support, requires
-        protocol='ucx' and implies enable_tcp_over_ucx=True.
+        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True``.
     enable_rdmacm: bool
         Set environment variables to enable UCX RDMA connection manager support,
-        requires protocol='ucx' and enable_infiniband=True.
+        requires ``protocol="ucx"`` and ``enable_infiniband=True``.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support, requires
-        protocol='ucx' and implies enable_tcp_over_ucx=True.
+        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True``.
     ucx_net_devices: None, callable or str
-        When None (default), 'UCX_NET_DEVICES' will be left to its default.
+        When ``None`` (default), ``"UCX_NET_DEVICES"`` will be left to its default.
         If callable, the function must take exactly one argument (the index of
         current GPU) that will be used to get the interface name, such as
         ``lambda dev: "mlx5_%d:1" % (dev // 2)``, returning ``"mlx5_1:1"`` for
         GPU 3, for example. If it's a string, it must be a non-empty string
-        with the interface name, such as "eth0" or "auto" to allow for
+        with the interface name, such as ``"eth0"`` or ``"auto"`` to allow for
         automatically choosing the closest interface based on the system's
         topology.
-        WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc
-        support. Additionally that will always use the closest interface, and
-        that may cause unexpected errors if that interface is not properly
-        configured or is disconnected, for that reason it's limited to
-        InfiniBand only and will still cause unpredictable errors if not _ALL_
-        interfaces are connected and properly configured.
+
+        .. warning::
+            ``"auto"`` requires UCX-Py to be installed and compiled with hwloc
+            support. Additionally that will always use the closest interface, and
+            that may cause unexpected errors if that interface is not properly
+            configured or is disconnected, for that reason it's limited to
+            InfiniBand only and will still cause unpredictable errors if **all**
+            interfaces are not connected and properly configured.
     rmm_pool_size: None, int or str
-        When None (default), no RMM pool is initialized. If a different value
-        is given, it can be an integer (bytes) or string (like 5GB or 5000M).
-        NOTE: The size is a per worker (i.e., per GPU) configuration, and
-        not cluster-wide!
+        When ``None`` (default), no RMM pool is initialized. If a different value
+        is given, it can be an integer (bytes) or string (like ``"5GB"`` or
+        ``"5000M"``).
+
+        .. note::
+            The size is a per worker (i.e., per GPU) configuration, and not
+            cluster-wide!
     rmm_managed_memory: bool
-        If True, initialize each worker with RMM and set it to use managed
-        memory. If False, RMM may still be used if `rmm_pool_size` is specified,
+        If ``True``, initialize each worker with RMM and set it to use managed
+        memory. If ``False``, RMM may still be used if ``rmm_pool_size`` is specified,
         but in that case with default (non-managed) memory type.
-        WARNING: managed memory is currently incompatible with NVLink, trying
-        to enable both will result in an exception.
+
+        .. warning::
+            Managed memory is currently incompatible with NVLink, trying to enable
+            both will result in an exception.
+    rmm_log_directory: str
+        Directory to write per-worker RMM log files to; the client and scheduler
+        are not logged here. Logging will only be enabled if ``rmm_pool_size`` or
+        ``rmm_managed_memory`` are specified.
     jit_unspill: bool
-        If True, enable just-in-time unspilling. This is experimental and doesn't
-        support memory spilling to disk. Please see proxy_object.ProxyObject and
-        proxify_host_file.ProxifyHostFile.
+        If ``True``, enable just-in-time unspilling. This is experimental and doesn't
+        support memory spilling to disk. Please see ``proxy_object.ProxyObject`` and
+        ``proxify_host_file.ProxifyHostFile``.
 
 
     Examples
@@ -111,10 +122,11 @@ class LocalCUDACluster(LocalCluster):
     Raises
     ------
     TypeError
-        If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
+        If ``enable_infiniband`` or ``enable_nvlink`` is ``True`` and protocol is not
+        ``"ucx"``.
     ValueError
-        If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
-        not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
+        If ``ucx_net_devices`` is an empty string, or if it is ``"auto"`` and UCX-Py is
+        not installed, or if it is ``"auto"`` and ``enable_infiniband=False``, or UCX-Py
         wasn't compiled with hwloc support, or both RMM managed memory and
         NVLink are enabled.
 
@@ -141,6 +153,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
+        rmm_log_directory=None,
         jit_unspill=None,
         **kwargs,
     ):
@@ -190,6 +203,8 @@ class LocalCUDACluster(LocalCluster):
                     "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
                     "#important-notes for more details"
                 )
+
+        self.rmm_log_directory = rmm_log_directory
 
         if not processes:
             raise ValueError(
@@ -294,7 +309,11 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMSetup(self.rmm_pool_size, self.rmm_managed_memory),
+                    RMMSetup(
+                        self.rmm_pool_size,
+                        self.rmm_managed_memory,
+                        self.rmm_log_directory,
+                    ),
                 },
             }
         )

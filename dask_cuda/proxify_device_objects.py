@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, List, MutableMapping
 
 from dask.utils import Dispatch
 
@@ -9,8 +9,9 @@ dispatch = Dispatch(name="proxify_device_objects")
 
 def proxify_device_objects(
     obj: Any,
-    proxied_id_to_proxy: Dict[int, ProxyObject],
+    proxied_id_to_proxy: MutableMapping[int, ProxyObject],
     found_proxies: List[ProxyObject],
+    excl_proxies: bool = False,
 ):
     """ Wrap device objects in ProxyObject
 
@@ -22,25 +23,31 @@ def proxify_device_objects(
     ----------
     obj: Any
         Object to search through or wrap in a ProxyObject.
-    proxied_id_to_proxy: Dict[int, ProxyObject]
+    proxied_id_to_proxy: MutableMapping[int, ProxyObject]
         Dict mapping the id() of proxied objects (CUDA device objects) to
         their proxy and is updated with all new proxied objects found in `obj`.
     found_proxies: List[ProxyObject]
         List of found proxies in `obj`. Notice, this includes all proxies found,
         including those already in `proxied_id_to_proxy`.
+    excl_proxies: bool
+        Don't add found objects that are already ProxyObject to found_proxies.
 
     Returns
     -------
     ret: Any
         A copy of `obj` where all CUDA device objects are wrapped in ProxyObject
     """
-    return dispatch(obj, proxied_id_to_proxy, found_proxies)
+    return dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
 
 
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
     if _id in proxied_id_to_proxy:
         ret = proxied_id_to_proxy[_id]
+        finalize = ret._obj_pxy.get("external_finalize", None)
+        if finalize:
+            finalize()
+            proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
     else:
         proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
     found_proxies.append(ret)
@@ -48,15 +55,18 @@ def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
 
 
 @dispatch.register(object)
-def proxify_device_object_default(obj, proxied_id_to_proxy, found_proxies):
+def proxify_device_object_default(
+    obj, proxied_id_to_proxy, found_proxies, excl_proxies
+):
     if hasattr(obj, "__cuda_array_interface__"):
         return proxify(obj, proxied_id_to_proxy, found_proxies)
     return obj
 
 
 @dispatch.register(ProxyObject)
-def proxify_device_object_proxy_object(obj, proxied_id_to_proxy, found_proxies):
-
+def proxify_device_object_proxy_object(
+    obj, proxied_id_to_proxy, found_proxies, excl_proxies
+):
     # We deserialize CUDA-serialized objects since it is very cheap and
     # makes it easy to administrate device memory usage
     if obj._obj_pxy_is_serialized() and "cuda" in obj._obj_pxy["serializers"]:
@@ -70,7 +80,16 @@ def proxify_device_object_proxy_object(obj, proxied_id_to_proxy, found_proxies):
         else:
             proxied_id_to_proxy[_id] = obj
 
-    found_proxies.append(obj)
+    finalize = obj._obj_pxy.get("external_finalize", None)
+    if finalize:
+        finalize()
+        obj = obj._obj_pxy_copy()
+        if not obj._obj_pxy_is_serialized():
+            _id = id(obj._obj_pxy["obj"])
+            proxied_id_to_proxy[_id] = obj
+
+    if not excl_proxies:
+        found_proxies.append(obj)
     return obj
 
 
@@ -78,13 +97,22 @@ def proxify_device_object_proxy_object(obj, proxied_id_to_proxy, found_proxies):
 @dispatch.register(tuple)
 @dispatch.register(set)
 @dispatch.register(frozenset)
-def proxify_device_object_python_collection(seq, proxied_id_to_proxy, found_proxies):
-    return type(seq)(dispatch(o, proxied_id_to_proxy, found_proxies) for o in seq)
+def proxify_device_object_python_collection(
+    seq, proxied_id_to_proxy, found_proxies, excl_proxies
+):
+    return type(seq)(
+        dispatch(o, proxied_id_to_proxy, found_proxies, excl_proxies) for o in seq
+    )
 
 
 @dispatch.register(dict)
-def proxify_device_object_python_dict(seq, proxied_id_to_proxy, found_proxies):
-    return {k: dispatch(v, proxied_id_to_proxy, found_proxies) for k, v in seq.items()}
+def proxify_device_object_python_dict(
+    seq, proxied_id_to_proxy, found_proxies, excl_proxies
+):
+    return {
+        k: dispatch(v, proxied_id_to_proxy, found_proxies, excl_proxies)
+        for k, v in seq.items()
+    }
 
 
 # Implement cuDF specific proxification
@@ -107,7 +135,9 @@ def _register_cudf():
     @dispatch.register(cudf.DataFrame)
     @dispatch.register(cudf.Series)
     @dispatch.register(cudf.Index)
-    def proxify_device_object_cudf_dataframe(obj, proxied_id_to_proxy, found_proxies):
+    def proxify_device_object_cudf_dataframe(
+        obj, proxied_id_to_proxy, found_proxies, excl_proxies
+    ):
         return proxify(
             obj, proxied_id_to_proxy, found_proxies, subclass=FrameProxyObject
         )

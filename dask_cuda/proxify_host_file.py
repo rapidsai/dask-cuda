@@ -164,7 +164,7 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             # Notice, multiple proxy object can point to different non-overlapping
             # parts of the same device buffer.
-            ret = DefaultDict(list)
+            ret = defaultdict(list)
             for proxy in self.proxies_tally.get_unspilled_proxies():
                 for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
                     ret[dev_buffer].append(proxy)
@@ -181,22 +181,67 @@ class ProxifyHostFile(MutableMapping):
                 total_dev_mem_usage += size
             return total_dev_mem_usage, dev_buf_access
 
+    def add_external(self, obj):
+        """Add an external object to the hostfile that count against the
+        device_memory_limit but isn't part of the store.
+
+        Normally, we use __setitem__ to store objects in the hostfile and make it
+        count against the device_memory_limit with the inherent consequence that
+        the objects are not freeable before subsequential calls to __delitem__.
+        This is a problem for long running tasks that want objects to count against
+        the device_memory_limit while freeing them ASAP without explicit calls to
+        __delitem__.
+
+        Developer Notes
+        ---------------
+        In order to avoid holding references to the found proxies in `obj`, we
+        wrap them in `weakref.proxy(p)` and adds them to the `proxies_tally`.
+        In order to remove them from the `proxies_tally` again, we attach a
+        finalize(p) on the wrapped proxies that calls del_external().
+        """
+
+        # Notice, since `self.store` isn't modified, no lock is needed
+        found_proxies: List[ProxyObject] = []
+        proxied_id_to_proxy = {}
+        # Notice, we are excluding found objects that are already proxies
+        ret = proxify_device_objects(
+            obj, proxied_id_to_proxy, found_proxies, excl_proxies=True
+        )
+        last_access = time.monotonic()
+        self_weakref = weakref.ref(self)
+        for p in found_proxies:
+            name = id(p)
+            finalize = weakref.finalize(p, self.del_external, name)
+            external = weakref.proxy(p)
+            p._obj_pxy["hostfile"] = self_weakref
+            p._obj_pxy["last_access"] = last_access
+            p._obj_pxy["external"] = external
+            p._obj_pxy["external_finalize"] = finalize
+            self.proxies_tally.add_key(name, [external])
+        self.maybe_evict()
+        return ret
+
+    def del_external(self, name):
+        self.proxies_tally.del_key(name)
+
     def __setitem__(self, key, value):
         with self.lock:
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
 
-            found_proxies = []
+            found_proxies: List[ProxyObject] = []
             proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
             self.store[key] = proxify_device_objects(
                 value, proxied_id_to_proxy, found_proxies
             )
-            last_access = time.time()
+            last_access = time.monotonic()
             self_weakref = weakref.ref(self)
             for p in found_proxies:
                 p._obj_pxy["hostfile"] = self_weakref
                 p._obj_pxy["last_access"] = last_access
+                assert "external" not in p._obj_pxy
+
             self.proxies_tally.add_key(key, found_proxies)
             self.maybe_evict()
 
