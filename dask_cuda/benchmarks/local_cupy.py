@@ -112,7 +112,9 @@ async def _run(client, args):
     elif args.operation == "col_gather":
         rng = start_range(message="make array(s)", color="green")
         x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
-        idx = rs.randint(0, len(x), (args.second_size,), chunks=args.chunk_size).persist()
+        idx = rs.randint(
+            0, len(x), (args.second_size,), chunks=args.chunk_size
+        ).persist()
         await wait(x)
         await wait(idx)
         end_range(rng)
