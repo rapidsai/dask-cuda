@@ -44,7 +44,7 @@ def main(
     if (enable_infiniband or enable_nvlink) and not interface:
         raise ValueError("Interface must be specified if using NVLink or Infiniband")
 
-    cluster = LocalCUDACluster(
+    cluster = LocalCUDACluster(  # noqa F842
         enable_tcp_over_ucx=True,
         enable_nvlink=enable_nvlink,
         enable_infiniband=enable_infiniband,
