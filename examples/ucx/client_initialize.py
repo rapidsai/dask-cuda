@@ -1,9 +1,7 @@
 import click
 
 from dask.distributed import Client
-from dask.utils import parse_bytes
 
-from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
 
 
@@ -40,7 +38,7 @@ def main(
         net_devices=ucx_net_devices,
     )
 
-    client = Client(address)
+    client = Client(address)  # noqa F841
 
 
 if __name__ == "__main__":
