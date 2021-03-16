@@ -1,7 +1,9 @@
 import click
 
-from dask_cuda import LocalCUDACluster
 from dask.utils import parse_bytes
+
+from dask_cuda import LocalCUDACluster
+
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.option(
@@ -29,11 +31,8 @@ from dask.utils import parse_bytes
     "an integer (bytes) or string (like 5GB or 5000M).",
 )
 def main(
-    enable_nvlink,
-    enable_infiniband,
-    interface,
-    rmm_pool_size,
-    ):
+    enable_nvlink, enable_infiniband, interface, rmm_pool_size,
+):
 
     enable_rdmacm = False
     ucx_net_devices = None
@@ -54,6 +53,7 @@ def main(
         interface=interface,
         rmm_pool_size=rmm_pool_size,
     )
+
 
 if __name__ == "__main__":
     main()
