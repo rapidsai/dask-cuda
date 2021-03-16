@@ -1,46 +1,55 @@
 #!/bin/bash
 
-CLUSTER_TYPE=$1
+usage() {
+    echo "usage: $0 [-a <scheduler_address>] [-i <interface>] [-r <rmm_pool_size>] [-t <transports>]" >&2
+    exit 1
+    } 
 
-# set up environment variables
+# parse arguments
+address=localhost
+rmm_pool_size=1GB
+
+while getopts ":a:i:r:t:" flag; do
+    case "${flag}" in
+        a) address=${OPTARG};;
+        i) interface=${OPTARG};;
+        r) rmm_pool_size=${OPTARG};;
+        t) transport=${OPTARG};;
+        *) usage;;
+    esac
+done
+
+if [ -z ${interface+x} ] && ! [ -z ${transport+x} ]; then
+    echo "$0: interface must be specified with -i if using NVLink or InfiniBand"
+    exit 1
+fi
+
+# set up environment variables/flags
 DASK_UCX__CUDA_COPY=True
 DASK_UCX__TCP=True
-DASK_RMM__POOL_SIZE=1GB
-WORKER_FLAGS=(
-    "--enable-tcp-over-ucx"
-    "--rmm-pool-size=${DASK_RMM__POOL_SIZE}"
-    )
+DASK_RMM__POOL_SIZE=$rmm_pool_size
 
-if [ $CLUSTER_TYPE == "NVLINK" ]; then
+scheduler_flags="--protocol ucx"
+worker_flags="--enable-tcp-over-ucx --rmm-pool-size ${rmm_pool_size}"
+
+if ! [ -z ${interface+x} ]; then
+    scheduler_flags+=" --interface ${interface}"
+fi
+if [[ $transport == *"nvlink"* ]]; then
     DASK_UCX__NVLINK=True
-    INTERFACE=enp1s0f0
-    WORKER_FLAGS+=("--enable-nvlink")
-elif [ $CLUSTER_TYPE == "IB" ]; then
+
+    worker_flags+=" --enable-nvlink"
+fi
+if [[ $transport == *"ib"* ]]; then
     DASK_UCX__INFINIBAND=True
     DASK_UCX__RDMACM=True
     DASK_UCX__NET_DEVICES=mlx5_0:1
-    INTERFACE=ib0
-    WORKER_FLAGS+=(
-        "--enable-infiniband"
-        "--enable-rdmacm"
-        "--net-devices=auto"
-        )
-elif [ $CLUSTER_TYPE == "NVLINK_IB" ]; then
-    DASK_UCX__NVLINK=True
-    DASK_UCX__INFINIBAND=True
-    DASK_UCX__RDMACM=True
-    DASK_UCX__NET_DEVICES=mlx5_0:1
-    INTERFACE=ib0
-    WORKER_FLAGS+=(
-        "--enable-nvlink"
-        "--enable-infiniband"
-        "--enable-rdmacm"
-        "--net-devices=auto"
-        )
+
+    worker_flags+=" --enable-infiniband --enable-rdmacm --net-devices=auto"
 fi
 
 # initialize scheduler
-dask-scheduler --protocol ucx --interface $INTERFACE &
+dask-scheduler $scheduler_flags &
 
 # initialize workers
-dask-cuda-worker ucx://10.33.225.162:8786 ${WORKER_FLAGS[*]}
+dask-cuda-worker ucx://${address}:8786 $worker_flags
