@@ -30,6 +30,7 @@ def main(
         enable_rdmacm = True
         ucx_net_devices = "mlx5_0:1"
 
+    # set up environment
     initialize(
         enable_tcp_over_ucx=True,
         enable_nvlink=enable_nvlink,
@@ -38,6 +39,7 @@ def main(
         net_devices=ucx_net_devices,
     )
 
+    # initialize client
     client = Client(address)  # noqa F841
 
 
