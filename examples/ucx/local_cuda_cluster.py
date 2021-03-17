@@ -71,7 +71,7 @@ def main(
     )
 
     # initialize client
-    client = Client(cluster)  # noqa F842
+    client = Client(cluster)  # noqa F841
 
 
 if __name__ == "__main__":
