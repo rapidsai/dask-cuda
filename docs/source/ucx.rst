@@ -136,15 +136,41 @@ To start workers with all supported transports and a 1 gigabyte RMM pool:
     --net-devices="auto" \
     --rmm-pool-size="1GB"
 
+Client
+""""""
+
+The UCX configurations used by the scheduler and client must be the same.
+This can be ensured by using ``dask_cuda.initialize``, a utility which takes the same UCX configuring arguments as ``LocalCUDACluster`` and adds them to the current Dask configuration used when creating the client; see the :doc:`API reference <api>` for a complete list of arguments.
+
+To connect a client to a cluster with all supported transports:
+
+.. code-block:: python
+
+    from dask.distributed import Client
+    from dask_cuda.initialize import initialize
+
+    initialize(
+        enable_tcp_over_ucx=True,
+        enable_nvlink=True,
+        enable_infiniband=True,
+        enable_rdmacm=True,
+        net_devices="mlx5_0:1",
+    )
+    client = Client("ucx://<scheduler_address>:8786")
+
+Note the specification of ``"mlx5_0:1"`` as our net device; because the scheduler and client do not rely upon Dask-CUDA, they cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
+
 LocalCUDACluster
 ^^^^^^^^^^^^^^^^
 
 All options available to ``dask-cuda-worker`` are also available as arguments for ``LocalCUDACluster``; see the :doc:`API reference <api>` for a complete list of arguments.
+When creating a ``LocalCUDACluster``, ``dask_cuda.initialize`` is run automatically to ensure the Dask configuration is consistent with the cluster, so that a client can be connected to the cluster with no additional setup.
 
-To start a cluster with all supported transports and a 1 gigabyte RMM pool:
+To start a cluster and client with all supported transports and a 1 gigabyte RMM pool:
 
 .. code-block:: python
 
+    from dask.distributed import Client
     from dask_cuda import LocalCUDACluster
 
     cluster = LocalCUDACluster(
@@ -157,37 +183,4 @@ To start a cluster with all supported transports and a 1 gigabyte RMM pool:
         ucx_net_devices="auto",
         rmm_pool_size="1GB"
     )
-
-Client
-^^^^^^
-
-The UCX configurations used by the scheduler and client should be the same.
-This can be ensured by using ``dask_cuda.initialize``, a utility which takes the same UCX configuring arguments as ``LocalCUDACluster`` and adds them to the current Dask configuration used when creating the scheduler and client; see the :doc:`API reference <api>` for a complete list of arguments.
-
-To start a cluster and client with all supported transports and a 1 gigabyte RMM pool:
-
-.. code-block:: python
-
-    from dask.distributed import Client
-    from dask_cuda import LocalCUDACluster
-    from dask_cuda.initialize import initialize
-
-    initialize(
-        enable_tcp_over_ucx=True,
-        enable_nvlink=True,
-        enable_infiniband=True,
-        enable_rdmacm=True,
-        net_devices="mlx5_0:1",
-    )
-    cluster = LocalCUDACluster(
-        protocol="ucx",
-        interface="ib0", # passed to the scheduler
-        enable_tcp_over_ucx=True,
-        enable_nvlink=True,
-        enable_infiniband=True,
-        ucx_net_devices="auto",
-        rmm_pool_size="1GB",
-    )
     client = Client(cluster)
-
-Note the specification of ``"mlx5_0:1"`` as our net device in ``initialize()``; because the scheduler and client do not rely upon Dask-CUDA, they cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
