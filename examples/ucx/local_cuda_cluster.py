@@ -1,8 +1,10 @@
 import click
 
+from dask.distributed import Client
 from dask.utils import parse_bytes
 
 from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -20,7 +22,8 @@ from dask_cuda import LocalCUDACluster
     "--interface",
     default=None,
     type=str,
-    help="Enable InfiniBand communication with RDMA",
+    help="Interface used by scheduler for communication. Must be "
+    "specified if NVLink or InfiniBand are enabled.",
 )
 @click.option(
     "--rmm-pool-size",
@@ -35,24 +38,40 @@ def main(
 ):
 
     enable_rdmacm = False
-    ucx_net_devices = None
+    client_devices = worker_devices = None
 
     if enable_infiniband:
         enable_rdmacm = True
-        ucx_net_devices = "auto"
+        client_devices = "mlx5_0:1"
+        worker_devices = "auto"
 
     if (enable_infiniband or enable_nvlink) and not interface:
-        raise ValueError("Interface must be specified if using NVLink or Infiniband")
+        raise ValueError(
+            "Interface must be specified if NVLink or Infiniband are enabled"
+        )
 
-    cluster = LocalCUDACluster(  # noqa F842
+    # set up environment
+    initialize(
         enable_tcp_over_ucx=True,
         enable_nvlink=enable_nvlink,
         enable_infiniband=enable_infiniband,
         enable_rdmacm=enable_rdmacm,
-        ucx_net_devices=ucx_net_devices,
+        net_devices=client_devices,
+    )
+
+    # initialize scheduler & workers
+    cluster = LocalCUDACluster(
+        enable_tcp_over_ucx=True,
+        enable_nvlink=enable_nvlink,
+        enable_infiniband=enable_infiniband,
+        enable_rdmacm=enable_rdmacm,
+        ucx_net_devices=worker_devices,
         interface=interface,
         rmm_pool_size=rmm_pool_size,
     )
+
+    # initialize client
+    client = Client(cluster)  # noqa F842
 
 
 if __name__ == "__main__":
