@@ -20,7 +20,7 @@ while getopts ":a:i:r:t:" flag; do
 done
 
 if [ -z ${interface+x} ] && ! [ -z ${transport+x} ]; then
-    echo "$0: interface must be specified with -i if using NVLink or InfiniBand"
+    echo "$0: interface must be specified with -i if NVLink or InfiniBand are enabled"
     exit 1
 fi
 
