@@ -39,7 +39,11 @@ async def recv(
     for rank, ep in eps.items():
         if rank in in_nparts:
             futures.append(ep.read())
-    out_parts_list.extend(nested_deserialize(await asyncio.gather(*futures)))
+
+    # Notice, since Dask may convert lists to tuples, we convert them back into lists
+    out_parts_list.extend(
+        [[y for y in x] for x in nested_deserialize(await asyncio.gather(*futures))]
+    )
 
 
 def sort_in_parts(
