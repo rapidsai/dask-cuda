@@ -64,12 +64,12 @@ def main(
     # initialize client
     client = Client(cluster)
 
-    # client code here
+    # user code here
     rs = da.random.RandomState(RandomState=cupy.random.RandomState)
     x = rs.random((10000, 10000), chunks=1000)
     x.sum().compute()
 
-    # shutdown client
+    # shutdown cluster
     client.shutdown()
 
 
