@@ -6,12 +6,10 @@ usage() {
     } 
 
 # parse arguments
-address=localhost
 rmm_pool_size=1GB
 
 while getopts ":a:i:r:t:" flag; do
     case "${flag}" in
-        a) address=${OPTARG};;
         i) interface=${OPTARG};;
         r) rmm_pool_size=${OPTARG};;
         t) transport=${OPTARG};;
@@ -29,8 +27,8 @@ DASK_UCX__CUDA_COPY=True
 DASK_UCX__TCP=True
 DASK_RMM__POOL_SIZE=$rmm_pool_size
 
-scheduler_flags="--protocol ucx"
-worker_flags="--enable-tcp-over-ucx --rmm-pool-size ${rmm_pool_size}"
+scheduler_flags="--scheduler-file scheduler.json --protocol ucx"
+worker_flags="--scheduler-file scheduler.json --enable-tcp-over-ucx --rmm-pool-size ${rmm_pool_size}"
 
 if ! [ -z ${interface+x} ]; then
     scheduler_flags+=" --interface ${interface}"
@@ -42,14 +40,15 @@ if [[ $transport == *"nvlink"* ]]; then
 fi
 if [[ $transport == *"ib"* ]]; then
     DASK_UCX__INFINIBAND=True
-    DASK_UCX__RDMACM=True
+    # DASK_UCX__RDMACM=True  # RDMACM not working right now
     DASK_UCX__NET_DEVICES=mlx5_0:1
 
-    worker_flags+=" --enable-infiniband --enable-rdmacm --net-devices=auto"
+    # worker_flags+=" --enable-infiniband --enable-rdmacm --net-devices=auto"
+    worker_flags+=" --enable-infiniband --net-devices=auto"
 fi
 
 # initialize scheduler
 dask-scheduler $scheduler_flags &
 
 # initialize workers
-dask-cuda-worker ucx://${address}:8786 $worker_flags
+dask-cuda-worker $worker_flags

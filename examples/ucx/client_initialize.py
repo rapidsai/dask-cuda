@@ -1,5 +1,7 @@
 import click
+import cupy
 
+from dask import array as da
 from dask.distributed import Client
 
 from dask_cuda.initialize import initialize
@@ -27,7 +29,7 @@ def main(
     ucx_net_devices = None
 
     if enable_infiniband:
-        enable_rdmacm = True
+        # enable_rdmacm = True  # RDMACM not working right now
         ucx_net_devices = "mlx5_0:1"
 
     # set up environment
@@ -40,7 +42,15 @@ def main(
     )
 
     # initialize client
-    client = Client(address)  # noqa F841
+    client = Client(address)
+
+    # user code here
+    rs = da.random.RandomState(RandomState=cupy.random.RandomState)
+    x = rs.random((10000, 10000), chunks=1000)
+    x.sum().compute()
+
+    # shutdown cluster
+    client.shutdown()
 
 
 if __name__ == "__main__":
