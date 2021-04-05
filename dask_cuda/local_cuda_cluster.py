@@ -3,7 +3,7 @@ import os
 import warnings
 
 import dask
-from dask.distributed import LocalCluster
+from dask.distributed import LocalCluster, Nanny, Worker
 from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
@@ -20,6 +20,20 @@ from .utils import (
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
+
+
+class LoggedWorker(Worker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def start(self):
+        await super().start()
+        self.data.set_address(self.address)
+
+
+class LoggedNanny(Nanny):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, worker_class=LoggedWorker, **kwargs)
 
 
 class LocalCUDACluster(LocalCluster):
@@ -110,6 +124,10 @@ class LocalCUDACluster(LocalCluster):
         If ``True``, enable just-in-time unspilling. This is experimental and doesn't
         support memory spilling to disk. Please see ``proxy_object.ProxyObject`` and
         ``proxify_host_file.ProxifyHostFile``.
+    log_spilling: bool
+        If True, all spilling operations will be logged directly to
+        distributed.worker with an INFO loglevel. This will eventually be
+        replaced by a Dask configuration flag.
 
 
     Examples
@@ -155,6 +173,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         rmm_log_directory=None,
         jit_unspill=None,
+        log_spilling=False,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -231,6 +250,7 @@ class LocalCUDACluster(LocalCluster):
                         "local_directory": local_directory
                         or dask.config.get("temporary-directory")
                         or os.getcwd(),
+                        "log_spilling": log_spilling,
                     },
                 )
 
@@ -271,6 +291,7 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
+            worker_class=LoggedNanny if log_spilling is True else Nanny,
             config={
                 "ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
