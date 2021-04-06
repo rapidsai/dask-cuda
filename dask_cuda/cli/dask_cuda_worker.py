@@ -40,17 +40,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--name",
     type=str,
     default=None,
-    help="""A unique name for this worker like ``worker-1``; if used with ``--nprocs``,
-    then the process number will be appended to the worker name, e.g. ``worker-1-0``,
-    ``worker-1-1``, ``worker-1-2``, ...""",
+    help="""A unique name for this worker like ``"worker-1"``; if used with ``--nprocs``,
+    then the process number will be appended to the worker name, e.g. ``"worker-1-0"``,
+    ``"worker-1-1"``, ``"worker-1-2"``, ...""",
 )
 @click.option(
     "--memory-limit",
     default="auto",
     show_default=True,
     help="""Bytes of memory per process that the worker can use; can be an integer
-    (bytes), float (fraction of total system memory), string (like ``5GB`` or
-    ``5000M``), ``auto``, or 0 for no memory management""",
+    (bytes), float (fraction of total system memory), string (like ``"5GB"`` or
+    ``"5000M"``), ``"auto"``, or 0 for no memory management""",
 )
 @click.option(
     "--device-memory-limit",
@@ -58,18 +58,18 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     show_default=True,
     help="""Specifies the size of the CUDA device LRU cache, which is used to determine
     when the worker starts spilling to host memory; can be an integer (bytes), float
-    (fraction of total device memory), string (like ``5GB`` or ``5000M``), ``auto``,
-    or 0 to disable spilling to host (i.e., allow full device memory usage)""",
+    (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``),
+    ``"auto"``, or 0 to disable spilling to host (i.e., allow full device memory
+    usage)""",
 )
 @click.option(
     "--rmm-pool-size",
     default=None,
     help="""If specified, initialize each worker with an RMM pool of the given size; can
-    be an integer (bytes) or string (like ``5GB`` or ``5000M``); this size is per-worker
-    (GPU) and not cluster-wide
+    be an integer (bytes) or string (like ``"5GB"`` or ``"5000M"``)
 
     .. note::
-        This size is a per-worker (GPU) configuration, and not cluster-wide""",
+        This size is a per-worker configuration, and not cluster-wide""",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
@@ -80,7 +80,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
     .. warning::
         Managed memory is currently incompatible with NVLink; trying to enable both will
-        result in an exception.""",
+        result in an exception""",
 )
 @click.option(
     "--rmm-log-directory",
@@ -90,7 +90,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
     .. note::
         Logging will only be enabled if ``--rmm-pool-size`` or ``--rmm-managed-memory``
-        are specified.""",
+        are specified""",
 )
 @click.option("--pid-file", type=str, default="", help="File to write the process PID")
 @click.option(
@@ -123,8 +123,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--scheduler-file",
     type=str,
     default="",
-    help="""Filename to JSON encoded scheduler information; use with ``dask-scheduler``
-    ``--scheduler-file``""",
+    help="""Filename to JSON encoded scheduler information; to be used in conjunction
+    with the equivalent ``dask-scheduler`` option""",
 )
 @click.option(
     "--interface",
@@ -145,8 +145,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     multiple=True,
     is_eager=True,
-    help="""Module that should be loaded by each worker process like ``foo.bar`` or
-    ``/path/to/foo.py``""",
+    help="""Module that should be loaded by each worker process like ``"foo.bar"`` or
+    ``"/path/to/foo.py"``""",
 )
 @click.option(
     "--dashboard-prefix", type=str, default=None, help="Prefix for the dashboard"
@@ -197,12 +197,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="""If specified, workers will use this interface for UCX communication; can be
-    a string (like ``eth0``), or ``auto`` to pick the optimal interface based on
-    the system's topology; typically only used with ``--enable-infiniband``
+    a string (like ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), or
+    ``"auto"`` if using ``--enable-infiniband``, which will pick the optimal InfiniBand
+    interface per-worker based on the system's topology
 
     .. warning::
-        ``auto`` requires UCX-Py to be installed and compiled with hwloc support;
-        unexpected errors can occur when using ``auto`` if any interfaces are
+        ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support;
+        unexpected errors can occur when using ``"auto"`` if any interfaces are
         disconnected or improperly configured""",
 )
 @click.option(
