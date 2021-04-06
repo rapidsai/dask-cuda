@@ -122,7 +122,7 @@ Note that we no longer specify a net device, as this generally can be skipped wh
 Workers
 """""""
 
-All the relevant Dask configuration options for UCX have analogous parameters in ``dask-cuda-worker``; see :doc:`Worker <worker>` for a complete list of these options.
+All the relevant Dask configuration options for UCX have analogous parameters in ``dask-cuda-worker``; see the :doc:`API reference <api>` for a complete list of these options.
 
 To start workers with all supported transports and a 1 gigabyte RMM pool:
 
