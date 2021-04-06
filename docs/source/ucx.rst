@@ -71,7 +71,7 @@ However, some will affect related libraries, such as RMM:
 .. note::
     These options can be used with mainline Dask/Distributed.
     However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces. 
-    See :doc:`Specializations for GPU Usage <specializations>` for more details on the benefits of using Dask-CUDA.
+    See :doc:`Motivation <index>` for more details on the benefits of using Dask-CUDA.
 
 
 Usage

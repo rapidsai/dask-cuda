@@ -21,6 +21,7 @@ dask_cuda.egg-info/
 python/build
 python/cudf/bindings/*.cpp
 dask-worker-space/
+docs/_build/
 
 ## Patching
 *.diff
