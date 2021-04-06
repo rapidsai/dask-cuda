@@ -69,7 +69,7 @@ However, some will affect related libraries, such as RMM:
   It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
 
 .. note::
-    These options can be used with mainline Dask/Distributed.
+    These options can be used with mainline Dask.distributed.
     However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces. 
     See :doc:`Motivation <index>` for more details on the benefits of using Dask-CUDA.
 

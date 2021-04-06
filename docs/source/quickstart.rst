@@ -6,12 +6,12 @@ A Dask-CUDA cluster can be created using either LocalCUDACluster or ``dask-cuda-
 LocalCUDACluster
 ----------------
 
-To create a standard Dask-CUDA cluster and connect a Distributed `Client <https://distributed.dask.org/en/latest/client.html>`_ to it:
+To create a standard Dask-CUDA cluster and connect a Dask.distributed `Client <https://distributed.dask.org/en/latest/client.html>`_ to it:
 
 .. code-block:: python
 
     from dask_cuda import LocalCUDACluster
-    from distributed import Client
+    from dask.distributed import Client
 
     cluster = LocalCUDACluster()
     client = Client(cluster)
@@ -30,7 +30,7 @@ To connect a client to this cluster:
 
 .. code-block:: python
 
-    from distributed import Client
+    from dask.distributed import Client
 
     client = Client("127.0.0.1:8786")
 
