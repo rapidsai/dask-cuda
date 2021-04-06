@@ -6,7 +6,7 @@ A Dask-CUDA cluster can be created using either LocalCUDACluster or ``dask-cuda-
 LocalCUDACluster
 ----------------
 
-To create a standard Dask-CUDA cluster and connect it to a Distributed `Client <https://distributed.dask.org/en/latest/client.html>`_:
+To create a standard Dask-CUDA cluster and connect a Distributed `Client <https://distributed.dask.org/en/latest/client.html>`_ to it:
 
 .. code-block:: python
 
@@ -26,7 +26,7 @@ To create an equivalent cluster from the command line, Dask-CUDA workers must be
 
     $ dask-cuda-worker 127.0.0.1:8786
 
-To connect this cluster to a client:
+To connect a client to this cluster:
 
 .. code-block:: python
 
