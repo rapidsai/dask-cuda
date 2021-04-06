@@ -26,80 +26,79 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--host",
     type=str,
     default=None,
-    help="""Serving host; should be an IP address visible to the scheduler and other
-    workers""",
+    help="""Serving host. Should be an IP address visible to the scheduler and other
+    workers.""",
 )
 @click.option(
     "--nthreads",
     type=int,
     default=1,
     show_default=True,
-    help="Number of threads per process",
+    help="Number of threads to be used for each Dask worker process.",
 )
 @click.option(
     "--name",
     type=str,
     default=None,
-    help="""A unique name for this worker like ``"worker-1"``; if used with ``--nprocs``,
-    then the process number will be appended to the worker name, e.g. ``"worker-1-0"``,
-    ``"worker-1-1"``, ``"worker-1-2"``, ...""",
+    help="""A unique name for the worker (like ``"worker-1"``). If used with
+    ``--nprocs``, then the process number will be appended to the worker name, e.g.
+    ``"worker-1-0"``, ``"worker-1-1"``, ``"worker-1-2"``.""",
 )
 @click.option(
     "--memory-limit",
     default="auto",
     show_default=True,
-    help="""Bytes of memory per process that the worker can use; can be an integer
+    help="""Bytes of memory per process that the worker can use. Can be an integer
     (bytes), float (fraction of total system memory), string (like ``"5GB"`` or
-    ``"5000M"``), ``"auto"``, or 0 for no memory management""",
+    ``"5000M"``), ``"auto"``, or 0 for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",
     default="0.8",
     show_default=True,
-    help="""Specifies the size of the CUDA device LRU cache, which is used to determine
-    when the worker starts spilling to host memory; can be an integer (bytes), float
-    (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``),
-    ``"auto"``, or 0 to disable spilling to host (i.e., allow full device memory
-    usage)""",
+    help="""Size of the CUDA device LRU cache, which is used to determine when the
+    worker starts spilling to host memory. Can be an integer (bytes), float (fraction of
+    total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, or 0 to
+    disable spilling to host (i.e. allow full device memory usage).""",
 )
 @click.option(
     "--rmm-pool-size",
     default=None,
-    help="""If specified, initialize each worker with an RMM pool of the given size; can
-    be an integer (bytes) or string (like ``"5GB"`` or ``"5000M"``)
+    help="""RMM pool size to initialize each worker with. Can be an integer (bytes) or
+    string (like ``"5GB"`` or ``"5000M"``).
 
     .. note::
-        This size is a per-worker configuration, and not cluster-wide""",
+        This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
     default=False,
     show_default=True,
-    help="""If enabled, initialize each worker with RMM and set it to use managed
-    memory; if disabled, RMM may still be used by specifying ``--rmm-pool-size``
+    help="""Initialize each worker with RMM and set it to use managed memory. If
+    disabled, RMM may still be used by specifying ``--rmm-pool-size``.
 
     .. warning::
-        Managed memory is currently incompatible with NVLink; trying to enable both will
-        result in an exception""",
+        Managed memory is currently incompatible with NVLink. Trying to enable both will
+        result in an exception.""",
 )
 @click.option(
     "--rmm-log-directory",
     default=None,
-    help="""Directory to write per-worker RMM log files to; the client
-    and scheduler are not logged here.
+    help="""Directory to write per-worker RMM log files to. The client and scheduler are
+    not logged here.
 
     .. note::
         Logging will only be enabled if ``--rmm-pool-size`` or ``--rmm-managed-memory``
-        are specified""",
+        are specified.""",
 )
-@click.option("--pid-file", type=str, default="", help="File to write the process PID")
+@click.option("--pid-file", type=str, default="", help="File to write the process PID.")
 @click.option(
     "--resources",
     type=str,
     default="",
-    help="""Resources for task constraints like ``GPU=2 MEM=10e9``; resources are
+    help="""Resources for task constraints like ``GPU=2 MEM=10e9``. Resources are
     applied separately to each worker process (only relevant when starting multiple
-    worker processes with ``--nprocs``)""",
+    worker processes with ``--nprocs``).""",
 )
 @click.option(
     "--dashboard/--no-dashboard",
@@ -107,38 +106,38 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=True,
     show_default=True,
     required=False,
-    help="Launch the dashboard",
+    help="Launch the dashboard.",
 )
 @click.option(
     "--dashboard-address",
     type=str,
     default=":0",
     show_default=True,
-    help="Relative address to serve dashboard (if enabled)",
+    help="Relative address to serve the dashboard (if enabled).",
 )
 @click.option(
-    "--local-directory", default=None, type=str, help="Directory to place worker files"
+    "--local-directory", default=None, type=str, help="Directory to place worker files."
 )
 @click.option(
     "--scheduler-file",
     type=str,
     default="",
-    help="""Filename to JSON encoded scheduler information; to be used in conjunction
-    with the equivalent ``dask-scheduler`` option""",
+    help="""Filename to JSON encoded scheduler information. To be used in conjunction
+    with the equivalent ``dask-scheduler`` option.""",
 )
 @click.option(
     "--interface",
     type=str,
     default=None,
-    help="""External interface used to connect to the scheduler; usually an ethernet
+    help="""External interface used to connect to the scheduler. Usually an ethernet
     interface is used for connection, and not an InfiniBand interface (if one is
-    available)""",
+    available).""",
 )
 @click.option(
     "--death-timeout",
     type=str,
     default=None,
-    help="Seconds to wait for a scheduler before closing",
+    help="Seconds to wait for a scheduler before closing.",
 )
 @click.option(
     "--preload",
@@ -146,72 +145,76 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     multiple=True,
     is_eager=True,
     help="""Module that should be loaded by each worker process like ``"foo.bar"`` or
-    ``"/path/to/foo.py"``""",
+    ``"/path/to/foo.py"``.""",
 )
 @click.option(
-    "--dashboard-prefix", type=str, default=None, help="Prefix for the dashboard"
+    "--dashboard-prefix", type=str, default=None, help="Prefix for the dashboard."
 )
 @click.option(
     "--tls-ca-file",
     type=pem_file_option_type,
     default=None,
-    help="CA certificate(s) file for TLS (in PEM format)",
+    help="CA certificate(s) file for TLS (in PEM format).",
 )
 @click.option(
     "--tls-cert",
     type=pem_file_option_type,
     default=None,
-    help="Certificate file for TLS (in PEM format)",
+    help="Certificate file for TLS (in PEM format).",
 )
 @click.option(
     "--tls-key",
     type=pem_file_option_type,
     default=None,
-    help="Private key file for TLS (in PEM format)",
+    help="Private key file for TLS (in PEM format).",
 )
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
     default=False,
     show_default=True,
-    help="Enable TCP communication over UCX",
+    help="""Set environment variables to enable TCP over UCX, even if InfiniBand and
+    NVLink are not supported or disabled.""",
 )
 @click.option(
     "--enable-infiniband/--disable-infiniband",
     default=False,
-    help="Enable InfiniBand communication",
+    help="""Set environment variables to enable UCX over InfiniBand, implies
+    ``--enable-tcp-over-ucx``.""",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
     default=False,
     show_default=True,
-    help="Enable NVLink communication",
+    help="""Set environment variables to enable UCX over NVLink, implies
+    ``--enable-tcp-over-ucx``.""",
 )
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
     default=False,
     show_default=True,
-    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
+    help="""Set environment variables to enable UCX RDMA connection manager support,
+    requires ``--enable-infiniband``.""",
 )
 @click.option(
     "--net-devices",
     type=str,
     default=None,
-    help="""If specified, workers will use this interface for UCX communication; can be
-    a string (like ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), or
-    ``"auto"`` if using ``--enable-infiniband``, which will pick the optimal InfiniBand
-    interface per-worker based on the system's topology
+    help="""Interface(s) used by workers for UCX communication. Can be a string (like
+    ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), or ``"auto"``
+    (requires ``--enable-infiniband``), which will pick the optimal interface per-worker
+    based on the system's topology.
 
     .. warning::
-        ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support;
-        unexpected errors can occur when using ``"auto"`` if any interfaces are
-        disconnected or improperly configured""",
+        ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
+        Unexpected errors can occur when using ``"auto"`` if any interfaces are
+        disconnected or improperly configured.""",
 )
 @click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
-    help="""Enable just-in-time unspilling; this is experimental and doesn't support
-    memory spilling to disk; see ``proxy_object.ProxyObject`` and
-    ``proxify_host_file.ProxifyHostFile`` for more info""",
+    help="""Enable just-in-time unspilling. This is experimental and doesn't support
+    memory spilling to disk. See ``proxy_object.ProxyObject`` and
+    ``proxify_host_file.ProxifyHostFile`` for more info.""",
 )
 def main(
     scheduler,

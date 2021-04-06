@@ -22,16 +22,16 @@ def initialize(
     """Create CUDA context and initialize UCX-Py, depending on user parameters.
 
     Sometimes it is convenient to initialize the CUDA context, particularly before
-    starting up Dask workers which create a variety of threads.
+    starting up Dask worker processes which create a variety of threads.
 
-    To ensure UCX works correctly, it is important to ensure it is initialized with
-    the correct options. This is especially important for the client, which cannot be
+    To ensure UCX works correctly, it is important to ensure it is initialized with the
+    correct options. This is especially important for the client, which cannot be
     configured to use UCX with arguments like ``LocalCUDACluster`` and
     ``dask-cuda-worker``. This function will ensure that they are provided a UCX
     configuration based on the flags and options passed by the user.
 
     This function can also be used within a worker preload script for UCX configuration
-    of mainline Dask/Distributed.
+    of mainline Dask.distributed.
     https://docs.dask.org/en/latest/setup/custom-startup.html
 
     You can add it to your global config with the following YAML:
@@ -43,42 +43,34 @@ def initialize(
             preload:
               - dask_cuda.initialize
 
-    See https://docs.dask.org/en/latest/configuration.html for more information
-    about Dask configuration.
+    See https://docs.dask.org/en/latest/configuration.html for more information about
+    Dask configuration.
 
     Parameters
     ----------
-    create_cuda_context: bool
+    create_cuda_context : bool, default True
         Create CUDA context on initialization.
-        Default is ``True``.
-    enable_tcp_over_ucx: bool
-        Set environment variables to enable TCP over UCX, even if InfiniBand
-        and NVLink are not supported or disabled.
-        Default is ``False``.
-    enable_infiniband: bool
-        Set environment variables to enable UCX InfiniBand support, implies
+    enable_tcp_over_ucx : bool, default False
+        Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
+        are not supported or disabled.
+    enable_infiniband : bool, default False
+        Set environment variables to enable UCX over InfiniBand, implies
         ``enable_tcp_over_ucx=True``.
-        Default is ``False``.
-    enable_nvlink: bool
-        Set environment variables to enable UCX NVLink support, implies
+    enable_nvlink : bool, default False
+        Set environment variables to enable UCX over NVLink, implies
         ``enable_tcp_over_ucx=True``.
-        Default is ``False``.
-    enable_rdmacm: bool
+    enable_rdmacm : bool, default False
         Set environment variables to enable UCX RDMA connection manager support,
-        implies ``enable_infiniband=True``.
-        Default is ``False``.
-    net_devices: callable or str
-        If callable, the function must take exactly one argument (the index of
-        current GPU) that will be used to get the interface name, such as
-        ``lambda dev: "mlx5_%d:1" % (dev // 2)``, which would return
-        ``"mlx5_1:1"`` for GPU 3.
-        If a string, must be an explicit interface name, such as ``"ib0"``
-        for InfiniBand or ``"eth0"`` if InfiniBand is disabled.
-        Default is ``""``, which will result in all available devices being used.
-    cuda_device_index: None or int
+        requires ``enable_infiniband=True``.
+    net_devices : str or callable, default ""
+        Interface(s) used by workers for UCX communication. Can be a string (like
+        ``"eth0"`` for NVLink, ``"mlx5_0:1"``/``"ib0"`` for InfiniBand, or ``""`` to use
+        all available devices), or a callable function that takes the index of the
+        current GPU to return an interface name (like
+        ``lambda dev: "mlx5_%d:1" % (dev // 2)``).
+    cuda_device_index : int, optional
         Index of the current GPU, which will be supplied to ``net_devices`` if
         it is callable.
-        Default is ``None``.
     """
 
     if create_cuda_context:
