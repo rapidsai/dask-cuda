@@ -12,7 +12,7 @@ While Distributed can be used to leverage GPU workloads through libraries such a
 - **Automatic instantiation of per-GPU workers** -- Using Dask-CUDA's LocalCUDACluster or ``dask-cuda-worker`` CLI will automatically launch one worker for each GPU available on the executing node, avoiding the need to explicitly select GPUs.
 - **Automatic setting of CPU affinity**  -- The setting of CPU affinity for each GPU is done automatically, preventing memory transfers from taking suboptimal paths. 
 - **Automatic selection of InfiniBand devices** -- When UCX communication is enabled over InfiniBand, Dask-CUDA automatically selects the optimal InfiniBand device for each GPU (see :doc:`UCX <ucx>` for instructions on enabling UCX communication).
-- **Memory spilling from GPU** -- For memory-intensive workloads, Dask-CUDA supports spilling from device to host memory when a GPU reaches the default or user-specified memory utilization limit.
+- **Memory spilling from GPU** -- For memory-intensive workloads, Dask-CUDA supports spilling from GPU to host memory when a GPU reaches the default or user-specified memory utilization limit.
 
 Contents
 --------
@@ -30,3 +30,10 @@ Contents
    :caption: Additional Features
 
    ucx
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples
+
+   examples/worker_count
+   examples/spilling
