@@ -223,6 +223,11 @@ class LocalCUDACluster(LocalCluster):
 
         self.rmm_log_directory = rmm_log_directory
 
+        if not kwargs.pop("processes", True):
+            raise ValueError(
+                "Processes are necessary in order to use multiple GPUs with Dask"
+            )
+
         if jit_unspill is None:
             self.jit_unspill = dask.config.get("jit-unspill", default=False)
         else:
