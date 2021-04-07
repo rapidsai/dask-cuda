@@ -228,7 +228,7 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
-        data = kwargs.get("data")
+        data = kwargs.pop("data", None)
         if data is None:
             if self.jit_unspill:
                 data = (
