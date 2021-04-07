@@ -157,7 +157,6 @@ class LocalCUDACluster(LocalCluster):
         self,
         n_workers=None,
         threads_per_worker=1,
-        processes=True,
         memory_limit="auto",
         device_memory_limit=0.8,
         CUDA_VISIBLE_DEVICES=None,
@@ -224,11 +223,6 @@ class LocalCUDACluster(LocalCluster):
                 )
 
         self.rmm_log_directory = rmm_log_directory
-
-        if not processes:
-            raise ValueError(
-                "Processes are necessary in order to use multiple GPUs with Dask"
-            )
 
         if jit_unspill is None:
             self.jit_unspill = dask.config.get("jit-unspill", default=False)
