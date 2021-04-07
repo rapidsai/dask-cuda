@@ -322,12 +322,12 @@ def test_lock_workers():
     with LocalCluster(
         protocol="tcp",
         dashboard_address=None,
-        n_workers=3,
-        threads_per_worker=10,
+        n_workers=4,
+        threads_per_worker=5,
         processes=True,
     ) as cluster:
         ps = []
-        for _ in range(10):
+        for _ in range(5):
             for ranks in [[0, 1], [1, 3], [2, 3]]:
                 ps.append(
                     mp.Process(
