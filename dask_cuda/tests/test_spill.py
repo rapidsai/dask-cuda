@@ -199,7 +199,6 @@ async def test_cupy_cluster_device_spill(params):
             silence_logs=False,
             dashboard_address=None,
             asynchronous=True,
-            death_timeout=60,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
             memory_target_fraction=params["host_target"],
@@ -366,7 +365,6 @@ async def test_cudf_cluster_device_spill(params):
             memory_target_fraction=params["host_target"],
             memory_spill_fraction=params["host_spill"],
             memory_pause_fraction=params["host_pause"],
-            death_timeout=60,
             asynchronous=True,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:

@@ -64,7 +64,6 @@ class CUDAWorker:
         local_directory=None,
         scheduler_file=None,
         interface=None,
-        death_timeout=None,
         preload=[],
         dashboard_prefix=None,
         security=None,
