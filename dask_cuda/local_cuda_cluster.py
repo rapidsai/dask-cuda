@@ -160,7 +160,6 @@ class LocalCUDACluster(LocalCluster):
         memory_limit="auto",
         device_memory_limit=0.8,
         CUDA_VISIBLE_DEVICES=None,
-        data=None,
         local_directory=None,
         protocol=None,
         enable_tcp_over_ucx=False,
@@ -229,6 +228,7 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
+        data = kwargs.get("data")
         if data is None:
             if self.jit_unspill:
                 data = (
