@@ -52,16 +52,15 @@ class LocalCUDACluster(LocalCluster):
 
     Parameters
     ----------
-    CUDA_VISIBLE_DEVICES : str or list of int, optional
-        String (like ``"0,1,2,3"``) or  list (like ``[0, 1, 2, 3]``) to restrict
-        activity to different GPUs.
-    n_workers : int, optional
-        Number of workers. Will override the value of ``CUDA_VISIBLE_DEVICES`` if
-        specified.
+    CUDA_VISIBLE_DEVICES : str, list of int, or None, default None
+        GPUs to restrict activity to. Can be a string (like ``"0,1,2,3"``), list (like
+        ``[0, 1, 2, 3]``), or ``None`` to use all available GPUs.
+    n_workers : int or None, default None
+        Number of workers. Can be an integer or ``None`` to fall back on the GPUs
+        specified by ``CUDA_VISIBLE_DEVICES``. Will override the value of
+        ``CUDA_VISIBLE_DEVICES`` if specified.
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
-    processes : bool, default True
-        TODO
     memory_limit : int, float, or str, default "auto"
         Bytes of memory per process that the worker can use. Can be an integer (bytes),
         float (fraction of total system memory), string (like ``"5GB"`` or ``"5000M"``),
@@ -71,12 +70,14 @@ class LocalCUDACluster(LocalCluster):
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
         total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, or 0
         to disable spilling to host (i.e. allow full device memory usage).
-    data :
-        TODO
-    local_directory : str, optional
-        TODO
-    protocol : str, optional
-        Protocol to use for communication, e.g. ``"tcp"`` or ``"ucx"``.
+    local_directory : str or None, default None
+        Path on local machine to store temporary files. Can be a string (like
+        ``"path/to/files"``) or ``None`` to fall back on the value of
+        ``dask.temporary-directory`` in the local Dask configuration, using the current
+        working directory if this is not set.
+    protocol : str or None, default None
+        Protocol to use for communication. Can be a string (like ``"tcp"`` or
+        ``"ucx"``), or ``None`` to automatically choose the correct protocol.
     enable_tcp_over_ucx : bool, default False
         Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
         are not supported or disabled.
@@ -89,21 +90,22 @@ class LocalCUDACluster(LocalCluster):
     enable_rdmacm : bool, default False
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``protocol="ucx"`` and ``enable_infiniband=True``.
-    ucx_net_devices : str or callable, optional
+    ucx_net_devices : str, callable, or None, default None
         Interface(s) used by workers for UCX communication. Can be a string (like
         ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), a callable
         function that takes the index of the current GPU to return an interface name
-        (like ``lambda dev: "mlx5_%d:1" % (dev // 2)``), or ``"auto"`` (requires
-        ``enable_infiniband=True``), which will pick the optimal interface per-worker
-        based on the system's topology.
+        (like ``lambda dev: "mlx5_%d:1" % (dev // 2)``), ``"auto"`` (requires
+        ``enable_infiniband=True``) to pick the optimal interface per-worker
+        based on the system's topology, or ``None`` to stay with the default value of
+        ``"all"`` (use all available interfaces).
 
         .. warning::
             ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
             Unexpected errors can occur when using ``"auto"`` if any interfaces are
             disconnected or improperly configured.
-    rmm_pool_size : int or str, optional
-        RMM pool size to initialize each worker with. Can be an integer (bytes) or
-        string (like ``"5GB"`` or ``"5000M"``).
+    rmm_pool_size : int, str or None, default None
+        RMM pool size to initialize each worker with. Can be an integer (bytes), string
+        (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
@@ -114,17 +116,23 @@ class LocalCUDACluster(LocalCluster):
         .. warning::
             Managed memory is currently incompatible with NVLink. Trying to enable both
             will result in an exception.
-    rmm_log_directory : str, optional
+    rmm_log_directory : str or None, default None
         Directory to write per-worker RMM log files to. The client and scheduler are not
-        logged here.
+        logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to
+        disable logging.
 
         .. note::
             Logging will only be enabled if ``rmm_pool_size`` is specified or
             ``rmm_managed_memory=True``.
-    jit_unspill : bool, optional
-        Enable just-in-time unspilling. This is experimental and doesn't support memory
-        spilling to disk. See ``proxy_object.ProxyObject`` and
-        ``proxify_host_file.ProxifyHostFile`` for more info.
+    jit_unspill : bool or None, default None
+        Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
+        the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
+        unspilling if this is not set.
+
+        .. note::
+            This is experimental and doesn't support memory spilling to disk. See
+            ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for
+            more info.
     log_spilling : bool, default True
         Enable logging of spilling operations directly to ``distributed.Worker`` with an
         ``INFO`` log level.

@@ -26,8 +26,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--host",
     type=str,
     default=None,
-    help="""Serving host. Should be an IP address visible to the scheduler and other
-    workers.""",
+    show_default=True,
+    help="""IP address of serving host; should be visible to the scheduler and other
+    workers. Can be a string (like ``"127.0.0.1"``) or ``None`` to fall back on the
+    address of the interface specified by ``--interface`` or the default interface.""",
 )
 @click.option(
     "--nthreads",
@@ -40,9 +42,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--name",
     type=str,
     default=None,
-    help="""A unique name for the worker (like ``"worker-1"``). If used with
-    ``--nprocs``, then the process number will be appended to the worker name, e.g.
-    ``"worker-1-0"``, ``"worker-1-1"``, ``"worker-1-2"``.""",
+    show_default=True,
+    help="""A unique name for the worker. Can be a string (like ``"worker-1"``) or
+    ``None`` for a nameless worker. If used with ``--nprocs``, then the process number
+    will be appended to the worker name, e.g. ``"worker-1-0"``, ``"worker-1-1"``,
+    ``"worker-1-2"``.""",
 )
 @click.option(
     "--memory-limit",
@@ -64,8 +68,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--rmm-pool-size",
     default=None,
-    help="""RMM pool size to initialize each worker with. Can be an integer (bytes) or
-    string (like ``"5GB"`` or ``"5000M"``).
+    show_default=True,
+    help="""RMM pool size to initialize each worker with. Can be an integer (bytes),
+    string (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
 
     .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
@@ -84,19 +89,28 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--rmm-log-directory",
     default=None,
+    show_default=True,
     help="""Directory to write per-worker RMM log files to. The client and scheduler are
-    not logged here.
+    not logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to disable
+    logging.
 
     .. note::
         Logging will only be enabled if ``--rmm-pool-size`` or ``--rmm-managed-memory``
         are specified.""",
 )
-@click.option("--pid-file", type=str, default="", help="File to write the process PID.")
+@click.option(
+    "--pid-file",
+    type=str,
+    default="",
+    show_default=True,
+    help="File to write the process PID.",
+)
 @click.option(
     "--resources",
     type=str,
     default="",
-    help="""Resources for task constraints like ``GPU=2 MEM=10e9``. Resources are
+    show_default=True,
+    help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``. Resources are
     applied separately to each worker process (only relevant when starting multiple
     worker processes with ``--nprocs``).""",
 )
@@ -116,12 +130,19 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="Relative address to serve the dashboard (if enabled).",
 )
 @click.option(
-    "--local-directory", default=None, type=str, help="Directory to place worker files."
+    "--local-directory",
+    default=None,
+    type=str,
+    help="""Path on local machine to store temporary files. Can be a string (like
+    ``"path/to/files"``) or ``None`` to fall back on the value of
+    ``dask.temporary-directory`` in the local Dask configuration, using the current
+    working directory if this is not set.""",
 )
 @click.option(
     "--scheduler-file",
     type=str,
     default="",
+    show_default=True,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
     with the equivalent ``dask-scheduler`` option.""",
 )
@@ -129,15 +150,18 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--interface",
     type=str,
     default=None,
+    show_default=True,
     help="""External interface used to connect to the scheduler. Usually an ethernet
     interface is used for connection, and not an InfiniBand interface (if one is
-    available).""",
+    available). Can be a string (like ``"eth0"`` for NVLink or ``"ib0"`` for
+    InfiniBand) or ``None`` to fall back on the default interface.""",
 )
 @click.option(
     "--death-timeout",
     type=str,
     default=None,
-    help="Seconds to wait for a scheduler before closing.",
+    help="""Time to wait for a scheduler before closing. Can be a string (like ``"3s"``,
+    ``"3.5 seconds"``, or ``"300ms"``) or ``None`` to disable timeout.""",
 )
 @click.option(
     "--preload",
@@ -148,25 +172,35 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     ``"/path/to/foo.py"``.""",
 )
 @click.option(
-    "--dashboard-prefix", type=str, default=None, help="Prefix for the dashboard."
+    "--dashboard-prefix",
+    type=str,
+    default=None,
+    help="""Prefix for the dashboard. Can be a string (like ...) or ``None`` for no
+    prefix.""",
 )
 @click.option(
     "--tls-ca-file",
     type=pem_file_option_type,
     default=None,
-    help="CA certificate(s) file for TLS (in PEM format).",
+    show_default=True,
+    help="""CA certificate(s) file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
 )
 @click.option(
     "--tls-cert",
     type=pem_file_option_type,
     default=None,
-    help="Certificate file for TLS (in PEM format).",
+    show_default=True,
+    help="""Certificate file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
 )
 @click.option(
     "--tls-key",
     type=pem_file_option_type,
     default=None,
-    help="Private key file for TLS (in PEM format).",
+    show_default=True,
+    help="""Private key file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no private key.""",
 )
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
@@ -178,6 +212,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--enable-infiniband/--disable-infiniband",
     default=False,
+    show_default=True,
     help="""Set environment variables to enable UCX over InfiniBand, implies
     ``--enable-tcp-over-ucx``.""",
 )
@@ -199,10 +234,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--net-devices",
     type=str,
     default=None,
+    show_default=True,
     help="""Interface(s) used by workers for UCX communication. Can be a string (like
-    ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), or ``"auto"``
-    (requires ``--enable-infiniband``), which will pick the optimal interface per-worker
-    based on the system's topology.
+    ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), ``"auto"``
+    (requires ``--enable-infiniband``) to pick the optimal interface per-worker based on
+    the system's topology, or ``None`` to stay with the default value of ``"all"`` (use
+    all available interfaces).
 
     .. warning::
         ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
@@ -212,9 +249,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
-    help="""Enable just-in-time unspilling. This is experimental and doesn't support
-    memory spilling to disk. See ``proxy_object.ProxyObject`` and
-    ``proxify_host_file.ProxifyHostFile`` for more info.""",
+    show_default=True,
+    help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
+    the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
+    unspilling if this is not set.
+
+    .. note::
+        This is experimental and doesn't support memory spilling to disk. See
+        ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for more
+        info.""",
 )
 def main(
     scheduler,

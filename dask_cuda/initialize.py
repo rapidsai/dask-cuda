@@ -68,9 +68,14 @@ def initialize(
         all available devices), or a callable function that takes the index of the
         current GPU to return an interface name (like
         ``lambda dev: "mlx5_%d:1" % (dev // 2)``).
-    cuda_device_index : int, optional
-        Index of the current GPU, which will be supplied to ``net_devices`` if
-        it is callable.
+
+        .. note::
+            If ``net_devices`` is callable, a GPU index must be supplied through
+            ``cuda_device_index``.
+    cuda_device_index : int or None, default None
+        Index of the current GPU, which must be specified for ``net_devices`` if
+        it is callable. Can be an integer or ``None`` if ``net_devices`` is not
+        callable.
     """
 
     if create_cuda_context:
