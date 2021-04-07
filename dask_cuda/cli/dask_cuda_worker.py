@@ -160,8 +160,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--death-timeout",
     type=str,
     default=None,
-    help="""Time to wait for a scheduler before closing. Can be a string (like ``"3s"``,
-    ``"3.5 seconds"``, or ``"300ms"``) or ``None`` to disable timeout.""",
+    help="""Amount of time to wait for a scheduler before closing. Can be a string (like
+    ``"3s"``, ``"3.5 seconds"``, or ``"300ms"``) or ``None`` to disable timeout.""",
 )
 @click.option(
     "--preload",
