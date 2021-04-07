@@ -195,7 +195,6 @@ async def test_cupy_cluster_device_spill(params):
         async with LocalCUDACluster(
             1,
             scheduler_port=0,
-            processes=True,
             silence_logs=False,
             dashboard_address=None,
             asynchronous=True,
