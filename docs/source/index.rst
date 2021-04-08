@@ -37,3 +37,4 @@ Contents
 
    examples/worker_count
    examples/spilling
+   examples/ucx

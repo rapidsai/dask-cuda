@@ -19,7 +19,9 @@ Memory spilling can be disabled by setting ``device_memory_limit`` to 0:
 
     cluster = LocalCUDACluster(device_memory_limit=0)  # spilling disabled
 
-The same applies for ``dask-cuda-worker``, and spilling can be controlled by setting ``--device-memory-limit``::
+The same applies for ``dask-cuda-worker``, and spilling can be controlled by setting ``--device-memory-limit``:
+
+.. code-block::
 
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786

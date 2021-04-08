@@ -19,7 +19,9 @@ To create a Dask-CUDA cluster using all available GPUs and connect a Dask.distri
 dask-cuda-worker
 ----------------
 
-To create an equivalent cluster from the command line, Dask-CUDA workers must be connected to a scheduler started with ``dask-scheduler``::
+To create an equivalent cluster from the command line, Dask-CUDA workers must be connected to a scheduler started with ``dask-scheduler``:
+
+.. code-block:: bash
 
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
