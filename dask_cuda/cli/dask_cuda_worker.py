@@ -95,10 +95,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         are specified.""",
 )
 @click.option(
-    "--pid-file",
-    type=str,
-    default="",
-    help="File to write the process PID.",
+    "--pid-file", type=str, default="", help="File to write the process PID.",
 )
 @click.option(
     "--resources",
