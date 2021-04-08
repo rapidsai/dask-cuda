@@ -26,7 +26,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--host",
     type=str,
     default=None,
-    show_default=True,
     help="""IP address of serving host; should be visible to the scheduler and other
     workers. Can be a string (like ``"127.0.0.1"``) or ``None`` to fall back on the
     address of the interface specified by ``--interface`` or the default interface.""",
@@ -42,7 +41,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--name",
     type=str,
     default=None,
-    show_default=True,
     help="""A unique name for the worker. Can be a string (like ``"worker-1"``) or
     ``None`` for a nameless worker. If used with ``--nprocs``, then the process number
     will be appended to the worker name, e.g. ``"worker-1-0"``, ``"worker-1-1"``,
@@ -54,7 +52,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     show_default=True,
     help="""Bytes of memory per process that the worker can use. Can be an integer
     (bytes), float (fraction of total system memory), string (like ``"5GB"`` or
-    ``"5000M"``), ``"auto"``, or 0 for no memory management.""",
+    ``"5000M"``), or ``"auto"`` or 0 for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",
@@ -62,13 +60,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     show_default=True,
     help="""Size of the CUDA device LRU cache, which is used to determine when the
     worker starts spilling to host memory. Can be an integer (bytes), float (fraction of
-    total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, or 0 to
+    total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"`` or 0 to
     disable spilling to host (i.e. allow full device memory usage).""",
 )
 @click.option(
     "--rmm-pool-size",
     default=None,
-    show_default=True,
     help="""RMM pool size to initialize each worker with. Can be an integer (bytes),
     string (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
 
@@ -89,7 +86,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--rmm-log-directory",
     default=None,
-    show_default=True,
     help="""Directory to write per-worker RMM log files to. The client and scheduler are
     not logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to disable
     logging.
@@ -102,14 +98,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--pid-file",
     type=str,
     default="",
-    show_default=True,
     help="File to write the process PID.",
 )
 @click.option(
     "--resources",
     type=str,
     default="",
-    show_default=True,
     help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``. Resources are
     applied separately to each worker process (only relevant when starting multiple
     worker processes with ``--nprocs``).""",
@@ -142,7 +136,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--scheduler-file",
     type=str,
     default="",
-    show_default=True,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
     with the equivalent ``dask-scheduler`` option.""",
 )
@@ -150,7 +143,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--interface",
     type=str,
     default=None,
-    show_default=True,
     help="""External interface used to connect to the scheduler. Usually an ethernet
     interface is used for connection, and not an InfiniBand interface (if one is
     available). Can be a string (like ``"eth0"`` for NVLink or ``"ib0"`` for
@@ -182,7 +174,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--tls-ca-file",
     type=pem_file_option_type,
     default=None,
-    show_default=True,
     help="""CA certificate(s) file for TLS (in PEM format). Can be a string (like
     ``"path/to/certs"``), or ``None`` for no certificate(s).""",
 )
@@ -190,7 +181,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--tls-cert",
     type=pem_file_option_type,
     default=None,
-    show_default=True,
     help="""Certificate file for TLS (in PEM format). Can be a string (like
     ``"path/to/certs"``), or ``None`` for no certificate(s).""",
 )
@@ -198,7 +188,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--tls-key",
     type=pem_file_option_type,
     default=None,
-    show_default=True,
     help="""Private key file for TLS (in PEM format). Can be a string (like
     ``"path/to/certs"``), or ``None`` for no private key.""",
 )
@@ -234,7 +223,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--net-devices",
     type=str,
     default=None,
-    show_default=True,
     help="""Interface(s) used by workers for UCX communication. Can be a string (like
     ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), ``"auto"``
     (requires ``--enable-infiniband``) to pick the optimal interface per-worker based on
@@ -249,7 +237,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
-    show_default=True,
     help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
     the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
     unspilling if this is not set.

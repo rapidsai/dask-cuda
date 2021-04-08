@@ -61,15 +61,15 @@ class LocalCUDACluster(LocalCluster):
         ``CUDA_VISIBLE_DEVICES`` if specified.
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
-    memory_limit : int, float, or str, default "auto"
+    memory_limit : int, float, str, or None, default "auto"
         Bytes of memory per process that the worker can use. Can be an integer (bytes),
         float (fraction of total system memory), string (like ``"5GB"`` or ``"5000M"``),
-        ``"auto"``, or 0 for no memory management.
-    device_memory_limit : int, float or str, default 0.8
+        or ``"auto"``, 0, or ``None`` for no memory management.
+    device_memory_limit : int, float, str, or None, default 0.8
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
-        total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, or 0
-        to disable spilling to host (i.e. allow full device memory usage).
+        total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
+        or ``None`` to disable spilling to host (i.e. allow full device memory usage).
     local_directory : str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
