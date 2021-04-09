@@ -83,35 +83,6 @@ def test_rmm_pool(loop):  # noqa: F811
                     assert v is rmm.mr.PoolMemoryResource
 
 
-@pytest.mark.skipif(
-    ((_driver_version, _runtime_version) < (11020, 11020)),
-    reason="cudaMallocAsync not supported",
-)
-def test_rmm_pool_async(loop):  # noqa: F811
-    rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
-        with popen(
-            [
-                "dask-cuda-worker",
-                "127.0.0.1:9369",
-                "--host",
-                "127.0.0.1",
-                "--rmm-pool-size",
-                "2 GB",
-                "--rmm-pool-async",
-                "--no-dashboard",
-            ]
-        ):
-            with Client("127.0.0.1:9369", loop=loop) as client:
-                assert wait_workers(client, n_gpus=get_n_gpus())
-
-                memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
-                )
-                for v in memory_resource_type.values():
-                    assert v is rmm.mr.PoolMemoryResource
-
-
 def test_rmm_managed(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
@@ -133,6 +104,33 @@ def test_rmm_managed(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.ManagedMemoryResource
+
+
+@pytest.mark.skipif(
+    ((_driver_version, _runtime_version) < (11020, 11020)),
+    reason="cudaMallocAsync not supported",
+)
+def test_rmm_async(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--rmm-pool-async",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                memory_resource_type = client.run(
+                    rmm.mr.get_current_device_resource_type
+                )
+                for v in memory_resource_type.values():
+                    assert v is rmm.mr.CudaAsyncMemoryResource
 
 
 def test_rmm_logging(loop):  # noqa: F811

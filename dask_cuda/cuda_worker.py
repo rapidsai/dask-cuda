@@ -55,8 +55,8 @@ class CUDAWorker:
         memory_limit="auto",
         device_memory_limit="auto",
         rmm_pool_size=None,
-        rmm_pool_async=False,
         rmm_managed_memory=False,
+        rmm_async=False,
         rmm_log_directory=None,
         pid_file=None,
         resources=None,
@@ -214,10 +214,7 @@ class CUDAWorker:
                 plugins={
                     CPUAffinity(get_cpu_affinity(i)),
                     RMMSetup(
-                        rmm_pool_size,
-                        rmm_pool_async,
-                        rmm_managed_memory,
-                        rmm_log_directory,
+                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
                 },
                 name=name if nprocs == 1 or not name else name + "-" + str(i),

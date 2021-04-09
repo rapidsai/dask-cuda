@@ -108,8 +108,6 @@ class LocalCUDACluster(LocalCluster):
         .. note::
             The size is a per worker (i.e., per GPU) configuration, and not
             cluster-wide!
-    rmm_pool_async: bool, default False
-        Use an ``rmm.mr.CudaAsyncMemoryResource`` when initializing an RMM pool.
     rmm_managed_memory: bool
         If ``True``, initialize each worker with RMM and set it to use managed
         memory. If ``False``, RMM may still be used if ``rmm_pool_size`` is specified,
@@ -118,6 +116,14 @@ class LocalCUDACluster(LocalCluster):
         .. warning::
             Managed memory is currently incompatible with NVLink, trying to enable
             both will result in an exception.
+    rmm_async: bool, default False
+        Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
+        See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
+
+        .. note::
+            The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
+            incompatible with RMM pools and managed memory, and will be preferred over
+            them if both are enabled.
     rmm_log_directory: str
         Directory to write per-worker RMM log files to; the client and scheduler
         are not logged here. Logging will only be enabled if ``rmm_pool_size`` or
@@ -170,8 +176,8 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
-        rmm_pool_async=False,
         rmm_managed_memory=False,
+        rmm_async=False,
         rmm_log_directory=None,
         jit_unspill=None,
         log_spilling=False,
@@ -203,8 +209,8 @@ class LocalCUDACluster(LocalCluster):
         )
 
         self.rmm_pool_size = rmm_pool_size
-        self.rmm_pool_async = rmm_pool_async
         self.rmm_managed_memory = rmm_managed_memory
+        self.rmm_async = rmm_async
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
@@ -335,8 +341,8 @@ class LocalCUDACluster(LocalCluster):
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(
                         self.rmm_pool_size,
-                        self.rmm_pool_async,
                         self.rmm_managed_memory,
+                        self.rmm_async,
                         self.rmm_log_directory,
                     ),
                 },

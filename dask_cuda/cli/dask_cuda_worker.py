@@ -103,12 +103,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "and not cluster-wide!",
 )
 @click.option(
-    "--rmm-pool-async/--no-rmm-pool-async",
-    default=False,
-    show_default=True,
-    help="Use an ``rmm.mr.CudaAsyncMemoryResource`` when initializing an RMM pool.",
-)
-@click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
     default=False,
     help="If enabled, initialize each worker with RMM and set it to "
@@ -117,6 +111,18 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "(non-managed) memory type."
     "WARNING: managed memory is currently incompatible with NVLink, "
     "trying to enable both will result in an exception.",
+)
+@click.option(
+    "--rmm-async/--no-rmm-async",
+    default=False,
+    show_default=True,
+    help="""Initialize each worker withh RMM and set it to use RMM's asynchronous
+    allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
+
+    .. note::
+        The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
+        incompatible with RMM pools and managed memory, and will be preferred over them
+        if both are enabled.""",
 )
 @click.option(
     "--rmm-log-directory",
@@ -216,8 +222,8 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
-    rmm_pool_async,
     rmm_managed_memory,
+    rmm_async,
     rmm_log_directory,
     pid_file,
     resources,
@@ -261,8 +267,8 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
-        rmm_pool_async,
         rmm_managed_memory,
+        rmm_async,
         rmm_log_directory,
         pid_file,
         resources,
