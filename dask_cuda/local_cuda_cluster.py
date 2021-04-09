@@ -108,6 +108,8 @@ class LocalCUDACluster(LocalCluster):
         .. note::
             The size is a per worker (i.e., per GPU) configuration, and not
             cluster-wide!
+    rmm_pool_async: bool, default False
+        Use an ``rmm.mr.CudaAsyncMemoryResource`` when initializing an RMM pool.
     rmm_managed_memory: bool
         If ``True``, initialize each worker with RMM and set it to use managed
         memory. If ``False``, RMM may still be used if ``rmm_pool_size`` is specified,
@@ -168,6 +170,7 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_pool_async=False,
         rmm_managed_memory=False,
         rmm_log_directory=None,
         jit_unspill=None,
@@ -200,6 +203,7 @@ class LocalCUDACluster(LocalCluster):
         )
 
         self.rmm_pool_size = rmm_pool_size
+        self.rmm_pool_async = rmm_pool_async
         self.rmm_managed_memory = rmm_managed_memory
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
@@ -331,6 +335,7 @@ class LocalCUDACluster(LocalCluster):
                     CPUAffinity(get_cpu_affinity(worker_count)),
                     RMMSetup(
                         self.rmm_pool_size,
+                        self.rmm_pool_async,
                         self.rmm_managed_memory,
                         self.rmm_log_directory,
                     ),

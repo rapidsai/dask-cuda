@@ -32,8 +32,9 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory, log_directory):
+    def __init__(self, nbytes, pool_async, managed_memory, log_directory):
         self.nbytes = nbytes
+        self.pool_async = pool_async
         self.managed_memory = managed_memory
         self.logging = log_directory is not None
         self.log_directory = log_directory
@@ -41,6 +42,11 @@ class RMMSetup:
     def setup(self, worker=None):
         if self.nbytes is not None or self.managed_memory is True:
             import rmm
+
+            if self.pool_async is True:
+                rmm.mr.set_current_device_resource(
+                    rmm.mr.PoolMemoryResource(rmm.mr.CudaAsyncMemoryResource())
+                )
 
             pool_allocator = False if self.nbytes is None else True
 

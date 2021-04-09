@@ -103,6 +103,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "and not cluster-wide!",
 )
 @click.option(
+    "--rmm-pool-async/--no-rmm-pool-async",
+    default=False,
+    show_default=True,
+    help="Use an ``rmm.mr.CudaAsyncMemoryResource`` when initializing an RMM pool.",
+)
+@click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
     default=False,
     help="If enabled, initialize each worker with RMM and set it to "
@@ -210,6 +216,7 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
+    rmm_pool_async,
     rmm_managed_memory,
     rmm_log_directory,
     pid_file,
@@ -254,6 +261,7 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
+        rmm_pool_async,
         rmm_managed_memory,
         rmm_log_directory,
         pid_file,

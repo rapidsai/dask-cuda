@@ -142,6 +142,21 @@ async def test_rmm_pool():
 
 
 @gen_test(timeout=20)
+async def test_rmm_pool_async():
+    rmm = pytest.importorskip("rmm")
+
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB", rmm_pool_async=True, asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_type = await client.run(
+                rmm.mr.get_current_device_resource_type
+            )
+            for v in memory_resource_type.values():
+                assert v is rmm.mr.CudaMemoryResource
+
+
+@gen_test(timeout=20)
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
