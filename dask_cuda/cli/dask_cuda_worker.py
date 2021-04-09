@@ -145,12 +145,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "Use with dask-scheduler --scheduler-file",
 )
 @click.option(
-    "--death-timeout",
-    type=str,
-    default=None,
-    help="Seconds to wait for a scheduler before closing",
-)
-@click.option(
     "--dashboard-prefix", type=str, default=None, help="Prefix for the Dashboard"
 )
 @click.option(
@@ -225,7 +219,6 @@ def main(
     local_directory,
     scheduler_file,
     interface,
-    death_timeout,
     preload,
     dashboard_prefix,
     tls_ca_file,
@@ -270,7 +263,6 @@ def main(
         local_directory,
         scheduler_file,
         interface,
-        death_timeout,
         preload,
         dashboard_prefix,
         security,
