@@ -265,7 +265,6 @@ def _test_jit_unspill(protocol):
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
-        processes=True,
         jit_unspill=True,
         device_memory_limit="1B",
     ) as cluster:
