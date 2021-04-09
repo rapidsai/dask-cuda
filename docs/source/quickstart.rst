@@ -35,8 +35,3 @@ To connect a client to this cluster:
     from dask.distributed import Client
 
     client = Client("127.0.0.1:8786")
-
-Other stuff
------------
-
-*Ideally some basic examples of defining GPU-centric operations here*
