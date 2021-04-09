@@ -10,7 +10,12 @@ from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
 
+import rmm
+
 from dask_cuda.utils import get_n_gpus, wait_workers
+
+_driver_version = rmm._cuda.gpu.driverGetVersion()
+_runtime_version = rmm._cuda.gpu.runtimeGetVersion()
 
 
 def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
@@ -78,6 +83,10 @@ def test_rmm_pool(loop):  # noqa: F811
                     assert v is rmm.mr.PoolMemoryResource
 
 
+@pytest.mark.skipif(
+    ((_driver_version, _runtime_version) < (11020, 11020)),
+    reason="cudaMallocAsync not supported",
+)
 def test_rmm_pool_async(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
@@ -100,7 +109,7 @@ def test_rmm_pool_async(loop):  # noqa: F811
                     rmm.mr.get_current_device_resource_type
                 )
                 for v in memory_resource_type.values():
-                    assert v is rmm.mr.CudaMemoryResource
+                    assert v is rmm.mr.PoolMemoryResource
 
 
 def test_rmm_managed(loop):  # noqa: F811

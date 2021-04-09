@@ -6,8 +6,13 @@ from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
 
+import rmm
+
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
+
+_driver_version = rmm._cuda.gpu.driverGetVersion()
+_runtime_version = rmm._cuda.gpu.runtimeGetVersion()
 
 
 @gen_test(timeout=20)
@@ -141,6 +146,10 @@ async def test_rmm_pool():
                 assert v is rmm.mr.PoolMemoryResource
 
 
+@pytest.mark.skipif(
+    ((_driver_version, _runtime_version) < (11020, 11020)),
+    reason="cudaMallocAsync not supported",
+)
 @gen_test(timeout=20)
 async def test_rmm_pool_async():
     rmm = pytest.importorskip("rmm")
@@ -153,7 +162,7 @@ async def test_rmm_pool_async():
                 rmm.mr.get_current_device_resource_type
             )
             for v in memory_resource_type.values():
-                assert v is rmm.mr.CudaMemoryResource
+                assert v is rmm.mr.PoolMemoryResource
 
 
 @gen_test(timeout=20)
