@@ -45,6 +45,12 @@ class RMMSetup:
 
             if self.async_alloc:
                 rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
+                if self.logging:
+                    rmm.enable_logging(
+                        log_file_name=get_rmm_log_file_name(
+                            worker, self.logging, self.log_directory
+                        )
+                    )
             else:
                 pool_allocator = False if self.nbytes is None else True
 

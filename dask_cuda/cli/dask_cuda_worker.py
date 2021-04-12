@@ -129,8 +129,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     help="Directory to write per-worker RMM log files to; the client "
     "and scheduler are not logged here."
-    "NOTE: Logging will only be enabled if --rmm-pool-size or "
-    "--rmm-managed-memory are specified.",
+    "NOTE: Logging will only be enabled if --rmm-pool-size, "
+    "--rmm-managed-memory, or --rmm-async are specified.",
 )
 @click.option(
     "--reconnect/--no-reconnect",

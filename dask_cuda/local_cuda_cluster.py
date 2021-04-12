@@ -126,8 +126,8 @@ class LocalCUDACluster(LocalCluster):
             result in an exception.
     rmm_log_directory: str
         Directory to write per-worker RMM log files to; the client and scheduler
-        are not logged here. Logging will only be enabled if ``rmm_pool_size`` or
-        ``rmm_managed_memory`` are specified.
+        are not logged here. Logging will only be enabled if ``rmm_pool_size``,
+        ``rmm_managed_memory``, or ``rmm_async`` are specified.
     jit_unspill: bool
         If ``True``, enable just-in-time unspilling. This is experimental and doesn't
         support memory spilling to disk. Please see ``proxy_object.ProxyObject`` and
