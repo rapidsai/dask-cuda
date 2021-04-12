@@ -167,7 +167,7 @@ async def test_rmm_managed():
 async def test_rmm_async():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_pool_async=True, asynchronous=True,) as cluster:
+    async with LocalCUDACluster(rmm_async=True, asynchronous=True,) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type

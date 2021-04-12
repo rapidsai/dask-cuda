@@ -119,7 +119,7 @@ def test_rmm_async(loop):  # noqa: F811
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
-                "--rmm-pool-async",
+                "--rmm-async",
                 "--no-dashboard",
             ]
         ):
