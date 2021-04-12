@@ -151,12 +151,12 @@ class LocalCUDACluster(LocalCluster):
         If ``enable_infiniband`` or ``enable_nvlink`` is ``True`` and protocol is not
         ``"ucx"``.
     ValueError
-       If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
-       both enabled, if RMM pools / managed memory and asynchronous allocator are both
-       enabled, or if ``ucx_net_devices="auto"`` and:
+        If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
+        both enabled, if RMM pools / managed memory and asynchronous allocator are both
+        enabled, or if ``ucx_net_devices="auto"`` and:
 
-        - UCX-Py is not installed or wasn't compiled with hwloc support or
-        - ``enable_infiniband=False``
+            - UCX-Py is not installed or wasn't compiled with hwloc support; or
+            - ``enable_infiniband=False``
 
     See Also
     --------
