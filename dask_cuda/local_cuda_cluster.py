@@ -120,9 +120,9 @@ class LocalCUDACluster(LocalCluster):
         Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
         See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
-        .. note::
+        .. warning::
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-            incompatible with RMM pools and managed memory, trying to enable both will
+            incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
     rmm_log_directory : str or None, default None
         Directory to write per-worker RMM log files to. The client and scheduler are not

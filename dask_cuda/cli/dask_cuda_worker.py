@@ -81,7 +81,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
     .. warning::
         Managed memory is currently incompatible with NVLink. Trying to enable both will
-        result in an exception.""",
+        result in failure.""",
 )
 @click.option(
     "--rmm-async/--no-rmm-async",
@@ -90,7 +90,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""Initialize each worker withh RMM and set it to use RMM's asynchronous
     allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
-    .. note::
+    .. warning::
         The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
         incompatible with RMM pools and managed memory, trying to enable both will
         result in failure.""",
