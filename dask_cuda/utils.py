@@ -40,29 +40,30 @@ class RMMSetup:
         self.log_directory = log_directory
 
     def setup(self, worker=None):
-        if self.nbytes is not None or self.managed_memory or self.async_alloc:
+        if self.async_alloc:
             import rmm
 
-            if self.async_alloc:
-                rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
-                if self.logging:
-                    rmm.enable_logging(
-                        log_file_name=get_rmm_log_file_name(
-                            worker, self.logging, self.log_directory
-                        )
-                    )
-            else:
-                pool_allocator = False if self.nbytes is None else True
-
-                rmm.reinitialize(
-                    pool_allocator=pool_allocator,
-                    managed_memory=self.managed_memory,
-                    initial_pool_size=self.nbytes,
-                    logging=self.logging,
+            rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
+            if self.logging:
+                rmm.enable_logging(
                     log_file_name=get_rmm_log_file_name(
                         worker, self.logging, self.log_directory
-                    ),
+                    )
                 )
+        elif self.nbytes is not None or self.managed_memory:
+            import rmm
+
+            pool_allocator = False if self.nbytes is None else True
+
+            rmm.reinitialize(
+                pool_allocator=pool_allocator,
+                managed_memory=self.managed_memory,
+                initial_pool_size=self.nbytes,
+                logging=self.logging,
+                log_file_name=get_rmm_log_file_name(
+                    worker, self.logging, self.log_directory
+                ),
+            )
 
 
 def unpack_bitmask(x, mask_bits=64):
