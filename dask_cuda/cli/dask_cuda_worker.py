@@ -84,6 +84,18 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         result in an exception.""",
 )
 @click.option(
+    "--rmm-async/--no-rmm-async",
+    default=False,
+    show_default=True,
+    help="""Initialize each worker withh RMM and set it to use RMM's asynchronous
+    allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
+
+    .. note::
+        The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
+        incompatible with RMM pools and managed memory, trying to enable both will
+        result in failure.""",
+)
+@click.option(
     "--rmm-log-directory",
     default=None,
     help="""Directory to write per-worker RMM log files to. The client and scheduler are
@@ -245,6 +257,7 @@ def main(
     device_memory_limit,
     rmm_pool_size,
     rmm_managed_memory,
+    rmm_async,
     rmm_log_directory,
     pid_file,
     resources,
@@ -289,6 +302,7 @@ def main(
         device_memory_limit,
         rmm_pool_size,
         rmm_managed_memory,
+        rmm_async,
         rmm_log_directory,
         pid_file,
         resources,

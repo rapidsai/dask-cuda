@@ -116,6 +116,14 @@ class LocalCUDACluster(LocalCluster):
         .. warning::
             Managed memory is currently incompatible with NVLink. Trying to enable both
             will result in an exception.
+    rmm_async: bool, default False
+        Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
+        See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
+
+        .. note::
+            The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
+            incompatible with RMM pools and managed memory, trying to enable both will
+            result in an exception.
     rmm_log_directory : str or None, default None
         Directory to write per-worker RMM log files to. The client and scheduler are not
         logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to
@@ -150,10 +158,11 @@ class LocalCUDACluster(LocalCluster):
         If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
     ValueError
         If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
-        both enabled, or if ``ucx_net_devices="auto"`` and:
+        both enabled, if RMM pools / managed memory and asynchronous allocator are both
+        enabled, or if ``ucx_net_devices="auto"`` and:
 
-        - UCX-Py is not installed or wasn't compiled with hwloc support or
-        - ``enable_infiniband=False``
+            - UCX-Py is not installed or wasn't compiled with hwloc support; or
+            - ``enable_infiniband=False``
 
     See Also
     --------
@@ -177,6 +186,7 @@ class LocalCUDACluster(LocalCluster):
         ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_managed_memory=False,
+        rmm_async=False,
         rmm_log_directory=None,
         jit_unspill=None,
         log_spilling=False,
@@ -209,6 +219,7 @@ class LocalCUDACluster(LocalCluster):
 
         self.rmm_pool_size = rmm_pool_size
         self.rmm_managed_memory = rmm_managed_memory
+        self.rmm_async = rmm_async
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
@@ -218,6 +229,11 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
+            if rmm_async:
+                raise ValueError(
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
+                )
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
         else:
@@ -340,6 +356,7 @@ class LocalCUDACluster(LocalCluster):
                     RMMSetup(
                         self.rmm_pool_size,
                         self.rmm_managed_memory,
+                        self.rmm_async,
                         self.rmm_log_directory,
                     ),
                 },
