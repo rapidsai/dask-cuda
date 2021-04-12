@@ -56,6 +56,7 @@ class CUDAWorker:
         device_memory_limit="auto",
         rmm_pool_size=None,
         rmm_managed_memory=False,
+        rmm_async=False,
         rmm_log_directory=None,
         pid_file=None,
         resources=None,
@@ -139,6 +140,11 @@ class CUDAWorker:
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
+            if rmm_async:
+                raise ValueError(
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
+                )
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)
         else:
@@ -212,7 +218,9 @@ class CUDAWorker:
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
                     CPUAffinity(get_cpu_affinity(i)),
-                    RMMSetup(rmm_pool_size, rmm_managed_memory, rmm_log_directory),
+                    RMMSetup(
+                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
+                    ),
                 },
                 name=name if nprocs == 1 or not name else name + "-" + str(i),
                 local_directory=local_directory,
