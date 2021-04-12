@@ -142,8 +142,8 @@ class CUDAWorker:
                 )  # pragma: no cover
             if rmm_async:
                 raise ValueError(
-                    """RMM pool and managed memory are incompatible with asynchronous
-                    allocator"""
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
                 )
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)

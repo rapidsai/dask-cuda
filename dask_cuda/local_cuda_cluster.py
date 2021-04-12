@@ -222,10 +222,10 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            if self.rmm_async:
+            if rmm_async:
                 raise ValueError(
-                    """RMM pool and managed memory are incompatible with asynchronous
-                    allocator"""
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
                 )
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
