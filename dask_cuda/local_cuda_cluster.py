@@ -157,11 +157,9 @@ class LocalCUDACluster(LocalCluster):
         self,
         n_workers=None,
         threads_per_worker=1,
-        processes=True,
         memory_limit="auto",
         device_memory_limit=0.8,
         CUDA_VISIBLE_DEVICES=None,
-        data=None,
         local_directory=None,
         protocol=None,
         enable_tcp_over_ucx=False,
@@ -225,7 +223,7 @@ class LocalCUDACluster(LocalCluster):
 
         self.rmm_log_directory = rmm_log_directory
 
-        if not processes:
+        if not kwargs.pop("processes", True):
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
@@ -235,6 +233,7 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
+        data = kwargs.pop("data", None)
         if data is None:
             if self.jit_unspill:
                 data = (
