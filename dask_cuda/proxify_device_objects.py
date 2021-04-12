@@ -1,3 +1,4 @@
+import pydoc
 from typing import Any, List, MutableMapping
 
 from dask.utils import Dispatch
@@ -5,6 +6,24 @@ from dask.utils import Dispatch
 from .proxy_object import ProxyObject, asproxy
 
 dispatch = Dispatch(name="proxify_device_objects")
+ignore_types = ()
+
+
+def _register_ignore_types():
+    """Lazy register types that shouldn't be proxified"""
+    global ignore_types
+
+    # TODO: make configable
+    for (module, types) in [("cupy", ("cupy.ndarray",))]:
+
+        def f():
+            global ignore_types
+            ignore_types = tuple(pydoc.locate(t) for t in types)
+
+        dispatch.register_lazy(module, f)
+
+
+_register_ignore_types()
 
 
 def proxify_device_objects(
@@ -58,7 +77,7 @@ def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
 def proxify_device_object_default(
     obj, proxied_id_to_proxy, found_proxies, excl_proxies
 ):
-    if hasattr(obj, "__cuda_array_interface__"):
+    if hasattr(obj, "__cuda_array_interface__") and not isinstance(obj, ignore_types):
         return proxify(obj, proxied_id_to_proxy, found_proxies)
     return obj
 
