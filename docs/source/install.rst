@@ -2,6 +2,12 @@ Installation
 ============
 
 To use Dask-CUDA on your system, you will need the `NVIDIA CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`_.
+This can be downloaded manually from NVIDIA's website, or using ``conda``:
+
+.. code-block:: bash
+
+    conda install -c rapidsai -c nvidia -c conda-forge cudatoolkit=11.0
+
 Once this requirement is satisfied, Dask-CUDA can be installed using ``conda``, ``pip``, or from source.
 
 Conda
