@@ -193,7 +193,7 @@ async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with LocalCUDACluster(
-            1,
+            n_workers=1,
             scheduler_port=0,
             silence_logs=False,
             dashboard_address=None,
