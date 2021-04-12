@@ -121,8 +121,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
     .. note::
         The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-        incompatible with RMM pools and managed memory, and will be preferred over them
-        if both are enabled.""",
+        incompatible with RMM pools and managed memory, trying to enable both will
+        result in an exception.""",
 )
 @click.option(
     "--rmm-log-directory",

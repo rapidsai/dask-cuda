@@ -122,8 +122,8 @@ class LocalCUDACluster(LocalCluster):
 
         .. note::
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-            incompatible with RMM pools and managed memory, and will be preferred over
-            them if both are enabled.
+            incompatible with RMM pools and managed memory, trying to enable both will
+            result in an exception.
     rmm_log_directory: str
         Directory to write per-worker RMM log files to; the client and scheduler
         are not logged here. Logging will only be enabled if ``rmm_pool_size`` or
@@ -151,10 +151,12 @@ class LocalCUDACluster(LocalCluster):
         If ``enable_infiniband`` or ``enable_nvlink`` is ``True`` and protocol is not
         ``"ucx"``.
     ValueError
-        If ``ucx_net_devices`` is an empty string, or if it is ``"auto"`` and UCX-Py is
-        not installed, or if it is ``"auto"`` and ``enable_infiniband=False``, or UCX-Py
-        wasn't compiled with hwloc support, or both RMM managed memory and
-        NVLink are enabled.
+       If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
+       both enabled, if RMM pools / managed memory and asynchronous allocator are both
+       enabled, or if ``ucx_net_devices="auto"`` and:
+
+        - UCX-Py is not installed or wasn't compiled with hwloc support or
+        - ``enable_infiniband=False``
 
     See Also
     --------
@@ -220,6 +222,11 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
+            if self.rmm_async:
+                raise ValueError(
+                    """RMM pool and managed memory are incompatible with asynchronous
+                    allocator"""
+                )
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
         else:
