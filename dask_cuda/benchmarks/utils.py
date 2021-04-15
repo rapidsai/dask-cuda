@@ -114,12 +114,12 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         default=None,
         type=str,
         dest="interface",
-        help="Network interface Dask processes will use to listen for connections."
+        help="Network interface Dask processes will use to listen for connections.",
     )
     parser.add_argument(
         "--no-silence-logs",
         action="store_true",
-        help="By default Dask logs are silenced, this argument unsilence them."
+        help="By default Dask logs are silenced, this argument unsilence them.",
     )
     parser.add_argument(
         "--multi-node",
