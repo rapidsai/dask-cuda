@@ -33,6 +33,7 @@ setup(
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     install_requires=open("requirements.txt").read().strip().split("\n"),
