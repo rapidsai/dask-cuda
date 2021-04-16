@@ -23,7 +23,8 @@ requirements:
     - python
     - setuptools
   run:
-  {% for package in data.get('packages') %}
+    - python
+  {% for package in data.get('install_requires', []) %}
     - {{ package }}
   {% endfor %}
 
