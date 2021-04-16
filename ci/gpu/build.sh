@@ -19,10 +19,10 @@ export CUDA_REL=${CUDA_VERSION%.*}
 export CUDA_REL2=${CUDA//./}
 
 # Set home to the job's workspace
-export HOME=$WORKSPACE
+export HOME="$WORKSPACE"
 
 # Parse git describe
-cd $WORKSPACE
+cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
@@ -93,7 +93,7 @@ conda list --show-channel-urls
 ################################################################################
 
 gpuci_logger "Build dask-cuda"
-cd $WORKSPACE
+cd "$WORKSPACE"
 python -m pip install -e .
 
 ################################################################################
@@ -104,9 +104,9 @@ if hasArg --skip-tests; then
     gpuci_logger "Skipping Tests"
 else
     gpuci_logger "Python py.test for dask-cuda"
-    cd $WORKSPACE
+    cd "$WORKSPACE"
     ls dask_cuda/tests/
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp=${WORKSPACE}/dask-cuda-tmp --junitxml=${WORKSPACE}/junit-dask-cuda.xml --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:${WORKSPACE}/dask-cuda-coverage.xml --cov-report term dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
 
     gpuci_logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
