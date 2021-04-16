@@ -37,6 +37,7 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
+    python_requires=">=3.7",
     install_requires=open("requirements.txt").read().strip().split("\n"),
     entry_points="""
         [console_scripts]
