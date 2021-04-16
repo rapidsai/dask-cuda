@@ -32,6 +32,7 @@ setup(
         "Topic :: Database",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
