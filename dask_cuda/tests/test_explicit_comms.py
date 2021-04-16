@@ -130,6 +130,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/575")
 def test_dataframe_merge_empty_partitions():
     # Notice, we use more partitions than rows
     p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
