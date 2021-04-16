@@ -27,6 +27,7 @@ setup(
     author="RAPIDS development team",
     author_email="mrocklin@nvidia.com",
     license="Apache-2.0",
+    license_files=["LICENSE"],
     classifiers=[
         "Intended Audience :: Developers",
         "Topic :: Database",
