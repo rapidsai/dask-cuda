@@ -26,7 +26,7 @@ setup(
     url="https://github.com/rapidsai/dask-cuda",
     author="RAPIDS development team",
     author_email="mrocklin@nvidia.com",
-    license="Apache 2.0",
+    license="Apache-2.0",
     classifiers=[
         "Intended Audience :: Developers",
         "Topic :: Database",
