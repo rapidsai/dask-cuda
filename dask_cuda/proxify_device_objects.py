@@ -1,6 +1,9 @@
 import pydoc
+from collections import defaultdict
+from functools import partial
 from typing import Any, List, MutableMapping
 
+import dask
 from dask.utils import Dispatch
 
 from .proxy_object import ProxyObject, asproxy
@@ -10,17 +13,34 @@ ignore_types = ()
 
 
 def _register_ignore_types():
-    """Lazy register types that shouldn't be proxified"""
+    """Lazy register types that shouldn't be proxified
+
+    It reads the config key "jit-unspill-ignore" (DASK_JIT_UNSPILL_IGNORE),
+    which should be a comma seperated list of types to ignore. The default
+    value is:
+        DASK_JIT_UNSPILL_IGNORE="cupy.ndarray"
+
+    Notice, it is not possible to ignore types explicitly handled by this
+    module such as `cudf.DataFrame`, `cudf.Series`, and `cudf.Index`.
+    """
     global ignore_types
 
-    # TODO: make configable
-    for (module, types) in [("cupy", ("cupy.ndarray",))]:
+    ignores = dask.config.get("jit-unspill-ignore", "cupy.ndarray")
+    ignores = ignores.split(",")
 
-        def f():
+    toplevels = defaultdict(set)
+    for path in ignores:
+        if path:
+            toplevel = path.split(".", maxsplit=1)[0].strip()
+            toplevels[toplevel].add(path.strip())
+
+    for toplevel, ignores in toplevels.items():
+
+        def f(paths):
             global ignore_types
-            ignore_types = tuple(pydoc.locate(t) for t in types)
+            ignore_types = ignore_types + tuple(pydoc.locate(p) for p in paths)
 
-        dispatch.register_lazy(module, f)
+        dispatch.register_lazy(toplevel, partial(f, ignores))
 
 
 _register_ignore_types()
