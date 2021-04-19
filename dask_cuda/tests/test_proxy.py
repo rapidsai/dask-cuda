@@ -226,25 +226,6 @@ def test_fixed_attribute_length(backend):
         assert pxy._obj_pxy_is_serialized()
 
 
-@pytest.mark.parametrize("backend", ["numpy", "cupy"])
-def test_proxy_object_of_array_on_dots(backend):
-    """Check that a proxied array behaves as a regular (numpy or cupy) array"""
-
-    np = pytest.importorskip(backend)
-
-    # Make sure that equality works, which we use to test the other operators
-    org = np.arange(9).reshape((3, 3)) + 1
-    pxy = proxify_device_objects(org.copy(), {}, [])
-    assert (org == pxy).all()
-    assert (org + 1 != pxy).all()
-
-    for op in [np.dot]:
-        res = op(org, org)
-        assert (op(pxy, pxy) == res).all()
-        assert (op(org, pxy) == res).all()
-        assert (op(pxy, org) == res).all()
-
-
 def test_fixed_attribute_name():
     """Test fixed attribute `x.name` access
 
