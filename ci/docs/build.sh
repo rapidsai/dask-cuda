@@ -15,7 +15,6 @@ export PATH=/conda/bin:/usr/local/cuda/bin:$PATH
 export HOME=$WORKSPACE
 export PROJECT_WORKSPACE=/rapids/dask-cuda
 export NIGHTLY_VERSION=$(echo $BRANCH_VERSION | awk -F. '{print $2}')
-export PROJECTS=(dask-cuda)
 
 gpuci_logger "Check environment..."
 env
@@ -43,11 +42,9 @@ make html
 # commit to website
 cd $DOCS_WORKSPACE
 
-for PROJECT in ${PROJECTS[@]}; do
-    if [ ! -d "api/$PROJECT/$BRANCH_VERSION" ]; then
-        mkdir -p api/$PROJECT/$BRANCH_VERSION
-    fi
-    rm -rf $DOCS_WORKSPACE/api/$PROJECT/$BRANCH_VERSION/*
-done
+if [ ! -d "api/dask-cuda/$BRANCH_VERSION" ]; then
+    mkdir -p api/dask-cuda/$BRANCH_VERSION
+fi
+rm -rf $DOCS_WORKSPACE/api/dask-cuda/$BRANCH_VERSION/*
 
 mv $PROJECT_WORKSPACE/docs/build/html/* $DOCS_WORKSPACE/api/dask-cuda/$BRANCH_VERSION
