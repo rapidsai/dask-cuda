@@ -15,6 +15,11 @@ cupy.cuda.set_allocator(None)
 one_item_array = lambda: cupy.arange(1)
 one_item_nbytes = one_item_array().nbytes
 
+# While testing we want to proxify `cupy.ndarray` even though
+# it is on the ignore_type list by default.
+dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
+dask_cuda.proxify_device_objects.ignore_types = ()
+
 
 def test_one_item_limit():
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)

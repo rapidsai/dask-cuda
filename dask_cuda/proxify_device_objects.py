@@ -9,7 +9,7 @@ from dask.utils import Dispatch
 from .proxy_object import ProxyObject, asproxy
 
 dispatch = Dispatch(name="proxify_device_objects")
-ignore_types = ()
+ignore_types = None
 
 
 def _register_ignore_types():
@@ -24,6 +24,10 @@ def _register_ignore_types():
     module such as `cudf.DataFrame`, `cudf.Series`, and `cudf.Index`.
     """
     global ignore_types
+    if ignore_types is not None:
+        return  # Only register once
+    else:
+        ignore_types = ()
 
     ignores = dask.config.get("jit-unspill-ignore", "cupy.ndarray")
     ignores = ignores.split(",")
@@ -41,9 +45,6 @@ def _register_ignore_types():
             ignore_types = ignore_types + tuple(pydoc.locate(p) for p in paths)
 
         dispatch.register_lazy(toplevel, partial(f, ignores))
-
-
-_register_ignore_types()
 
 
 def proxify_device_objects(
@@ -76,6 +77,7 @@ def proxify_device_objects(
     ret: Any
         A copy of `obj` where all CUDA device objects are wrapped in ProxyObject
     """
+    _register_ignore_types()
     return dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
 
 
