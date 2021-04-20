@@ -228,7 +228,7 @@ class DeviceHostFile(ZictBase):
                 self.host_func,
                 self.disk_func,
                 memory_limit,
-                weight=safe_sizeof,
+                weight=lambda k, v: safe_sizeof(v),
                 **host_buffer_kwargs,
             )
 
@@ -239,7 +239,7 @@ class DeviceHostFile(ZictBase):
             self.device_func,
             self.device_host_func,
             device_memory_limit,
-            weight=safe_sizeof,
+            weight=lambda k, v: safe_sizeof(v),
             **device_buffer_kwargs,
         )
 
