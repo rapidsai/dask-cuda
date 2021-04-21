@@ -15,8 +15,8 @@ from distributed.protocol import (
     serialize,
     serialize_bytelist,
 )
+from distributed.sizeof import safe_sizeof
 from distributed.utils import nbytes
-from distributed.worker import weight
 
 from . import proxy_object
 from .is_device_object import is_device_object
@@ -62,7 +62,7 @@ class LoggedBuffer(Buffer):
             % (
                 self.addr,
                 key,
-                weight(key, value),
+                safe_sizeof(value),
                 self.fast_name,
                 self.slow_name,
                 total,
@@ -79,7 +79,7 @@ class LoggedBuffer(Buffer):
 
         self.logger.info(
             self.msg_template
-            % (self.addr, key, weight(key, ret), self.slow_name, self.fast_name, total)
+            % (self.addr, key, safe_sizeof(ret), self.slow_name, self.fast_name, total)
         )
 
         return ret
@@ -228,7 +228,7 @@ class DeviceHostFile(ZictBase):
                 self.host_func,
                 self.disk_func,
                 memory_limit,
-                weight=weight,
+                weight=lambda k, v: safe_sizeof(v),
                 **host_buffer_kwargs,
             )
 
@@ -239,7 +239,7 @@ class DeviceHostFile(ZictBase):
             self.device_func,
             self.device_host_func,
             device_memory_limit,
-            weight=weight,
+            weight=lambda k, v: safe_sizeof(v),
             **device_buffer_kwargs,
         )
 
