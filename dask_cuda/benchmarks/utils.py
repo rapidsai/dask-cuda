@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 from dask.distributed import SSHCluster
+from dask.utils import parse_bytes
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -36,12 +37,19 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     parser.add_argument(
         "--rmm-pool-size",
         default=None,
-        type=float,
-        help="The size of the RMM memory pool. By default, 1/2 of "
-        "the total GPU memory is used.",
+        type=parse_bytes,
+        help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
     )
     parser.add_argument(
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+    )
+    parser.add_argument(
+        "--rmm-log-directory",
+        default=None,
+        type=str,
+        help="Directory to write worker and scheduler RMM log files to. "
+        "Logging is only enabled if RMM memory pool is enabled.",
     )
     parser.add_argument(
         "--all-to-all", action="store_true", help="Run all-to-all before computation",
@@ -50,37 +58,49 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--enable-tcp-over-ucx",
         action="store_true",
         dest="enable_tcp_over_ucx",
-        help="Enable tcp over ucx.",
+        help="Enable TCP over UCX.",
     )
     parser.add_argument(
         "--enable-infiniband",
         action="store_true",
         dest="enable_infiniband",
-        help="Enable infiniband over ucx.",
+        help="Enable InfiniBand over UCX.",
     )
     parser.add_argument(
         "--enable-nvlink",
         action="store_true",
         dest="enable_nvlink",
-        help="Enable NVLink over ucx.",
+        help="Enable NVLink over UCX.",
+    )
+    parser.add_argument(
+        "--enable-rdmacm",
+        action="store_true",
+        dest="enable_rdmacm",
+        help="Enable RDMACM with UCX.",
     )
     parser.add_argument(
         "--disable-tcp-over-ucx",
         action="store_false",
         dest="enable_tcp_over_ucx",
-        help="Disable tcp over ucx.",
+        help="Disable TCP over UCX.",
     )
     parser.add_argument(
         "--disable-infiniband",
         action="store_false",
         dest="enable_infiniband",
-        help="Disable infiniband over ucx.",
+        help="Disable InfiniBand over UCX.",
     )
     parser.add_argument(
         "--disable-nvlink",
         action="store_false",
         dest="enable_nvlink",
-        help="Disable NVLink over ucx.",
+        help="Disable NVLink over UCX.",
+    )
+    parser.add_argument(
+        "--disable-rdmacm",
+        action="store_false",
+        dest="enable_rdmacm",
+        help="Disable RDMACM with UCX.",
     )
     parser.add_argument(
         "--ucx-net-devices",
@@ -132,7 +152,10 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         parser.add_argument(*name, **args)
 
     parser.set_defaults(
-        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_nvlink=True,
+        enable_rdmacm=False,
     )
     args = parser.parse_args()
 
@@ -140,6 +163,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         args.enable_tcp_over_ucx = False
         args.enable_infiniband = False
         args.enable_nvlink = False
+        args.enable_rdmacm = False
 
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
@@ -164,6 +188,8 @@ def get_cluster_options(args):
             worker_options["enable_nvlink"] = ""
         if args.enable_infiniband:
             worker_options["enable_infiniband"] = ""
+        if args.enable_rdmacm:
+            worker_options["enable_rdmacm"] = ""
 
         if args.ucx_net_devices:
             worker_options["ucx_net_devices"] = args.ucx_net_devices
@@ -189,6 +215,7 @@ def get_cluster_options(args):
             "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
             "enable_infiniband": args.enable_infiniband,
             "enable_nvlink": args.enable_nvlink,
+            "enable_rdmacm": args.enable_rdmacm,
         }
 
     return {
@@ -203,14 +230,24 @@ def get_scheduler_workers(dask_scheduler=None):
     return dask_scheduler.workers
 
 
-def setup_memory_pool(pool_size=None, disable_pool=False):
+def setup_memory_pool(
+    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+):
     import cupy
 
     import rmm
 
+    from dask_cuda.utils import get_rmm_log_file_name
+
+    logging = log_directory is not None
+
     if not disable_pool:
         rmm.reinitialize(
-            pool_allocator=True, devices=0, initial_pool_size=pool_size,
+            pool_allocator=True,
+            devices=0,
+            initial_pool_size=pool_size,
+            logging=logging,
+            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 

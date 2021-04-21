@@ -5,6 +5,7 @@ from time import perf_counter as clock
 from warnings import filterwarnings
 
 import numpy as np
+from nvtx import end_range, start_range
 
 from dask import array as da
 from dask.distributed import Client, performance_report, wait
@@ -28,57 +29,110 @@ async def _run(client, args):
     rs = da.random.RandomState(RandomState=xp.random.RandomState)
 
     if args.operation == "transpose_sum":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         await wait(x)
+        end_range(rng)
+
         func_args = (x,)
 
         func = lambda x: (x + x.T).sum()
     elif args.operation == "dot":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         y = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         await wait(x)
         await wait(y)
+        end_range(rng)
 
         func_args = (x, y)
 
         func = lambda x, y: x.dot(y)
     elif args.operation == "svd":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random(
             (args.size, args.second_size),
             chunks=(int(args.chunk_size), args.second_size),
         ).persist()
         await wait(x)
+        end_range(rng)
 
         func_args = (x,)
 
         func = lambda x: np.linalg.svd(x)
     elif args.operation == "fft":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random(
             (args.size, args.size), chunks=(args.size, args.chunk_size)
         ).persist()
         await wait(x)
+        end_range(rng)
 
         func_args = (x,)
 
         func = lambda x: np.fft.fft(x, axis=0)
     elif args.operation == "sum":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         await wait(x)
+        end_range(rng)
+
         func_args = (x,)
 
         func = lambda x: x.sum()
     elif args.operation == "mean":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         await wait(x)
+        end_range(rng)
+
         func_args = (x,)
 
         func = lambda x: x.mean()
     elif args.operation == "slice":
+        rng = start_range(message="make array(s)", color="green")
         x = rs.random((args.size, args.size), chunks=args.chunk_size).persist()
         await wait(x)
+        end_range(rng)
+
         func_args = (x,)
 
         func = lambda x: x[::3].copy()
+    elif args.operation == "col_sum":
+        rng = start_range(message="make array(s)", color="green")
+        x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
+        y = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
+        await wait(x)
+        await wait(y)
+        end_range(rng)
+
+        func_args = (x, y)
+
+        func = lambda x, y: x + y
+    elif args.operation == "col_mask":
+        rng = start_range(message="make array(s)", color="green")
+        x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
+        y = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
+        await wait(x)
+        await wait(y)
+        end_range(rng)
+
+        func_args = (x, y)
+
+        func = lambda x, y: x[y > 10]
+    elif args.operation == "col_gather":
+        rng = start_range(message="make array(s)", color="green")
+        x = rs.normal(10, 1, (args.size,), chunks=args.chunk_size).persist()
+        idx = rs.randint(
+            0, len(x), (args.second_size,), chunks=args.chunk_size
+        ).persist()
+        await wait(x)
+        await wait(idx)
+        end_range(rng)
+
+        func_args = (x, idx)
+
+        func = lambda x, idx: x[idx]
 
     shape = x.shape
     chunksize = x.chunksize
@@ -86,19 +140,21 @@ async def _run(client, args):
     # Execute the operations to benchmark
     if args.profile is not None:
         async with performance_report(filename=args.profile):
+            rng = start_range(message=args.operation, color="purple")
             t1 = clock()
-            res = client.compute(func(*func_args))
-            await client.gather(res)
+            await wait(client.persist(func(*func_args)))
             if args.type == "gpu":
                 await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
             took = clock() - t1
+            end_range(rng)
     else:
+        rng = start_range(message=args.operation, color="purple")
         t1 = clock()
-        res = client.compute(func(*func_args))
-        await client.gather(res)
+        await wait(client.persist(func(*func_args)))
         if args.type == "gpu":
             await client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
         took = clock() - t1
+        end_range(rng)
 
     return {
         "took": took,
@@ -132,11 +188,19 @@ async def run(args):
         ) as client:
             scheduler_workers = await client.run_on_scheduler(get_scheduler_workers)
 
-            await client.run(setup_memory_pool, disable_pool=args.disable_rmm_pool)
+            await client.run(
+                setup_memory_pool,
+                pool_size=args.rmm_pool_size,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
+            )
             # Create an RMM pool on the scheduler due to occasional deserialization
             # of CUDA objects. May cause issues with InfiniBand otherwise.
             await client.run_on_scheduler(
-                setup_memory_pool, 1e9, disable_pool=args.disable_rmm_pool
+                setup_memory_pool,
+                pool_size=1e9,
+                disable_pool=args.disable_rmm_pool,
+                log_directory=args.rmm_log_directory,
             )
 
             took_list = []

@@ -56,8 +56,8 @@ conda list --show-channel-urls
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
-pip install git+https://github.com/dask/dask.git@master
-pip install git+https://github.com/dask/distributed.git@master
+pip install git+https://github.com/dask/dask.git@main
+pip install git+https://github.com/dask/distributed.git@main
 
 ################################################################################
 # BUILD - Package builds

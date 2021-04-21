@@ -11,12 +11,13 @@ import dask
 import dask.dataframe
 import distributed
 from dask.base import compute_as_if_collection, tokenize
-from dask.dataframe.core import DataFrame, _concat
+from dask.dataframe.core import DataFrame, _concat as dd_concat
 from dask.dataframe.shuffle import shuffle_group
 from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 
+from ...proxify_host_file import ProxifyHostFile
 from .. import comms
 
 
@@ -38,7 +39,11 @@ async def recv(
     for rank, ep in eps.items():
         if rank in in_nparts:
             futures.append(ep.read())
-    out_parts_list.extend(nested_deserialize(await asyncio.gather(*futures)))
+
+    # Notice, since Dask may convert lists to tuples, we convert them back into lists
+    out_parts_list.extend(
+        [[y for y in x] for x in nested_deserialize(await asyncio.gather(*futures))]
+    )
 
 
 def sort_in_parts(
@@ -46,6 +51,7 @@ def sort_in_parts(
     rank_to_out_part_ids: Dict[int, List[int]],
     ignore_index: bool,
     concat_dfs_of_same_output_partition: bool,
+    concat,
 ) -> Dict[int, List[List[DataFrame]]]:
     """ Sort the list of grouped dataframes in `in_parts`
 
@@ -96,7 +102,7 @@ def sort_in_parts(
             for i in range(len(rank_to_out_parts_list[rank])):
                 if len(rank_to_out_parts_list[rank][i]) > 1:
                     rank_to_out_parts_list[rank][i] = [
-                        _concat(
+                        concat(
                             rank_to_out_parts_list[rank][i], ignore_index=ignore_index
                         )
                     ]
@@ -144,11 +150,30 @@ async def local_shuffle(
     eps = s["eps"]
     assert s["rank"] in workers
 
+    try:
+        hostfile = first(iter(in_parts[0].values()))._obj_pxy.get(
+            "hostfile", lambda: None
+        )()
+    except AttributeError:
+        hostfile = None
+
+    if isinstance(hostfile, ProxifyHostFile):
+
+        def concat(args, ignore_index=False):
+            if len(args) < 2:
+                return args[0]
+
+            return hostfile.add_external(dd_concat(args, ignore_index=ignore_index))
+
+    else:
+        concat = dd_concat
+
     rank_to_out_parts_list = sort_in_parts(
         in_parts,
         rank_to_out_part_ids,
         ignore_index,
         concat_dfs_of_same_output_partition=True,
+        concat=concat,
     )
 
     # Communicate all the dataframe-partitions all-to-all. The result is
@@ -176,7 +201,7 @@ async def local_shuffle(
         dfs.extend(rank_to_out_parts_list[myrank][i])
         rank_to_out_parts_list[myrank][i] = None
         if len(dfs) > 1:
-            ret.append(_concat(dfs, ignore_index=ignore_index))
+            ret.append(concat(dfs, ignore_index=ignore_index))
         else:
             ret.append(dfs[0])
     return ret

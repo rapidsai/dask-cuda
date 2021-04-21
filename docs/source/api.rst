@@ -1,24 +1,13 @@
 API
 ===
 
-.. currentmodule:: dask_cuda
-
-**dask_cuda**
-
 Setup
 ------
-
-.. autosummary::
-   initialize
-
+.. currentmodule:: dask_cuda.initialize
 .. autofunction:: initialize
-
 
 Cluster
 -------
-
-.. autosummary::
-   LocalCUDACluster
-
+.. currentmodule:: dask_cuda
 .. autoclass:: LocalCUDACluster
    :members:

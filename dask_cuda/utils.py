@@ -32,9 +32,11 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory):
+    def __init__(self, nbytes, managed_memory, log_directory):
         self.nbytes = nbytes
         self.managed_memory = managed_memory
+        self.logging = log_directory is not None
+        self.log_directory = log_directory
 
     def setup(self, worker=None):
         if self.nbytes is not None or self.managed_memory is True:
@@ -46,6 +48,10 @@ class RMMSetup:
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
                 initial_pool_size=self.nbytes,
+                logging=self.logging,
+                log_file_name=get_rmm_log_file_name(
+                    worker, self.logging, self.log_directory
+                ),
             )
 
 
@@ -317,6 +323,26 @@ def get_preload_options(
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 
     return preload_options
+
+
+def get_rmm_log_file_name(dask_worker, logging=False, log_directory=None):
+    return (
+        os.path.join(
+            log_directory,
+            "rmm_log_%s.txt"
+            % (
+                (
+                    dask_worker.name.split("/")[-1]
+                    if isinstance(dask_worker.name, str)
+                    else dask_worker.name
+                )
+                if hasattr(dask_worker, "name")
+                else "scheduler"
+            ),
+        )
+        if logging
+        else None
+    )
 
 
 def wait_workers(
