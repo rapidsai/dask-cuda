@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 from dask.distributed import SSHCluster
+from dask.utils import parse_bytes
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -36,9 +37,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     parser.add_argument(
         "--rmm-pool-size",
         default=None,
-        type=float,
-        help="The size of the RMM memory pool. By default, 1/2 of "
-        "the total GPU memory is used.",
+        type=parse_bytes,
+        help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
     )
     parser.add_argument(
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
@@ -107,6 +108,18 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         type=str,
         help="The device to be used for UCX communication, or 'auto'. "
         "Ignored if protocol is 'tcp'",
+    )
+    parser.add_argument(
+        "--interface",
+        default=None,
+        type=str,
+        dest="interface",
+        help="Network interface Dask processes will use to listen for connections.",
+    )
+    parser.add_argument(
+        "--no-silence-logs",
+        action="store_true",
+        help="By default Dask logs are silenced, this argument unsilence them.",
     )
     parser.add_argument(
         "--multi-node",
@@ -215,7 +228,10 @@ def get_cluster_options(args):
             "enable_infiniband": args.enable_infiniband,
             "enable_nvlink": args.enable_nvlink,
             "enable_rdmacm": args.enable_rdmacm,
+            "interface": args.interface,
         }
+        if args.no_silence_logs:
+            cluster_kwargs["silence_logs"] = False
 
     return {
         "class": Cluster,

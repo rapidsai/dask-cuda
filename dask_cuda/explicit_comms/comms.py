@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import contextlib
 import time
 import uuid
 from typing import List, Optional
@@ -9,6 +10,33 @@ from distributed import Client, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 _default_comms = None
+
+
+def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
+    """Return either a MultiLock or a NULL context
+
+    Parameters
+    ----------
+    multi_lock_context: bool
+        If True return MultiLock context else return a NULL context that
+        doesn't do anything
+
+    *args, **kwargs:
+        Arguments parsed to the MultiLock creation
+
+    Returns
+    -------
+    context: context
+        Either `MultiLock(*args, **kwargs)` or a NULL context
+    """
+    if multi_lock_context:
+        from distributed import MultiLock
+
+        return MultiLock(*args, **kwargs)
+    else:
+        # Use a null context that doesn't do anything
+        # TODO: use `contextlib.nullcontext()` from Python 3.7+
+        return contextlib.suppress()
 
 
 def default_comms(client: Optional[Client] = None) -> "CommsContext":
@@ -194,7 +222,7 @@ class CommsContext:
         )
         return ret.result() if wait else ret
 
-    def run(self, coroutine, *args, workers=None):
+    def run(self, coroutine, *args, workers=None, lock_workers=False):
         """Run a coroutine on multiple workers
 
         The coroutine is given the worker's state dict as the first argument
@@ -208,6 +236,9 @@ class CommsContext:
             Arguments for `coroutine`
         workers: list, optional
             List of workers. Default is all workers
+        lock_workers: bool, optional
+            Use distributed.MultiLock to get exclusive access to the workers. Use
+            this flag to support parallel runs.
 
         Returns
         -------
@@ -216,16 +247,18 @@ class CommsContext:
         """
         if workers is None:
             workers = self.worker_addresses
-        ret = []
-        for worker in workers:
-            ret.append(
-                self.client.submit(
-                    _run_coroutine_on_worker,
-                    self.sessionId,
-                    coroutine,
-                    args,
-                    workers=[worker],
-                    pure=False,
+
+        with get_multi_lock_or_null_context(lock_workers, workers):
+            ret = []
+            for worker in workers:
+                ret.append(
+                    self.client.submit(
+                        _run_coroutine_on_worker,
+                        self.sessionId,
+                        coroutine,
+                        args,
+                        workers=[worker],
+                        pure=False,
+                    )
                 )
-            )
-        return self.client.gather(ret)
+            return self.client.gather(ret)
