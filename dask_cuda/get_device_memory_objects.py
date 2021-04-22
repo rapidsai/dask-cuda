@@ -93,8 +93,8 @@ def get_device_memory_objects_register_cudf():
     @dispatch.register(cudf.core.index.RangeIndex)
     def get_device_memory_objects_cudf_range_index(obj):
         # Avoid materializing RangeIndex. This introduce some inaccuracies
-        # in total device memory usage but we accept the memory use of
-        # RangeIndexes are limited.
+        # in total device memory usage, which we accept because the memory
+        # use of RangeIndexes are limited.
         return []
 
     @dispatch.register(cudf.core.index.Index)

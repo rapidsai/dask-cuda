@@ -15,6 +15,11 @@ cupy.cuda.set_allocator(None)
 one_item_array = lambda: cupy.arange(1)
 one_item_nbytes = one_item_array().nbytes
 
+# While testing we want to proxify `cupy.ndarray` even though
+# it is on the ignore_type list by default.
+dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
+dask_cuda.proxify_device_objects.ignore_types = ()
+
 
 def test_one_item_limit():
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
@@ -186,3 +191,28 @@ def test_externals_setitem():
     k1 = dhf.add_external(dhf["k1"])
     assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
     assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
+
+
+def test_proxify_device_objects_of_cupy_array():
+    """Check that a proxied array behaves as a regular cupy array
+
+    Notice, in this test we add `cupy.ndarray` to the ignore_types temporarily.
+    """
+    cupy = pytest.importorskip("cupy")
+    dask_cuda.proxify_device_objects.ignore_types = (cupy.ndarray,)
+    try:
+        # Make sure that equality works, which we use to test the other operators
+        org = cupy.arange(9).reshape((3, 3)) + 1
+        pxy = dask_cuda.proxify_device_objects.proxify_device_objects(
+            org.copy(), {}, []
+        )
+        assert (org == pxy).all()
+        assert (org + 1 != pxy).all()
+
+        for op in [cupy.dot]:
+            res = op(org, org)
+            assert (op(pxy, pxy) == res).all()
+            assert (op(org, pxy) == res).all()
+            assert (op(pxy, org) == res).all()
+    finally:
+        dask_cuda.proxify_device_objects.ignore_types = ()
