@@ -33,7 +33,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
 # Install dask and distributed from master branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MASTER=0
+export INSTALL_DASK_MASTER=1
 
 ################################################################################
 # SETUP - Check environment
