@@ -5,9 +5,10 @@ import pytest
 
 import dask
 from dask import array as da
-from dask_cuda.utils import _ucx_110
 from distributed import Client
 from distributed.deploy.local import LocalCluster
+
+from dask_cuda.utils import _ucx_110
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

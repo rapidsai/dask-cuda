@@ -9,7 +9,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_config, _ucx_110
+from dask_cuda.utils import _ucx_110, get_ucx_config
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")

@@ -14,7 +14,7 @@ from distributed.utils import get_ip_interface
 
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import wait_workers, _ucx_110
+from dask_cuda.utils import _ucx_110, wait_workers
 
 mp = mp.get_context("spawn")
 psutil = pytest.importorskip("psutil")
