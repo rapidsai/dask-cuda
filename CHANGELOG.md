@@ -2,9 +2,37 @@
 
 Please see https://github.com/rapidsai/dask-cuda/releases/tag/v0.20.0a for the latest changes to this development branch.
 
-# dask-cuda 0.19.0 (Date TBD)
+# dask-cuda 0.19.0 (21 Apr 2021)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v0.19.0a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Pin Dask and Distributed &lt;=2021.04.0 ([#585](https://github.com/rapidsai/dask-cuda/pull/585)) [@pentschev](https://github.com/pentschev)
+- Unblock CI by xfailing test_dataframe_merge_empty_partitions ([#581](https://github.com/rapidsai/dask-cuda/pull/581)) [@pentschev](https://github.com/pentschev)
+- Install Dask + Distributed from `main` ([#546](https://github.com/rapidsai/dask-cuda/pull/546)) [@jakirkham](https://github.com/jakirkham)
+- Replace compute() calls on CuPy benchmarks by persist() ([#537](https://github.com/rapidsai/dask-cuda/pull/537)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Add standalone examples of UCX usage ([#551](https://github.com/rapidsai/dask-cuda/pull/551)) [@charlesbluca](https://github.com/charlesbluca)
+- Improve UCX documentation and examples ([#545](https://github.com/rapidsai/dask-cuda/pull/545)) [@charlesbluca](https://github.com/charlesbluca)
+- Auto-merge branch-0.18 to branch-0.19 ([#538](https://github.com/rapidsai/dask-cuda/pull/538)) [@GPUtester](https://github.com/GPUtester)
+
+## 🚀 New Features
+
+- Add option to enable RMM logging ([#542](https://github.com/rapidsai/dask-cuda/pull/542)) [@charlesbluca](https://github.com/charlesbluca)
+- Add capability to log spilling ([#442](https://github.com/rapidsai/dask-cuda/pull/442)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Fix UCX examples for InfiniBand ([#556](https://github.com/rapidsai/dask-cuda/pull/556)) [@charlesbluca](https://github.com/charlesbluca)
+- Fix list to tuple conversion ([#555](https://github.com/rapidsai/dask-cuda/pull/555)) [@madsbk](https://github.com/madsbk)
+- Add column masking operation for CuPy benchmarking ([#553](https://github.com/rapidsai/dask-cuda/pull/553)) [@jakirkham](https://github.com/jakirkham)
+- Update Changelog Link ([#550](https://github.com/rapidsai/dask-cuda/pull/550)) [@ajschmidt8](https://github.com/ajschmidt8)
+- cuDF-style operations &amp; NVTX annotations for local CuPy benchmark ([#548](https://github.com/rapidsai/dask-cuda/pull/548)) [@charlesbluca](https://github.com/charlesbluca)
+- Prepare Changelog for Automation ([#543](https://github.com/rapidsai/dask-cuda/pull/543)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Add --enable-rdmacm flag to benchmarks utils ([#539](https://github.com/rapidsai/dask-cuda/pull/539)) [@pentschev](https://github.com/pentschev)
+- ProxifyHostFile: tracking of external objects ([#527](https://github.com/rapidsai/dask-cuda/pull/527)) [@madsbk](https://github.com/madsbk)
+- Test broadcast merge in local_cudf_merge benchmark ([#507](https://github.com/rapidsai/dask-cuda/pull/507)) [@rjzamora](https://github.com/rjzamora)
 
 # dask-cuda 0.18.0 (24 Feb 2021)
 
