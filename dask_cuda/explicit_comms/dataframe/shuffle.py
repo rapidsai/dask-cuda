@@ -330,6 +330,7 @@ def shuffle(
                 ignore_index,
             )
     distributed.wait(list(result_futures.values()))
+    del df_groups
 
     # Step (c): extract individual dataframe-partitions
     name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
