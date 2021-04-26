@@ -343,6 +343,7 @@ def shuffle(
                 meta = delayed(make_meta)(
                     delayed(getitem)(result_futures[rank], i)
                 ).compute()
+    assert meta is not None
 
     divs = [None] * (len(dsk) + 1)
     return new_dd_object(dsk, name, meta, divs).persist()
