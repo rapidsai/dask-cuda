@@ -11,8 +11,9 @@ import dask
 import dask.dataframe
 import distributed
 from dask.base import compute_as_if_collection, tokenize
-from dask.dataframe.core import DataFrame, _concat as dd_concat
+from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import shuffle_group
+from dask.dataframe.utils import make_meta
 from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
@@ -53,7 +54,7 @@ def sort_in_parts(
     concat_dfs_of_same_output_partition: bool,
     concat,
 ) -> Dict[int, List[List[DataFrame]]]:
-    """ Sort the list of grouped dataframes in `in_parts`
+    """Sort the list of grouped dataframes in `in_parts`
 
     It returns a dict that for each worker-rank specifies the output partitions:
     '''
@@ -329,14 +330,24 @@ def shuffle(
                 ignore_index,
             )
     distributed.wait(list(result_futures.values()))
+    del df_groups
 
     # Step (c): extract individual dataframe-partitions
-    ret = []
+    name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
+    dsk = {}
+    meta = None
     for rank, parts in rank_to_out_part_ids.items():
-        for i in range(len(parts)):
-            ret.append(delayed(getitem)(result_futures[rank], i))
-    del result_futures
-    return dask.dataframe.from_delayed(ret, verify_meta=False).persist()
+        for i, part_id in enumerate(parts):
+            dsk[(name, part_id)] = (getitem, result_futures[rank], i)
+            if meta is None:
+                # Get the meta from the first output partition
+                meta = delayed(make_meta)(
+                    delayed(getitem)(result_futures[rank], i)
+                ).compute()
+    assert meta is not None
+
+    divs = [None] * (len(dsk) + 1)
+    return new_dd_object(dsk, name, meta, divs).persist()
 
 
 def get_rearrange_by_column_tasks_wrapper(func):
