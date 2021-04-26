@@ -17,3 +17,11 @@ Client initialization
 ---------------------
 .. currentmodule:: dask_cuda.initialize
 .. autofunction:: initialize
+
+
+Explicit-comms
+--------------
+.. currentmodule:: dask_cuda.explicit_comms.comms
+.. autoclass:: CommsContext
+   :members:
+
