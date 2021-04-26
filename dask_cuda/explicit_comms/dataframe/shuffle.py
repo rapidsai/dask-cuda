@@ -334,11 +334,16 @@ def shuffle(
     # Step (c): extract individual dataframe-partitions
     name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
     dsk = {}
+    meta = None
     for rank, parts in rank_to_out_part_ids.items():
         for i, part_id in enumerate(parts):
             dsk[(name, part_id)] = (getitem, result_futures[rank], i)
+            if meta is None:
+                # Get the meta from the first output partition
+                meta = delayed(make_meta)(
+                    delayed(getitem)(result_futures[rank], i)
+                ).compute()
 
-    meta = delayed(make_meta)(delayed(getitem)(result_futures[rank], 0)).compute()
     divs = [None] * (len(dsk) + 1)
     return new_dd_object(dsk, name, meta, divs).persist()
 
