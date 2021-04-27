@@ -29,7 +29,11 @@ async def my_rank(state, arg):
 
 
 def _test_local_cluster(protocol):
-    initialize(enable_tcp_over_ucx=True)
+    dask.config.update(
+        dask.config.global_config,
+        {"ucx": {"tcp": True, "cuda_copy": True,},},
+        priority="new",
+    )
 
     with LocalCluster(
         protocol=protocol,
@@ -55,10 +59,16 @@ def _test_dataframe_merge(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
         from cudf.tests.utils import assert_eq
+
+        initialize(enable_tcp_over_ucx=True)
     else:
         from dask.dataframe.utils import assert_eq
 
-    initialize(enable_tcp_over_ucx=True)
+        dask.config.update(
+            dask.config.global_config,
+            {"ucx": {"tcp": True, "cuda_copy": True,},},
+            priority="new",
+        )
 
     with LocalCluster(
         protocol=protocol,
@@ -151,10 +161,16 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
         from cudf.tests.utils import assert_eq
+
+        initialize(enable_tcp_over_ucx=True)
     else:
         from dask.dataframe.utils import assert_eq
 
-    initialize(enable_tcp_over_ucx=True)
+        dask.config.update(
+            dask.config.global_config,
+            {"ucx": {"tcp": True, "cuda_copy": True,},},
+            priority="new",
+        )
 
     with LocalCluster(
         protocol=protocol,
@@ -250,14 +266,16 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
         from cudf.tests.utils import assert_eq
+
+        initialize(enable_tcp_over_ucx=True)
     else:
         from dask.dataframe.utils import assert_eq
 
-    dask.config.update(
-        dask.config.global_config,
-        {"ucx": {"TLS": "tcp,sockcm,cuda_copy",},},
-        priority="new",
-    )
+        dask.config.update(
+            dask.config.global_config,
+            {"ucx": {"tcp": True, "cuda_copy": True,},},
+            priority="new",
+        )
 
     with LocalCluster(
         protocol=protocol,
