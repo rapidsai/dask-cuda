@@ -5,12 +5,12 @@ from warnings import filterwarnings
 
 import numpy
 
+import dask
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
-import dask_cuda.explicit_comms.dataframe.merge
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -160,13 +160,6 @@ def merge(args, ddf1, ddf2, write_profile):
     return took
 
 
-def merge_explicit_comms(args, ddf1, ddf2):
-    t1 = clock()
-    wait(dask_cuda.explicit_comms.dataframe.merge.merge(ddf1, ddf2, on="key").persist())
-    took = clock() - t1
-    return took
-
-
 def run(client, args, n_workers, write_profile=None):
     # Generate random Dask dataframes
     ddf_base = get_random_ddf(
@@ -186,7 +179,8 @@ def run(client, args, n_workers, write_profile=None):
     if args.backend == "dask":
         took = merge(args, ddf_base, ddf_other, write_profile)
     else:
-        took = merge_explicit_comms(args, ddf_base, ddf_other)
+        with dask.config.set(explicit_comms=True):
+            took = merge(args, ddf_base, ddf_other, write_profile)
 
     return (data_processed, took)
 

@@ -13,7 +13,6 @@ from distributed.deploy.local import LocalCluster
 
 import dask_cuda
 from dask_cuda.explicit_comms import comms
-from dask_cuda.explicit_comms.dataframe.merge import merge as explicit_comms_merge
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.initialize import initialize
 
@@ -55,69 +54,6 @@ def test_local_cluster(protocol):
     assert not p.exitcode
 
 
-def _test_dataframe_merge(backend, protocol, n_workers):
-    if backend == "cudf":
-        cudf = pytest.importorskip("cudf")
-        from cudf.tests.utils import assert_eq
-
-        initialize(enable_tcp_over_ucx=True)
-    else:
-        from dask.dataframe.utils import assert_eq
-
-        dask.config.update(
-            dask.config.global_config,
-            {"ucx": {"tcp": True, "cuda_copy": True,},},
-            priority="new",
-        )
-
-    with LocalCluster(
-        protocol=protocol,
-        dashboard_address=None,
-        n_workers=n_workers,
-        threads_per_worker=1,
-        processes=True,
-    ) as cluster:
-        with Client(cluster):
-            nrows = n_workers * 10
-
-            # Let's make some dataframes that we can join on the "key" column
-            df1 = pd.DataFrame({"key": np.arange(nrows), "payload1": np.arange(nrows)})
-            key = np.arange(nrows)
-            np.random.shuffle(key)
-            df2 = pd.DataFrame(
-                {"key": key[nrows // 3 :], "payload2": np.arange(nrows)[nrows // 3 :]}
-            )
-            expected = df1.merge(df2).set_index("key")
-
-            if backend == "cudf":
-                df1 = cudf.DataFrame.from_pandas(df1)
-                df2 = cudf.DataFrame.from_pandas(df2)
-
-            ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
-            ddf2 = dd.from_pandas(
-                df2, npartitions=n_workers - 1 if n_workers > 1 else 1
-            )
-            ddf3 = explicit_comms_merge(ddf1, ddf2, on="key").set_index("key")
-            got = ddf3.compute()
-
-            if backend == "cudf":
-                assert_eq(got, expected)
-            else:
-                pd.testing.assert_frame_equal(got, expected)
-
-
-@pytest.mark.parametrize("nworkers", [1, 2, 4])
-@pytest.mark.parametrize("backend", ["pandas", "cudf"])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-def test_dataframe_merge(backend, protocol, nworkers):
-    if backend == "cudf":
-        pytest.importorskip("cudf")
-    p = mp.Process(target=_test_dataframe_merge, args=(backend, protocol, nworkers))
-    p.start()
-    p.join()
-    assert not p.exitcode
-
-
 def _test_dataframe_merge_empty_partitions(nrows, npartitions):
     with LocalCluster(
         protocol="tcp",
@@ -134,12 +70,12 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             expected = df1.merge(df2).set_index("key")
             ddf1 = dd.from_pandas(df1, npartitions=npartitions)
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
-            ddf3 = explicit_comms_merge(ddf1, ddf2, on=["key"]).set_index("key")
-            got = ddf3.compute()
-            pd.testing.assert_frame_equal(got, expected)
+            with dask.config.set(explicit_comms=True):
+                ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
+                got = ddf3.compute()
+                pd.testing.assert_frame_equal(got, expected)
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/575")
 def test_dataframe_merge_empty_partitions():
     # Notice, we use more partitions than rows
     p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))

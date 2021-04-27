@@ -3,7 +3,7 @@ import functools
 import inspect
 from collections import defaultdict
 from operator import getitem
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from toolz import first
 
@@ -112,7 +112,6 @@ def sort_in_parts(
 
 async def local_shuffle(
     s,
-    workers: Set[int],
     in_nparts: Dict[int, int],
     in_parts: List[Dict[int, DataFrame]],
     rank_to_out_part_ids: Dict[int, List[int]],
@@ -126,8 +125,6 @@ async def local_shuffle(
     ----------
     s: dict
         Worker session state
-    workers: set
-        Set of ranks of all the participants
     in_nparts: dict
         dict that for each worker rank specifices the
         number of partitions that worker has of the input dataframe.
@@ -149,7 +146,6 @@ async def local_shuffle(
     """
     myrank = s["rank"]
     eps = s["eps"]
-    assert s["rank"] in workers
 
     try:
         hostfile = first(iter(in_parts[0].values()))._obj_pxy.get(
@@ -307,13 +303,14 @@ def shuffle(
         if nparts > 0:
             in_nparts[rank] = nparts
             workers.add(rank)
+    workers_sorted = sorted(workers)
 
     # Find the output partitions for each worker
     div = npartitions // len(workers)
     rank_to_out_part_ids = {}  # rank -> [list of partition id]
-    for i, rank in enumerate(workers):
+    for i, rank in enumerate(workers_sorted):
         rank_to_out_part_ids[rank] = list(range(div * i, div * (i + 1)))
-    for rank, i in zip(workers, range(div * len(workers), npartitions)):
+    for rank, i in zip(workers_sorted, range(div * len(workers), npartitions)):
         rank_to_out_part_ids[rank].append(i)
 
     # Run `local_shuffle()` on each worker
@@ -323,7 +320,6 @@ def shuffle(
             result_futures[rank] = c.submit(
                 worker,
                 local_shuffle,
-                workers,
                 in_nparts,
                 in_parts[worker],
                 rank_to_out_part_ids,
