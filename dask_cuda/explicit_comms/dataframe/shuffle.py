@@ -303,13 +303,14 @@ def shuffle(
         if nparts > 0:
             in_nparts[rank] = nparts
             workers.add(rank)
+    workers_sorted = sorted(workers)
 
     # Find the output partitions for each worker
     div = npartitions // len(workers)
     rank_to_out_part_ids = {}  # rank -> [list of partition id]
-    for i, rank in enumerate(workers):
+    for i, rank in enumerate(workers_sorted):
         rank_to_out_part_ids[rank] = list(range(div * i, div * (i + 1)))
-    for rank, i in zip(workers, range(div * len(workers), npartitions)):
+    for rank, i in zip(workers_sorted, range(div * len(workers), npartitions)):
         rank_to_out_part_ids[rank].append(i)
 
     # Run `local_shuffle()` on each worker
