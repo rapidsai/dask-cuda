@@ -39,4 +39,4 @@ gpuci_logger "Starting conda uploads"
 test -e ${DASKCUDA_FILE}
 echo "Upload Dask-cuda"
 echo ${DASKCUDA_FILE}
-gpuci_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASKCUDA_FILE}
+gpuci_retry anaconda -t ${MY_UPLOAD_KEY} upload -u ${CONDA_USERNAME:-rapidsai} ${LABEL_OPTION} --skip-existing ${DASKCUDA_FILE} --no-progress
