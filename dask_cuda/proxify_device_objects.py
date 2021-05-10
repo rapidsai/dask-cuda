@@ -49,8 +49,8 @@ def _register_ignore_types():
 
 def proxify_device_objects(
     obj: Any,
-    proxied_id_to_proxy: MutableMapping[int, ProxyObject],
-    found_proxies: List[ProxyObject],
+    proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
+    found_proxies: List[ProxyObject] = None,
     excl_proxies: bool = False,
 ):
     """ Wrap device objects in ProxyObject
@@ -66,9 +66,11 @@ def proxify_device_objects(
     proxied_id_to_proxy: MutableMapping[int, ProxyObject]
         Dict mapping the id() of proxied objects (CUDA device objects) to
         their proxy and is updated with all new proxied objects found in `obj`.
+        If None, use an empty dict.
     found_proxies: List[ProxyObject]
         List of found proxies in `obj`. Notice, this includes all proxies found,
         including those already in `proxied_id_to_proxy`.
+        If None, use an empty list.
     excl_proxies: bool
         Don't add found objects that are already ProxyObject to found_proxies.
 
@@ -78,6 +80,11 @@ def proxify_device_objects(
         A copy of `obj` where all CUDA device objects are wrapped in ProxyObject
     """
     _register_ignore_types()
+
+    if proxied_id_to_proxy is None:
+        proxied_id_to_proxy = {}
+    if found_proxies is None:
+        found_proxies = []
     return dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
 
 
