@@ -1,6 +1,9 @@
+import numpy as np
 import pytest
 from pandas.testing import assert_frame_equal
 
+import dask
+import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
 
@@ -216,3 +219,34 @@ def test_proxify_device_objects_of_cupy_array():
             assert (op(pxy, org) == res).all()
     finally:
         dask_cuda.proxify_device_objects.ignore_types = ()
+
+
+@pytest.mark.parametrize("npartitions", [1, 2, 3])
+def test_compatibility_mode_dataframe_shuffle(npartitions):
+    cudf = pytest.importorskip("cudf")
+
+    def is_proxy_object(x):
+        return "ProxyObject" in str(type(x))
+
+    # With compatibility mode off, we expect to encounter proxy objects
+    with dask.config.set(jit_unspill_compatibility_mode=False):
+        with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
+            with Client(cluster):
+                ddf = dask.dataframe.from_pandas(
+                    cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
+                )
+                res = ddf.shuffle(on="key", shuffle="tasks").persist()
+                res = res.map_partitions(is_proxy_object).compute()
+                assert all(res.to_list())
+
+    # With compatibility mode on, we shouldn't encounter any proxy objects
+    with dask.config.set(jit_unspill_compatibility_mode=True):
+        with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
+            with Client(cluster):
+                ddf = dask.dataframe.from_pandas(
+                    cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
+                )
+                res = ddf.shuffle(on="key", shuffle="tasks").persist()
+                assert "ProxyObject" not in str(type(res.compute()))
+                res = res.map_partitions(is_proxy_object).compute()
+                assert not any(res.to_list())
