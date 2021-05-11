@@ -13,9 +13,10 @@ from typing import (
     Tuple,
 )
 
+import dask
 from dask.sizeof import sizeof
 
-from .proxify_device_objects import proxify_device_objects
+from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
 
 
@@ -142,13 +143,26 @@ class ProxifyHostFile(MutableMapping):
     ----------
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
+    compatibility_mode: bool
+        Enables compatibility-mode, which means that items are un-proxified before
+        retrieval. This makes it possible to get some of the JIT-unspill benefits
+        without having to be ProxyObject compatible. In order to still allow specific
+        ProxyObjects, set the `mark_as_explicit_proxies=True` when proxifying with
+        `proxify_device_objects()`. If None, the "jit-unspill-compatibility-mode"
+        config value are used, which defaults to False.
     """
 
-    def __init__(self, device_memory_limit: int):
+    def __init__(self, device_memory_limit: int, compatibility_mode: bool = None):
         self.device_memory_limit = device_memory_limit
         self.store = {}
         self.lock = threading.RLock()
         self.proxies_tally = ProxiesTally()
+        if compatibility_mode is None:
+            self.compatibility_mode = dask.config.get(
+                "jit-unspill-compatibility-mode", default=False
+            )
+        else:
+            self.compatibility_mode = compatibility_mode
 
     def __contains__(self, key):
         return key in self.store
@@ -247,7 +261,11 @@ class ProxifyHostFile(MutableMapping):
 
     def __getitem__(self, key):
         with self.lock:
-            return self.store[key]
+            ret = self.store[key]
+        if self.compatibility_mode:
+            ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
+            self.maybe_evict()
+        return ret
 
     def __delitem__(self, key):
         with self.lock:
