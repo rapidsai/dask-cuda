@@ -1,3 +1,4 @@
+import functools
 import pydoc
 from collections import defaultdict
 from functools import partial
@@ -52,6 +53,7 @@ def proxify_device_objects(
     proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
     found_proxies: List[ProxyObject] = None,
     excl_proxies: bool = False,
+    mark_as_explicit_proxies: bool = False,
 ):
     """ Wrap device objects in ProxyObject
 
@@ -73,6 +75,9 @@ def proxify_device_objects(
         If None, use an empty list.
     excl_proxies: bool
         Don't add found objects that are already ProxyObject to found_proxies.
+    mark_as_explicit_proxies: bool
+        Mark found proxies as "explicit", which means that the user allows them
+        as input arguments to dask tasks even in compatibility-mode.
 
     Returns
     -------
@@ -85,7 +90,76 @@ def proxify_device_objects(
         proxied_id_to_proxy = {}
     if found_proxies is None:
         found_proxies = []
-    return dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
+    ret = dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
+    if mark_as_explicit_proxies:
+        for p in found_proxies:
+            p._obj_pxy["explicit_proxy"] = True
+    return ret
+
+
+def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
+    """ Unproxify device objects
+
+    Search through `obj` and un-wraps all CUDA device objects.
+
+    Parameters
+    ----------
+    obj: Any
+        Object to search through or unproxify.
+    skip_explicit_proxies: bool
+        When True, skipping proxy objects marked as explicit proxies.
+
+    Returns
+    -------
+    ret: Any
+        A copy of `obj` where all CUDA device objects are unproxify
+    """
+    typ = type(obj)
+    if typ is dict:
+        return {
+            k: unproxify_device_objects(v, skip_explicit_proxies)
+            for k, v in obj.items()
+        }
+    if typ in (list, tuple, set, frozenset):
+        return typ(unproxify_device_objects(i, skip_explicit_proxies) for i in obj)
+
+    if hasattr(obj, "_obj_pxy"):
+        if not skip_explicit_proxies or not obj._obj_pxy["explicit_proxy"]:
+            obj._obj_pxy["explicit_proxy"] = False
+            obj = obj._obj_pxy_deserialize(maybe_evict=False)
+    return obj
+
+
+def proxify_decorator(func):
+    """Returns a function wrapper that explicit proxify the output
+
+    Notice, this function only has effect in compatibility mode.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        ret = func(*args, **kwargs)
+        if dask.config.get("jit-unspill-compatibility-mode", default=False):
+            ret = proxify_device_objects(ret, mark_as_explicit_proxies=True)
+        return ret
+
+    return wrapper
+
+
+def unproxify_decorator(func):
+    """Returns a function wrapper that unproxify output
+
+    Notice, this function only has effect in compatibility mode.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        ret = func(*args, **kwargs)
+        if dask.config.get("jit-unspill-compatibility-mode", default=False):
+            ret = unproxify_device_objects(ret, skip_explicit_proxies=False)
+        return ret
+
+    return wrapper
 
 
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
