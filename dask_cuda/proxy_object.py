@@ -305,20 +305,19 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy["serializers"] is not None:
-                if maybe_evict:
-                    hostfile = self._obj_pxy.get("hostfile", lambda: None)()
-                    # When not deserializing a CUDA-serialized proxied, we might have
-                    # to evict because of the increased device memory usage.
-                    if "cuda" not in self._obj_pxy["serializers"]:
-                        if hostfile is not None:
-                            # In order to avoid a potential deadlock, we skip the
-                            # `maybe_evict()` call if another thread is also accessing
-                            # the hostfile.
-                            if hostfile.lock.acquire(blocking=False):
-                                try:
-                                    hostfile.maybe_evict(self.__sizeof__())
-                                finally:
-                                    hostfile.lock.release()
+                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+                # When not deserializing a CUDA-serialized proxied, we might have
+                # to evict because of the increased device memory usage.
+                if maybe_evict and "cuda" not in self._obj_pxy["serializers"]:
+                    if hostfile is not None:
+                        # In order to avoid a potential deadlock, we skip the
+                        # `maybe_evict()` call if another thread is also accessing
+                        # the hostfile.
+                        if hostfile.lock.acquire(blocking=False):
+                            try:
+                                hostfile.maybe_evict(self.__sizeof__())
+                            finally:
+                                hostfile.lock.release()
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
