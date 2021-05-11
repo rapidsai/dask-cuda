@@ -72,6 +72,7 @@ def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
             is_cuda_object=is_device_object(obj),
             subclass=subclass_serialized,
             serializers=None,
+            explicit_proxy=False,
         )
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
@@ -175,6 +176,9 @@ class ProxyObject:
     serializers: list(str), optional
         List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
+    explicit_proxy: bool
+        Mark the proxy object as "explicit", which means that the user allows it
+        as input argument to dask tasks even in compatibility-mode.
     """
 
     def __init__(
@@ -186,6 +190,7 @@ class ProxyObject:
         is_cuda_object: bool,
         subclass: bytes,
         serializers: Optional[List[str]],
+        explicit_proxy: bool,
     ):
         self._obj_pxy = {
             "obj": obj,
@@ -195,6 +200,7 @@ class ProxyObject:
             "is_cuda_object": is_cuda_object,
             "subclass": subclass,
             "serializers": serializers,
+            "explicit_proxy": explicit_proxy,
         }
         self._obj_pxy_lock = threading.RLock()
         self._obj_pxy_cache = {}
@@ -227,6 +233,7 @@ class ProxyObject:
             "is_cuda_object",
             "subclass",
             "serializers",
+            "explicit_proxy",
         ]
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
