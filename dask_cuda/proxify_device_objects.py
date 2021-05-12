@@ -114,14 +114,15 @@ def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
     ret: Any
         A copy of `obj` where all CUDA device objects are unproxify
     """
-    typ = type(obj)
-    if typ is dict:
+    if isinstance(obj, dict):
         return {
             k: unproxify_device_objects(v, skip_explicit_proxies)
             for k, v in obj.items()
         }
-    if typ in (list, tuple, set, frozenset):
-        return typ(unproxify_device_objects(i, skip_explicit_proxies) for i in obj)
+    if isinstance(obj, (list, tuple, set, frozenset)):
+        return type(obj)(
+            unproxify_device_objects(i, skip_explicit_proxies) for i in obj
+        )
 
     if hasattr(obj, "_obj_pxy"):
         if not skip_explicit_proxies or not obj._obj_pxy["explicit_proxy"]:
