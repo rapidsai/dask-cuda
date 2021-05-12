@@ -222,31 +222,28 @@ def test_proxify_device_objects_of_cupy_array():
 
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
-def test_compatibility_mode_dataframe_shuffle(npartitions):
+@pytest.mark.parametrize("compatibility_mode", [True, False])
+def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
     def is_proxy_object(x):
         return "ProxyObject" in str(type(x))
 
-    # With compatibility mode off, we expect to encounter proxy objects
-    with dask.config.set(jit_unspill_compatibility_mode=False):
+    with dask.config.set(jit_unspill_compatibility_mode=compatibility_mode):
         with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
             with Client(cluster):
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
                 res = ddf.shuffle(on="key", shuffle="tasks").persist()
-                res = res.map_partitions(is_proxy_object).compute()
-                assert all(res.to_list())
 
-    # With compatibility mode on, we shouldn't encounter any proxy objects
-    with dask.config.set(jit_unspill_compatibility_mode=True):
-        with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
-            with Client(cluster):
-                ddf = dask.dataframe.from_pandas(
-                    cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
-                )
-                res = ddf.shuffle(on="key", shuffle="tasks").persist()
-                assert "ProxyObject" not in str(type(res.compute()))
+                # With compatibility mode on, we shouldn't encounter any proxy objects
+                if compatibility_mode:
+                    assert "ProxyObject" not in str(type(res.compute()))
                 res = res.map_partitions(is_proxy_object).compute()
-                assert not any(res.to_list())
+                res = res.to_list()
+
+                if compatibility_mode:
+                    assert not any(res)  # No proxy objects
+                else:
+                    assert all(res)  # Only proxy objects
