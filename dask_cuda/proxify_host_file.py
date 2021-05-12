@@ -143,7 +143,7 @@ class ProxifyHostFile(MutableMapping):
     ----------
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
-    compatibility_mode: bool
+    compatibility_mode: bool or None
         Enables compatibility-mode, which means that items are un-proxified before
         retrieval. This makes it possible to get some of the JIT-unspill benefits
         without having to be ProxyObject compatible. In order to still allow specific
