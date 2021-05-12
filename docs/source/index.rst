@@ -32,11 +32,11 @@ Contents
 
    ucx
    explicit_comms
+   spilling
 
 .. toctree::
    :maxdepth: 1
    :caption: Examples
 
    examples/worker_count
-   examples/spilling
    examples/ucx
