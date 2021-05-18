@@ -37,11 +37,15 @@ JIT-Unspill
 The regular spilling in Dask and Dask-CUDA has some significate issues. Instead of tracking individual objects, it tracks task outputs.
 This means that a task returning a collection of CUDA objects will either spill all of the CUDA objects or none of them.
 Other issues includes *object duplication*, *wrong spilling order*, and *non-tracking of sharing device buffers*
-(see: https://github.com/dask/distributed/issues/4568#issuecomment-805049321)
+(see: https://github.com/dask/distributed/issues/4568#issuecomment-805049321).
 
+In order to address all of these issues, Dask-CUDA introduces JIT-Unspilling, which can improve performance and memory usage significantly.
+For workloads that require significant spilling
+(such as large joins on infrastructure with less available memory than data) we have often
+seen greater than 50% improvement (i.e., something taking 300 seconds might take only 110 seconds). For workloads that do not,
+we would not expect to see much difference.
 
-In order to address all of these issues, Dask-CUDA introduces JIT-Unspilling, which can be enabled
-by using the ``jit_unspill`` argument:
+In order to enable JIT-Unspilling use the ``jit_unspill`` argument:
 
 .. code-block::
 
@@ -57,35 +61,39 @@ by using the ``jit_unspill`` argument:
     ...   client = Client(cluster)
 
 
+Or set the worker argument ``--enable-jit-unspill​``
+
+.. code-block::
+
+    $ dask-scheduler
+    distributed.scheduler - INFO - Scheduler at:  tcp://127.0.0.1:8786
+
+    $ dask-cuda-worker --enable-jit-unspill​
+
+Or environment variable ``DASK_JIT_UNSPILL=True``
+
 .. code-block::
 
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
-    $ dask-cuda-worker --enable-jit-unspill​
     $ DASK_JIT_UNSPILL=True dask-cuda-worker​
 
 
-JIT-Unspill wraps all CUDA objects, such as ``cudf.Dataframe``, in a ``ProxyObject``:
+Limitations
+~~~~~~~~~~~
 
-.. code-block::
+JIT-Unspill wraps CUDA objects, such as ``cudf.Dataframe``, in a ``ProxyObject``.
+Objects proxied by an instance of ``ProxyObject`` will be JIT-deserialized when
+accessed. The instance behaves as the proxied object and can be accessed/used
+just like the proxied object.
 
-    class ProxyObject:
-        """Object wrapper/proxy for serializable objects
+ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
+Most noticeable, type checking using ``instance()`` works as expected but direct
+type checking doesn't:
 
-        This is used by ProxifyHostFile to delay deserialization of returned objects.
+.. code-block:: python
 
-        Objects proxied by an instance of this class will be JIT-deserialized when
-        accessed. The instance behaves as the proxied object and can be accessed/used
-        just like the proxied object.
-
-        ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
-        Thus, if encountering problems remember that it is always possible to use unproxy()
-        to access the proxied object directly or disable JIT deserialization completely
-        with `jit_unspill=False`.
-
-        Type checking using instance() works as expected but direct type checking
-        doesn't:
         >>> import numpy as np
         >>> from dask_cuda.proxy_object import asproxy
         >>> x = np.arange(3)
@@ -93,3 +101,7 @@ JIT-Unspill wraps all CUDA objects, such as ``cudf.Dataframe``, in a ``ProxyObje
         True
         >>>  type(asproxy(x)) is type(x)
         False
+
+Thus, if encountering problems remember that it is always possible to use ``unproxy()``
+to access the proxied object directly, or set ``DASK_JIT_UNSPILL_COMPATIBILITY_MODE=True``
+to enable compatibility mode, which automatically calls ``unproxy()`` on all function inputs.
