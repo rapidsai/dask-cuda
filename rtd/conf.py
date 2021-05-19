@@ -12,13 +12,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import shutil
 
 # -- Project information -----------------------------------------------------
 
 project = "dask-cuda"
-copyright = "2020-21, NVIDIA"
+copyright = "2020-%s, NVIDIA" % datetime.datetime.now().year
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
