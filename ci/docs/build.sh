@@ -14,6 +14,7 @@ export DOCS_WORKSPACE=$WORKSPACE/docs
 export PATH=/conda/bin:/usr/local/cuda/bin:$PATH
 export HOME=$WORKSPACE
 export PROJECT_WORKSPACE=/rapids/dask-cuda
+export PROJECTS=(dask-cuda)
 
 gpuci_logger "Check environment..."
 env
