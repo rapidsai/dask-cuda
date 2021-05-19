@@ -170,12 +170,21 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     ucx_net_devices = None
     if enable_infiniband and not _ucx_110:
         ucx_net_devices = "auto"
-    if enable_rdmacm is True:
-        cm_protocol = "rdmacm"
-    elif _ucx_110 is True:
-        cm_protocol = "tcp"
+
+    if _ucx_110 is True:
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls_priority = "tcp"
     else:
-        cm_protocol = "sockcm"
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls.append(["rdmacm"])
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls.append(["sockcm"])
+            cm_tls_priority = "sockcm"
 
     initialize(
         enable_tcp_over_ucx=True,
@@ -202,8 +211,8 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert cm_protocol in conf["TLS"]
-                assert cm_protocol in conf["SOCKADDR_TLS_PRIORITY"]
+                assert all(t in conf["TLS"] for t in cm_tls)
+                assert cm_tls_priority in conf["SOCKADDR_TLS_PRIORITY"]
                 if enable_nvlink:
                     assert "cuda_ipc" in conf["TLS"]
                 if enable_infiniband:
