@@ -16,11 +16,12 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import datetime
 
 # -- Project information -----------------------------------------------------
 
 project = "dask-cuda"
-copyright = "2020, NVIDIA"
+copyright = "2020-%s, NVIDIA" % datetime.datetime.now().year
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
