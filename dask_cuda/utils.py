@@ -27,8 +27,10 @@ try:
     import ucp
 
     _ucx_110 = ucp.get_ucx_version() >= (1, 10, 0)
+    _ucx_111 = ucp.get_ucx_version() >= (1, 11, 0)
 except ImportError:
     _ucx_110 = False
+    _ucx_111 = False
 
 
 class CPUAffinity:
@@ -247,7 +249,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
-        "reuse-endpoints": True,
+        "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True
