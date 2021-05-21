@@ -180,10 +180,10 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     else:
         cm_tls = ["tcp"]
         if enable_rdmacm is True:
-            cm_tls.append(["rdmacm"])
+            cm_tls.append("rdmacm")
             cm_tls_priority = "rdmacm"
         else:
-            cm_tls.append(["sockcm"])
+            cm_tls.append("sockcm")
             cm_tls_priority = "sockcm"
 
     initialize(
