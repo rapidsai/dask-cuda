@@ -1,3 +1,4 @@
+import contextlib
 from collections import defaultdict
 from time import perf_counter as clock
 from warnings import filterwarnings
@@ -22,17 +23,16 @@ from dask_cuda.utils import all_to_all
 
 
 def shuffle_dask(args, df, write_profile):
-    # Execute the operations to benchmark
-    if write_profile is not None:
-        with performance_report(filename=args.profile):
-            t1 = clock()
-            wait(shuffle(df, index="data", shuffle="tasks").persist())
-            took = clock() - t1
+    if write_profile is None:
+        ctx = contextlib.nullcontext()
     else:
+        ctx = performance_report(filename=args.profile)
+
+    # Execute the operations to benchmark
+    with ctx:
         t1 = clock()
         wait(shuffle(df, index="data", shuffle="tasks").persist())
-        took = clock() - t1
-    return took
+        return clock() - t1
 
 
 def shuffle_explicit_comms(args, df):

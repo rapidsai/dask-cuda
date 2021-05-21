@@ -1,0 +1,11 @@
+{% set redirect = redirects[pagename.split("/")[-1]] %}
+<html>
+    <head>
+        <meta http-equiv="Refresh" content="0; url={{ redirect }}.html" />
+        <title>dask-cuda docs</title>
+    </head>
+    <body>
+        <h4>The dask-cuda documentation has moved!</h4>
+        <p>You will now be redirected to our <a href="{{ redirect }}.html">new page</a>.</p>
+    </body>
+</html>
