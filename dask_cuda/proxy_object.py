@@ -21,6 +21,23 @@ from distributed.worker import dumps_function, loads_function
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
 
+try:
+    from dask.array.backends import concatenate_lookup, einsum_lookup, tensordot_lookup
+    from dask.dataframe.backends import (
+        group_split_dispatch,
+        hash_object_dispatch,
+        make_meta,
+        make_scalar,
+    )
+except ImportError:
+    from dask.array.core import concatenate_lookup, einsum_lookup, tensordot_lookup
+    from dask.dataframe.utils import (
+        group_split_dispatch,
+        hash_object_dispatch,
+        make_meta,
+        make_scalar,
+    )
+
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
 _FIXED_ATTRS = ["name", "__len__"]
@@ -726,13 +743,13 @@ def unproxify_input_wrapper(func):
 
 # Register dispatch of ProxyObject on all known dispatch objects
 for dispatch in (
-    dask.dataframe.utils.hash_object_dispatch,
-    dask.dataframe.utils.make_meta,
-    dask.dataframe.utils.make_scalar,
-    dask.dataframe.utils.group_split_dispatch,
-    dask.array.core.tensordot_lookup,
-    dask.array.core.einsum_lookup,
-    dask.array.core.concatenate_lookup,
+    hash_object_dispatch,
+    make_meta,
+    make_scalar,
+    group_split_dispatch,
+    tensordot_lookup,
+    einsum_lookup,
+    concatenate_lookup,
 ):
     dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
 
