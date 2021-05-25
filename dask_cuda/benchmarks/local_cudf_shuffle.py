@@ -35,14 +35,24 @@ def shuffle_dask(args, df, write_profile):
         return clock() - t1
 
 
-def shuffle_explicit_comms(args, df):
-    t1 = clock()
-    wait(
-        dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
-            df, column_names="data"
-        ).persist()
-    )
-    took = clock() - t1
+def shuffle_explicit_comms(args, df, write_profile):
+    if write_profile is not None:
+        with performance_report(filename=args.profile):
+            t1 = clock()
+            wait(
+                dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
+                    df, column_names="data"
+                ).persist()
+            )
+            took = clock() - t1
+    else:
+        t1 = clock()
+        wait(
+            dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
+                df, column_names="data"
+            ).persist()
+        )
+        took = clock() - t1
     return took
 
 
@@ -66,7 +76,7 @@ def run(client, args, n_workers, write_profile=None):
     if args.backend == "dask":
         took = shuffle_dask(args, df, write_profile)
     else:
-        took = shuffle_explicit_comms(args, df)
+        took = shuffle_explicit_comms(args, df, write_profile)
 
     return (data_processed, took)
 
