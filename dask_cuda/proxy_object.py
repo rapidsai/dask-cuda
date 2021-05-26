@@ -732,7 +732,7 @@ def unproxify_input_wrapper(func):
 # Register dispatch of ProxyObject on all known dispatch objects
 for dispatch in (
     dask.dataframe.core.hash_object_dispatch,
-    dask.dataframe.core.make_meta,
+    dask.dataframe.utils.make_meta,
     dask.dataframe.utils.make_scalar,
     dask.dataframe.core.group_split_dispatch,
     dask.array.core.tensordot_lookup,
