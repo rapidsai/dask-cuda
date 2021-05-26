@@ -1,5 +1,6 @@
 import math
 import os
+import pydoc
 import time
 import warnings
 from contextlib import suppress
@@ -496,7 +497,6 @@ def cuda_visible_devices(i, visible=None):
 def parse_device_memory_limit(device_memory_limit, device_index=0):
     """Parse memory limit to be used by a CUDA device.
 
-
     Parameters
     ----------
     device_memory_limit: float, int, str or None
@@ -530,3 +530,20 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
         return parse_bytes(device_memory_limit)
     else:
         return int(device_memory_limit)
+
+
+def import_hierarchy(*names: str):
+    """Locate an object by name or dotted path, importing as necessary
+
+    Tries each name in `names` and return the first object found.
+    This is useful when the path to an object changes and we want to
+    check both the new and the old location.
+    """
+    for m in names:
+        try:
+            ret = pydoc.locate(m)
+            if ret is not None:
+                return ret
+        except (AttributeError, ImportError):
+            pass
+    raise ImportError(f"None of the items found: {str(names)}")
