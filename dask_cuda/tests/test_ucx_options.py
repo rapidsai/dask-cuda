@@ -17,6 +17,7 @@ ucp = pytest.importorskip("ucp")
 # that UCX options of the different tests doesn't conflict.
 # Furthermore, all tests do some computation to trigger initialization
 # of UCX before retrieving the current config.
+# TRIGGER CI
 
 
 def _test_global_option(seg_size):
