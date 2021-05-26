@@ -50,6 +50,7 @@ def _test_global_option(seg_size):
             assert conf["SEG_SIZE"] == seg_size
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/627")
 def test_global_option():
     for seg_size in ["2K", "1M", "2M"]:
         p = mp.Process(target=_test_global_option, args=(seg_size,))

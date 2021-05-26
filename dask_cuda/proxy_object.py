@@ -18,6 +18,11 @@ import distributed.utils
 from dask.sizeof import sizeof
 from distributed.worker import dumps_function, loads_function
 
+try:
+    from dask.dataframe.backends import concat_pandas
+except ImportError:
+    from dask.dataframe.methods import concat_pandas
+
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
 
@@ -726,10 +731,10 @@ def unproxify_input_wrapper(func):
 
 # Register dispatch of ProxyObject on all known dispatch objects
 for dispatch in (
-    dask.dataframe.utils.hash_object_dispatch,
+    dask.dataframe.core.hash_object_dispatch,
     dask.dataframe.utils.make_meta,
     dask.dataframe.utils.make_scalar,
-    dask.dataframe.utils.group_split_dispatch,
+    dask.dataframe.core.group_split_dispatch,
     dask.array.core.tensordot_lookup,
     dask.array.core.einsum_lookup,
     dask.array.core.concatenate_lookup,
@@ -745,5 +750,5 @@ dask.dataframe.methods.concat_dispatch.register(
 # deserialize all ProxyObjects before concatenating
 dask.dataframe.methods.concat_dispatch.register(
     (pandas.DataFrame, pandas.Series, pandas.Index),
-    unproxify_input_wrapper(dask.dataframe.methods.concat_pandas),
+    unproxify_input_wrapper(concat_pandas),
 )
