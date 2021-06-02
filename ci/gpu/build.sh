@@ -56,7 +56,7 @@ conda list --show-channel-urls
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
 gpuci_conda_retry install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "ucx-py=$MINOR_VERSION.*" "ucx-proc=*=gpu" \
+              "ucx-py=0.21.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
 # Pin pytest-asyncio because latest versions modify the default asyncio
