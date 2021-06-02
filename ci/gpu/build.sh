@@ -117,6 +117,7 @@ else
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
+        py.test --cache-clear -vs `python -c "import distributed.tests.test_scheduler as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
     fi
 
@@ -128,4 +129,3 @@ fi
 if [ -n "${CODECOV_TOKEN}" ]; then
     codecov -t $CODECOV_TOKEN
 fi
-
