@@ -74,6 +74,7 @@ class CUDAWorker:
         enable_rdmacm=False,
         net_devices=None,
         jit_unspill=None,
+        worker_class=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -235,6 +236,7 @@ class CUDAWorker:
                     )
                 },
                 data=data(i),
+                worker_class=worker_class,
                 **kwargs,
             )
             for i in range(nprocs)
