@@ -9,7 +9,7 @@ import numpy as np
 import pynvml
 import toolz
 
-from distributed import wait
+from distributed import Worker, wait
 from distributed.utils import parse_bytes
 
 try:
@@ -530,3 +530,21 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
         return parse_bytes(device_memory_limit)
     else:
         return int(device_memory_limit)
+
+
+class MockWorker(Worker):
+    def __init__(self, *args, **kwargs):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
+        self._device_get_count = distributed.diagnostics.nvml.device_get_count
+        super().__init__(*args, **kwargs)
+
+    def __del__(self):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = self._device_get_count
+
+    @staticmethod
+    def device_get_count():
+        return 0
