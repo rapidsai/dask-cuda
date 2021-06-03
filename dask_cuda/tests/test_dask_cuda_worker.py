@@ -34,6 +34,8 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                     "--nthreads",
                     str(nthreads),
                     "--no-dashboard",
+                    "--worker-class",
+                    "dask_cuda.utils.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
