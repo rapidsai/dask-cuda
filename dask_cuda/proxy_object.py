@@ -23,6 +23,11 @@ try:
 except ImportError:
     from dask.dataframe.methods import concat_pandas
 
+try:
+    from dask.dataframe.dispatch import make_meta_dispatch as make_meta_dispatch
+except ImportError:
+    from dask.dataframe.utils import make_meta as make_meta_dispatch
+
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
 
@@ -732,7 +737,7 @@ def unproxify_input_wrapper(func):
 # Register dispatch of ProxyObject on all known dispatch objects
 for dispatch in (
     dask.dataframe.core.hash_object_dispatch,
-    dask.dataframe.utils.make_meta,
+    make_meta_dispatch,
     dask.dataframe.utils.make_scalar,
     dask.dataframe.core.group_split_dispatch,
     dask.array.core.tensordot_lookup,
