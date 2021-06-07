@@ -160,7 +160,7 @@ async def test_rmm_managed():
 
 
 @pytest.mark.skipif(
-    ((_driver_version, _runtime_version) < (11020, 11020)),
+    _driver_version < 11020 or _runtime_version < 11020,
     reason="cudaMallocAsync not supported",
 )
 @gen_test(timeout=20)
