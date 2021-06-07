@@ -110,7 +110,7 @@ async def test_ucx_protocol_type_error():
 @gen_test(timeout=20)
 async def test_n_workers():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
     ) as cluster:
         assert len(cluster.workers) == 2
         assert len(cluster.worker_spec) == 2
@@ -125,7 +125,7 @@ async def test_threads_per_worker():
 @gen_test(timeout=20)
 async def test_all_to_all():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             workers = list(client.scheduler_info()["workers"])
