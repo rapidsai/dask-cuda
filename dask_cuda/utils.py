@@ -533,6 +533,13 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
 
 
 class MockWorker(Worker):
+    """Mock Worker class preventing NVML from getting used by SystemMonitor.
+
+    By preventing the Worker from initializing NVML in the SystemMonitor, we can
+    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
+    machines.
+    """
+
     def __init__(self, *args, **kwargs):
         import distributed
 
