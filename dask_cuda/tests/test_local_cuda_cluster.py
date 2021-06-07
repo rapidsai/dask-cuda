@@ -52,7 +52,7 @@ async def test_local_cuda_cluster():
 # than 8 but as long as the test passes the errors can be ignored.
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,6,8"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,3,6,8"
     try:
         async with LocalCUDACluster(
             scheduler_port=0,
@@ -72,7 +72,7 @@ async def test_with_subset_of_cuda_visible_devices():
                 assert all(len(v.split(",")) == 4 for v in result.values())
                 for i in range(4):
                     assert {int(v.split(",")[i]) for v in result.values()} == {
-                        2,
+                        0,
                         3,
                         6,
                         8,
