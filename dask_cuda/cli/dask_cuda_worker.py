@@ -8,6 +8,7 @@ from tornado.ioloop import IOLoop, TimeoutError
 from distributed.cli.utils import check_python_3, install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
+from distributed.utils import import_term
 
 from ..cuda_worker import CUDAWorker
 
@@ -248,6 +249,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for more
         info.""",
 )
+@click.option(
+    "--worker-class",
+    default=None,
+    help="""Use a different class than Distributed's default (``distributed.Worker``)
+    to spawn ``distributed.Nanny``.""",
+)
 def main(
     scheduler,
     host,
@@ -277,6 +284,7 @@ def main(
     enable_rdmacm,
     net_devices,
     enable_jit_unspill,
+    worker_class,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -292,6 +300,9 @@ def main(
             "your command line arguments, you probably attempted to use "
             "unsupported one. Scheduler address: %s" % scheduler
         )
+
+    if worker_class is not None:
+        worker_class = import_term(worker_class)
 
     worker = CUDAWorker(
         scheduler,
@@ -320,6 +331,7 @@ def main(
         enable_rdmacm,
         net_devices,
         enable_jit_unspill,
+        worker_class,
         **kwargs,
     )
 
