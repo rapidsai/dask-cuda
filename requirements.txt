@@ -1,5 +1,5 @@
-dask>=2.22.0,<=2021.5.1
-distributed>=2.22.0,<=2021.5.1
+dask>=2.22.0
+distributed>=2.22.0
 pynvml>=8.0.3
 numpy>=1.16.0
 numba>=0.53.1
