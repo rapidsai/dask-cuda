@@ -3,7 +3,7 @@ import functools
 import inspect
 from collections import defaultdict
 from operator import getitem
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 from toolz import first
 
@@ -11,8 +11,9 @@ import dask
 import dask.dataframe
 import distributed
 from dask.base import compute_as_if_collection, tokenize
-from dask.dataframe.core import DataFrame, _concat as dd_concat
+from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import shuffle_group
+from dask.dataframe.utils import make_meta
 from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
@@ -53,7 +54,7 @@ def sort_in_parts(
     concat_dfs_of_same_output_partition: bool,
     concat,
 ) -> Dict[int, List[List[DataFrame]]]:
-    """ Sort the list of grouped dataframes in `in_parts`
+    """Sort the list of grouped dataframes in `in_parts`
 
     It returns a dict that for each worker-rank specifies the output partitions:
     '''
@@ -111,7 +112,6 @@ def sort_in_parts(
 
 async def local_shuffle(
     s,
-    workers: Set[int],
     in_nparts: Dict[int, int],
     in_parts: List[Dict[int, DataFrame]],
     rank_to_out_part_ids: Dict[int, List[int]],
@@ -125,8 +125,6 @@ async def local_shuffle(
     ----------
     s: dict
         Worker session state
-    workers: set
-        Set of ranks of all the participants
     in_nparts: dict
         dict that for each worker rank specifices the
         number of partitions that worker has of the input dataframe.
@@ -148,7 +146,6 @@ async def local_shuffle(
     """
     myrank = s["rank"]
     eps = s["eps"]
-    assert s["rank"] in workers
 
     try:
         hostfile = first(iter(in_parts[0].values()))._obj_pxy.get(
@@ -306,13 +303,14 @@ def shuffle(
         if nparts > 0:
             in_nparts[rank] = nparts
             workers.add(rank)
+    workers_sorted = sorted(workers)
 
     # Find the output partitions for each worker
     div = npartitions // len(workers)
     rank_to_out_part_ids = {}  # rank -> [list of partition id]
-    for i, rank in enumerate(workers):
+    for i, rank in enumerate(workers_sorted):
         rank_to_out_part_ids[rank] = list(range(div * i, div * (i + 1)))
-    for rank, i in zip(workers, range(div * len(workers), npartitions)):
+    for rank, i in zip(workers_sorted, range(div * len(workers), npartitions)):
         rank_to_out_part_ids[rank].append(i)
 
     # Run `local_shuffle()` on each worker
@@ -322,21 +320,30 @@ def shuffle(
             result_futures[rank] = c.submit(
                 worker,
                 local_shuffle,
-                workers,
                 in_nparts,
                 in_parts[worker],
                 rank_to_out_part_ids,
                 ignore_index,
             )
     distributed.wait(list(result_futures.values()))
+    del df_groups
 
     # Step (c): extract individual dataframe-partitions
-    ret = []
+    name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
+    dsk = {}
+    meta = None
     for rank, parts in rank_to_out_part_ids.items():
-        for i in range(len(parts)):
-            ret.append(delayed(getitem)(result_futures[rank], i))
-    del result_futures
-    return dask.dataframe.from_delayed(ret, verify_meta=False).persist()
+        for i, part_id in enumerate(parts):
+            dsk[(name, part_id)] = (getitem, result_futures[rank], i)
+            if meta is None:
+                # Get the meta from the first output partition
+                meta = delayed(make_meta)(
+                    delayed(getitem)(result_futures[rank], i)
+                ).compute()
+    assert meta is not None
+
+    divs = [None] * (len(dsk) + 1)
+    return new_dd_object(dsk, name, meta, divs).persist()
 
 
 def get_rearrange_by_column_tasks_wrapper(func):

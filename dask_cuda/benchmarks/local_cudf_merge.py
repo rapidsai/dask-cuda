@@ -1,16 +1,17 @@
+import contextlib
 import math
 from collections import defaultdict
-from time import perf_counter as clock
+from time import perf_counter
 from warnings import filterwarnings
 
 import numpy
 
+import dask
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
 
-import dask_cuda.explicit_comms.dataframe.merge
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
@@ -134,7 +135,7 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
     return ddf
 
 
-def merge(args, ddf1, ddf2, write_profile):
+def merge(args, ddf1, ddf2):
 
     # Allow default broadcast behavior, unless
     # "--shuffle-join" or "--broadcast-join" was
@@ -142,29 +143,11 @@ def merge(args, ddf1, ddf2, write_profile):
     # precedence)
     broadcast = False if args.shuffle_join else (True if args.broadcast_join else None)
 
-    # Lazy merge/join operation
-    ddf_join = ddf1.merge(ddf2, on=["key"], how="inner", broadcast=broadcast,)
+    # The merge/join operation
+    ddf_join = ddf1.merge(ddf2, on=["key"], how="inner", broadcast=broadcast)
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
-
-    # Execute the operations to benchmark
-    if write_profile is not None:
-        with performance_report(filename=args.profile):
-            t1 = clock()
-            wait(ddf_join.persist())
-            took = clock() - t1
-    else:
-        t1 = clock()
-        wait(ddf_join.persist())
-        took = clock() - t1
-    return took
-
-
-def merge_explicit_comms(args, ddf1, ddf2):
-    t1 = clock()
-    wait(dask_cuda.explicit_comms.dataframe.merge.merge(ddf1, ddf2, on="key").persist())
-    took = clock() - t1
-    return took
+    wait(ddf_join.persist())
 
 
 def run(client, args, n_workers, write_profile=None):
@@ -183,12 +166,20 @@ def run(client, args, n_workers, write_profile=None):
     data_processed = len(ddf_base) * sum([t.itemsize for t in ddf_base.dtypes])
     data_processed += len(ddf_other) * sum([t.itemsize for t in ddf_other.dtypes])
 
-    if args.backend == "dask":
-        took = merge(args, ddf_base, ddf_other, write_profile)
-    else:
-        took = merge_explicit_comms(args, ddf_base, ddf_other)
+    # Get contexts to use (defaults to null contexts that doesn't do anything)
+    ctx1, ctx2 = contextlib.nullcontext(), contextlib.nullcontext()
+    if args.backend == "explicit-comms":
+        ctx1 = dask.config.set(explicit_comms=True)
+    if write_profile is not None:
+        ctx2 = performance_report(filename=args.profile)
 
-    return (data_processed, took)
+    with ctx1:
+        with ctx2:
+            t1 = perf_counter()
+            merge(args, ddf_base, ddf_other)
+            t2 = perf_counter()
+
+    return (data_processed, t2 - t1)
 
 
 def main(args):

@@ -26,16 +26,19 @@ setup(
     url="https://github.com/rapidsai/dask-cuda",
     author="RAPIDS development team",
     author_email="mrocklin@nvidia.com",
-    license="Apache 2.0",
+    license="Apache-2.0",
+    license_files=["LICENSE"],
     classifiers=[
         "Intended Audience :: Developers",
         "Topic :: Database",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
+    python_requires=">=3.7",
     install_requires=open("requirements.txt").read().strip().split("\n"),
     entry_points="""
         [console_scripts]

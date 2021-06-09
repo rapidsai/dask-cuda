@@ -14,7 +14,7 @@ from distributed.utils import get_ip_interface
 
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import wait_workers
+from dask_cuda.utils import _ucx_110, wait_workers
 
 mp = mp.get_context("spawn")
 psutil = pytest.importorskip("psutil")
@@ -125,9 +125,12 @@ def _test_tcp_over_ucx():
                 conf = ucp.get_config()
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                if _ucx_110:
+                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
+                else:
+                    assert "sockcm" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert all(client.run(check_ucx_options).values())
@@ -164,8 +167,24 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
 
-    ucx_net_devices = "auto" if enable_infiniband else None
-    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
+    ucx_net_devices = None
+    if enable_infiniband and not _ucx_110:
+        ucx_net_devices = "auto"
+
+    if _ucx_110 is True:
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls_priority = "tcp"
+    else:
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls.append("rdmacm")
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls.append("sockcm")
+            cm_tls_priority = "sockcm"
 
     initialize(
         enable_tcp_over_ucx=True,
@@ -192,15 +211,15 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert cm_protocol in conf["TLS"]
-                assert cm_protocol in conf["SOCKADDR_TLS_PRIORITY"]
+                assert all(t in conf["TLS"] for t in cm_tls)
+                assert cm_tls_priority in conf["SOCKADDR_TLS_PRIORITY"]
                 if enable_nvlink:
                     assert "cuda_ipc" in conf["TLS"]
                 if enable_infiniband:
                     assert "rc" in conf["TLS"]
                 return True
 
-            if enable_infiniband:
+            if ucx_net_devices == "auto":
                 assert all(
                     [
                         cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
@@ -345,6 +364,9 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 )
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
+
+    if ucp.get_ucx_version() >= (1, 10, 0):
+        pytest.skip("UCX 1.10 and higher should rely on default UCX_NET_DEVICES")
 
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),

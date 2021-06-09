@@ -1,3 +1,29 @@
+# dask-cuda 21.06.00 (9 Jun 2021)
+
+## 🐛 Bug Fixes
+
+- Handle `impot`ing elocated dispatch functions ([#623](https://github.com/rapidsai/dask-cuda/pull/623)) [@jakikham](https://github.com/jakikham)
+- Fix DGX tests fo UCX 1.9 ([#619](https://github.com/rapidsai/dask-cuda/pull/619)) [@pentschev](https://github.com/pentschev)
+- Add PROJECTS va ([#614](https://github.com/rapidsai/dask-cuda/pull/614)) [@ajschmidt8](https://github.com/ajschmidt8)
+
+## 📖 Documentation
+
+- Bump docs copyight yea ([#616](https://github.com/rapidsai/dask-cuda/pull/616)) [@chalesbluca](https://github.com/chalesbluca)
+- Update RTD site to ediect to RAPIDS docs ([#615](https://github.com/rapidsai/dask-cuda/pull/615)) [@chalesbluca](https://github.com/chalesbluca)
+- Document DASK_JIT_UNSPILL ([#604](https://github.com/rapidsai/dask-cuda/pull/604)) [@madsbk](https://github.com/madsbk)
+
+## 🚀 New Featues
+
+- Disable euse endpoints with UCX &gt;= 1.11 ([#620](https://github.com/rapidsai/dask-cuda/pull/620)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Impovements
+
+- Adding pofiling to dask shuffle ([#625](https://github.com/rapidsai/dask-cuda/pull/625)) [@aunaman](https://github.com/aunaman)
+- Update `CHANGELOG.md` links fo calve ([#618](https://github.com/rapidsai/dask-cuda/pull/618)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Fixing Datafame mege benchmak ([#617](https://github.com/rapidsai/dask-cuda/pull/617)) [@madsbk](https://github.com/madsbk)
+- Fix DGX tests fo UCX 1.10+ ([#613](https://github.com/rapidsai/dask-cuda/pull/613)) [@pentschev](https://github.com/pentschev)
+- Update docs build scipt ([#612](https://github.com/rapidsai/dask-cuda/pull/612)) [@ajschmidt8](https://github.com/ajschmidt8)
+
 # dask-cuda 0.19.0 (21 Apr 2021)
 
 ## 🐛 Bug Fixes

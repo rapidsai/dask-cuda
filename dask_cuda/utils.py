@@ -23,6 +23,16 @@ except ImportError:
         yield
 
 
+try:
+    import ucp
+
+    _ucx_110 = ucp.get_ucx_version() >= (1, 10, 0)
+    _ucx_111 = ucp.get_ucx_version() >= (1, 11, 0)
+except ImportError:
+    _ucx_110 = False
+    _ucx_111 = False
+
+
 class CPUAffinity:
     def __init__(self, cores):
         self.cores = cores
@@ -32,14 +42,25 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory, log_directory):
+    def __init__(self, nbytes, managed_memory, async_alloc, log_directory):
         self.nbytes = nbytes
         self.managed_memory = managed_memory
+        self.async_alloc = async_alloc
         self.logging = log_directory is not None
         self.log_directory = log_directory
 
     def setup(self, worker=None):
-        if self.nbytes is not None or self.managed_memory is True:
+        if self.async_alloc:
+            import rmm
+
+            rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
+            if self.logging:
+                rmm.enable_logging(
+                    log_file_name=get_rmm_log_file_name(
+                        worker, self.logging, self.log_directory
+                    )
+                )
+        elif self.nbytes is not None or self.managed_memory:
             import rmm
 
             pool_allocator = False if self.nbytes is None else True
@@ -228,7 +249,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
-        "reuse-endpoints": True,
+        "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True

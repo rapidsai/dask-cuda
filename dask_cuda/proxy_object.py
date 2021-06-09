@@ -18,6 +18,11 @@ import distributed.utils
 from dask.sizeof import sizeof
 from distributed.worker import dumps_function, loads_function
 
+try:
+    from dask.dataframe.backends import concat_pandas
+except ImportError:
+    from dask.dataframe.methods import concat_pandas
+
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
 
@@ -72,6 +77,7 @@ def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
             is_cuda_object=is_device_object(obj),
             subclass=subclass_serialized,
             serializers=None,
+            explicit_proxy=False,
         )
     if serializers is not None:
         ret._obj_pxy_serialize(serializers=serializers)
@@ -175,6 +181,9 @@ class ProxyObject:
     serializers: list(str), optional
         List of serializers to use to serialize `obj`. If None, `obj`
         isn't serialized.
+    explicit_proxy: bool
+        Mark the proxy object as "explicit", which means that the user allows it
+        as input argument to dask tasks even in compatibility-mode.
     """
 
     def __init__(
@@ -186,6 +195,7 @@ class ProxyObject:
         is_cuda_object: bool,
         subclass: bytes,
         serializers: Optional[List[str]],
+        explicit_proxy: bool,
     ):
         self._obj_pxy = {
             "obj": obj,
@@ -195,6 +205,7 @@ class ProxyObject:
             "is_cuda_object": is_cuda_object,
             "subclass": subclass,
             "serializers": serializers,
+            "explicit_proxy": explicit_proxy,
         }
         self._obj_pxy_lock = threading.RLock()
         self._obj_pxy_cache = {}
@@ -227,6 +238,7 @@ class ProxyObject:
             "is_cuda_object",
             "subclass",
             "serializers",
+            "explicit_proxy",
         ]
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
 
@@ -290,8 +302,13 @@ class ProxyObject:
             self._obj_pxy_cache.pop("device_memory_objects", None)
             return self._obj_pxy["obj"]
 
-    def _obj_pxy_deserialize(self):
+    def _obj_pxy_deserialize(self, maybe_evict: bool = True):
         """Inplace deserialization of the proxied object
+
+        Parameters
+        ----------
+        maybe_evict: bool
+            Before deserializing, call associated hostfile.maybe_evict()
 
         Returns
         -------
@@ -303,7 +320,7 @@ class ProxyObject:
                 hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 # When not deserializing a CUDA-serialized proxied, we might have
                 # to evict because of the increased device memory usage.
-                if "cuda" not in self._obj_pxy["serializers"]:
+                if maybe_evict and "cuda" not in self._obj_pxy["serializers"]:
                     if hostfile is not None:
                         # In order to avoid a potential deadlock, we skip the
                         # `maybe_evict()` call if another thread is also accessing
@@ -714,10 +731,10 @@ def unproxify_input_wrapper(func):
 
 # Register dispatch of ProxyObject on all known dispatch objects
 for dispatch in (
-    dask.dataframe.utils.hash_object_dispatch,
+    dask.dataframe.core.hash_object_dispatch,
     dask.dataframe.utils.make_meta,
     dask.dataframe.utils.make_scalar,
-    dask.dataframe.utils.group_split_dispatch,
+    dask.dataframe.core.group_split_dispatch,
     dask.array.core.tensordot_lookup,
     dask.array.core.einsum_lookup,
     dask.array.core.concatenate_lookup,
@@ -733,5 +750,5 @@ dask.dataframe.methods.concat_dispatch.register(
 # deserialize all ProxyObjects before concatenating
 dask.dataframe.methods.concat_dispatch.register(
     (pandas.DataFrame, pandas.Series, pandas.Index),
-    unproxify_input_wrapper(dask.dataframe.methods.concat_pandas),
+    unproxify_input_wrapper(concat_pandas),
 )

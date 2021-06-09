@@ -15,10 +15,9 @@ from distributed.protocol import (
     serialize,
     serialize_bytelist,
 )
+from distributed.sizeof import safe_sizeof
 from distributed.utils import nbytes
-from distributed.worker import weight
 
-from . import proxy_object
 from .is_device_object import is_device_object
 from .utils import nvtx_annotate
 
@@ -62,7 +61,7 @@ class LoggedBuffer(Buffer):
             % (
                 self.addr,
                 key,
-                weight(key, value),
+                safe_sizeof(value),
                 self.fast_name,
                 self.slow_name,
                 total,
@@ -79,7 +78,7 @@ class LoggedBuffer(Buffer):
 
         self.logger.info(
             self.msg_template
-            % (self.addr, key, weight(key, ret), self.slow_name, self.fast_name, total)
+            % (self.addr, key, safe_sizeof(ret), self.slow_name, self.fast_name, total)
         )
 
         return ret
@@ -141,27 +140,6 @@ def device_to_host(obj: object) -> DeviceSerialized:
 @nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
 def host_to_device(s: DeviceSerialized) -> object:
     return deserialize(s.header, s.frames)
-
-
-@nvtx_annotate("SPILL_D2H", color="red", domain="dask_cuda")
-def pxy_obj_device_to_host(obj: object) -> proxy_object.ProxyObject:
-    try:
-        # Never re-serialize proxy objects.
-        if obj._obj_pxy["serializers"] is None:
-            return obj
-    except (KeyError, AttributeError):
-        pass
-
-    # Notice, both the "dask" and the "pickle" serializer will
-    # spill `obj` to main memory.
-    return proxy_object.asproxy(obj, serializers=("dask", "pickle"))
-
-
-@nvtx_annotate("SPILL_H2D", color="green", domain="dask_cuda")
-def pxy_obj_host_to_device(s: proxy_object.ProxyObject) -> object:
-    # Notice, we do _not_ deserialize at this point. The proxy
-    # object automatically deserialize just-in-time.
-    return s
 
 
 class DeviceHostFile(ZictBase):
@@ -228,7 +206,7 @@ class DeviceHostFile(ZictBase):
                 self.host_func,
                 self.disk_func,
                 memory_limit,
-                weight=weight,
+                weight=lambda k, v: safe_sizeof(v),
                 **host_buffer_kwargs,
             )
 
@@ -239,7 +217,7 @@ class DeviceHostFile(ZictBase):
             self.device_func,
             self.device_host_func,
             device_memory_limit,
-            weight=weight,
+            weight=lambda k, v: safe_sizeof(v),
             **device_buffer_kwargs,
         )
 
