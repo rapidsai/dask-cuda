@@ -2,9 +2,31 @@
 
 Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.08.00a for the latest changes to this development branch.
 
-# dask-cuda 21.06.00 (Date TBD)
+# dask-cuda 21.06.00 (9 Jun 2021)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.06.00a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Handle `import`ing relocated dispatch functions ([#623](https://github.com/rapidsai/dask-cuda/pull/623)) [@jakirkham](https://github.com/jakirkham)
+- Fix DGX tests for UCX 1.9 ([#619](https://github.com/rapidsai/dask-cuda/pull/619)) [@pentschev](https://github.com/pentschev)
+- Add PROJECTS var ([#614](https://github.com/rapidsai/dask-cuda/pull/614)) [@ajschmidt8](https://github.com/ajschmidt8)
+
+## 📖 Documentation
+
+- Bump docs copyright year ([#616](https://github.com/rapidsai/dask-cuda/pull/616)) [@charlesbluca](https://github.com/charlesbluca)
+- Update RTD site to redirect to RAPIDS docs ([#615](https://github.com/rapidsai/dask-cuda/pull/615)) [@charlesbluca](https://github.com/charlesbluca)
+- Document DASK_JIT_UNSPILL ([#604](https://github.com/rapidsai/dask-cuda/pull/604)) [@madsbk](https://github.com/madsbk)
+
+## 🚀 New Features
+
+- Disable reuse endpoints with UCX &gt;= 1.11 ([#620](https://github.com/rapidsai/dask-cuda/pull/620)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Adding profiling to dask shuffle ([#625](https://github.com/rapidsai/dask-cuda/pull/625)) [@arunraman](https://github.com/arunraman)
+- Update `CHANGELOG.md` links for calver ([#618](https://github.com/rapidsai/dask-cuda/pull/618)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Fixing Dataframe merge benchmark ([#617](https://github.com/rapidsai/dask-cuda/pull/617)) [@madsbk](https://github.com/madsbk)
+- Fix DGX tests for UCX 1.10+ ([#613](https://github.com/rapidsai/dask-cuda/pull/613)) [@pentschev](https://github.com/pentschev)
+- Update docs build script ([#612](https://github.com/rapidsai/dask-cuda/pull/612)) [@ajschmidt8](https://github.com/ajschmidt8)
 
 # dask-cuda 0.19.0 (21 Apr 2021)
 
