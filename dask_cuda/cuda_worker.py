@@ -221,10 +221,7 @@ class CUDAWorker(Server):
                 plugins={
                     CPUAffinity(get_cpu_affinity(i)),
                     RMMSetup(
-                        rmm_pool_size,
-                        rmm_managed_memory,
-                        rmm_async,
-                        rmm_log_directory,
+                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
                 },
                 name=name if nprocs == 1 or not name else str(name) + "-" + str(i),

@@ -193,7 +193,10 @@ pages = [
 ]
 html_additional_pages = {page: "redirect.html" for page in pages}
 html_context = {
-    "redirects": {page: f"https://docs.rapids.ai/api/dask-cuda/nightly/{page}" for page in pages}}
+    "redirects": {
+        page: f"https://docs.rapids.ai/api/dask-cuda/nightly/{page}" for page in pages
+    }
+}
 
 
 def add_404(app, docname):
