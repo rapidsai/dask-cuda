@@ -10,6 +10,7 @@ from tornado.ioloop import IOLoop
 
 import dask
 from distributed import Nanny
+from distributed.core import Server
 from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
     enable_proctitle_on_children,
@@ -45,7 +46,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
         )
 
 
-class CUDAWorker:
+class CUDAWorker(Server):
     def __init__(
         self,
         scheduler=None,
@@ -220,10 +221,13 @@ class CUDAWorker:
                 plugins={
                     CPUAffinity(get_cpu_affinity(i)),
                     RMMSetup(
-                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
+                        rmm_pool_size,
+                        rmm_managed_memory,
+                        rmm_async,
+                        rmm_log_directory,
                     ),
                 },
-                name=name if nprocs == 1 or not name else name + "-" + str(i),
+                name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
                     "ucx": get_ucx_config(
