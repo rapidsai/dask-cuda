@@ -117,12 +117,12 @@ else
         git clone https://github.com/dask/distributed
 
         gpuci_logger "Run Distributed Tests"
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
+        py.test --cache-clear -vs distributed/distributed/protocol/tests/test_cupy.py
+        py.test --cache-clear -vs distributed/distributed/protocol/tests/test_numba.py
+        py.test --cache-clear -vs distributed/distributed/protocol/tests/test_rmm.py
+        py.test --cache-clear -vs distributed/distributed/protocol/tests/test_collection_cuda.py
+        py.test --cache-clear -vs distributed/distributed/tests/test_nanny.py
+        py.test --cache-clear -vs distributed/distributed/diagnostics/tests/test_nvml.py
     fi
 
     logger "Run local benchmark..."
