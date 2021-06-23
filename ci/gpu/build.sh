@@ -111,7 +111,12 @@ else
     gpuci_logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
     if [ $(python -c "import sys; print(sys.version_info[1])") -ge "7" ]; then
-        gpuci_logger "TEST OF DASK/UCX"
+        # Clone Distributed to avoid pytest cleanup fixture errors
+        # See https://github.com/dask/distributed/issues/4902
+        gpuci_logger "Clone Distributed"
+        git clone https://github.com/dask/distributed
+
+        gpuci_logger "Run Distributed Tests"
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
         py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
