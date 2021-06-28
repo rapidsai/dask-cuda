@@ -9,8 +9,8 @@ import numpy as np
 import pynvml
 import toolz
 
+from dask.utils import parse_bytes
 from distributed import Worker, wait
-from distributed.utils import parse_bytes
 
 try:
     from nvtx import annotate as nvtx_annotate

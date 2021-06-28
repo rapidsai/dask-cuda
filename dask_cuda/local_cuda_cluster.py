@@ -3,8 +3,8 @@ import os
 import warnings
 
 import dask
-from dask.distributed import LocalCluster, Nanny, Worker
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import LocalCluster, Nanny, Worker
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
