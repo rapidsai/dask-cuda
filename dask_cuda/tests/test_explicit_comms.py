@@ -96,7 +96,7 @@ def check_partitions(df, npartitions):
 def _test_dataframe_shuffle(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
-        from cudf.tests.utils import assert_eq
+        from cudf.testing._utils import assert_eq
 
         initialize(enable_tcp_over_ucx=True)
     else:
@@ -201,7 +201,7 @@ def test_dask_use_explicit_comms():
 def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
-        from cudf.tests.utils import assert_eq
+        from cudf.testing._utils import assert_eq
 
         initialize(enable_tcp_over_ucx=True)
     else:
@@ -264,7 +264,7 @@ def test_dataframe_shuffle_merge(backend, protocol, nworkers):
 
 def _test_jit_unspill(protocol):
     import cudf
-    from cudf.tests.utils import assert_eq
+    from cudf.testing._utils import assert_eq
 
     with dask_cuda.LocalCUDACluster(
         protocol=protocol,
