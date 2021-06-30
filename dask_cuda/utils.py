@@ -9,8 +9,8 @@ import numpy as np
 import pynvml
 import toolz
 
-from distributed import wait
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import Worker, wait
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -530,3 +530,28 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
         return parse_bytes(device_memory_limit)
     else:
         return int(device_memory_limit)
+
+
+class MockWorker(Worker):
+    """Mock Worker class preventing NVML from getting used by SystemMonitor.
+
+    By preventing the Worker from initializing NVML in the SystemMonitor, we can
+    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
+    machines.
+    """
+
+    def __init__(self, *args, **kwargs):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
+        self._device_get_count = distributed.diagnostics.nvml.device_get_count
+        super().__init__(*args, **kwargs)
+
+    def __del__(self):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = self._device_get_count
+
+    @staticmethod
+    def device_get_count():
+        return 0

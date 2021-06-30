@@ -1,12 +1,10 @@
-from typing import Any, Set
-
 from dask.sizeof import sizeof
 from dask.utils import Dispatch
 
 dispatch = Dispatch(name="get_device_memory_objects")
 
 
-def get_device_memory_objects(obj: Any) -> Set:
+def get_device_memory_objects(obj) -> set:
     """ Find all CUDA device objects in `obj`
 
     Search through `obj` and find all CUDA device objects, which are objects
@@ -73,14 +71,13 @@ def get_device_memory_objects_register_cupy():
 
 @dispatch.register_lazy("cudf")
 def get_device_memory_objects_register_cudf():
-    import cudf.core.dataframe
+    import cudf.core.frame
     import cudf.core.index
     import cudf.core.multiindex
     import cudf.core.series
 
-    @dispatch.register(cudf.core.dataframe.DataFrame)
-    def get_device_memory_objects_cudf_dataframe(obj):
-
+    @dispatch.register(cudf.core.frame.Frame)
+    def get_device_memory_objects_cudf_frame(obj):
         ret = dispatch(obj._index)
         for col in obj._data.columns:
             ret += dispatch(col)

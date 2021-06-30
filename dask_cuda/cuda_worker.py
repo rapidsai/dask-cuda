@@ -9,13 +9,14 @@ from toolz import valmap
 from tornado.ioloop import IOLoop
 
 import dask
+from dask.utils import parse_bytes
 from distributed import Nanny
+from distributed.core import Server
 from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
-from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
@@ -45,7 +46,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
         )
 
 
-class CUDAWorker:
+class CUDAWorker(Server):
     def __init__(
         self,
         scheduler=None,
@@ -74,6 +75,7 @@ class CUDAWorker:
         enable_rdmacm=False,
         net_devices=None,
         jit_unspill=None,
+        worker_class=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -222,7 +224,7 @@ class CUDAWorker:
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
                 },
-                name=name if nprocs == 1 or not name else name + "-" + str(i),
+                name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
                     "ucx": get_ucx_config(
@@ -235,6 +237,7 @@ class CUDAWorker:
                     )
                 },
                 data=data(i),
+                worker_class=worker_class,
                 **kwargs,
             )
             for i in range(nprocs)

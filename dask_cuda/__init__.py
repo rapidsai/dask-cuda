@@ -5,8 +5,8 @@ import dask.dataframe.shuffle
 from ._version import get_versions
 from .cuda_worker import CUDAWorker
 from .explicit_comms.dataframe.shuffle import get_rearrange_by_column_tasks_wrapper
-from .proxify_device_objects import proxify_decorator, unproxify_decorator
 from .local_cuda_cluster import LocalCUDACluster
+from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
 __version__ = get_versions()["version"]
 del get_versions

@@ -19,7 +19,7 @@ _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
 
 
 def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,7,8"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,3,7,8"
     nthreads = 4
     try:
         with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
@@ -34,6 +34,8 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                     "--nthreads",
                     str(nthreads),
                     "--no-dashboard",
+                    "--worker-class",
+                    "dask_cuda.utils.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
@@ -44,7 +46,7 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
 
                     # verify 4 workers with the 4 expected CUDA_VISIBLE_DEVICES
                     result = client.run(get_visible_devices)
-                    expected = {"2,3,7,8": 1, "3,7,8,2": 1, "7,8,2,3": 1, "8,2,3,7": 1}
+                    expected = {"0,3,7,8": 1, "3,7,8,0": 1, "7,8,0,3": 1, "8,0,3,7": 1}
                     for v in result.values():
                         del expected[v]
 
@@ -107,7 +109,7 @@ def test_rmm_managed(loop):  # noqa: F811
 
 
 @pytest.mark.skipif(
-    ((_driver_version, _runtime_version) < (11020, 11020)),
+    _driver_version < 11020 or _runtime_version < 11020,
     reason="cudaMallocAsync not supported",
 )
 def test_rmm_async(loop):  # noqa: F811

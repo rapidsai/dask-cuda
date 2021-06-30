@@ -3,8 +3,8 @@ import os
 import warnings
 
 import dask
-from dask.distributed import LocalCluster, Nanny, Worker
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import LocalCluster, Nanny, Worker
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
@@ -190,6 +190,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_log_directory=None,
         jit_unspill=None,
         log_spilling=False,
+        worker_class=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -306,6 +307,14 @@ class LocalCUDACluster(LocalCluster):
             cuda_device_index=0,
         )
 
+        if worker_class is not None:
+            from functools import partial
+
+            worker_class = partial(
+                LoggedNanny if log_spilling is True else Nanny,
+                worker_class=worker_class,
+            )
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -314,7 +323,7 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
-            worker_class=LoggedNanny if log_spilling is True else Nanny,
+            worker_class=worker_class,
             config={
                 "ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,

@@ -97,27 +97,32 @@ cd "$WORKSPACE"
 python -m pip install -e .
 
 ################################################################################
-# TEST - Run py.tests for ucx-py
+# TEST - Run pytests for ucx-py
 ################################################################################
 
 if hasArg --skip-tests; then
     gpuci_logger "Skipping Tests"
 else
-    gpuci_logger "Python py.test for dask-cuda"
+    gpuci_logger "Python pytest for dask-cuda"
     cd "$WORKSPACE"
     ls dask_cuda/tests/
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n py.test -vs --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n pytest -vs --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
 
     gpuci_logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
     if [ $(python -c "import sys; print(sys.version_info[1])") -ge "7" ]; then
-        gpuci_logger "TEST OF DASK/UCX"
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_cupy as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_numba as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_rmm as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.protocol.tests.test_collection_cuda as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.tests.test_nanny as m;print(m.__file__)"`
-        py.test --cache-clear -vs `python -c "import distributed.diagnostics.tests.test_nvml as m;print(m.__file__)"`
+        # Clone Distributed to avoid pytest cleanup fixture errors
+        # See https://github.com/dask/distributed/issues/4902
+        gpuci_logger "Clone Distributed"
+        git clone https://github.com/dask/distributed
+
+        gpuci_logger "Run Distributed Tests"
+        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_cupy.py
+        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_numba.py
+        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_rmm.py
+        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_collection_cuda.py
+        pytest --cache-clear -vs distributed/distributed/tests/test_nanny.py
+        pytest --cache-clear -vs distributed/distributed/diagnostics/tests/test_nvml.py
     fi
 
     logger "Run local benchmark..."
