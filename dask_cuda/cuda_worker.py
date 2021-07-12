@@ -114,8 +114,8 @@ class CUDAWorker(Server):
 
         loop = IOLoop.current()
 
-        preload_argv = kwargs.get("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None}
+        preload_argv = kwargs.pop("preload_argv", [])
+        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
             not scheduler
