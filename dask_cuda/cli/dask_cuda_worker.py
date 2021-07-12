@@ -150,6 +150,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     with the equivalent ``dask-scheduler`` option.""",
 )
 @click.option(
+    "--protocol", type=str, default=None, help="Protocol like tcp, tls, or ucx"
+)
+@click.option(
     "--interface",
     type=str,
     default=None,
