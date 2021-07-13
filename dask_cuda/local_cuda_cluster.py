@@ -363,9 +363,7 @@ class LocalCUDACluster(LocalCluster):
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
                     CPUAffinity(
-                        get_cpu_affinity(
-                            nvml_device_index(worker_count, visible_devices)
-                        )
+                        get_cpu_affinity(nvml_device_index(0, visible_devices))
                     ),
                     RMMSetup(
                         self.rmm_pool_size,
