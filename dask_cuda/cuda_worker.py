@@ -30,6 +30,7 @@ from .utils import (
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_device_memory_limit,
 )
 
@@ -219,7 +220,9 @@ class CUDAWorker(Server):
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
-                    CPUAffinity(get_cpu_affinity(i)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
+                    ),
                     RMMSetup(
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
@@ -236,7 +239,7 @@ class CUDAWorker(Server):
                         cuda_device_index=i,
                     )
                 },
-                data=data(i),
+                data=data(nvml_device_index(i, cuda_visible_devices(i))),
                 worker_class=worker_class,
                 **kwargs,
             )
