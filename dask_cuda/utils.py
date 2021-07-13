@@ -493,6 +493,24 @@ def cuda_visible_devices(i, visible=None):
     return ",".join(map(str, L))
 
 
+def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
+    """Get the device index for NVML addressing
+
+    NVML expects the index of the physical device, unlike CUDA runtime which
+    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
+    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    comma-separated list of devices.
+
+    Examples
+    --------
+    >>> nvml_device(1, "0,1,2,3")
+    1
+    >>> nvml_device(1, "1,2,3,0")
+    2
+    """
+    return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+
+
 def parse_device_memory_limit(device_memory_limit, device_index=0):
     """Parse memory limit to be used by a CUDA device.
 
