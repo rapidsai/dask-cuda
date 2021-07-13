@@ -39,6 +39,7 @@ class CPUAffinity:
 
     def setup(self, worker=None):
         os.sched_setaffinity(0, self.cores)
+        print(os.environ["CUDA_VISIBLE_DEVICES"], self.cores)
 
 
 class RMMSetup:
@@ -499,16 +500,29 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
     NVML expects the index of the physical device, unlike CUDA runtime which
     expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
     returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
-    comma-separated list of devices.
+    comma-separated string of devices or list.
 
     Examples
     --------
-    >>> nvml_device(1, "0,1,2,3")
+    >>> nvml_device_index(1, "0,1,2,3")
     1
-    >>> nvml_device(1, "1,2,3,0")
+    >>> nvml_device_index(1, "1,2,3,0")
     2
+    >>> nvml_device_index(1, [0,1,2,3])
+    1
+    >>> nvml_device_index(1, [1,2,3,0])
+    2
+    >>> nvml_device_index(1, 2)
+    Traceback (most recent call last):
+    ...
+    ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
     """
-    return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+    if isinstance(CUDA_VISIBLE_DEVICES, str):
+        return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+    elif isinstance(CUDA_VISIBLE_DEVICES, list):
+        return CUDA_VISIBLE_DEVICES[i]
+    else:
+        raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
 def parse_device_memory_limit(device_memory_limit, device_index=0):
