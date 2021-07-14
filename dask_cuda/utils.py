@@ -39,7 +39,6 @@ class CPUAffinity:
 
     def setup(self, worker=None):
         os.sched_setaffinity(0, self.cores)
-        print(os.environ["CUDA_VISIBLE_DEVICES"], self.cores)
 
 
 class RMMSetup:
