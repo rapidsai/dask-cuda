@@ -130,6 +130,36 @@ def get_gpu_count():
     return pynvml.nvmlDeviceGetCount()
 
 
+@toolz.memoize
+def get_gpu_count_mig(return_uuids=False):
+    """Return the number of MIG instances available
+
+    Parameters
+    ----------
+    return_uuids: bool
+        Returns the uuids of the MIG instances available optionally
+
+    """
+    pynvml.nvmlInit()
+    uuids = []
+    for index in range(get_gpu_count()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+        if pynvml.nvmlDeviceGetMigMode(handle)[0]:
+            count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
+            miguuids = []
+            for i in range(count):
+                try:
+                    mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
+                        device=handle, index=i)
+                    miguuids.append(mighandle)
+                    uuids.append(pynvml.nvmlDeviceGetUUID(mighandle))
+                except pynvml.NVMLError:
+                    pass
+    if return_uuids:
+        return len(uuids) , uuids
+    return len(uuids)
+
+
 def get_cpu_affinity(device_index=None):
     """Get a list containing the CPU indices to which a GPU is directly connected.
     Use either the device index or the specified device identifier UUID.
