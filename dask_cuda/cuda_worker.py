@@ -31,6 +31,7 @@ from .utils import (
     get_ucx_config,
     get_ucx_net_devices,
     parse_device_memory_limit,
+    nvml_device_index,
 )
 
 
@@ -180,6 +181,8 @@ class CUDAWorker(Server):
         else:
             self.jit_unspill = jit_unspill
 
+        self.cuda_visible_devices = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+
         if self.jit_unspill:
             data = lambda i: (
                 ProxifyHostFile,
@@ -219,7 +222,9 @@ class CUDAWorker(Server):
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
-                    CPUAffinity(get_cpu_affinity(i)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
+                    ),
                     RMMSetup(
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
@@ -236,7 +241,7 @@ class CUDAWorker(Server):
                         cuda_device_index=i,
                     )
                 },
-                data=data(i),
+                data=data(nvml_device_index(i, cuda_visible_devices(i))),
                 worker_class=worker_class,
                 **kwargs,
             )

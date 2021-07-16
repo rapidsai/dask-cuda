@@ -19,6 +19,7 @@ from .utils import (
     get_ucx_net_devices,
     parse_cuda_visible_device,
     parse_device_memory_limit,
+    nvml_device_index,
 )
 
 
@@ -215,7 +216,7 @@ class LocalCUDACluster(LocalCluster):
             memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = parse_device_memory_limit(
-            device_memory_limit, device_index=0
+            device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
         )
 
         self.rmm_pool_size = rmm_pool_size
@@ -361,7 +362,9 @@ class LocalCUDACluster(LocalCluster):
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
-                    CPUAffinity(get_cpu_affinity(worker_count)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(0, visible_devices))
+                    ),
                     RMMSetup(
                         self.rmm_pool_size,
                         self.rmm_managed_memory,
