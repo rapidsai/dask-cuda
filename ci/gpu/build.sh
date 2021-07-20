@@ -106,7 +106,7 @@ else
     gpuci_logger "Python pytest for dask-cuda"
     cd "$WORKSPACE"
     ls dask_cuda/tests/
-    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n pytest -vs --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
+    UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n pytest -vs -Werror::DeprecationWarning -Werror::FutureWarning --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
 
     gpuci_logger "Running dask.distributed GPU tests"
     # Test downstream packages, which requires Python v3.7
@@ -117,12 +117,12 @@ else
         git clone https://github.com/dask/distributed
 
         gpuci_logger "Run Distributed Tests"
-        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_cupy.py
-        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_numba.py
-        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_rmm.py
-        pytest --cache-clear -vs distributed/distributed/protocol/tests/test_collection_cuda.py
-        pytest --cache-clear -vs distributed/distributed/tests/test_nanny.py
-        pytest --cache-clear -vs distributed/distributed/diagnostics/tests/test_nvml.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/protocol/tests/test_cupy.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/protocol/tests/test_numba.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/protocol/tests/test_rmm.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/protocol/tests/test_collection_cuda.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/tests/test_nanny.py
+        pytest --cache-clear -vs -Werror::DeprecationWarning -Werror::FutureWarning distributed/distributed/diagnostics/tests/test_nvml.py
     fi
 
     logger "Run local benchmark..."

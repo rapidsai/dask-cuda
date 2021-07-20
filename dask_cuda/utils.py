@@ -109,7 +109,7 @@ def unpack_bitmask(x, mask_bits=64):
         bytestr = np.frombuffer(
             bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
         )
-        mask = np.flip(bytestr - ord("0")).astype(np.bool)
+        mask = np.flip(bytestr - ord("0")).astype(bool)
         unpacked_mask = np.where(
             mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
         )
