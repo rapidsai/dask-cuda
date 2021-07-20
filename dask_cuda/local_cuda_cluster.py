@@ -17,9 +17,9 @@ from .utils import (
     get_cpu_affinity,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
-    nvml_device_index,
 )
 
 

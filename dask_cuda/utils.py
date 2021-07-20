@@ -150,13 +150,14 @@ def get_gpu_count_mig(return_uuids=False):
             for i in range(count):
                 try:
                     mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
-                        device=handle, index=i)
+                        device=handle, index=i
+                    )
                     miguuids.append(mighandle)
                     uuids.append(pynvml.nvmlDeviceGetUUID(mighandle))
                 except pynvml.NVMLError:
                     pass
     if return_uuids:
-        return len(uuids) , uuids
+        return len(uuids), uuids
     return len(uuids)
 
 
@@ -189,7 +190,7 @@ def get_cpu_affinity(device_index=None):
     pynvml.nvmlInit()
 
     try:
-        if (device_index and not str(device_index).isnumeric()):
+        if device_index and not str(device_index).isnumeric():
             # This means device_index is UUID.
             # This works for both MIG and non-MIG device UUIDs.
             handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_index))
@@ -201,8 +202,7 @@ def get_cpu_affinity(device_index=None):
             handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
         affinity = pynvml.nvmlDeviceGetCpuAffinity(
-            handle,
-            math.ceil(get_cpu_count() / 64),
+            handle, math.ceil(get_cpu_count() / 64),
         )
         return unpack_bitmask(affinity)
     except pynvml.NVMLError:
@@ -226,7 +226,7 @@ def get_device_total_memory(index=0):
     """
     pynvml.nvmlInit()
 
-    if (index and not str(index).isnumeric()):
+    if index and not str(index).isnumeric():
         # This means index is UUID. This works for both MIG and non-MIG device UUIDs.
         handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(str(index)))
     else:
@@ -507,7 +507,7 @@ def parse_cuda_visible_device(dev):
     try:
         return int(dev)
     except ValueError:
-        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", 'MIG-']):
+        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", "MIG-"]):
             return dev
         else:
             raise ValueError(

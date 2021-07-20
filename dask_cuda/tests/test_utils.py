@@ -261,7 +261,8 @@ def test_parse_visible_mig_devices():
             for i in range(count):
                 try:
                     mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
-                        device=handle, index=i)
+                        device=handle, index=i
+                    )
                     miguuids.append(mighandle)
                 except pynvml.NVMLError:
                     pass

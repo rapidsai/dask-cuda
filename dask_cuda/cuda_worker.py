@@ -30,8 +30,8 @@ from .utils import (
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
-    parse_device_memory_limit,
     nvml_device_index,
+    parse_device_memory_limit,
 )
 
 
