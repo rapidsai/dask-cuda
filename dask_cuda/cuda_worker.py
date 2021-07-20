@@ -181,8 +181,6 @@ class CUDAWorker(Server):
         else:
             self.jit_unspill = jit_unspill
 
-        self.cuda_visible_devices = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
-
         if self.jit_unspill:
             data = lambda i: (
                 ProxifyHostFile,

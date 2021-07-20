@@ -252,7 +252,12 @@ def test_parse_visible_mig_devices():
     pynvml.nvmlInit()
     for index in range(get_gpu_count()):
         handle = pynvml.nvmlDeviceGetHandleByIndex(index)
-        if pynvml.nvmlDeviceGetMigMode(handle)[0]:
+        try:
+            mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
+        except pynvml.NVMLError:
+            # if not a MIG device, i.e. a normal GPU, skip
+            break
+        if mode:
             # Just checks to see if there are any MIG enabled GPUS
             # If there is one, check if the number of mig enabled
             # instances is less than 7
