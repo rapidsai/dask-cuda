@@ -109,7 +109,7 @@ def unpack_bitmask(x, mask_bits=64):
         bytestr = np.frombuffer(
             bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
         )
-        mask = np.flip(bytestr - ord("0")).astype(np.bool)
+        mask = np.flip(bytestr - ord("0")).astype(bool)
         unpacked_mask = np.where(
             mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
         )
@@ -579,6 +579,37 @@ def cuda_visible_devices(i, visible=None):
 
     L = visible[i:] + visible[:i]
     return ",".join(map(str, L))
+
+
+def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
+    """Get the device index for NVML addressing
+
+    NVML expects the index of the physical device, unlike CUDA runtime which
+    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
+    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    comma-separated string of devices or list.
+
+    Examples
+    --------
+    >>> nvml_device_index(1, "0,1,2,3")
+    1
+    >>> nvml_device_index(1, "1,2,3,0")
+    2
+    >>> nvml_device_index(1, [0,1,2,3])
+    1
+    >>> nvml_device_index(1, [1,2,3,0])
+    2
+    >>> nvml_device_index(1, 2)
+    Traceback (most recent call last):
+    ...
+    ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
+    """
+    if isinstance(CUDA_VISIBLE_DEVICES, str):
+        return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+    elif isinstance(CUDA_VISIBLE_DEVICES, list):
+        return CUDA_VISIBLE_DEVICES[i]
+    else:
+        raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
 def parse_device_memory_limit(device_memory_limit, device_index=0):
