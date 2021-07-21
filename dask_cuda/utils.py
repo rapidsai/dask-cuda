@@ -522,42 +522,6 @@ def parse_cuda_visible_device(dev):
             )
 
 
-def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
-    """Get the device index for NVML addressing
-    NVML expects the index of the physical device, unlike CUDA runtime which
-    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
-    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
-    comma-separated string of devices or list.
-    Examples
-    --------
-    >>> nvml_device_index(1, "0,1,2,3")
-    1
-    >>> nvml_device_index(1, "1,2,3,0")
-    2
-    >>> nvml_device_index(1, [0,1,2,3])
-    1
-    >>> nvml_device_index(1, [1,2,3,0])
-    2
-    >>> nvml_device_index(1, ["GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005",
-            "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh","GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9dfd"])
-    "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh"
-    >>> nvml_device_index(1, 2)
-    Traceback (most recent call last):
-    ...
-    ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
-    """
-    if isinstance(CUDA_VISIBLE_DEVICES, str):
-        ith_elem = CUDA_VISIBLE_DEVICES.split(",")[i]
-        if ith_elem.isnumeric():
-            return int(ith_elem)
-        else:
-            return ith_elem
-    elif isinstance(CUDA_VISIBLE_DEVICES, list):
-        return CUDA_VISIBLE_DEVICES[i]
-    else:
-        raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
-
-
 def cuda_visible_devices(i, visible=None):
     """Cycling values for CUDA_VISIBLE_DEVICES environment variable
 
@@ -599,13 +563,24 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
     1
     >>> nvml_device_index(1, [1,2,3,0])
     2
+    >>> nvml_device_index(1, ["GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005",
+            "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh","GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9dfd"])
+    "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh"
+    >>> nvml_device_index(2, ["MIG-41b3359c-e721-56e5-8009-12e5797ed514",
+                              "MIG-65b79fff-6d3c-5490-a288-b31ec705f310",
+                              "MIG-c6e2bae8-46d4-5a7e-9a68-c6cf1f680ba0"])
+    "MIG-c6e2bae8-46d4-5a7e-9a68-c6cf1f680ba0"
     >>> nvml_device_index(1, 2)
     Traceback (most recent call last):
     ...
     ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
     """
     if isinstance(CUDA_VISIBLE_DEVICES, str):
-        return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+        ith_elem = CUDA_VISIBLE_DEVICES.split(",")[i]
+        if ith_elem.isnumeric():
+            return int(ith_elem)
+        else:
+            return ith_elem
     elif isinstance(CUDA_VISIBLE_DEVICES, list):
         return CUDA_VISIBLE_DEVICES[i]
     else:

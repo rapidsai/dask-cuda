@@ -5,14 +5,14 @@ import subprocess
 
 import pytest
 
-from distributed import Client
+from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
 from distributed.utils_test import popen
 
 import rmm
 
-from dask_cuda.utils import get_n_gpus, wait_workers
+from dask_cuda.utils import get_gpu_count_mig, get_n_gpus, wait_workers
 
 _driver_version = rmm._cuda.gpu.driverGetVersion()
 _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
@@ -186,3 +186,53 @@ def test_unknown_argument():
     ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
     assert ret.returncode != 0
     assert b"Scheduler address: --my-argument" in ret.stderr
+
+
+def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
+    init_nvmlstatus = os.environ.get("DASK_DISTRIBUTED__DIAGNOSTICS__NVML")
+    try:
+        os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = "False"
+        uuids = get_gpu_count_mig(return_uuids=True)[1]
+        # test only with some MIG Instances assuming the test bed
+        # does not have a huge number of mig instances
+        if len(uuids) > 0:
+            uuids = [i.decode("utf-8") for i in uuids]
+        else:
+            return True
+        CUDA_VISIBLE_DEVICES = ",".join(uuids)
+        os.environ["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
+        nthreads = len(CUDA_VISIBLE_DEVICES)
+        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+            with popen(
+                [
+                    "dask-cuda-worker",
+                    "127.0.0.1:9359",
+                    "--host",
+                    "127.0.0.1",
+                    "--nthreads",
+                    str(nthreads),
+                    "--no-dashboard",
+                    "--worker-class",
+                    "dask_cuda.utils.MockWorker",
+                ]
+            ):
+                with Client("127.0.0.1:9359", loop=loop) as client:
+                    assert wait_workers(client, n_gpus=len(uuids))
+                    # Check to see if all workers are up and
+                    # CUDA_VISIBLE_DEVICES cycles properly
+
+                    def get_visible_devices():
+                        return os.environ["CUDA_VISIBLE_DEVICES"]
+
+                    result = client.run(get_visible_devices)
+                    wait(result)
+                    assert all(len(v.split(",")) == len(uuids) for v in result.values())
+                    for i in range(len(uuids)):
+                        assert set(v.split(",")[i] for v in result.values()) == set(
+                            uuids
+                        )
+    finally:
+        if "CUDA_VISIBLE_DEVICES" in os.environ:
+            del os.environ["CUDA_VISIBLE_DEVICES"]
+        if init_nvmlstatus:
+            os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = init_nvmlstatus
