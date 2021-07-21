@@ -256,7 +256,7 @@ def test_parse_visible_mig_devices():
             mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
         except pynvml.NVMLError:
             # if not a MIG device, i.e. a normal GPU, skip
-            break
+            continue
         if mode:
             # Just checks to see if there are any MIG enabled GPUS
             # If there is one, check if the number of mig enabled

@@ -10,7 +10,7 @@ import rmm
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import MockWorker
+from dask_cuda.utils import MockWorker, get_gpu_count_mig
 
 _driver_version = rmm._cuda.gpu.driverGetVersion()
 _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
@@ -206,3 +206,40 @@ async def test_cluster_worker():
             await new_worker
             await client.wait_for_workers(2)
             await new_worker.close()
+
+
+@gen_test(timeout=20)
+async def test_available_MIG_workers():
+    import dask
+
+    init_nvmlstatus = os.environ.get("DASK_DISTRIBUTED__DIAGNOSTICS__NVML")
+    try:
+        os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = "False"
+        dask.config.refresh()
+        uuids = get_gpu_count_mig(return_uuids=True)[1]
+        if len(uuids) > 0:
+            uuids = [i.decode("utf-8") for i in uuids]
+        else:
+            return True
+        CUDA_VISIBLE_DEVICES = ",".join(uuids)
+        os.environ["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
+        async with LocalCUDACluster(
+            CUDA_VISIBLE_DEVICES=CUDA_VISIBLE_DEVICES, asynchronous=True
+        ) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
+                len(cluster.workers) == len(uuids)
+
+                # Check to see if CUDA_VISIBLE_DEVICES cycles properly
+                def get_visible_devices():
+                    return os.environ["CUDA_VISIBLE_DEVICES"]
+
+                result = await client.run(get_visible_devices)
+
+                assert all(len(v.split(",")) == len(uuids) for v in result.values())
+                for i in range(len(uuids)):
+                    assert set(v.split(",")[i] for v in result.values()) == set(uuids)
+    finally:
+        if "CUDA_VISIBLE_DEVICES" in os.environ:
+            del os.environ["CUDA_VISIBLE_DEVICES"]
+        if init_nvmlstatus:
+            os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = init_nvmlstatus

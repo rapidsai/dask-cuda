@@ -144,7 +144,12 @@ def get_gpu_count_mig(return_uuids=False):
     uuids = []
     for index in range(get_gpu_count()):
         handle = pynvml.nvmlDeviceGetHandleByIndex(index)
-        if pynvml.nvmlDeviceGetMigMode(handle)[0]:
+        try:
+            mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
+        except pynvml.NVMLError:
+            # if not a MIG device, i.e. a normal GPU, skip
+            continue
+        if mode:
             count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
             miguuids = []
             for i in range(count):
