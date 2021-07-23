@@ -212,9 +212,9 @@ def get_cluster_options(args):
             worker_options["enable_infiniband"] = ""
         if args.enable_rdmacm:
             worker_options["enable_rdmacm"] = ""
-        if args.device_memory_limit:
-            worker_options["device_memory_limit"] = ""
 
+        if args.device_memory_limit:
+            worker_options["device_memory_limit"] = args.device_memory_limit
         if args.ucx_net_devices:
             worker_options["ucx_net_devices"] = args.ucx_net_devices
 
