@@ -212,6 +212,8 @@ def get_cluster_options(args):
             worker_options["enable_infiniband"] = ""
         if args.enable_rdmacm:
             worker_options["enable_rdmacm"] = ""
+        if args.device_memory_limit:
+            worker_options["device_memory_limit"] = ""
 
         if args.ucx_net_devices:
             worker_options["ucx_net_devices"] = args.ucx_net_devices
@@ -221,7 +223,6 @@ def get_cluster_options(args):
             "scheduler_options": {"protocol": args.protocol},
             "worker_module": "dask_cuda.dask_cuda_worker",
             "worker_options": worker_options,
-            "device_memory_limit": args.device_memory_limit,
             # "n_workers": len(args.devs.split(",")),
             # "CUDA_VISIBLE_DEVICES": args.devs,
         }
