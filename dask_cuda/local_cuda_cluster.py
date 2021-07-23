@@ -13,6 +13,7 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
@@ -286,13 +287,25 @@ class LocalCUDACluster(LocalCluster):
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         if ucx_net_devices == "auto":
-            try:
-                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
-            except ImportError:
-                raise ValueError(
-                    "ucx_net_devices set to 'auto' but UCX-Py is not "
-                    "installed or it's compiled without hwloc support"
+            if _ucx_111:
+                warnings.warn(
+                    "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                    "it should now be left unspecified for the same behavior. "
+                    "Please make sure to read the updated UCX Configuration section in "
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                    "where significant performance considerations for InfiniBand with "
+                    "UCX 1.11 and above is documented.",
                 )
+            else:
+                try:
+                    from ucp._libs.topological_distance import (  # NOQA
+                        TopologicalDistance,
+                    )
+                except ImportError:
+                    raise ValueError(
+                        "ucx_net_devices set to 'auto' but UCX-Py is not "
+                        "installed or it's compiled without hwloc support"
+                    )
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
