@@ -25,6 +25,7 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_n_gpus,
@@ -162,6 +163,16 @@ class CUDAWorker(Server):
         if enable_nvlink and rmm_managed_memory:
             raise ValueError(
                 "RMM managed memory and NVLink are currently incompatible."
+            )
+
+        if _ucx_111 and net_devices == "auto":
+            warnings.warn(
+                "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                "it should now be left unspecified for the same behavior. "
+                "Please make sure to read the updated UCX Configuration section in "
+                "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                "where significant performance considerations for InfiniBand with "
+                "UCX 1.11 and above is documented.",
             )
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
