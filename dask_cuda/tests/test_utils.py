@@ -4,6 +4,7 @@ import pytest
 from numba import cuda
 
 from dask_cuda.utils import (
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_device_total_memory,
@@ -119,6 +120,9 @@ def test_get_preload_options(enable_tcp, enable_infiniband_netdev, enable_nvlink
         assert "--enable-nvlink" in opts["preload_argv"]
 
 
+@pytest.mark.skipif(
+    _ucx_111, reason="`ucx_net_devices='auto'` is deprecated for UCX >= 1.11.0",
+)
 def test_get_ucx_net_devices_raises():
     pytest.importorskip("ucp")
 
