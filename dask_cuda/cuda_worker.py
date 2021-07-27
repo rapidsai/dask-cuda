@@ -25,11 +25,13 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_device_memory_limit,
 )
 
@@ -114,8 +116,8 @@ class CUDAWorker(Server):
 
         loop = IOLoop.current()
 
-        preload_argv = kwargs.get("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None}
+        preload_argv = kwargs.pop("preload_argv", [])
+        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
             not scheduler
@@ -161,6 +163,16 @@ class CUDAWorker(Server):
         if enable_nvlink and rmm_managed_memory:
             raise ValueError(
                 "RMM managed memory and NVLink are currently incompatible."
+            )
+
+        if _ucx_111 and net_devices == "auto":
+            warnings.warn(
+                "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                "it should now be left unspecified for the same behavior. "
+                "Please make sure to read the updated UCX Configuration section in "
+                "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                "where significant performance considerations for InfiniBand with "
+                "UCX 1.11 and above is documented.",
             )
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
@@ -219,7 +231,9 @@ class CUDAWorker(Server):
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
-                    CPUAffinity(get_cpu_affinity(i)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
+                    ),
                     RMMSetup(
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
@@ -236,7 +250,7 @@ class CUDAWorker(Server):
                         cuda_device_index=i,
                     )
                 },
-                data=data(i),
+                data=data(nvml_device_index(i, cuda_visible_devices(i))),
                 worker_class=worker_class,
                 **kwargs,
             )

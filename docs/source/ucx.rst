@@ -43,21 +43,27 @@ However, some will affect related libraries, such as RMM:
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 
+  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-max-rndv-rails>`_ and `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
+
 - ``ucx.rdmacm: true`` -- **recommended for InfiniBand.**
 
-  Replaces ``sockcm`` with ``rdmacm`` in ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
+  Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
   This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
 
-- ``ucx.net-devices: <str>`` -- **recommended.**
+- ``ucx.net-devices: <str>`` -- **recommended for UCX 1.9 and older.**
 
   Explicitly sets ``UCX_NET_DEVICES`` instead of defaulting to ``"all"``, which can result in suboptimal performance.
-  If using InfiniBand, set to ``"auto"`` to automatically detect the InfiniBand interface closest to each GPU.
+  If using InfiniBand, set to ``"auto"`` to automatically detect the InfiniBand interface closest to each GPU on UCX 1.9 and below.
   If InfiniBand is disabled, set to a UCX-compatible ethernet interface, e.g. ``"enp1s0f0"`` on a DGX-1.
   All available UCX-compatible interfaces can be listed by running ``ucx_info -d``.
 
+  UCX 1.11 and above is capable of identifying closest interfaces without setting ``"auto"`` (**deprecated for UCX 1.11 and above**), it is recommended not to set ``ucx.net-devices`` in most cases. However, some recommendations for optimal performance apply, see the documentation on ``ucx.infiniband`` above fore details.
+
   .. warning::
       Setting ``ucx.net-devices: "auto"`` assumes that all InfiniBand interfaces on the system are connected and properly configured; undefined behavior may occur otherwise.
-  
+      **``ucx.net-devices: "auto"`` is *DEPRECATED* for UCX 1.11 and above.**
+
+
 
 - ``rmm.pool-size: <str|int>`` -- **recommended.**
 
