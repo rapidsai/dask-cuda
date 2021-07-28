@@ -29,7 +29,7 @@ def _test_initialize_ucx_tcp():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
-        config={"ucx": get_ucx_config(**kwargs)},
+        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -68,7 +68,7 @@ def _test_initialize_ucx_nvlink():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
-        config={"ucx": get_ucx_config(**kwargs)},
+        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -110,7 +110,7 @@ def _test_initialize_ucx_infiniband():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
-        config={"ucx": get_ucx_config(**kwargs)},
+        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))

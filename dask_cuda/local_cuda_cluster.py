@@ -339,7 +339,7 @@ class LocalCUDACluster(LocalCluster):
             protocol=protocol,
             worker_class=worker_class,
             config={
-                "ucx": get_ucx_config(
+                "distributed.comm.ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
