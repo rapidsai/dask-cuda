@@ -192,7 +192,7 @@ def get_device_total_memory(index=0):
 def get_ucx_net_devices(
     cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
 ):
-    if ucp.get_ucx_version() >= (1, 11, 0) and ucx_net_devices == "auto":
+    if _ucx_111 and ucx_net_devices == "auto":
         return None
 
     if cuda_device_index is None and (

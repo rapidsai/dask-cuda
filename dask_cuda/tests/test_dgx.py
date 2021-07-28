@@ -367,7 +367,7 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
 
-    if ucp.get_ucx_version() >= (1, 10, 0):
+    if _ucx_110:
         pytest.skip("UCX 1.10 and higher should rely on default UCX_NET_DEVICES")
 
     p = mp.Process(
