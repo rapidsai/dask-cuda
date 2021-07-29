@@ -54,18 +54,18 @@ conda list --show-channel-urls
 
 # Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
 # indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject
-gpuci_conda_retry install "cudatoolkit=$CUDA_REL" \
+gpuci_mamba_retry install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
               "ucx-py=0.21.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*"
 
 # Pin pytest-asyncio because latest versions modify the default asyncio
 # `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
-gpuci_conda_retry install "pytest-asyncio=<0.14.0"
+gpuci_mamba_retry install "pytest-asyncio=<0.14.0"
 
 # https://docs.rapids.ai/maintainers/depmgmt/
-# gpuci_conda_retry remove -f rapids-build-env
-# gpuci_conda_retry install "your-pkg=1.0.0"
+# gpuci_mamba_retry remove -f rapids-build-env
+# gpuci_mamba_retry install "your-pkg=1.0.0"
 
 
 conda info
