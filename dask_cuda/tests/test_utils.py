@@ -249,3 +249,32 @@ def test_parse_device_memory_limit():
     assert parse_device_memory_limit(0.8) == int(total * 0.8)
     assert parse_device_memory_limit(1000000000) == 1000000000
     assert parse_device_memory_limit("1GB") == 1000000000
+
+
+def test_parse_visible_mig_devices():
+    pynvml = pytest.importorskip("pynvml")
+    pynvml.nvmlInit()
+    for index in range(get_gpu_count()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+        try:
+            mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
+        except pynvml.NVMLError:
+            # if not a MIG device, i.e. a normal GPU, skip
+            continue
+        if mode:
+            # Just checks to see if there are any MIG enabled GPUS.
+            # If there is one, check if the number of mig instances
+            # in that GPU is <= to count, where count gives us the
+            # maximum number of MIG devices/instances that can exist
+            # under a given parent NVML device.
+            count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
+            miguuids = []
+            for i in range(count):
+                try:
+                    mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
+                        device=handle, index=i
+                    )
+                    miguuids.append(mighandle)
+                except pynvml.NVMLError:
+                    pass
+            assert len(miguuids) <= count
