@@ -209,7 +209,7 @@ async def test_cluster_worker():
 
 
 @gen_test(timeout=20)
-async def test_available_MIG_workers():
+async def test_available_mig_workers():
     import dask
 
     init_nvmlstatus = os.environ.get("DASK_DISTRIBUTED__DIAGNOSTICS__NVML")
@@ -220,7 +220,7 @@ async def test_available_MIG_workers():
         if len(uuids) > 0:
             uuids = [i.decode("utf-8") for i in uuids]
         else:
-            return True
+            pytest.skip("No MIG devices found")
         CUDA_VISIBLE_DEVICES = ",".join(uuids)
         os.environ["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
         async with LocalCUDACluster(

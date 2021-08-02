@@ -198,7 +198,7 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
         if len(uuids) > 0:
             uuids = [i.decode("utf-8") for i in uuids]
         else:
-            return True
+            pytest.skip("No MIG devices found")
         CUDA_VISIBLE_DEVICES = ",".join(uuids)
         os.environ["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
         nthreads = len(CUDA_VISIBLE_DEVICES)

@@ -145,11 +145,11 @@ def get_gpu_count_mig(return_uuids=False):
     for index in range(get_gpu_count()):
         handle = pynvml.nvmlDeviceGetHandleByIndex(index)
         try:
-            mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
+            is_mig_mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
         except pynvml.NVMLError:
             # if not a MIG device, i.e. a normal GPU, skip
             continue
-        if mode:
+        if is_mig_mode:
             count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
             miguuids = []
             for i in range(count):
@@ -172,7 +172,7 @@ def get_cpu_affinity(device_index=None):
 
     Parameters
     ----------
-    device_index: int/str
+    device_index: int or str
         Index or UUID of the GPU device
 
     Examples
@@ -563,9 +563,10 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
     1
     >>> nvml_device_index(1, [1,2,3,0])
     2
-    >>> nvml_device_index(1, ["GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005",
-            "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh","GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9dfd"])
-    "GPU-9baca7f5-0f2f-01ac-6b05-8da4d6e9hfghfgh"
+    >>> nvml_device_index(1, ["GPU-84fd49f2-48ad-50e8-9f2e-3bf0dfd47ccb",
+                              "GPU-d6ac2d46-159b-5895-a854-cb745962ef0f",
+                              "GPU-158153b7-51d0-5908-a67c-f406bc86be17"])
+    "MIG-d6ac2d46-159b-5895-a854-cb745962ef0f"
     >>> nvml_device_index(2, ["MIG-41b3359c-e721-56e5-8009-12e5797ed514",
                               "MIG-65b79fff-6d3c-5490-a288-b31ec705f310",
                               "MIG-c6e2bae8-46d4-5a7e-9a68-c6cf1f680ba0"])
