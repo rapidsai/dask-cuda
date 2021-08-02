@@ -258,9 +258,11 @@ def test_parse_visible_mig_devices():
             # if not a MIG device, i.e. a normal GPU, skip
             continue
         if mode:
-            # Just checks to see if there are any MIG enabled GPUS
-            # If there is one, check if the number of mig enabled
-            # instances is less than 7
+            # Just checks to see if there are any MIG enabled GPUS.
+            # If there is one, check if the number of mig instances
+            # in that GPU is <= to count, where count gives us the
+            # maximum number of MIG devices/instances that can exist
+            # under a given parent NVML device.
             count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
             miguuids = []
             for i in range(count):
@@ -271,4 +273,4 @@ def test_parse_visible_mig_devices():
                     miguuids.append(mighandle)
                 except pynvml.NVMLError:
                     pass
-            assert len(miguuids) <= 7
+            assert len(miguuids) <= count
