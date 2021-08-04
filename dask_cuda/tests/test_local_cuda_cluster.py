@@ -10,6 +10,7 @@ import rmm
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
+from dask_cuda.utils import MockWorker
 
 _driver_version = rmm._cuda.gpu.driverGetVersion()
 _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
@@ -51,10 +52,13 @@ async def test_local_cuda_cluster():
 # than 8 but as long as the test passes the errors can be ignored.
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2,3,6,7"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0,3,6,8"
     try:
         async with LocalCUDACluster(
-            scheduler_port=0, asynchronous=True, device_memory_limit=1
+            scheduler_port=0,
+            asynchronous=True,
+            device_memory_limit=1,
+            worker_class=MockWorker,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 assert len(cluster.workers) == 4
@@ -68,10 +72,10 @@ async def test_with_subset_of_cuda_visible_devices():
                 assert all(len(v.split(",")) == 4 for v in result.values())
                 for i in range(4):
                     assert {int(v.split(",")[i]) for v in result.values()} == {
-                        2,
+                        0,
                         3,
                         6,
-                        7,
+                        8,
                     }
     finally:
         del os.environ["CUDA_VISIBLE_DEVICES"]
@@ -106,7 +110,7 @@ async def test_ucx_protocol_type_error():
 @gen_test(timeout=20)
 async def test_n_workers():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
     ) as cluster:
         assert len(cluster.workers) == 2
         assert len(cluster.worker_spec) == 2
@@ -121,7 +125,7 @@ async def test_threads_per_worker():
 @gen_test(timeout=20)
 async def test_all_to_all():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             workers = list(client.scheduler_info()["workers"])

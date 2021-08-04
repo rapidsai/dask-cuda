@@ -4,6 +4,7 @@ import pytest
 from numba import cuda
 
 from dask_cuda.utils import (
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_device_total_memory,
@@ -12,6 +13,7 @@ from dask_cuda.utils import (
     get_preload_options,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
     unpack_bitmask,
@@ -57,6 +59,18 @@ def test_cpu_affinity():
         affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
         assert os.sched_getaffinity(0) == set(affinity)
+
+
+def test_cpu_affinity_and_cuda_visible_devices():
+    affinity = dict()
+    for i in range(get_n_gpus()):
+        # The negative here would be `device = 0` as required for CUDA runtime
+        # calls.
+        device = nvml_device_index(0, cuda_visible_devices(i))
+        affinity[device] = get_cpu_affinity(device)
+
+    for i in range(get_n_gpus()):
+        assert get_cpu_affinity(i) == affinity[i]
 
 
 def test_get_device_total_memory():
@@ -106,6 +120,9 @@ def test_get_preload_options(enable_tcp, enable_infiniband_netdev, enable_nvlink
         assert "--enable-nvlink" in opts["preload_argv"]
 
 
+@pytest.mark.skipif(
+    _ucx_111, reason="`ucx_net_devices='auto'` is deprecated for UCX >= 1.11.0",
+)
 def test_get_ucx_net_devices_raises():
     pytest.importorskip("ucp")
 

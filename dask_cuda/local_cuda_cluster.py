@@ -3,8 +3,8 @@ import os
 import warnings
 
 import dask
-from dask.distributed import LocalCluster, Nanny, Worker
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import LocalCluster, Nanny, Worker
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
@@ -13,10 +13,12 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
@@ -190,6 +192,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_log_directory=None,
         jit_unspill=None,
         log_spilling=False,
+        worker_class=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -214,7 +217,7 @@ class LocalCUDACluster(LocalCluster):
             memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = parse_device_memory_limit(
-            device_memory_limit, device_index=0
+            device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
         )
 
         self.rmm_pool_size = rmm_pool_size
@@ -284,13 +287,25 @@ class LocalCUDACluster(LocalCluster):
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         if ucx_net_devices == "auto":
-            try:
-                from ucp._libs.topological_distance import TopologicalDistance  # NOQA
-            except ImportError:
-                raise ValueError(
-                    "ucx_net_devices set to 'auto' but UCX-Py is not "
-                    "installed or it's compiled without hwloc support"
+            if _ucx_111:
+                warnings.warn(
+                    "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                    "it should now be left unspecified for the same behavior. "
+                    "Please make sure to read the updated UCX Configuration section in "
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                    "where significant performance considerations for InfiniBand with "
+                    "UCX 1.11 and above is documented.",
                 )
+            else:
+                try:
+                    from ucp._libs.topological_distance import (  # NOQA
+                        TopologicalDistance,
+                    )
+                except ImportError:
+                    raise ValueError(
+                        "ucx_net_devices set to 'auto' but UCX-Py is not "
+                        "installed or it's compiled without hwloc support"
+                    )
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
@@ -306,6 +321,14 @@ class LocalCUDACluster(LocalCluster):
             cuda_device_index=0,
         )
 
+        if worker_class is not None:
+            from functools import partial
+
+            worker_class = partial(
+                LoggedNanny if log_spilling is True else Nanny,
+                worker_class=worker_class,
+            )
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -314,7 +337,7 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
-            worker_class=LoggedNanny if log_spilling is True else Nanny,
+            worker_class=worker_class,
             config={
                 "ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
@@ -352,7 +375,9 @@ class LocalCUDACluster(LocalCluster):
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
-                    CPUAffinity(get_cpu_affinity(worker_count)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(0, visible_devices))
+                    ),
                     RMMSetup(
                         self.rmm_pool_size,
                         self.rmm_managed_memory,

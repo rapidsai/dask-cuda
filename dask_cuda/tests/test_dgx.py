@@ -35,8 +35,9 @@ def _get_dgx_name():
     if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
         return None
 
-    for line in open(product_name_file):
-        return line
+    with open(product_name_file) as f:
+        for line in f:
+            return line
 
 
 def _get_dgx_version():
@@ -200,6 +201,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
         ucx_net_devices=ucx_net_devices,
+        rmm_pool_size="1 GiB",
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
@@ -365,7 +367,7 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
 
-    if ucp.get_ucx_version() >= (1, 10, 0):
+    if _ucx_110:
         pytest.skip("UCX 1.10 and higher should rely on default UCX_NET_DEVICES")
 
     p = mp.Process(

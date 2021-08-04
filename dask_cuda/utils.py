@@ -9,8 +9,8 @@ import numpy as np
 import pynvml
 import toolz
 
-from distributed import wait
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import Worker, wait
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -109,7 +109,7 @@ def unpack_bitmask(x, mask_bits=64):
         bytestr = np.frombuffer(
             bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
         )
-        mask = np.flip(bytestr - ord("0")).astype(np.bool)
+        mask = np.flip(bytestr - ord("0")).astype(bool)
         unpacked_mask = np.where(
             mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
         )
@@ -192,6 +192,9 @@ def get_device_total_memory(index=0):
 def get_ucx_net_devices(
     cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
 ):
+    if _ucx_111 and ucx_net_devices == "auto":
+        return None
+
     if cuda_device_index is None and (
         callable(ucx_net_devices) or ucx_net_devices == "auto"
     ):
@@ -493,6 +496,37 @@ def cuda_visible_devices(i, visible=None):
     return ",".join(map(str, L))
 
 
+def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
+    """Get the device index for NVML addressing
+
+    NVML expects the index of the physical device, unlike CUDA runtime which
+    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
+    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    comma-separated string of devices or list.
+
+    Examples
+    --------
+    >>> nvml_device_index(1, "0,1,2,3")
+    1
+    >>> nvml_device_index(1, "1,2,3,0")
+    2
+    >>> nvml_device_index(1, [0,1,2,3])
+    1
+    >>> nvml_device_index(1, [1,2,3,0])
+    2
+    >>> nvml_device_index(1, 2)
+    Traceback (most recent call last):
+    ...
+    ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
+    """
+    if isinstance(CUDA_VISIBLE_DEVICES, str):
+        return int(CUDA_VISIBLE_DEVICES.split(",")[i])
+    elif isinstance(CUDA_VISIBLE_DEVICES, list):
+        return CUDA_VISIBLE_DEVICES[i]
+    else:
+        raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
+
+
 def parse_device_memory_limit(device_memory_limit, device_index=0):
     """Parse memory limit to be used by a CUDA device.
 
@@ -530,3 +564,28 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
         return parse_bytes(device_memory_limit)
     else:
         return int(device_memory_limit)
+
+
+class MockWorker(Worker):
+    """Mock Worker class preventing NVML from getting used by SystemMonitor.
+
+    By preventing the Worker from initializing NVML in the SystemMonitor, we can
+    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
+    machines.
+    """
+
+    def __init__(self, *args, **kwargs):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
+        self._device_get_count = distributed.diagnostics.nvml.device_get_count
+        super().__init__(*args, **kwargs)
+
+    def __del__(self):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = self._device_get_count
+
+    @staticmethod
+    def device_get_count():
+        return 0

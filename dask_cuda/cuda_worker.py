@@ -9,13 +9,14 @@ from toolz import valmap
 from tornado.ioloop import IOLoop
 
 import dask
+from dask.utils import parse_bytes
 from distributed import Nanny
+from distributed.core import Server
 from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
-from distributed.utils import parse_bytes
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
@@ -24,11 +25,13 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
+    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
     parse_device_memory_limit,
 )
 
@@ -45,7 +48,7 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
         )
 
 
-class CUDAWorker:
+class CUDAWorker(Server):
     def __init__(
         self,
         scheduler=None,
@@ -74,6 +77,7 @@ class CUDAWorker:
         enable_rdmacm=False,
         net_devices=None,
         jit_unspill=None,
+        worker_class=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -112,8 +116,8 @@ class CUDAWorker:
 
         loop = IOLoop.current()
 
-        preload_argv = kwargs.get("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None}
+        preload_argv = kwargs.pop("preload_argv", [])
+        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
             not scheduler
@@ -159,6 +163,16 @@ class CUDAWorker:
         if enable_nvlink and rmm_managed_memory:
             raise ValueError(
                 "RMM managed memory and NVLink are currently incompatible."
+            )
+
+        if _ucx_111 and net_devices == "auto":
+            warnings.warn(
+                "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                "it should now be left unspecified for the same behavior. "
+                "Please make sure to read the updated UCX Configuration section in "
+                "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                "where significant performance considerations for InfiniBand with "
+                "UCX 1.11 and above is documented.",
             )
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
@@ -217,12 +231,14 @@ class CUDAWorker:
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
                 plugins={
-                    CPUAffinity(get_cpu_affinity(i)),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
+                    ),
                     RMMSetup(
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
                 },
-                name=name if nprocs == 1 or not name else name + "-" + str(i),
+                name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
                     "ucx": get_ucx_config(
@@ -234,7 +250,8 @@ class CUDAWorker:
                         cuda_device_index=i,
                     )
                 },
-                data=data(i),
+                data=data(nvml_device_index(i, cuda_visible_devices(i))),
+                worker_class=worker_class,
                 **kwargs,
             )
             for i in range(nprocs)
