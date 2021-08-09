@@ -166,6 +166,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         type=str,
         help="Generate plot output written to defined directory",
     )
+    parser.add_argument(
+        "--benchmark-json",
+        default=None,
+        type=str,
+        help="Dump a line-delimited JSON report of benchmarks to this file (optional). "
+        "Creates file if it does not exist, appends otherwise.",
+    )
 
     for args in args_list:
         name = args.pop("name")

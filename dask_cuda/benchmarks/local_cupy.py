@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from json import dump
+from json import dumps
 from time import perf_counter as clock
 from warnings import filterwarnings
 
@@ -246,6 +246,8 @@ async def run(args):
             print(f"Ignore-size        | {format_bytes(args.ignore_size)}")
             print(f"Protocol           | {args.protocol}")
             print(f"Device(s)          | {args.devs}")
+            if args.device_memory_limit:
+                print(f"Memory limit       | {format_bytes(args.device_memory_limit)}")
             print(f"Worker Thread(s)   | {args.threads_per_worker}")
             print("==========================")
             print("Wall-clock         | npartitions")
@@ -266,37 +268,46 @@ async def run(args):
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
 
             if args.benchmark_json:
-
-                d = {
-                    "operation": args.operation,
-                    "size": args.size,
-                    "second_size": args.second_size,
-                    "chunk_size": args.chunk_size,
-                    "compute_size": size,
-                    "compute_chunk_size": chunksize,
-                    "ignore_size": format_bytes(args.ignore_size),
-                    "protocol": args.protocol,
-                    "devs": args.devs,
-                    "threads_per_worker": args.threads_per_worker,
-                    "times": [
-                        {"wall_clock": took, "npartitions": npartitions}
-                        for (took, npartitions) in took_list
-                    ],
-                    "bandwidths": {
-                        f"({d1},{d2})"
-                        if args.multi_node or args.sched_addr
-                        else "(%02d,%02d)"
-                        % (d1, d2): {
-                            "25%": bw[0],
-                            "50%": bw[1],
-                            "75%": bw[2],
-                            "total_nbytes": total_nbytes[(d1, d2)],
-                        }
-                        for (d1, d2), bw in sorted(bandwidths.items())
-                    },
+                bandwidths_json = {
+                    "bandwidth_({d1},{d2})_{i}"
+                    if args.multi_node or args.sched_addr
+                    else "(%02d,%02d)_%s" % (d1, d2, i): parse_bytes(v.rstrip("/s"))
+                    for (d1, d2), bw in sorted(bandwidths.items())
+                    for i, v in zip(
+                        ["25%", "50%", "75%", "total_nbytes"],
+                        [bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]],
+                    )
                 }
-                with open(args.benchmark_json, "w") as fp:
-                    dump(d, fp, indent=2)
+
+                with open(args.benchmark_json, "a") as fp:
+                    for took, npartitions in took_list:
+                        fp.write(
+                            dumps(
+                                dict(
+                                    {
+                                        "operation": args.operation,
+                                        "user_size": args.size,
+                                        "user_second_size": args.second_size,
+                                        "user_chunk_size": args.chunk_size,
+                                        "compute_size": size,
+                                        "compute_chunk_size": chunksize,
+                                        "ignore_size": args.ignore_size,
+                                        "protocol": args.protocol,
+                                        "devs": args.devs,
+                                        "device_memory_limit": args.device_memory_limit,
+                                        "worker_threads": args.threads_per_worker,
+                                        "rmm_pool": not args.disable_rmm_pool,
+                                        "tcp": args.enable_tcp_over_ucx,
+                                        "ib": args.enable_infiniband,
+                                        "nvlink": args.enable_nvlink,
+                                        "wall_clock": took,
+                                        "npartitions": npartitions,
+                                    },
+                                    **bandwidths_json,
+                                )
+                            )
+                            + "\n"
+                        )
 
             # An SSHCluster will not automatically shut down, we have to
             # ensure it does.
@@ -352,12 +363,6 @@ def parse_args():
             "default": 3,
             "type": int,
             "help": "Number of runs (default 3).",
-        },
-        {
-            "name": "--benchmark-json",
-            "default": None,
-            "type": str,
-            "help": "Dump a JSON report of benchmarks (optional).",
         },
     ]
 
