@@ -249,6 +249,10 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 def test_ucx_infiniband_nvlink(params):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
 
+    if params["enable_infiniband"]:
+        if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
+            pytest.skip("No support available for 'rc' transport in UCX")
+
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
@@ -369,6 +373,9 @@ def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
     if _ucx_110:
         pytest.skip("UCX 1.10 and higher should rely on default UCX_NET_DEVICES")
+
+    if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
+        pytest.skip("No support available for 'rc' transport in UCX")
 
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
