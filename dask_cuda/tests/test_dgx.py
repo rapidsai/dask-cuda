@@ -263,6 +263,12 @@ def test_ucx_infiniband_nvlink(params):
     )
     p.start()
     p.join()
+
+    # Starting a new cluster on the same pytest process after an rdmacm cluster
+    # has been used may cause UCX-Py to complain about being already initialized.
+    if params["enable_rdmacm"] is True:
+        ucp.reset()
+
     assert not p.exitcode
 
 
