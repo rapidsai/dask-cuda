@@ -4,19 +4,19 @@ import subprocess
 from enum import Enum, auto
 from time import sleep
 
-import dask.array as da
-from dask_cuda import LocalCUDACluster
-from dask_cuda.initialize import initialize
-from dask_cuda.utils import wait_workers
-from distributed import Client
-from distributed.utils import get_ip_interface
-
 import numpy
 import pytest
 from tornado.ioloop import IOLoop
 
+from dask import array as da
+from distributed import Client
+from distributed.utils import get_ip_interface
+
+from dask_cuda import LocalCUDACluster
+from dask_cuda.initialize import initialize
+from dask_cuda.utils import _ucx_110, wait_workers
+
 mp = mp.get_context("spawn")
-ucp = pytest.importorskip("ucp")
 psutil = pytest.importorskip("psutil")
 
 
@@ -28,26 +28,29 @@ class DGXVersion(Enum):
 
 def _get_dgx_name():
     product_name_file = "/sys/class/dmi/id/product_name"
+    dgx_release_file = "/etc/dgx-release"
 
-    if not os.path.isfile(product_name_file):
+    # We verify `product_name_file` to check it's a DGX, and check
+    # if `dgx_release_file` exists to confirm it's not a container.
+    if not os.path.isfile(product_name_file) or not os.path.isfile(dgx_release_file):
         return None
 
-    for line in open(product_name_file):
-        return line
+    with open(product_name_file) as f:
+        for line in f:
+            return line
 
 
 def _get_dgx_version():
-    dgx_server = None
     dgx_name = _get_dgx_name()
 
-    if "DGX-1" in dgx_name:
-        dgx_server = DGXVersion.DGX_1
+    if dgx_name is None:
+        return None
+    elif "DGX-1" in dgx_name:
+        return DGXVersion.DGX_1
     elif "DGX-2" in dgx_name:
-        dgx_server = DGXVersion.DGX_2
+        return DGXVersion.DGX_2
     elif "DGXA100" in dgx_name:
-        dgx_server = DGXVersion.DGX_A100
-
-    return dgx_server
+        return DGXVersion.DGX_A100
 
 
 def _get_dgx_net_devices():
@@ -111,6 +114,8 @@ def test_default():
 
 
 def _test_tcp_over_ucx():
+    ucp = pytest.importorskip("ucp")
+
     with LocalCUDACluster(enable_tcp_over_ucx=True) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -121,15 +126,20 @@ def _test_tcp_over_ucx():
                 conf = ucp.get_config()
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
-                assert "sockcm" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                if _ucx_110:
+                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
+                else:
+                    assert "sockcm" in conf["TLS"]
+                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert all(client.run(check_ucx_options).values())
 
 
 def test_tcp_over_ucx():
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
     p = mp.Process(target=_test_tcp_over_ucx)
     p.start()
     p.join()
@@ -153,12 +163,29 @@ def test_tcp_only():
 
 def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
     cupy = pytest.importorskip("cupy")
+    ucp = pytest.importorskip("ucp")
 
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
 
-    ucx_net_devices = "auto" if enable_infiniband else None
-    cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
+    ucx_net_devices = None
+    if enable_infiniband and not _ucx_110:
+        ucx_net_devices = "auto"
+
+    if _ucx_110 is True:
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls_priority = "tcp"
+    else:
+        cm_tls = ["tcp"]
+        if enable_rdmacm is True:
+            cm_tls.append("rdmacm")
+            cm_tls_priority = "rdmacm"
+        else:
+            cm_tls.append("sockcm")
+            cm_tls_priority = "sockcm"
 
     initialize(
         enable_tcp_over_ucx=True,
@@ -174,6 +201,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
         ucx_net_devices=ucx_net_devices,
+        rmm_pool_size="1 GiB",
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(cupy.arange(10000), chunks=(1000,), asarray=False)
@@ -185,15 +213,15 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                assert cm_protocol in conf["TLS"]
-                assert cm_protocol in conf["SOCKADDR_TLS_PRIORITY"]
+                assert all(t in conf["TLS"] for t in cm_tls)
+                assert cm_tls_priority in conf["SOCKADDR_TLS_PRIORITY"]
                 if enable_nvlink:
                     assert "cuda_ipc" in conf["TLS"]
                 if enable_infiniband:
                     assert "rc" in conf["TLS"]
                 return True
 
-            if enable_infiniband:
+            if ucx_net_devices == "auto":
                 assert all(
                     [
                         cluster.worker_spec[k]["options"]["env"]["UCX_NET_DEVICES"]
@@ -219,6 +247,12 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(params):
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
+    if params["enable_infiniband"]:
+        if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
+            pytest.skip("No support available for 'rc' transport in UCX")
+
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
@@ -234,6 +268,7 @@ def test_ucx_infiniband_nvlink(params):
 
 def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     loop = IOLoop.current()
+    ucp = pytest.importorskip("ucp")
 
     cm_protocol = "rdmacm" if enable_rdmacm else "sockcm"
     net_devices = _get_dgx_net_devices()
@@ -334,6 +369,14 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
+    ucp = pytest.importorskip("ucp")  # NOQA: F841
+
+    if _ucx_110:
+        pytest.skip("UCX 1.10 and higher should rely on default UCX_NET_DEVICES")
+
+    if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
+        pytest.skip("No support available for 'rc' transport in UCX")
+
     p = mp.Process(
         target=_test_dask_cuda_worker_ucx_net_devices, args=(enable_rdmacm,),
     )

@@ -16,15 +16,16 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import datetime
 
 # -- Project information -----------------------------------------------------
 
 project = "dask-cuda"
-copyright = "2020, NVIDIA"
+copyright = "2020-%s, NVIDIA" % datetime.datetime.now().year
 author = "NVIDIA"
 
 # The full version, including alpha/beta/rc tags.
-from dask_cuda import __version__ as release
+from dask_cuda import __version__ as release  # noqa: E402
 
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])
@@ -47,7 +48,12 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
+    "numpydoc",
+    "sphinx_click",
+    "sphinx_rtd_theme",
 ]
+
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

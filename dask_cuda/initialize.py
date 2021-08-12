@@ -1,34 +1,9 @@
-"""
-This initialization scripts will create CUDA context and initialize UCX-Py,
-depending on user parameters.
-
-It is sometimes convenient to initialize the CUDA context, particularly before
-starting up Dask workers which create a variety of threads.
-
-To ensure UCX works correctly, it is important to ensure it is initialized with
-the correct options. This is important for scheduler, workers and client. This
-initialization script will ensure that based on the flags and options passed by
-the user.
-
-This module is intended to be used within a Worker preload script.
-https://docs.dask.org/en/latest/setup/custom-startup.html
-
-You can add it to your global config with the following yaml
-
-    distributed:
-      worker:
-        preload:
-          - dask_cuda.initialize_ucx
-
-See https://docs.dask.org/en/latest/configuration.html for more information
-about Dask configuration.
-"""
 import logging
-
-import dask
 
 import click
 import numba.cuda
+
+import dask
 
 from .utils import get_ucx_config
 
@@ -44,6 +19,65 @@ def initialize(
     net_devices="",
     cuda_device_index=None,
 ):
+    """Create CUDA context and initialize UCX-Py, depending on user parameters.
+
+    Sometimes it is convenient to initialize the CUDA context, particularly before
+    starting up Dask worker processes which create a variety of threads.
+
+    To ensure UCX works correctly, it is important to ensure it is initialized with the
+    correct options. This is especially important for the client, which cannot be
+    configured to use UCX with arguments like ``LocalCUDACluster`` and
+    ``dask-cuda-worker``. This function will ensure that they are provided a UCX
+    configuration based on the flags and options passed by the user.
+
+    This function can also be used within a worker preload script for UCX configuration
+    of mainline Dask.distributed.
+    https://docs.dask.org/en/latest/setup/custom-startup.html
+
+    You can add it to your global config with the following YAML:
+
+    .. code-block:: yaml
+
+        distributed:
+          worker:
+            preload:
+              - dask_cuda.initialize
+
+    See https://docs.dask.org/en/latest/configuration.html for more information about
+    Dask configuration.
+
+    Parameters
+    ----------
+    create_cuda_context : bool, default True
+        Create CUDA context on initialization.
+    enable_tcp_over_ucx : bool, default False
+        Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
+        are not supported or disabled.
+    enable_infiniband : bool, default False
+        Set environment variables to enable UCX over InfiniBand, implies
+        ``enable_tcp_over_ucx=True``.
+    enable_nvlink : bool, default False
+        Set environment variables to enable UCX over NVLink, implies
+        ``enable_tcp_over_ucx=True``.
+    enable_rdmacm : bool, default False
+        Set environment variables to enable UCX RDMA connection manager support,
+        requires ``enable_infiniband=True``.
+    net_devices : str or callable, default ""
+        Interface(s) used by workers for UCX communication. Can be a string (like
+        ``"eth0"`` for NVLink, ``"mlx5_0:1"``/``"ib0"`` for InfiniBand, or ``""`` to use
+        all available devices), or a callable function that takes the index of the
+        current GPU to return an interface name (like
+        ``lambda dev: "mlx5_%d:1" % (dev // 2)``).
+
+        .. note::
+            If ``net_devices`` is callable, a GPU index must be supplied through
+            ``cuda_device_index``.
+    cuda_device_index : int or None, default None
+        Index of the current GPU, which must be specified for ``net_devices`` if
+        it is callable. Can be an integer or ``None`` if ``net_devices`` is not
+        callable.
+    """
+
     if create_cuda_context:
         try:
             numba.cuda.current_context()
@@ -58,7 +92,7 @@ def initialize(
         net_devices=net_devices,
         cuda_device_index=cuda_device_index,
     )
-    dask.config.update(dask.config.global_config, {"ucx": ucx_config}, priority="new")
+    dask.config.set({"distributed.comm.ucx": ucx_config})
 
 
 @click.command()

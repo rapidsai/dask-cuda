@@ -2,32 +2,37 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
-import multiprocessing
 import os
-
-from distributed import Nanny
-from distributed.config import config
-from distributed.proctitle import (
-    enable_proctitle_on_children,
-    enable_proctitle_on_current,
-)
-from distributed.utils import parse_bytes
-from distributed.worker import parse_memory_limit
+import warnings
 
 from toolz import valmap
 from tornado.ioloop import IOLoop
 
+import dask
+from dask.utils import parse_bytes
+from distributed import Nanny
+from distributed.core import Server
+from distributed.deploy.cluster import Cluster
+from distributed.proctitle import (
+    enable_proctitle_on_children,
+    enable_proctitle_on_current,
+)
+from distributed.worker import parse_memory_limit
+
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .local_cuda_cluster import cuda_visible_devices
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
-    RMMPool,
+    RMMSetup,
+    _ucx_111,
+    cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
     get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
+    parse_device_memory_limit,
 )
 
 
@@ -43,16 +48,19 @@ def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
         )
 
 
-class CUDAWorker:
+class CUDAWorker(Server):
     def __init__(
         self,
-        scheduler,
+        scheduler=None,
         host=None,
-        nthreads=0,
+        nthreads=1,
         name=None,
         memory_limit="auto",
         device_memory_limit="auto",
         rmm_pool_size=None,
+        rmm_managed_memory=False,
+        rmm_async=False,
+        rmm_log_directory=None,
         pid_file=None,
         resources=None,
         dashboard=True,
@@ -60,7 +68,6 @@ class CUDAWorker:
         local_directory=None,
         scheduler_file=None,
         interface=None,
-        death_timeout=None,
         preload=[],
         dashboard_prefix=None,
         security=None,
@@ -69,8 +76,14 @@ class CUDAWorker:
         enable_nvlink=False,
         enable_rdmacm=False,
         net_devices=None,
+        jit_unspill=None,
+        worker_class=None,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
         enable_proctitle_on_current()
         enable_proctitle_on_children()
 
@@ -79,8 +92,8 @@ class CUDAWorker:
         except KeyError:
             nprocs = get_n_gpus()
 
-        if not nthreads:
-            nthreads = min(1, multiprocessing.cpu_count() // nprocs)
+        if nthreads < 1:
+            raise ValueError("nthreads must be higher than 0.")
 
         memory_limit = parse_memory_limit(memory_limit, nthreads, total_cores=nprocs)
 
@@ -94,20 +107,6 @@ class CUDAWorker:
 
             atexit.register(del_pid_file)
 
-        services = {}
-
-        if dashboard:
-            try:
-                from distributed.dashboard import BokehWorker
-            except ImportError:
-                pass
-            else:
-                if dashboard_prefix:
-                    result = (BokehWorker, {"prefix": dashboard_prefix})
-                else:
-                    result = BokehWorker
-                services[("dashboard", dashboard_address)] = result
-
         if resources:
             resources = resources.replace(",", " ").split()
             resources = dict(pair.split("=") for pair in resources)
@@ -117,20 +116,26 @@ class CUDAWorker:
 
         loop = IOLoop.current()
 
-        preload_argv = kwargs.get("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None}
-        t = Nanny
+        preload_argv = kwargs.pop("preload_argv", [])
+        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
-        if not scheduler and not scheduler_file and "scheduler-address" not in config:
+        if (
+            not scheduler
+            and not scheduler_file
+            and dask.config.get("scheduler-address", None) is None
+        ):
             raise ValueError(
                 "Need to provide scheduler address like\n"
                 "dask-worker SCHEDULER_ADDRESS:8786"
             )
 
+        if isinstance(scheduler, Cluster):
+            scheduler = scheduler.scheduler_address
+
         if interface and host:
             raise ValueError("Can not specify both interface and host")
 
-        if rmm_pool_size is not None:
+        if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
             except ImportError:
@@ -139,7 +144,36 @@ class CUDAWorker:
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            rmm_pool_size = parse_bytes(rmm_pool_size)
+            if rmm_async:
+                raise ValueError(
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
+                )
+            if rmm_pool_size is not None:
+                rmm_pool_size = parse_bytes(rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`.  Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
+
+        if enable_nvlink and rmm_managed_memory:
+            raise ValueError(
+                "RMM managed memory and NVLink are currently incompatible."
+            )
+
+        if _ucx_111 and net_devices == "auto":
+            warnings.warn(
+                "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                "it should now be left unspecified for the same behavior. "
+                "Please make sure to read the updated UCX Configuration section in "
+                "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                "where significant performance considerations for InfiniBand with "
+                "UCX 1.11 and above is documented.",
+            )
 
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
@@ -153,12 +187,40 @@ class CUDAWorker:
             cuda_device_index=0,
         )
 
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
+
+        if self.jit_unspill:
+            data = lambda i: (
+                ProxifyHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                },
+            )
+        else:
+            data = lambda i: (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=i
+                    ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                },
+            )
+
         self.nannies = [
-            t(
+            Nanny(
                 scheduler,
                 scheduler_file=scheduler_file,
                 nthreads=nthreads,
-                services=services,
+                dashboard=dashboard,
+                dashboard_address=dashboard_address,
+                http_prefix=dashboard_prefix,
                 loop=loop,
                 resources=resources,
                 memory_limit=memory_limit,
@@ -168,11 +230,18 @@ class CUDAWorker:
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={CPUAffinity(get_cpu_affinity(i)), RMMPool(rmm_pool_size)},
-                name=name if nprocs == 1 or not name else name + "-" + str(i),
+                plugins={
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
+                    ),
+                    RMMSetup(
+                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
+                    ),
+                },
+                name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
-                    "ucx": get_ucx_config(
+                    "distributed.comm.ucx": get_ucx_config(
                         enable_tcp_over_ucx=enable_tcp_over_ucx,
                         enable_infiniband=enable_infiniband,
                         enable_nvlink=enable_nvlink,
@@ -181,19 +250,8 @@ class CUDAWorker:
                         cuda_device_index=i,
                     )
                 },
-                data=(
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": get_device_total_memory(index=i)
-                        if (
-                            device_memory_limit == "auto"
-                            or device_memory_limit == int(0)
-                        )
-                        else parse_bytes(device_memory_limit),
-                        "memory_limit": memory_limit,
-                        "local_directory": local_directory,
-                    },
-                ),
+                data=data(nvml_device_index(i, cuda_visible_devices(i))),
+                worker_class=worker_class,
                 **kwargs,
             )
             for i in range(nprocs)

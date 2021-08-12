@@ -1,108 +1,151 @@
 import copy
 import os
+import warnings
 
 import dask
-from dask.distributed import LocalCluster
-from distributed.utils import parse_bytes
+from dask.utils import parse_bytes
+from distributed import LocalCluster, Nanny, Worker
 from distributed.worker import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
-    RMMPool,
+    RMMSetup,
+    _ucx_111,
+    cuda_visible_devices,
     get_cpu_affinity,
-    get_device_total_memory,
-    get_n_gpus,
     get_ucx_config,
     get_ucx_net_devices,
+    nvml_device_index,
+    parse_cuda_visible_device,
+    parse_device_memory_limit,
 )
 
 
-def cuda_visible_devices(i, visible=None):
-    """ Cycling values for CUDA_VISIBLE_DEVICES environment variable
+class LoggedWorker(Worker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    Examples
-    --------
-    >>> cuda_visible_devices(0, range(4))
-    '0,1,2,3'
-    >>> cuda_visible_devices(3, range(8))
-    '3,4,5,6,7,0,1,2'
-    """
-    if visible is None:
-        try:
-            visible = map(int, os.environ["CUDA_VISIBLE_DEVICES"].split(","))
-        except KeyError:
-            visible = range(get_n_gpus())
-    visible = list(visible)
+    async def start(self):
+        await super().start()
+        self.data.set_address(self.address)
 
-    L = visible[i:] + visible[:i]
-    return ",".join(map(str, L))
+
+class LoggedNanny(Nanny):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, worker_class=LoggedWorker, **kwargs)
 
 
 class LocalCUDACluster(LocalCluster):
-    """ A variant of LocalCluster that uses one GPU per process
+    """A variant of ``dask.distributed.LocalCluster`` that uses one GPU per process.
 
-    This assigns a different CUDA_VISIBLE_DEVICES environment variable to each
+    This assigns a different ``CUDA_VISIBLE_DEVICES`` environment variable to each Dask
     worker process.
 
-    For machines with a complex architecture mapping CPUs, GPUs, and network
-    hardware, such as NVIDIA DGX-1 and DGX-2, this class creates a local
-    cluster that tries to respect this hardware as much as possible.
+    For machines with a complex architecture mapping CPUs, GPUs, and network hardware,
+    such as NVIDIA DGX-1 and DGX-2, this class creates a local cluster that tries to
+    respect this hardware as much as possible.
 
-    It creates one Dask worker process per GPU, and assigns each worker process
-    the correct CPU cores and Network interface cards to maximize performance.
-    If UCX and UCX-Py are also available, it's possible to use InfiniBand and
-    NVLink connections for optimal data transfer performance.
+    Each worker process is automatically assigned the correct CPU cores and network
+    interface cards to maximize performance. If UCX and UCX-Py are available, InfiniBand
+    and NVLink connections can be used to optimize data transfer performance.
 
     Parameters
     ----------
-    CUDA_VISIBLE_DEVICES: str
-        String like ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs
-    Parameters
-    ----------
-    interface: str
-        The external interface used to connect to the scheduler, usually
-        an ethernet interface is used for connection, and not an InfiniBand
-        interface (if one is available).
-    threads_per_worker: int
-        Number of threads to be used for each CUDA worker process.
-    CUDA_VISIBLE_DEVICES: str or list
-        String or list ``"0,1,2,3"`` or ``[0, 1, 2, 3]`` to restrict activity to
-        different GPUs.
-    protocol: str
-        Protocol to use for communication, e.g., "tcp" or "ucx".
-    enable_tcp_over_ucx: bool
-        Set environment variables to enable TCP over UCX, even if InfiniBand
-        and NVLink are not supported or disabled.
-    enable_infiniband: bool
-        Set environment variables to enable UCX InfiniBand support, requires
-        protocol='ucx' and implies enable_tcp_over_ucx=True.
-    enable_rdmacm: bool
+    CUDA_VISIBLE_DEVICES : str, list of int, or None, default None
+        GPUs to restrict activity to. Can be a string (like ``"0,1,2,3"``), list (like
+        ``[0, 1, 2, 3]``), or ``None`` to use all available GPUs.
+    n_workers : int or None, default None
+        Number of workers. Can be an integer or ``None`` to fall back on the GPUs
+        specified by ``CUDA_VISIBLE_DEVICES``. Will override the value of
+        ``CUDA_VISIBLE_DEVICES`` if specified.
+    threads_per_worker : int, default 1
+        Number of threads to be used for each Dask worker process.
+    memory_limit : int, float, str, or None, default "auto"
+        Bytes of memory per process that the worker can use. Can be an integer (bytes),
+        float (fraction of total system memory), string (like ``"5GB"`` or ``"5000M"``),
+        or ``"auto"``, 0, or ``None`` for no memory management.
+    device_memory_limit : int, float, str, or None, default 0.8
+        Size of the CUDA device LRU cache, which is used to determine when the worker
+        starts spilling to host memory. Can be an integer (bytes), float (fraction of
+        total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
+        or ``None`` to disable spilling to host (i.e. allow full device memory usage).
+    local_directory : str or None, default None
+        Path on local machine to store temporary files. Can be a string (like
+        ``"path/to/files"``) or ``None`` to fall back on the value of
+        ``dask.temporary-directory`` in the local Dask configuration, using the current
+        working directory if this is not set.
+    protocol : str or None, default None
+        Protocol to use for communication. Can be a string (like ``"tcp"`` or
+        ``"ucx"``), or ``None`` to automatically choose the correct protocol.
+    enable_tcp_over_ucx : bool, default False
+        Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
+        are not supported or disabled.
+    enable_infiniband : bool, default False
+        Set environment variables to enable UCX over InfiniBand, requires
+        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True``.
+    enable_nvlink : bool, default False
+        Set environment variables to enable UCX over NVLink, requires ``protocol="ucx"``
+        and implies ``enable_tcp_over_ucx=True``.
+    enable_rdmacm : bool, default False
         Set environment variables to enable UCX RDMA connection manager support,
-        requires protocol='ucx' and enable_infiniband=True.
-    enable_nvlink: bool
-        Set environment variables to enable UCX NVLink support, requires
-        protocol='ucx' and implies enable_tcp_over_ucx=True.
-    ucx_net_devices: None, callable or str
-        When None (default), 'UCX_NET_DEVICES' will be left to its default.
-        If callable, the function must take exactly one argument (the index of
-        current GPU) that will be used to get the interface name, such as
-        ``lambda dev: "mlx5_%d:1" % (dev // 2)``, returning ``"mlx5_1:1"`` for
-        GPU 3, for example. If it's a string, it must be a non-empty string
-        with the interface name, such as "eth0" or "auto" to allow for
-        automatically choosing the closest interface based on the system's
-        topology.
-        WARNING: 'auto' requires UCX-Py to be installed and compiled with hwloc
-        support. Additionally that will always use the closest interface, and
-        that may cause unexpected errors if that interface is not properly
-        configured or is disconnected, for that reason it's limited to
-        InfiniBand only and will still cause unpredictable errors if not _ALL_
-        interfaces are connected and properly configured.
-    rmm_pool: None, int or str
-        When None (default), no RMM pool is initialized. If a different value
-        is given, it can be an integer (bytes) or string (like 5GB or 5000M)."
+        requires ``protocol="ucx"`` and ``enable_infiniband=True``.
+    ucx_net_devices : str, callable, or None, default None
+        Interface(s) used by workers for UCX communication. Can be a string (like
+        ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), a callable
+        function that takes the index of the current GPU to return an interface name
+        (like ``lambda dev: "mlx5_%d:1" % (dev // 2)``), ``"auto"`` (requires
+        ``enable_infiniband=True``) to pick the optimal interface per-worker
+        based on the system's topology, or ``None`` to stay with the default value of
+        ``"all"`` (use all available interfaces).
+
+        .. warning::
+            ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
+            Unexpected errors can occur when using ``"auto"`` if any interfaces are
+            disconnected or improperly configured.
+    rmm_pool_size : int, str or None, default None
+        RMM pool size to initialize each worker with. Can be an integer (bytes), string
+        (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.
+    rmm_managed_memory : bool, default False
+        Initialize each worker with RMM and set it to use managed memory. If disabled,
+        RMM may still be used by specifying ``rmm_pool_size``.
+
+        .. warning::
+            Managed memory is currently incompatible with NVLink. Trying to enable both
+            will result in an exception.
+    rmm_async: bool, default False
+        Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
+        See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
+
+        .. warning::
+            The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
+            incompatible with RMM pools and managed memory. Trying to enable both will
+            result in an exception.
+    rmm_log_directory : str or None, default None
+        Directory to write per-worker RMM log files to. The client and scheduler are not
+        logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to
+        disable logging.
+
+        .. note::
+            Logging will only be enabled if ``rmm_pool_size`` is specified or
+            ``rmm_managed_memory=True``.
+    jit_unspill : bool or None, default None
+        Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
+        the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
+        unspilling if this is not set.
+
+        .. note::
+            This is experimental and doesn't support memory spilling to disk. See
+            ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for
+            more info.
+    log_spilling : bool, default True
+        Enable logging of spilling operations directly to ``distributed.Worker`` with an
+        ``INFO`` log level.
 
     Examples
     --------
@@ -114,11 +157,14 @@ class LocalCUDACluster(LocalCluster):
     Raises
     ------
     TypeError
-        If enable_infiniband or enable_nvlink is True and protocol is not 'ucx'
+        If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
     ValueError
-        If ucx_net_devices is an empty string, or if it is "auto" and UCX-Py is
-        not installed, or if it is "auto" and enable_infiniband=False, or UCX-Py
-        wasn't compiled with hwloc support.
+        If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
+        both enabled, if RMM pools / managed memory and asynchronous allocator are both
+        enabled, or if ``ucx_net_devices="auto"`` and:
+
+            - UCX-Py is not installed or wasn't compiled with hwloc support; or
+            - ``enable_infiniband=False``
 
     See Also
     --------
@@ -127,12 +173,11 @@ class LocalCUDACluster(LocalCluster):
 
     def __init__(
         self,
+        CUDA_VISIBLE_DEVICES=None,
         n_workers=None,
         threads_per_worker=1,
-        processes=True,
         memory_limit="auto",
-        device_memory_limit=None,
-        CUDA_VISIBLE_DEVICES=None,
+        device_memory_limit=0.8,
         data=None,
         local_directory=None,
         protocol=None,
@@ -142,53 +187,98 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=False,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_managed_memory=False,
+        rmm_async=False,
+        rmm_log_directory=None,
+        jit_unspill=None,
+        log_spilling=False,
+        worker_class=None,
         **kwargs,
     ):
+        # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
+        # initialization happens before we can set CUDA_VISIBLE_DEVICES
+        os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
+        if threads_per_worker < 1:
+            raise ValueError("threads_per_worker must be higher than 0.")
+
         if CUDA_VISIBLE_DEVICES is None:
             CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
         if isinstance(CUDA_VISIBLE_DEVICES, str):
             CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-        CUDA_VISIBLE_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES))
+        CUDA_VISIBLE_DEVICES = list(
+            map(parse_cuda_visible_device, CUDA_VISIBLE_DEVICES)
+        )
         if n_workers is None:
             n_workers = len(CUDA_VISIBLE_DEVICES)
+        if n_workers < 1:
+            raise ValueError("Number of workers cannot be less than 1.")
         self.host_memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
-        self.device_memory_limit = device_memory_limit
+        self.device_memory_limit = parse_device_memory_limit(
+            device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
+        )
 
         self.rmm_pool_size = rmm_pool_size
-        if rmm_pool_size is not None:
+        self.rmm_managed_memory = rmm_managed_memory
+        self.rmm_async = rmm_async
+        if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
             except ImportError:
                 raise ValueError(
-                    "RMM pool requested but module 'rmm' is not available. "
-                    "For installation instructions, please see "
-                    "https://github.com/rapidsai/rmm"
+                    "RMM pool or managed memory requested but module 'rmm' "
+                    "is not available. For installation instructions, please "
+                    "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+            if rmm_async:
+                raise ValueError(
+                    "RMM pool and managed memory are incompatible with asynchronous "
+                    "allocator"
+                )
+            if self.rmm_pool_size is not None:
+                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+        else:
+            if enable_nvlink:
+                warnings.warn(
+                    "When using NVLink we recommend setting a "
+                    "`rmm_pool_size`. Please see: "
+                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
+                    "#important-notes for more details"
+                )
 
-        if not processes:
+        self.rmm_log_directory = rmm_log_directory
+
+        if not kwargs.pop("processes", True):
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
-        if self.device_memory_limit is None:
-            self.device_memory_limit = get_device_total_memory(0)
-        elif isinstance(self.device_memory_limit, str):
-            self.device_memory_limit = parse_bytes(self.device_memory_limit)
+        if jit_unspill is None:
+            self.jit_unspill = dask.config.get("jit-unspill", default=False)
+        else:
+            self.jit_unspill = jit_unspill
 
+        data = kwargs.pop("data", None)
         if data is None:
-            data = (
-                DeviceHostFile,
-                {
-                    "device_memory_limit": self.device_memory_limit,
-                    "memory_limit": self.host_memory_limit,
-                    "local_directory": local_directory
-                    or dask.config.get("temporary-directory")
-                    or os.getcwd(),
-                },
-            )
+            if self.jit_unspill:
+                data = (
+                    ProxifyHostFile,
+                    {"device_memory_limit": self.device_memory_limit,},
+                )
+            else:
+                data = (
+                    DeviceHostFile,
+                    {
+                        "device_memory_limit": self.device_memory_limit,
+                        "memory_limit": self.host_memory_limit,
+                        "local_directory": local_directory
+                        or dask.config.get("temporary-directory")
+                        or os.getcwd(),
+                        "log_spilling": log_spilling,
+                    },
+                )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
@@ -197,13 +287,25 @@ class LocalCUDACluster(LocalCluster):
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         if ucx_net_devices == "auto":
-            try:
-                from ucp._libs.topological_distance import TopologicalDistance  # noqa
-            except ImportError:
-                raise ValueError(
-                    "ucx_net_devices set to 'auto' but UCX-Py is not "
-                    "installed or it's compiled without hwloc support"
+            if _ucx_111:
+                warnings.warn(
+                    "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
+                    "it should now be left unspecified for the same behavior. "
+                    "Please make sure to read the updated UCX Configuration section in "
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
+                    "where significant performance considerations for InfiniBand with "
+                    "UCX 1.11 and above is documented.",
                 )
+            else:
+                try:
+                    from ucp._libs.topological_distance import (  # NOQA
+                        TopologicalDistance,
+                    )
+                except ImportError:
+                    raise ValueError(
+                        "ucx_net_devices set to 'auto' but UCX-Py is not "
+                        "installed or it's compiled without hwloc support"
+                    )
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
@@ -219,6 +321,14 @@ class LocalCUDACluster(LocalCluster):
             cuda_device_index=0,
         )
 
+        if worker_class is not None:
+            from functools import partial
+
+            worker_class = partial(
+                LoggedNanny if log_spilling is True else Nanny,
+                worker_class=worker_class,
+            )
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -227,8 +337,9 @@ class LocalCUDACluster(LocalCluster):
             data=data,
             local_directory=local_directory,
             protocol=protocol,
+            worker_class=worker_class,
             config={
-                "ucx": get_ucx_config(
+                "distributed.comm.ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
@@ -264,8 +375,15 @@ class LocalCUDACluster(LocalCluster):
             {
                 "env": {"CUDA_VISIBLE_DEVICES": visible_devices,},
                 "plugins": {
-                    CPUAffinity(get_cpu_affinity(worker_count)),
-                    RMMPool(self.rmm_pool_size),
+                    CPUAffinity(
+                        get_cpu_affinity(nvml_device_index(0, visible_devices))
+                    ),
+                    RMMSetup(
+                        self.rmm_pool_size,
+                        self.rmm_managed_memory,
+                        self.rmm_async,
+                        self.rmm_log_directory,
+                    ),
                 },
             }
         )

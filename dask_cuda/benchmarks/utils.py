@@ -1,6 +1,10 @@
 import argparse
+import os
+from datetime import datetime
 
 from dask.distributed import SSHCluster
+from dask.utils import parse_bytes
+
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 
@@ -8,6 +12,12 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "-d", "--devs", default="0", type=str, help='GPU devices to use (default "0").'
+    )
+    parser.add_argument(
+        "--threads-per-worker",
+        default=1,
+        type=int,
+        help="Number of Dask threads per worker (i.e., GPU).",
     )
     parser.add_argument(
         "-p",
@@ -25,43 +35,82 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Write dask profile report (E.g. dask-report.html)",
     )
     parser.add_argument(
-        "--no-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--device-memory-limit",
+        default=None,
+        type=parse_bytes,
+        help="Size of the CUDA device LRU cache, which is used to determine when the "
+        "worker starts spilling to host memory. Can be an integer (bytes), float "
+        "(fraction of total device memory), string (like ``'5GB'`` or ``'5000M'``), or "
+        "``'auto'``, 0, or ``None`` to disable spilling to host (i.e. allow full "
+        "device memory usage).",
+    )
+    parser.add_argument(
+        "--rmm-pool-size",
+        default=None,
+        type=parse_bytes,
+        help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
+    )
+    parser.add_argument(
+        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+    )
+    parser.add_argument(
+        "--rmm-log-directory",
+        default=None,
+        type=str,
+        help="Directory to write worker and scheduler RMM log files to. "
+        "Logging is only enabled if RMM memory pool is enabled.",
+    )
+    parser.add_argument(
+        "--all-to-all", action="store_true", help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
         action="store_true",
         dest="enable_tcp_over_ucx",
-        help="Enable tcp over ucx.",
+        help="Enable TCP over UCX.",
     )
     parser.add_argument(
         "--enable-infiniband",
         action="store_true",
         dest="enable_infiniband",
-        help="Enable infiniband over ucx.",
+        help="Enable InfiniBand over UCX.",
     )
     parser.add_argument(
         "--enable-nvlink",
         action="store_true",
         dest="enable_nvlink",
-        help="Enable NVLink over ucx.",
+        help="Enable NVLink over UCX.",
+    )
+    parser.add_argument(
+        "--enable-rdmacm",
+        action="store_true",
+        dest="enable_rdmacm",
+        help="Enable RDMACM with UCX.",
     )
     parser.add_argument(
         "--disable-tcp-over-ucx",
         action="store_false",
         dest="enable_tcp_over_ucx",
-        help="Disable tcp over ucx.",
+        help="Disable TCP over UCX.",
     )
     parser.add_argument(
         "--disable-infiniband",
         action="store_false",
         dest="enable_infiniband",
-        help="Disable infiniband over ucx.",
+        help="Disable InfiniBand over UCX.",
     )
     parser.add_argument(
         "--disable-nvlink",
         action="store_false",
         dest="enable_nvlink",
-        help="Disable NVLink over ucx.",
+        help="Disable NVLink over UCX.",
+    )
+    parser.add_argument(
+        "--disable-rdmacm",
+        action="store_false",
+        dest="enable_rdmacm",
+        help="Disable RDMACM with UCX.",
     )
     parser.add_argument(
         "--ucx-net-devices",
@@ -71,16 +120,29 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Ignored if protocol is 'tcp'",
     )
     parser.add_argument(
-        "--single-node",
+        "--interface",
+        default=None,
+        type=str,
+        dest="interface",
+        help="Network interface Dask processes will use to listen for connections.",
+    )
+    parser.add_argument(
+        "--no-silence-logs",
         action="store_true",
-        dest="multi_node",
-        help="Runs a single-node cluster on the current host.",
+        help="By default Dask logs are silenced, this argument unsilence them.",
     )
     parser.add_argument(
         "--multi-node",
         action="store_true",
         dest="multi_node",
         help="Runs a multi-node cluster on the hosts specified by --hosts.",
+    )
+    parser.add_argument(
+        "--scheduler-address",
+        default=None,
+        type=str,
+        dest="sched_addr",
+        help="Scheduler Address -- assumes cluster is created outside of benchmark.",
     )
     parser.add_argument(
         "--hosts",
@@ -97,6 +159,20 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
     )
+    parser.add_argument(
+        "--plot",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Generate plot output written to defined directory",
+    )
+    parser.add_argument(
+        "--benchmark-json",
+        default=None,
+        type=str,
+        help="Dump a line-delimited JSON report of benchmarks to this file (optional). "
+        "Creates file if it does not exist, appends otherwise.",
+    )
 
     for args in args_list:
         name = args.pop("name")
@@ -105,7 +181,10 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         parser.add_argument(*name, **args)
 
     parser.set_defaults(
-        enable_tcp_over_ucx=True, enable_infiniband=True, enable_nvlink=True
+        enable_tcp_over_ucx=True,
+        enable_infiniband=True,
+        enable_nvlink=True,
+        enable_rdmacm=False,
     )
     args = parser.parse_args()
 
@@ -113,6 +192,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         args.enable_tcp_over_ucx = False
         args.enable_infiniband = False
         args.enable_nvlink = False
+        args.enable_rdmacm = False
 
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
@@ -131,10 +211,15 @@ def get_cluster_options(args):
             "scheduler_options": {"protocol": args.protocol, "port": 8786},
             "worker_class": "dask_cuda.CUDAWorker",
             "worker_options": {
+                "protocol": args.protocol,
+                "nthreads": args.threads_per_worker,
                 "net_devices": args.ucx_net_devices,
                 "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
                 "enable_infiniband": args.enable_infiniband,
                 "enable_nvlink": args.enable_nvlink,
+                "enable_rdmacm": args.enable_rdmacm,
+                "interface": args.interface,
+                "device_memory_limit": args.device_memory_limit,
             },
             # "n_workers": len(args.devs.split(",")),
             # "CUDA_VISIBLE_DEVICES": args.devs,
@@ -146,12 +231,18 @@ def get_cluster_options(args):
         cluster_kwargs = {
             "protocol": args.protocol,
             "n_workers": len(args.devs.split(",")),
+            "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
             "ucx_net_devices": args.ucx_net_devices,
             "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
             "enable_infiniband": args.enable_infiniband,
             "enable_nvlink": args.enable_nvlink,
+            "enable_rdmacm": args.enable_rdmacm,
+            "interface": args.interface,
+            "device_memory_limit": args.device_memory_limit,
         }
+        if args.no_silence_logs:
+            cluster_kwargs["silence_logs"] = False
 
     return {
         "class": Cluster,
@@ -165,11 +256,79 @@ def get_scheduler_workers(dask_scheduler=None):
     return dask_scheduler.workers
 
 
-def setup_memory_pool(pool_size=None, disable_pool=False):
-    import rmm
+def setup_memory_pool(
+    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+):
     import cupy
 
-    rmm.reinitialize(
-        pool_allocator=not disable_pool, devices=0, initial_pool_size=pool_size,
+    import rmm
+
+    from dask_cuda.utils import get_rmm_log_file_name
+
+    logging = log_directory is not None
+
+    if not disable_pool:
+        rmm.reinitialize(
+            pool_allocator=True,
+            devices=0,
+            initial_pool_size=pool_size,
+            logging=logging,
+            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
+        )
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+
+def plot_benchmark(t_runs, path, historical=False):
+    """
+    Plot the throughput the benchmark for each run.  If historical=True,
+    Load historical data from ~/benchmark-historic-runs.csv
+    """
+    try:
+        import pandas as pd
+        import seaborn as sns
+    except ImportError:
+        print(
+            "Plotting libraries are not installed.  Please install pandas, "
+            "seaborn, and matplotlib"
+        )
+        return
+
+    x = [str(x) for x in range(len(t_runs))]
+    df = pd.DataFrame(dict(t_runs=t_runs, x=x))
+    avg = round(df.t_runs.mean(), 2)
+
+    ax = sns.barplot(x="x", y="t_runs", data=df, color="purple")
+
+    ax.set(
+        xlabel="Run Iteration",
+        ylabel="Merge Throughput in GB/s",
+        title=f"cudf Merge Throughput -- Average {avg} GB/s",
     )
-    cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    fig = ax.get_figure()
+    today = datetime.now().strftime("%Y%m%d")
+    fname_bench = today + "-benchmark.png"
+    d = os.path.expanduser(path)
+    bench_path = os.path.join(d, fname_bench)
+    fig.savefig(bench_path)
+
+    if historical:
+        # record average tohroughput and plot historical averages
+        history_file = os.path.join(
+            os.path.expanduser("~"), "benchmark-historic-runs.csv"
+        )
+        with open(history_file, "a+") as f:
+            f.write(f"{today},{avg}\n")
+
+        df = pd.read_csv(
+            history_file, names=["date", "throughput"], parse_dates=["date"]
+        )
+        ax = df.plot(
+            x="date", y="throughput", marker="o", title="Historical Throughput"
+        )
+
+        ax.set_ylim(0, 30)
+
+        fig = ax.get_figure()
+        fname_hist = today + "-benchmark-history.png"
+        hist_path = os.path.join(d, fname_hist)
+        fig.savefig(hist_path)

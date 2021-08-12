@@ -1,24 +1,27 @@
 API
 ===
 
+Cluster
+-------
 .. currentmodule:: dask_cuda
+.. autoclass:: LocalCUDACluster
+   :members:
 
-**dask_cuda**
-
-Setup
+Worker
 ------
+.. click:: dask_cuda.cli.dask_cuda_worker:main
+   :prog: dask-cuda-worker
+   :nested: none
 
-.. autosummary::
-   initialize
-
+Client initialization
+---------------------
+.. currentmodule:: dask_cuda.initialize
 .. autofunction:: initialize
 
 
-Cluster
--------
-
-.. autosummary::
-   LocalCUDACluster
-
-.. autoclass:: LocalCUDACluster
+Explicit-comms
+--------------
+.. currentmodule:: dask_cuda.explicit_comms.comms
+.. autoclass:: CommsContext
    :members:
+

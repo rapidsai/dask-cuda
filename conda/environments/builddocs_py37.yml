@@ -4,3 +4,6 @@ channels:
 - conda-forge
 dependencies:
 - rapids-doc-env
+- sphinx-click
+- pandas
+- dask

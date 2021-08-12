@@ -1,19 +1,27 @@
 import os
 from random import randint
 
-import dask
-import dask.array as da
-from dask_cuda.device_host_file import (
-    DeviceHostFile,
-    device_to_host,
-    host_to_device,
-)
-from distributed.protocol import deserialize_bytes, serialize_bytelist
-
 import numpy as np
 import pytest
 
+import dask.array
+from distributed.protocol import (
+    deserialize,
+    deserialize_bytes,
+    serialize,
+    serialize_bytelist,
+)
+from distributed.protocol.pickle import HIGHEST_PROTOCOL
+
+from dask_cuda.device_host_file import DeviceHostFile, device_to_host, host_to_device
+
 cupy = pytest.importorskip("cupy")
+
+
+def assert_eq(x, y):
+    # Explicitly calling "cupy.asnumpy" to support `ProxyObject` because
+    # "cupy" is hardcoded in `dask.array.normalize_to_array()`
+    return dask.array.assert_eq(cupy.asnumpy(x), cupy.asnumpy(y))
 
 
 def test_device_host_file_config(tmp_path):
@@ -33,7 +41,7 @@ def test_device_host_file_short(
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
     )
 
     host = [
@@ -57,7 +65,7 @@ def test_device_host_file_short(
 
     for k, original in full:
         acquired = dhf[k]
-        da.assert_eq(original, acquired)
+        assert_eq(original, acquired)
         del dhf[k]
 
     assert set(dhf.device.keys()) == set()
@@ -69,7 +77,7 @@ def test_device_host_file_step_by_step(tmp_path):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir
+        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
     )
 
     a = np.random.random(1000)
@@ -112,22 +120,27 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
 
-    da.assert_eq(dhf["a1"], a)
+    assert_eq(dhf["a1"], a)
     del dhf["a1"]
-    da.assert_eq(dhf["a2"], a)
+    assert_eq(dhf["a2"], a)
     del dhf["a2"]
-    da.assert_eq(dhf["b1"], b)
+    assert_eq(dhf["b1"], b)
     del dhf["b1"]
-    da.assert_eq(dhf["b2"], b)
+    assert_eq(dhf["b2"], b)
     del dhf["b2"]
-    da.assert_eq(dhf["b3"], b)
+    assert_eq(dhf["b3"], b)
     del dhf["b3"]
-    da.assert_eq(dhf["b4"], b)
+    assert_eq(dhf["b4"], b)
     del dhf["b4"]
 
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+
+    dhf["x"] = b
+    dhf["x"] = a
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set(["x"])
 
 
 @pytest.mark.parametrize("collection", [dict, list, tuple])
@@ -145,7 +158,7 @@ def test_serialize_cupy_collection(collection, length, value):
         assert_func = dd.assert_eq
     else:
         x = cupy.arange(10)
-        assert_func = da.assert_eq
+        assert_func = assert_eq
 
     if length == 0:
         obj = device_to_host(x)
@@ -163,6 +176,23 @@ def test_serialize_cupy_collection(collection, length, value):
 
     bts = deserialize_bytes(b"".join(btslst))
     res = host_to_device(bts)
+
+    if length == 0:
+        assert_func(res, x)
+    else:
+        assert isinstance(res, collection)
+        values = res.values() if collection is dict else res
+        [assert_func(v, x) for v in values]
+
+    header, frames = serialize(obj, serializers=["pickle"], on_error="raise")
+
+    if HIGHEST_PROTOCOL >= 5:
+        assert len(frames) == (1 + len(obj.frames))
+    else:
+        assert len(frames) == 1
+
+    obj2 = deserialize(header, frames)
+    res = host_to_device(obj2)
 
     if length == 0:
         assert_func(res, x)

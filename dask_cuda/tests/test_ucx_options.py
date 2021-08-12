@@ -1,12 +1,14 @@
 import multiprocessing as mp
 
+import numpy
+import pytest
+
 import dask
-import dask.array as da
+from dask import array as da
 from distributed import Client
 from distributed.deploy.local import LocalCluster
 
-import numpy
-import pytest
+from dask_cuda.utils import _ucx_110
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -19,13 +21,15 @@ ucp = pytest.importorskip("ucp")
 
 def _test_global_option(seg_size):
     """Test setting UCX options through dask's global config"""
+    tls = "tcp,cuda_copy" if _ucx_110 else "tcp,sockcm,cuda_copy"
+    tls_priority = "tcp" if _ucx_110 else "sockcm"
     dask.config.update(
         dask.config.global_config,
         {
             "ucx": {
                 "SEG_SIZE": seg_size,
-                "TLS": "tcp,sockcm,cuda_copy",
-                "SOCKADDR_TLS_PRIORITY": "sockcm",
+                "TLS": tls,
+                "SOCKADDR_TLS_PRIORITY": tls_priority,
             },
         },
         priority="new",
@@ -46,6 +50,7 @@ def _test_global_option(seg_size):
             assert conf["SEG_SIZE"] == seg_size
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/627")
 def test_global_option():
     for seg_size in ["2K", "1M", "2M"]:
         p = mp.Process(target=_test_global_option, args=(seg_size,))

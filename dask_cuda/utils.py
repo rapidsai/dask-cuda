@@ -2,22 +2,35 @@ import math
 import os
 import time
 import warnings
+from contextlib import suppress
 from multiprocessing import cpu_count
 
 import numpy as np
 import pynvml
 import toolz
 
+from dask.utils import parse_bytes
+from distributed import Worker, wait
+
 try:
-    from cudf._lib.nvtx import annotate as nvtx_annotate
+    from nvtx import annotate as nvtx_annotate
 except ImportError:
-    # NVTX annotations functionality currently exists in cuDF, if cuDF isn't
-    # installed, `annotate` yields only.
+    # If nvtx module is not installed, `annotate` yields only.
     from contextlib import contextmanager
 
     @contextmanager
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
+
+
+try:
+    import ucp
+
+    _ucx_110 = ucp.get_ucx_version() >= (1, 10, 0)
+    _ucx_111 = ucp.get_ucx_version() >= (1, 11, 0)
+except ImportError:
+    _ucx_110 = False
+    _ucx_111 = False
 
 
 class CPUAffinity:
@@ -28,16 +41,38 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
-class RMMPool:
-    def __init__(self, nbytes):
+class RMMSetup:
+    def __init__(self, nbytes, managed_memory, async_alloc, log_directory):
         self.nbytes = nbytes
+        self.managed_memory = managed_memory
+        self.async_alloc = async_alloc
+        self.logging = log_directory is not None
+        self.log_directory = log_directory
 
     def setup(self, worker=None):
-        if self.nbytes is not None:
+        if self.async_alloc:
             import rmm
 
+            rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
+            if self.logging:
+                rmm.enable_logging(
+                    log_file_name=get_rmm_log_file_name(
+                        worker, self.logging, self.log_directory
+                    )
+                )
+        elif self.nbytes is not None or self.managed_memory:
+            import rmm
+
+            pool_allocator = False if self.nbytes is None else True
+
             rmm.reinitialize(
-                pool_allocator=True, managed_memory=False, initial_pool_size=self.nbytes
+                pool_allocator=pool_allocator,
+                managed_memory=self.managed_memory,
+                initial_pool_size=self.nbytes,
+                logging=self.logging,
+                log_file_name=get_rmm_log_file_name(
+                    worker, self.logging, self.log_directory
+                ),
             )
 
 
@@ -74,7 +109,7 @@ def unpack_bitmask(x, mask_bits=64):
         bytestr = np.frombuffer(
             bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
         )
-        mask = np.flip(bytestr - ord("0")).astype(np.bool)
+        mask = np.flip(bytestr - ord("0")).astype(bool)
         unpacked_mask = np.where(
             mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
         )
@@ -95,13 +130,50 @@ def get_gpu_count():
     return pynvml.nvmlDeviceGetCount()
 
 
-def get_cpu_affinity(device_index):
-    """Get a list containing the CPU indices to which a GPU is directly connected.
+@toolz.memoize
+def get_gpu_count_mig(return_uuids=False):
+    """Return the number of MIG instances available
 
     Parameters
     ----------
-    device_index: int
-        Index of the GPU device
+    return_uuids: bool
+        Returns the uuids of the MIG instances available optionally
+
+    """
+    pynvml.nvmlInit()
+    uuids = []
+    for index in range(get_gpu_count()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+        try:
+            is_mig_mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
+        except pynvml.NVMLError:
+            # if not a MIG device, i.e. a normal GPU, skip
+            continue
+        if is_mig_mode:
+            count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
+            miguuids = []
+            for i in range(count):
+                try:
+                    mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
+                        device=handle, index=i
+                    )
+                    miguuids.append(mighandle)
+                    uuids.append(pynvml.nvmlDeviceGetUUID(mighandle))
+                except pynvml.NVMLError:
+                    pass
+    if return_uuids:
+        return len(uuids), uuids
+    return len(uuids)
+
+
+def get_cpu_affinity(device_index=None):
+    """Get a list containing the CPU indices to which a GPU is directly connected.
+    Use either the device index or the specified device identifier UUID.
+
+    Parameters
+    ----------
+    device_index: int or str
+        Index or UUID of the GPU device
 
     Examples
     --------
@@ -123,10 +195,19 @@ def get_cpu_affinity(device_index):
     pynvml.nvmlInit()
 
     try:
+        if device_index and not str(device_index).isnumeric():
+            # This means device_index is UUID.
+            # This works for both MIG and non-MIG device UUIDs.
+            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_index))
+            if pynvml.nvmlDeviceIsMigDeviceHandle(handle):
+                # Additionally get parent device handle
+                # if the device itself is a MIG instance
+                handle = pynvml.nvmlDeviceGetDeviceHandleFromMigDeviceHandle(handle)
+        else:
+            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
         affinity = pynvml.nvmlDeviceGetCpuAffinity(
-            pynvml.nvmlDeviceGetHandleByIndex(device_index),
-            math.ceil(get_cpu_count() / 64),
+            handle, math.ceil(get_cpu_count() / 64),
         )
         return unpack_bitmask(affinity)
     except pynvml.NVMLError:
@@ -146,17 +227,25 @@ def get_n_gpus():
 
 def get_device_total_memory(index=0):
     """
-    Return total memory of CUDA device with index
+    Return total memory of CUDA device with index or with device identifier UUID
     """
     pynvml.nvmlInit()
-    return pynvml.nvmlDeviceGetMemoryInfo(
-        pynvml.nvmlDeviceGetHandleByIndex(index)
-    ).total
+
+    if index and not str(index).isnumeric():
+        # This means index is UUID. This works for both MIG and non-MIG device UUIDs.
+        handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(str(index)))
+    else:
+        # This is a device index
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+    return pynvml.nvmlDeviceGetMemoryInfo(handle).total
 
 
 def get_ucx_net_devices(
     cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
 ):
+    if _ucx_111 and ucx_net_devices == "auto":
+        return None
+
     if cuda_device_index is None and (
         callable(ucx_net_devices) or ucx_net_devices == "auto"
     ):
@@ -214,6 +303,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
         ucx_config["cuda_copy"] = True
@@ -310,6 +400,26 @@ def get_preload_options(
     return preload_options
 
 
+def get_rmm_log_file_name(dask_worker, logging=False, log_directory=None):
+    return (
+        os.path.join(
+            log_directory,
+            "rmm_log_%s.txt"
+            % (
+                (
+                    dask_worker.name.split("/")[-1]
+                    if isinstance(dask_worker.name, str)
+                    else dask_worker.name
+                )
+                if hasattr(dask_worker, "name")
+                else "scheduler"
+            ),
+        )
+        if logging
+        else None
+    )
+
+
 def wait_workers(
     client, min_timeout=10, seconds_per_gpu=2, n_gpus=None, timeout_callback=None
 ):
@@ -352,3 +462,195 @@ def wait_workers(
             return False
         else:
             time.sleep(0.1)
+
+
+async def _all_to_all(client):
+    """
+    Trigger all to all communication between workers and scheduler
+    """
+    workers = list(client.scheduler_info()["workers"])
+    futs = []
+    for w in workers:
+        bit_of_data = b"0" * 1
+        data = client.map(lambda x: bit_of_data, range(1), pure=False, workers=[w])
+        futs.append(data[0])
+
+    await wait(futs)
+
+    def f(x):
+        pass
+
+    new_futs = []
+    for w in workers:
+        for future in futs:
+            data = client.submit(f, future, workers=[w], pure=False)
+            new_futs.append(data)
+
+    await wait(new_futs)
+
+
+def all_to_all(client):
+    return client.sync(_all_to_all, client=client, asynchronous=client.asynchronous)
+
+
+def parse_cuda_visible_device(dev):
+    """Parses a single CUDA device identifier
+
+    A device identifier must either be an integer, a string containing an
+    integer or a string containing the device's UUID, beginning with prefix
+    'GPU-' or 'MIG-GPU'.
+
+    >>> parse_cuda_visible_device(2)
+    2
+    >>> parse_cuda_visible_device('2')
+    2
+    >>> parse_cuda_visible_device('GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005')
+    'GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005'
+    >>> parse_cuda_visible_device('Foo')
+    Traceback (most recent call last):
+    ...
+    ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
+    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    """
+    try:
+        return int(dev)
+    except ValueError:
+        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", "MIG-"]):
+            return dev
+        else:
+            raise ValueError(
+                "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
+                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes"
+                " or 'MIG-<UUID>'."
+            )
+
+
+def cuda_visible_devices(i, visible=None):
+    """Cycling values for CUDA_VISIBLE_DEVICES environment variable
+
+    Examples
+    --------
+    >>> cuda_visible_devices(0, range(4))
+    '0,1,2,3'
+    >>> cuda_visible_devices(3, range(8))
+    '3,4,5,6,7,0,1,2'
+    """
+    if visible is None:
+        try:
+            visible = map(
+                parse_cuda_visible_device, os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+            )
+        except KeyError:
+            visible = range(get_n_gpus())
+    visible = list(visible)
+
+    L = visible[i:] + visible[:i]
+    return ",".join(map(str, L))
+
+
+def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
+    """Get the device index for NVML addressing
+
+    NVML expects the index of the physical device, unlike CUDA runtime which
+    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
+    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    comma-separated string of devices or list.
+
+    Examples
+    --------
+    >>> nvml_device_index(1, "0,1,2,3")
+    1
+    >>> nvml_device_index(1, "1,2,3,0")
+    2
+    >>> nvml_device_index(1, [0,1,2,3])
+    1
+    >>> nvml_device_index(1, [1,2,3,0])
+    2
+    >>> nvml_device_index(1, ["GPU-84fd49f2-48ad-50e8-9f2e-3bf0dfd47ccb",
+                              "GPU-d6ac2d46-159b-5895-a854-cb745962ef0f",
+                              "GPU-158153b7-51d0-5908-a67c-f406bc86be17"])
+    "MIG-d6ac2d46-159b-5895-a854-cb745962ef0f"
+    >>> nvml_device_index(2, ["MIG-41b3359c-e721-56e5-8009-12e5797ed514",
+                              "MIG-65b79fff-6d3c-5490-a288-b31ec705f310",
+                              "MIG-c6e2bae8-46d4-5a7e-9a68-c6cf1f680ba0"])
+    "MIG-c6e2bae8-46d4-5a7e-9a68-c6cf1f680ba0"
+    >>> nvml_device_index(1, 2)
+    Traceback (most recent call last):
+    ...
+    ValueError: CUDA_VISIBLE_DEVICES must be `str` or `list`
+    """
+    if isinstance(CUDA_VISIBLE_DEVICES, str):
+        ith_elem = CUDA_VISIBLE_DEVICES.split(",")[i]
+        if ith_elem.isnumeric():
+            return int(ith_elem)
+        else:
+            return ith_elem
+    elif isinstance(CUDA_VISIBLE_DEVICES, list):
+        return CUDA_VISIBLE_DEVICES[i]
+    else:
+        raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0):
+    """Parse memory limit to be used by a CUDA device.
+
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        This can be a float (fraction of total device memory), an integer (bytes),
+        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
+        size.
+    device_index: int or str
+        The index or UUID of the device from which to obtain the total memory amount.
+        Default: 0.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_memory_limit(None)
+    34089730048
+    >>> parse_device_memory_limit(0.8)
+    27271784038
+    >>> parse_device_memory_limit(1000000000)
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    """
+    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
+        return get_device_total_memory(device_index)
+
+    with suppress(ValueError, TypeError):
+        device_memory_limit = float(device_memory_limit)
+        if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
+            return int(get_device_total_memory(device_index) * device_memory_limit)
+
+    if isinstance(device_memory_limit, str):
+        return parse_bytes(device_memory_limit)
+    else:
+        return int(device_memory_limit)
+
+
+class MockWorker(Worker):
+    """Mock Worker class preventing NVML from getting used by SystemMonitor.
+
+    By preventing the Worker from initializing NVML in the SystemMonitor, we can
+    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
+    machines.
+    """
+
+    def __init__(self, *args, **kwargs):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
+        self._device_get_count = distributed.diagnostics.nvml.device_get_count
+        super().__init__(*args, **kwargs)
+
+    def __del__(self):
+        import distributed
+
+        distributed.diagnostics.nvml.device_get_count = self._device_get_count
+
+    @staticmethod
+    def device_get_count():
+        return 0

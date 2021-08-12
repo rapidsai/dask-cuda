@@ -1,24 +1,59 @@
 import asyncio
 import concurrent.futures
+import contextlib
 import time
 import uuid
+from typing import List, Optional
 
 import distributed.comm
-from distributed import default_client, get_worker
-from distributed.comm.addressing import (
-    parse_address,
-    parse_host_port,
-    unparse_address,
-)
-
-from . import utils
+from distributed import Client, default_client, get_worker
+from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 _default_comms = None
 
 
-def default_comms(client=None):
-    """ Return a comms instance if one has been initialized.
-        Otherwise, initialize a new comms instance.
+def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
+    """Return either a MultiLock or a NULL context
+
+    Parameters
+    ----------
+    multi_lock_context: bool
+        If True return MultiLock context else return a NULL context that
+        doesn't do anything
+
+    *args, **kwargs:
+        Arguments parsed to the MultiLock creation
+
+    Returns
+    -------
+    context: context
+        Either `MultiLock(*args, **kwargs)` or a NULL context
+    """
+    if multi_lock_context:
+        from distributed import MultiLock
+
+        return MultiLock(*args, **kwargs)
+    else:
+        # Use a null context that doesn't do anything
+        # TODO: use `contextlib.nullcontext()` from Python 3.7+
+        return contextlib.suppress()
+
+
+def default_comms(client: Optional[Client] = None) -> "CommsContext":
+    """Return the default comms object
+
+    Creates a new default comms object if no one exist.
+
+    Parameters
+    ----------
+    client: Client, optional
+        If no default comm object exists, create the new comm on `client`
+        are returned.
+
+    Returns
+    -------
+    comms: CommsContext
+        The default comms object
     """
     global _default_comms
     if _default_comms is None:
@@ -26,19 +61,31 @@ def default_comms(client=None):
     return _default_comms
 
 
-def worker_state(sessionId=None):
+def worker_state(sessionId: Optional[int] = None) -> dict:
+    """Retrieve the state(s) of the current worker
+
+    Parameters
+    ----------
+    sessionId: int, optional
+        Worker session state ID. If None, all states of the worker
+        are returned.
+
+    Returns
+    -------
+    state: dict
+        Either a single state dict or a dict of state dict
+    """
     worker = get_worker()
     if not hasattr(worker, "_explicit_comm_state"):
         worker._explicit_comm_state = {}
-    if sessionId is not None and sessionId not in worker._explicit_comm_state:
-        worker._explicit_comm_state[sessionId] = {
-            "ts": time.time(),
-            "eps": {},
-            "loop": worker.loop.asyncio_loop,
-            "worker": worker,
-        }
-
     if sessionId is not None:
+        if sessionId not in worker._explicit_comm_state:
+            worker._explicit_comm_state[sessionId] = {
+                "ts": time.time(),
+                "eps": {},
+                "loop": worker.loop.asyncio_loop,
+                "worker": worker,
+            }
         return worker._explicit_comm_state[sessionId]
     return worker._explicit_comm_state
 
@@ -84,7 +131,7 @@ async def _create_endpoints(session_state, peers):
     myrank = session_state["rank"]
     peers = list(enumerate(peers))
 
-    # Create endpoints to workers with a greater rank the my rank
+    # Create endpoints to workers with a greater rank than my rank
     for rank, address in peers[myrank + 1 :]:
         ep = await distributed.comm.connect(address)
         await ep.write(session_state["rank"])
@@ -103,11 +150,21 @@ async def _stop_ucp_listeners(session_state):
 
 
 class CommsContext:
-    """Communication handler for explicit communication"""
+    """Communication handler for explicit communication
 
-    def __init__(self, client=None):
+        Parameters
+        ----------
+        client: Client, optional
+            Specify client to use for communication. If None, use the default client.
+    """
+
+    client: Client
+    sessionId: int
+    worker_addresses: List[str]
+
+    def __init__(self, client: Optional[Client] = None):
         self.client = client if client is not None else default_client()
-        self.sessionId = uuid.uuid4().bytes
+        self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
         self.worker_addresses = list(self.client.run(lambda: 42).keys())
@@ -125,7 +182,7 @@ class CommsContext:
                 )
             )
 
-        # Each worker creates a UCX endpoint to all workers with greater rank
+        # Each worker creates an endpoint to all workers with greater rank
         self.run(_create_endpoints, self.worker_direct_addresses)
 
         # At this point all workers should have a rank and endpoints to
@@ -134,6 +191,9 @@ class CommsContext:
 
     def submit(self, worker, coroutine, *args, wait=False):
         """Run a coroutine on a single worker
+
+        The coroutine is given the worker's state dict as the first argument
+        and *args as the following arguments.
 
         Parameters
         ----------
@@ -145,6 +205,7 @@ class CommsContext:
             Arguments for `coroutine`
         wait: boolean, optional
             If True, waits for the coroutine to finished before returning.
+
         Returns
         -------
         ret: object or Future
@@ -161,8 +222,11 @@ class CommsContext:
         )
         return ret.result() if wait else ret
 
-    def run(self, coroutine, *args, workers=None):
-        """Run a coroutine on workers
+    def run(self, coroutine, *args, workers=None, lock_workers=False):
+        """Run a coroutine on multiple workers
+
+        The coroutine is given the worker's state dict as the first argument
+        and *args as the following arguments.
 
         Parameters
         ----------
@@ -172,6 +236,10 @@ class CommsContext:
             Arguments for `coroutine`
         workers: list, optional
             List of workers. Default is all workers
+        lock_workers: bool, optional
+            Use distributed.MultiLock to get exclusive access to the workers. Use
+            this flag to support parallel runs.
+
         Returns
         -------
         ret: list
@@ -179,61 +247,18 @@ class CommsContext:
         """
         if workers is None:
             workers = self.worker_addresses
-        ret = []
-        for worker in workers:
-            ret.append(
-                self.client.submit(
-                    _run_coroutine_on_worker,
-                    self.sessionId,
-                    coroutine,
-                    args,
-                    workers=[worker],
-                    pure=False,
+
+        with get_multi_lock_or_null_context(lock_workers, workers):
+            ret = []
+            for worker in workers:
+                ret.append(
+                    self.client.submit(
+                        _run_coroutine_on_worker,
+                        self.sessionId,
+                        coroutine,
+                        args,
+                        workers=[worker],
+                        pure=False,
+                    )
                 )
-            )
-        return self.client.gather(ret)
-
-    def dataframe_operation(self, coroutine, df_list, extra_args=tuple()):
-        """Submit an operation on a list of Dask dataframe
-
-        Parameters
-        ----------
-        coroutine: coroutine
-            The function to run on each worker
-        df_list: list of Dask.dataframe.Dataframe
-            Input dataframes
-        extra_args: tuple
-            Extra function input
-        Returns
-        -------
-        dataframe: Dask.dataframe.Dataframe
-            The resulting dataframe
-        """
-        df_parts_list = []
-        for df in df_list:
-            df_parts_list.append(
-                utils.workers_to_parts(
-                    self.client.sync(utils.extract_ddf_partitions, df)
-                )
-            )
-
-        # Let's create a dict for each dataframe that specifices the
-        # number of partitions each worker has
-        dfs_nparts = []
-        for df_parts in df_parts_list:
-            nparts = {}
-            for rank, worker in enumerate(self.worker_addresses):
-                npart = len(df_parts.get(worker, []))
-                if npart > 0:
-                    nparts[rank] = npart
-            dfs_nparts.append(nparts)
-
-        # Submit `coroutine` on each worker given the df_parts that
-        # belong the specific worker as input
-        ret = []
-        for worker in self.worker_addresses:
-            dfs = []
-            for df_parts in df_parts_list:
-                dfs.append(df_parts.get(worker, []))
-            ret.append(self.submit(worker, coroutine, dfs_nparts, dfs, *extra_args))
-        return utils.dataframes_to_dask_dataframe(ret)
+            return self.client.gather(ret)

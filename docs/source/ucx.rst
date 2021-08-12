@@ -1,131 +1,81 @@
 UCX Integration
 ===============
 
-Communication can be a major bottleneck in distributed systems, and that's no different in Dask and Dask-CUDA. To address that, Dask-CUDA provides integration with `UCX-Py <https://ucx-py.readthedocs.io/>`_, a Python interface for the `UCX <https://www.openucx.org/>`_ communication framework.  UCX is a low-level library that provides high-performance networking and supports several transports, including NVLink and InfiniBand for systems that have such specialized hardware, as well as TCP for those that do not.
+Communication can be a major bottleneck in distributed systems.
+Dask-CUDA addresses this by supporting integration with `UCX <https://www.openucx.org/>`_, an optimized communication framework that provides high-performance networking and supports a variety of transport methods, including `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_ and `InfiniBand <https://www.mellanox.com/pdf/whitepapers/IB_Intro_WP_190.pdf>`_ for systems with specialized hardware, and TCP for systems without it.
+This integration is enabled through `UCX-Py <https://ucx-py.readthedocs.io/>`_, an interface that provides Python bindings for UCX.
+
+Hardware requirements
+---------------------
+
+To use UCX with NVLink or InfiniBand, relevant GPUs must be connected with NVLink bridges or NVIDIA Mellanox InfiniBand Adapters, respectively.
+NVIDIA provides comparison charts for both `NVLink bridges <https://www.nvidia.com/en-us/design-visualization/nvlink-bridges/>`_ and `InfiniBand adapters <https://www.nvidia.com/en-us/networking/infiniband-adapters/>`_.
+
+Software requirements
+---------------------
+
+UCX integration requires an environment with both UCX and UCX-Py installed; see `UCX-Py Installation <https://ucx-py.readthedocs.io/en/latest/install.html>`_ for detailed instructions on this process.
+
+When using UCX, each NVLink and InfiniBand memory buffer must create a mapping between each unique pair of processes they are transferred across; this can be quite costly, potentially in the range of hundreds of milliseconds per mapping.
+For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
+A memory pool also prevents the Dask scheduler from deserializing CUDA data, which will cause a crash.
+
+Configuration
+-------------
+
+In addition to installations of UCX and UCX-Py on your system, several options must be specified within your Dask configuration to enable the integration.
+Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
+However, some will affect related libraries, such as RMM:
+
+- ``ucx.cuda_copy: true`` -- **required.**
+
+  Adds ``cuda_copy`` to ``UCX_TLS``, enabling CUDA transfers over UCX.
+
+- ``ucx.tcp: true`` -- **required.**
+
+  Adds ``tcp`` to ``UCX_TLS``, enabling TCP transfers over UCX; this is required for very small transfers which are inefficient for NVLink and InfiniBand.
+
+- ``ucx.nvlink: true`` -- **required for NVLink.**
+
+  Adds ``cuda_ipc`` to ``UCX_TLS``, enabling NVLink transfers over UCX; affects intra-node communication only.
+
+- ``ucx.infiniband: true`` -- **required for InfiniBand.**
+
+  Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
+
+  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-max-rndv-rails>`_ and `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
+
+- ``ucx.rdmacm: true`` -- **recommended for InfiniBand.**
+
+  Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
+  This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
+
+- ``ucx.net-devices: <str>`` -- **recommended for UCX 1.9 and older.**
+
+  Explicitly sets ``UCX_NET_DEVICES`` instead of defaulting to ``"all"``, which can result in suboptimal performance.
+  If using InfiniBand, set to ``"auto"`` to automatically detect the InfiniBand interface closest to each GPU on UCX 1.9 and below.
+  If InfiniBand is disabled, set to a UCX-compatible ethernet interface, e.g. ``"enp1s0f0"`` on a DGX-1.
+  All available UCX-compatible interfaces can be listed by running ``ucx_info -d``.
+
+  UCX 1.11 and above is capable of identifying closest interfaces without setting ``"auto"`` (**deprecated for UCX 1.11 and above**), it is recommended not to set ``ucx.net-devices`` in most cases. However, some recommendations for optimal performance apply, see the documentation on ``ucx.infiniband`` above fore details.
+
+  .. warning::
+      Setting ``ucx.net-devices: "auto"`` assumes that all InfiniBand interfaces on the system are connected and properly configured; undefined behavior may occur otherwise.
+      **``ucx.net-devices: "auto"`` is *DEPRECATED* for UCX 1.11 and above.**
 
 
 
-Relevant Settings
------------------
+- ``rmm.pool-size: <str|int>`` -- **recommended.**
 
-In this list below we shall see all the Dask configurations relevant for using with Dask-CUDA currently. Note that these options can also be used with mainline Dask/Distributed if you can't use Dask-CUDA for some reason. Note that many improvments for running GPU code is readily available in Dask-CUDA -- but not in mainline Dask/Distributed -- thus, we recommend using Dask-CUDA when possible.
-In the list below we describe the relevant Dask configurations for using UCX with Dask-CUDA.
+  Allocates an RMM pool of the specified size for the process; size can be provided with an integer number of bytes or in human readable format, e.g. ``"4GB"``.
+  It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
 
 .. note::
-    These options can also be used with mainline Dask/Distributed outside of Dask-CUDA, however, we recommend using Dask-CUDA when possible. See the :doc:`Specializations for GPU Usage <specializations>` page for details on the benefits of using Dask-CUDA.
+    These options can be used with mainline Dask.distributed.
+    However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces. 
+    See `Dask-CUDA -- Motivation <index.html#motivation>`_ for more details on the benefits of using Dask-CUDA.
 
+Usage
+-----
 
-- ``DASK_UCX__CUDA_COPY=True`` (default: ``False``): *Always required for UCX*, adds ``cuda_copy`` to ``UCX_TLS`` -- required for all CUDA transfers in UCX, both intra- and inter-node;
-- ``DASK_UCX__TCP=True`` (default: ``False``): *Always required for UCX*, adds ``tcp`` to ``UCX_TLS`` -- required for all TCP transfers (e.g., where NVLink or IB is not available/disabled) in UCX, both intra- and inter-node;
-- ``DASK_UCX__NVLINK=True`` (default: ``False``): Adds ``cuda_ipc`` to ``UCX_TLS`` -- required for all NVLink transfers in UCX, only affects intra-node.
-- ``DASK_UCX__INFINIBAND=True`` (defalt: ``False``): Adds ``rc`` to ``UCX_TLS`` -- required for all InfiniBand transfers in UCX, only affects inter-node.
-- ``DASK_UCX__RDMACM=True`` (default: ``False``): Replaces ``sockcm`` by ``rdmacm`` in ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``. ``rdmacm`` is the recommended method by UCX to use with IB and currently won't work if ``DASK_UCX__INFINIBAND=False``.
-- ``DASK_UCX__NET_DEVICES=mlx5_0:1`` (default: ``None``, causes UCX to decide what device to use, possibly being suboptimal, implies ``UCX_NET_DEVICES=all``): this is very important when ``DASK_UCX__INFINIBAND=True`` to ensure the scheduler is connected over the InfiniBand interface. When ``DASK_UCX__INFINIBAND=False`` it's recommended to use the ethernet device instead, e.g., ``DASK_UCX__NET_DEVICES=enp1s0f0`` on a DGX-1.
-- ``DASK_RMM__POOL_SIZE=1GB``: allocates an RMM pool for the process. In some circumstances, the Dask scheduler will deserialize CUDA data and cause a crash if there's no pool.
-
-
-Important notes
----------------
-
-* CUDA Memory Pool: With UCX, all NVLink and InfiniBand memory buffers have to be mapped from one process to another upon the first request for transfer of that buffer between a single pair of processes. This can be quite costly, consuming up to 100ms only for mapping, plus the transfer time itself. For this reason it is strongly recommended to use a `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ memory pool in such cases, incurring in a single mapping of the pool and all subsequent transfers will not be required to repeat that process. It is recommened to also keep the memory pool size to at least the minimum amount of memory used by the application, if possible one can map all GPU memory to a single pool and utilize that pool for the entire lifetime of the application.
-
-* Automatic detection of InfiniBand interfaces: it's especially important to note the usage of ``--net-devices="auto"`` in ``dask-cuda-worker``, which will automatically determine the InfiniBand interface that's closest to each GPU. For safety, this option can only be used if ``--enable-infiniband`` is specified. Be warned that this mode assumes all InfiniBand interfaces on the system are connected and properly configured, undefined behavior may occur otherwise.
-
-
-Launching Scheduler, Workers and Clients Separately
----------------------------------------------------
-
-The first way for starting a Dask cluster with UCX support is to start each process separately. The processes are ``dask-scheduler``, ``dask-cuda-worker`` and the client process utilizing ``distributed.Client`` that will connect to the cluster. Details follow for each of the processes.
-
-dask-scheduler
-^^^^^^^^^^^^^^
-
-The ``dask-scheduler`` has no parameters for UCX configuration -- different from what we will see for ``dask-cuda-worker`` on the next section -- for that reason we rely on Dask environment variables. Here's how to start the scheduler with all transports that are currently supported by Dask-CUDA:
-
-.. code-block:: bash
-    DASK_RMM__POOL_SIZE=1GB DASK_UCX__CUDA_COPY=True DASK_UCX__TCP=True DASK_UCX__NVLINK=True DASK_UCX__INFINIBAND=True DASK_UCX__RDMACM=True DASK_UCX__NET_DEVICES=mlx5_0:1 dask-scheduler --protocol ucx --interface ib0
-
-Note above how we use ``DASK_UCX__NET_DEVICES=mlx5_0:1`` (the Mellanox name for ``ib0``) and the same interface with ``--interface ib0``. If the system doesn't have an InfiniBand interface available, you would normally use the main network interface, such as ``eth0``, as seen below:
-
-.. code-block:: bash
-    DASK_RMM__POOL_SIZE=1GB DASK_UCX__CUDA_COPY=True DASK_UCX__TCP=True DASK_UCX__NVLINK=True dask-scheduler --protocol ucx --interface eth0
-
-Setting ``DASK_UCX__NET_DEVICES`` when using an interface that isn't an InfiniBand can generally be skipped.
-
-
-dask-cuda-worker
-^^^^^^^^^^^^^^^^
-
-All ``DASK_*`` configurations described above have analogous parameters in ``dask-cuda-worker`` which are preferred over the regular configurations used for ``dask-scheduler`` due to some specializations, such as ``--net-devices="auto"`` which will correctly assign the topologically closest IB interface to the GPU of each worker, something that's not possible with ``DASK_UCX__NET_DEVICES``.
-
-- ``--disable-tcp-over-ucx`` (default) is analogous to ``DASK_UCX__TCP=False``, ``--enable-tcp-over-ucx`` is equivalent to ``DASK_UCX__TCP=True``;
-- ``--disable-nvlink`` (default) is analogous to ``DASK_UCX__NVLINK=False``, ``--enable-nvlink`` is equivalent to ``DASK_UCX__NVLINK=True``;
-- ``--disable-infiniband`` (default) is analogous to ``DASK_UCX__INFINIBAND=False``, ``--enable-infiniband`` is equivalent to ``DASK_UCX__INFINIBAND=True``;
-- ``--net-devices`` (default ``None``, implies ``UCX_NET_DEVICES=all``) equivalent to ``DASK_UCX__NET_DEVICES``;
-- ``--rmm-pool-size`` equivalent to ``DASK_RMM__POOL_SIZE``.
-
-Here's how to start workers with all transports that are currently relevant for us:
-
-.. code-block:: bash
-    dask-cuda-worker ucx://SCHEDULER_IB0_IP:8786 --enable-tcp-over-ucx --enable-nvlink --enable-infiniband -- enable-rdmacm --net-devices="auto" --rmm-pool-size="30GB"
-
-
-client
-^^^^^^
-
-The same configurations used for the scheduler should be used by the client. One possible exception is ``DASK_RMM__POOL_SIZE``, at this time it's unclear whether this is necessary or not, but using that should not cause any issues nevertheless.
-
-One can use ``os.environ`` inside the client script, it's important to set them at the very top before importing anything other than ``os``. See example below:
-
-.. code-block:: python
-    import os
-
-    os.environ["DASK_RMM__POOL_SIZE"] = "1GB"
-    os.environ["DASK_UCX__CUDA_COPY"] = "True"  # os.environ needs using strings, not Python True/False
-    os.environ["DASK_UCX__TCP"] = "True"
-    os.environ["DASK_UCX__NVLINK"] = "True"
-    os.environ["DASK_UCX__INFINIBAND"] = "True"
-    os.environ["DASK_UCX__NET_DEVICES"] = "mlx5_0:1"
-
-    from distributed import Client
-
-    client = Client("ucx://SCHEDULER_IB0_IP:8786")  # SCHEDULER_IB0_IP must be the IP of ib0 on the node where scheduler runs
-
-    # Client code goes here
-
-
-Starting a local cluster (single-node only)
--------------------------------------------
-
-All options discussed previously are also available in ``LocalCUDACluster``. It is shown below how to start a local cluster with all UCX capabilities enabled:
-
-.. code-block:: python
-
-    import os
-
-    # The options here are to be used by the client only,
-    # inherent options for the Dask scheduler and workers
-    # have to be passed to LocalCUDACluster
-    os.environ["DASK_RMM__POOL_SIZE"] = "1GB"
-    os.environ["DASK_UCX__CUDA_COPY"] = "True"  # os.environ needs using strings, not Python True/False
-    os.environ["DASK_UCX__TCP"] = "True"
-    os.environ["DASK_UCX__NVLINK"] = "True"
-    os.environ["DASK_UCX__INFINIBAND"] = "True"
-    os.environ["DASK_UCX__NET_DEVICES"] = "mlx5_0:1"
-
-    from dask.distributed import Client
-    from dask_cuda import LocalCUDACluster
-    from dask_cuda.initialize import initialize
-
-    cluster = LocalCUDACluster(
-        protocol = "ucx"
-        interface = "ib0"  # Interface -- used for the scheduler
-        enable_tcp_over_ucx = True
-        enable_nvlink = True
-        enable_infiniband = True
-        ucx_net_devices="auto"
-        rmm_pool="24GB"
-    )
-    client = Client(cluster)
-
-    # Client code goes here
+See `Enabling UCX communication <examples/ucx.html>`_ for examples of UCX usage with different supported transports.
