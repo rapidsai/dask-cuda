@@ -41,13 +41,13 @@ To start a Dask scheduler using UCX with all supported transports and an gigabyt
 
 .. code-block:: bash
 
-    $ DASK_UCX__CUDA_COPY=True \
-    > DASK_UCX__TCP=True \
-    > DASK_UCX__NVLINK=True \
-    > DASK_UCX__INFINIBAND=True \
-    > DASK_UCX__RDMACM=True \
-    > DASK_UCX__NET_DEVICES=mlx5_0:1 \
-    > DASK_RMM__POOL_SIZE=1GB \
+    $ DASK_DISTRIBUTED__COMM__UCX__CUDA_COPY=True \
+    > DASK_DISTRIBUTED__COMM__UCX__TCP=True \
+    > DASK_DISTRIBUTED__COMM__UCX__NVLINK=True \
+    > DASK_DISTRIBUTED__COMM__UCX__INFINIBAND=True \
+    > DASK_DISTRIBUTED__COMM__UCX__RDMACM=True \
+    > DASK_DISTRIBUTED__COMM__UCX__NET_DEVICES=mlx5_0:1 \
+    > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
     > dask-scheduler --protocol ucx --interface ib0
 
 Note the specification of ``"mlx5_0:1"`` as our UCX net device; because the scheduler does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
