@@ -394,7 +394,9 @@ class LocalCUDACluster(LocalCluster):
             net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
-                spec["options"]["config"]["ucx"]["net-devices"] = net_dev
+                spec["options"]["config"]["distributed.comm.ucx"][
+                    "net-devices"
+                ] = net_dev
 
             spec["options"]["interface"] = get_ucx_net_devices(
                 cuda_device_index,

@@ -15,6 +15,7 @@ import dask_cuda
 from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.initialize import initialize
+from dask_cuda.utils import get_ucx_config
 
 mp = mp.get_context("spawn")
 ucp = pytest.importorskip("ucp")
@@ -30,7 +31,7 @@ async def my_rank(state, arg):
 def _test_local_cluster(protocol):
     dask.config.update(
         dask.config.global_config,
-        {"ucx": {"tcp": True, "cuda_copy": True,},},
+        {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
         priority="new",
     )
 
@@ -104,7 +105,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
 
         dask.config.update(
             dask.config.global_config,
-            {"ucx": {"tcp": True, "cuda_copy": True,},},
+            {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
             priority="new",
         )
 
@@ -209,7 +210,7 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
 
         dask.config.update(
             dask.config.global_config,
-            {"ucx": {"tcp": True, "cuda_copy": True,},},
+            {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
             priority="new",
         )
 

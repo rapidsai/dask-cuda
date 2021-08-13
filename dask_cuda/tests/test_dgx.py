@@ -284,13 +284,13 @@ def _test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
 
     # Enable proper variables for scheduler
     sched_env = os.environ.copy()
-    sched_env["DASK_UCX__INFINIBAND"] = "True"
-    sched_env["DASK_UCX__TCP"] = "True"
-    sched_env["DASK_UCX__CUDA_COPY"] = "True"
-    sched_env["DASK_UCX__NET_DEVICES"] = openfabrics_devices[0]
+    sched_env["DASK_DISTRIBUTED__COMM__UCX__INFINIBAND"] = "True"
+    sched_env["DASK_DISTRIBUTED__COMM__UCX__TCP"] = "True"
+    sched_env["DASK_DISTRIBUTED__COMM__UCX__CUDA_COPY"] = "True"
+    sched_env["DASK_DISTRIBUTED__COMM__UCX__NET_DEVICES"] = openfabrics_devices[0]
 
     if enable_rdmacm:
-        sched_env["DASK_UCX__RDMACM"] = "True"
+        sched_env["DASK_DISTRIBUTED__COMM__UCX__RDMACM"] = "True"
         sched_addr = get_ip_interface("ib0")
 
     sched_url = "ucx://" + sched_addr + ":9379"
@@ -388,4 +388,9 @@ def test_dask_cuda_worker_ucx_net_devices(enable_rdmacm):
     )
     p.start()
     p.join()
+
+    # The processes may be killed in the test, preventing UCX-Py from cleaning
+    # up all objects. Reset to prevent issues on tests running after.
+    ucp.reset()
+
     assert not p.exitcode
