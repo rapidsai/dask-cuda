@@ -1,4 +1,5 @@
 import numpy as np
+import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -6,6 +7,8 @@ import dask
 import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from distributed import Client
+from distributed.client import wait
+from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
@@ -247,3 +250,36 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert not any(res)  # No proxy objects
                 else:
                     assert all(res)  # Only proxy objects
+
+
+def test_spill_to_disk():
+    """
+    Test Dask triggering CPU-to-Disk spilling,
+    which we do not support at the moment
+    """
+
+    with dask.config.set({"distributed.worker.memory.terminate": 0}):
+        with dask_cuda.LocalCUDACluster(
+            n_workers=1, memory_limit=100, jit_unspill=True
+        ) as cluster:
+            with Client(cluster) as client:
+                ddf = dask.dataframe.from_pandas(
+                    pandas.DataFrame({"key": np.arange(1000)}), npartitions=1
+                )
+                ddf = ddf.persist()
+                wait(ddf)
+
+                def f():
+                    """Trigger a memory_monitor() and reset memory_limit"""
+                    w = get_worker()
+
+                    async def y():
+                        await w.memory_monitor()
+                        w.memory_limit = 10 ** 6
+
+                    w.loop.add_callback(y)
+
+                wait(client.submit(f))
+                assert "JIT-Unspill doesn't support spilling to Disk" in str(
+                    client.get_worker_logs()
+                )

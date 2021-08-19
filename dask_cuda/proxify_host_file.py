@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 import weakref
@@ -164,6 +165,12 @@ class ProxifyHostFile(MutableMapping):
         else:
             self.compatibility_mode = compatibility_mode
 
+        # It is a bit hacky to forcefully capture the "distributed.worker" logger,
+        # eventually it would be better to have a different logger. For now this
+        # is ok, allowing users to read logs with client.get_worker_logs(), a
+        # proper solution would require changes to Distributed.
+        self.logger = logging.getLogger("distributed.worker")
+
     def __contains__(self, key):
         return key in self.store
 
@@ -173,6 +180,15 @@ class ProxifyHostFile(MutableMapping):
     def __iter__(self):
         with self.lock:
             return iter(self.store)
+
+    @property
+    def fast(self):
+        """Dask use this to trigger CPU-to-Disk spilling"""
+        self.logger.warning(
+            "JIT-Unspill doesn't support spilling to "
+            "Disk, see <https://github.com/rapidsai/dask-cuda/issues/657>"
+        )
+        return None
 
     def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
         with self.lock:
