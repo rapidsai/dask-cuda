@@ -284,7 +284,7 @@ class ProxyObject:
         serializers = tuple(serializers)
 
         with self._obj_pxy_lock:
-            if self._obj_pxy["serializers"] is not None:
+            if self._obj_pxy_is_serialized():
                 if self._obj_pxy["serializers"] == serializers:
                     return self._obj_pxy["obj"]  # Nothing to be done
                 else:
@@ -318,7 +318,7 @@ class ProxyObject:
             The proxied object (deserialized)
         """
         with self._obj_pxy_lock:
-            if self._obj_pxy["serializers"] is not None:
+            if self._obj_pxy_is_serialized():
                 hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 # When not deserializing a CUDA-serialized proxied, we might have
                 # to evict because of the increased device memory usage.
@@ -413,7 +413,7 @@ class ProxyObject:
         with self._obj_pxy_lock:
             typename = self._obj_pxy["typename"]
             ret = f"<{dask.utils.typename(type(self))} at {hex(id(self))} of {typename}"
-            if self._obj_pxy["serializers"] is not None:
+            if self._obj_pxy_is_serialized():
                 ret += f" (serialized={repr(self._obj_pxy['serializers'])})>"
             else:
                 ret += f" at {hex(id(self._obj_pxy['obj']))}>"
@@ -684,7 +684,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     or another CUDA friendly communication library. As serializers, it uses "cuda",
     which means that proxied CUDA objects are _not_ spilled to main memory.
     """
-    if obj._obj_pxy["serializers"] is not None:  # Already serialized
+    if obj._obj_pxy_is_serialized():  # Already serialized
         header, frames = obj._obj_pxy["obj"]
     else:
         # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a

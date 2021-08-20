@@ -28,7 +28,7 @@ def get_device_memory_objects(obj) -> set:
 @dispatch.register(object)
 def get_device_memory_objects_default(obj):
     if hasattr(obj, "_obj_pxy"):
-        if obj._obj_pxy["serializers"] is None:
+        if not obj._obj_pxy_is_serialized():
             return dispatch(obj._obj_pxy["obj"])
         else:
             return []
