@@ -291,15 +291,14 @@ class ProxyObject:
                     # The proxied object is serialized with other serializers
                     self._obj_pxy_deserialize()
 
-            if self._obj_pxy["serializers"] is None:
-                self._obj_pxy["obj"] = distributed.protocol.serialize(
-                    self._obj_pxy["obj"], serializers, on_error="raise"
-                )
-                self._obj_pxy["serializers"] = serializers
-                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
-                if hostfile is not None:
-                    external = self._obj_pxy.get("external", self)
-                    hostfile.proxies_tally.spill_proxy(external)
+            self._obj_pxy["obj"] = distributed.protocol.serialize(
+                self._obj_pxy["obj"], serializers, on_error="raise"
+            )
+            self._obj_pxy["serializers"] = serializers
+            hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+            if hostfile is not None:
+                external = self._obj_pxy.get("external", self)
+                hostfile.proxies_tally.spill_proxy(external)
 
             # Invalidate the (possible) cached "device_memory_objects"
             self._obj_pxy_cache.pop("device_memory_objects", None)
