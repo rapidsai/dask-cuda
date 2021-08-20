@@ -5,7 +5,7 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 import pandas
 
@@ -264,12 +264,12 @@ class ProxyObject:
         """Return whether the proxied object is serialized or not"""
         return self._obj_pxy["serializers"] is not None
 
-    def _obj_pxy_serialize(self, serializers):
+    def _obj_pxy_serialize(self, serializers: Iterable[str]):
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters
         ----------
-        serializers: tuple[str]
+        serializers: Iterable[str]
             Tuple of serializers to use to serialize the proxied object.
 
         Returns
@@ -281,9 +281,7 @@ class ProxyObject:
         """
         if not serializers:
             raise ValueError("Please specify a list of serializers")
-
-        if type(serializers) is not tuple:
-            serializers = tuple(serializers)
+        serializers = tuple(serializers)
 
         with self._obj_pxy_lock:
             if self._obj_pxy["serializers"] is not None:
