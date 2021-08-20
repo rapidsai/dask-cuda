@@ -1,5 +1,6 @@
 import abc
 import logging
+import os
 import threading
 import time
 import warnings
@@ -139,15 +140,17 @@ class ProxyManager:
     Notice, the manager only keeps weak references to the proxies.
     """
 
-    def __init__(self, device_memory_limit: int):
+    def __init__(self, device_memory_limit: int, host_memory_limit: int):
         self.lock = threading.RLock()
         self._host = ProxiesOnHost()
         self._dev = ProxiesOnDevice()
         self._device_memory_limit = device_memory_limit
+        self._host_memory_limit = host_memory_limit
 
     def __repr__(self) -> str:
         return (
             f"<ProxyManager dev_limit={self._device_memory_limit}"
+            f" host_limit={self._host_memory_limit}"
             f" host={self._host.mem_usage()}({len(self._host)})"
             f" dev={self._dev.mem_usage()}({len(self._dev)})>"
         )
@@ -288,7 +291,14 @@ class ProxifyHostFile(MutableMapping):
     ----------
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
-    compatibility_mode: bool or None
+    host_memory_limit: int
+        Number of bytes of host memory used before spilling to disk.
+    local_directory : str or None, default None
+        Path on local machine to store temporary files. Can be a string (like
+        ``"path/to/files"``) or ``None`` to fall back on the value of
+        ``dask.temporary-directory`` in the local Dask configuration, using the current
+        working directory if this is not set.
+    compatibility_mode: bool or None, default None
         Enables compatibility-mode, which means that items are un-proxified before
         retrieval. This makes it possible to get some of the JIT-unspill benefits
         without having to be ProxyObject compatible. In order to still allow specific
@@ -297,11 +307,23 @@ class ProxifyHostFile(MutableMapping):
         config value are used, which defaults to False.
     """
 
-    def __init__(self, device_memory_limit: int, compatibility_mode: bool = None):
-        self.device_memory_limit = device_memory_limit
+    def __init__(
+        self,
+        *,
+        device_memory_limit: int,
+        host_memory_limit: int,
+        local_directory: str = None,
+        compatibility_mode: bool = None,
+    ):
         self.store: Dict[Hashable, Any] = {}
         self.lock = threading.RLock()
-        self.manager = ProxyManager(device_memory_limit)
+        self.manager = ProxyManager(device_memory_limit, host_memory_limit)
+        self.disk_path = os.path.join(
+            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
+            "dask-worker-space",
+            "jit-unspill-disk-storage",
+        )
+        os.makedirs(self.disk_path, exist_ok=True)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False

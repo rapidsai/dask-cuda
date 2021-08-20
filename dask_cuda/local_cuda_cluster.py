@@ -265,7 +265,11 @@ class LocalCUDACluster(LocalCluster):
             if self.jit_unspill:
                 data = (
                     ProxifyHostFile,
-                    {"device_memory_limit": self.device_memory_limit,},
+                    {
+                        "device_memory_limit": self.device_memory_limit,
+                        "host_memory_limit": self.host_memory_limit,
+                        "local_directory": local_directory,
+                    },
                 )
             else:
                 data = (
