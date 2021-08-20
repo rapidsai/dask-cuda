@@ -4,6 +4,7 @@ import time
 import weakref
 from collections import defaultdict
 from typing import (
+    Any,
     DefaultDict,
     Dict,
     Hashable,
@@ -155,7 +156,7 @@ class ProxifyHostFile(MutableMapping):
 
     def __init__(self, device_memory_limit: int, compatibility_mode: bool = None):
         self.device_memory_limit = device_memory_limit
-        self.store = {}
+        self.store: Dict[Hashable, Any] = {}
         self.lock = threading.RLock()
         self.proxies_tally = ProxiesTally()
         if compatibility_mode is None:

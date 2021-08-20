@@ -112,7 +112,7 @@ def unproxy(obj):
     return obj
 
 
-def _obj_pxy_cache_wrapper(attr_name):
+def _obj_pxy_cache_wrapper(attr_name: str):
     """Caching the access of attr_name in ProxyObject._obj_pxy_cache"""
 
     def wrapper1(func):
@@ -213,7 +213,7 @@ class ProxyObject:
             "explicit_proxy": explicit_proxy,
         }
         self._obj_pxy_lock = threading.RLock()
-        self._obj_pxy_cache = {}
+        self._obj_pxy_cache: Dict[str, Any] = {}
 
     def __del__(self):
         """In order to call `external_finalize()` ASAP, we call it here"""
@@ -420,8 +420,8 @@ class ProxyObject:
                 ret += f" at {hex(id(self._obj_pxy['obj']))}>"
             return ret
 
-    @property
-    @_obj_pxy_cache_wrapper("type_serialized")
+    @property  # type: ignore  # mypy doesn't support decorated property
+    @_obj_pxy_cache_wrapper("type_serialized")  #
     def __class__(self):
         return pickle.loads(self._obj_pxy["type_serialized"])
 
@@ -513,8 +513,8 @@ class ProxyObject:
     def __divmod__(self, other):
         return divmod(self._obj_pxy_deserialize(), other)
 
-    def __pow__(self, other, *args):
-        return pow(self._obj_pxy_deserialize(), other, *args)
+    def __pow__(self, other):
+        return pow(self._obj_pxy_deserialize(), other)
 
     def __lshift__(self, other):
         return self._obj_pxy_deserialize() << other
