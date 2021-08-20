@@ -594,7 +594,6 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
 def parse_device_memory_limit(device_memory_limit, device_index=0):
     """Parse memory limit to be used by a CUDA device.
 
-
     Parameters
     ----------
     device_memory_limit: float, int, str or None
