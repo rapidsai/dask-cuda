@@ -94,6 +94,13 @@ def initialize(
     )
     dask.config.set({"distributed.comm.ucx": ucx_config})
 
+    # partd is used by default for disk-based shuffling, but unsupported by
+    # cuDF/Dask-cuDF. Therefore, we set task-based shuffling instead.
+    try:
+        dask.config.get("shuffle")
+    except KeyError:
+        dask.config.set({"shuffle": "tasks"})
+
 
 @click.command()
 @click.option(
