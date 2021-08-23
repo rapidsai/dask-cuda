@@ -5,6 +5,7 @@ import subprocess
 
 import pytest
 
+import dask.config
 from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import loop  # noqa: F401
@@ -159,6 +160,30 @@ def test_rmm_logging(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.LoggingResourceAdaptor
+
+
+@pytest.mark.parametrize("shuffle", ["tasks", "disk"])
+def test_shuffle_config(loop, shuffle):  # noqa: F811
+    if shuffle != "tasks":
+        os.environ["DASK_SHUFFLE"] = "disk"
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                shuffle_config = client.run(dask.config.get, "shuffle")
+                for v in shuffle_config.values():
+                    assert v == shuffle
+    if shuffle != "tasks":
+        del os.environ["DASK_SHUFFLE"]
 
 
 def test_dashboard_address(loop):  # noqa: F811

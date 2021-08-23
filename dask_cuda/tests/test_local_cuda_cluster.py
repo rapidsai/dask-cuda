@@ -1,7 +1,9 @@
+import contextlib
 import os
 
 import pytest
 
+import dask.config
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test
@@ -206,6 +208,21 @@ async def test_cluster_worker():
             await new_worker
             await client.wait_for_workers(2)
             await new_worker.close()
+
+
+@pytest.mark.parametrize("shuffle", ["tasks", "disk"])
+@pytest.mark.asyncio
+async def test_shuffle_config(shuffle):
+    ctx = contextlib.nullcontext()
+    if shuffle != "tasks":
+        ctx = dask.config.set({"shuffle": shuffle})
+
+    with ctx:
+        async with LocalCUDACluster(asynchronous=True) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
+                shuffle_config = await client.run(dask.config.get, "shuffle")
+                for v in shuffle_config.values():
+                    assert v == shuffle
 
 
 @gen_test(timeout=20)
