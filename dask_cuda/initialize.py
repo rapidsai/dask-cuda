@@ -96,10 +96,7 @@ def initialize(
 
     # partd is used by default for disk-based shuffling, but unsupported by
     # cuDF/Dask-cuDF. Therefore, we set task-based shuffling instead.
-    try:
-        dask.config.get("shuffle")
-    except KeyError:
-        dask.config.set({"shuffle": "tasks"})
+    dask.config.update_defaults({"shuffle": "tasks"})
 
 
 @click.command()
