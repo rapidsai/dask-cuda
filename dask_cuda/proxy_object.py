@@ -5,7 +5,7 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Type
 
 import pandas
 
@@ -36,16 +36,17 @@ from .is_device_object import is_device_object
 _FIXED_ATTRS = ["name", "__len__"]
 
 
-def asproxy(obj, serializers=None, subclass=None) -> "ProxyObject":
+def asproxy(
+    obj: object, serializers: Iterable[str] = None, subclass: Type["ProxyObject"] = None
+) -> "ProxyObject":
     """Wrap `obj` in a ProxyObject object if it isn't already.
 
     Parameters
     ----------
     obj: object
         Object to wrap in a ProxyObject object.
-    serializers: list(str), optional
-        List of serializers to use to serialize `obj`. If None,
-        no serialization is done.
+    serializers: Iterable[str], optional
+        Serializers to use to serialize `obj`. If None, no serialization is done.
     subclass: class, optional
         Specify a subclass of ProxyObject to create instead of ProxyObject.
         `subclass` must be pickable.
@@ -183,9 +184,8 @@ class ProxyObject:
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
-    serializers: list(str), optional
-        List of serializers to use to serialize `obj`. If None, `obj`
-        isn't serialized.
+    serializers: Iterable[str], optional
+        Serializers to use to serialize `obj`. If None, no serialization is done.
     explicit_proxy: bool
         Mark the proxy object as "explicit", which means that the user allows it
         as input argument to dask tasks even in compatibility-mode.
@@ -199,7 +199,7 @@ class ProxyObject:
         typename: str,
         is_cuda_object: bool,
         subclass: bytes,
-        serializers: Optional[List[str]],
+        serializers: Optional[Iterable[str]],
         explicit_proxy: bool,
     ):
         self._obj_pxy = {
