@@ -309,7 +309,7 @@ class LocalCUDACluster(LocalCluster):
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
-        self.set_ucx_net_devices = enable_infiniband
+        self.set_ucx_net_devices = enable_infiniband and ucx_net_devices is not None
         self.host = kwargs.get("host", None)
 
         initialize(
