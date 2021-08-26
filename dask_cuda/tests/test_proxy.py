@@ -23,20 +23,20 @@ from dask_cuda.proxify_device_objects import proxify_device_objects
 def test_proxy_object(serializers):
     """Check "transparency" of the proxy object"""
 
-    org = list(range(10))
+    org = bytearray(range(10))
     pxy = proxy_object.asproxy(org, serializers=serializers)
 
     assert len(org) == len(pxy)
     assert org[0] == pxy[0]
     assert 1 in pxy
-    assert -1 not in pxy
+    assert 10 not in pxy
     assert str(org) == str(pxy)
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
-    assert "list at " in repr(pxy)
+    assert "bytearray at " in repr(pxy)
 
     pxy._obj_pxy_serialize(serializers=("dask", "pickle"))
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
-    assert "list (serialized=('dask', 'pickle'))" in repr(pxy)
+    assert "bytearray (serialized=('dask', 'pickle'))" in repr(pxy)
 
     assert org == proxy_object.unproxy(pxy)
     assert org == proxy_object.unproxy(org)
@@ -46,7 +46,7 @@ def test_proxy_object(serializers):
 @pytest.mark.parametrize("serializers_second", [None, ("dask", "pickle")])
 def test_double_proxy_object(serializers_first, serializers_second):
     """Check asproxy() when creating a proxy object of a proxy object"""
-    org = list(range(10))
+    org = bytearray(range(10))
     pxy1 = proxy_object.asproxy(org, serializers=serializers_first)
     assert pxy1._obj_pxy["serializers"] == serializers_first
     pxy2 = proxy_object.asproxy(pxy1, serializers=serializers_second)

@@ -5,7 +5,7 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Optional, Set, Type
+from typing import Any, Dict, Iterable, Optional, Set, Type
 
 import pandas
 
@@ -55,9 +55,10 @@ def asproxy(
     -------
     The ProxyObject proxying `obj`
     """
-
     if hasattr(obj, "_obj_pxy"):  # Already a proxy object
         ret = obj
+    elif isinstance(obj, (list, set, tuple, dict)):
+        raise ValueError(f"Cannot wrap a collection ({type(obj)}) in a proxy object")
     else:
         fixed_attr = {}
         for attr in _FIXED_ATTRS:
