@@ -192,7 +192,7 @@ def proxify_device_object_proxy_object(
 ):
     # We deserialize CUDA-serialized objects since it is very cheap and
     # makes it easy to administrate device memory usage
-    if obj._obj_pxy_is_serialized() and "cuda" in obj._obj_pxy["serializers"]:
+    if obj._obj_pxy_is_serialized() and obj._obj_pxy["serializer"] != "cuda":
         obj._obj_pxy_deserialize()
 
     # Check if `obj` is already known

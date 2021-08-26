@@ -13,6 +13,7 @@ import dask
 import dask.array.core
 import dask.dataframe.methods
 import dask.dataframe.utils
+import dask.utils
 import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
@@ -55,7 +56,7 @@ def asproxy(
     -------
     The ProxyObject proxying `obj`
     """
-    if hasattr(obj, "_obj_pxy"):  # Already a proxy object
+    if isinstance(obj, ProxyObject):  # Already a proxy object
         ret = obj
     elif isinstance(obj, (list, set, tuple, dict)):
         raise ValueError(f"Cannot wrap a collection ({type(obj)}) in a proxy object")
@@ -83,7 +84,7 @@ def asproxy(
             typename=dask.utils.typename(type(obj)),
             is_cuda_object=is_device_object(obj),
             subclass=subclass_serialized,
-            serializers=None,
+            serializer=None,
             explicit_proxy=False,
         )
     if serializers is not None:
@@ -185,7 +186,7 @@ class ProxyObject:
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
-    serializers: Iterable[str], optional
+    serializers: str, optional
         Serializers to use to serialize `obj`. If None, no serialization is done.
     explicit_proxy: bool
         Mark the proxy object as "explicit", which means that the user allows it
@@ -199,8 +200,8 @@ class ProxyObject:
         type_serialized: bytes,
         typename: str,
         is_cuda_object: bool,
-        subclass: bytes,
-        serializers: Optional[Iterable[str]],
+        subclass: Optional[bytes],
+        serializer: Optional[str],
         explicit_proxy: bool,
     ):
         self._obj_pxy = {
@@ -210,7 +211,7 @@ class ProxyObject:
             "typename": typename,
             "is_cuda_object": is_cuda_object,
             "subclass": subclass,
-            "serializers": serializers,
+            "serializer": serializer,
             "explicit_proxy": explicit_proxy,
         }
         self._obj_pxy_lock = threading.RLock()
@@ -243,7 +244,7 @@ class ProxyObject:
             "typename",
             "is_cuda_object",
             "subclass",
-            "serializers",
+            "serializer",
             "explicit_proxy",
         ]
         return OrderedDict([(a, self._obj_pxy[a]) for a in args])
@@ -263,7 +264,7 @@ class ProxyObject:
 
     def _obj_pxy_is_serialized(self):
         """Return whether the proxied object is serialized or not"""
-        return self._obj_pxy["serializers"] is not None
+        return self._obj_pxy["serializer"] is not None
 
     def _obj_pxy_serialize(self, serializers: Iterable[str]):
         """Inplace serialization of the proxied object using the `serializers`
@@ -271,7 +272,7 @@ class ProxyObject:
         Parameters
         ----------
         serializers: Iterable[str]
-            Tuple of serializers to use to serialize the proxied object.
+            Serializers to use to serialize the proxied object.
 
         Returns
         -------
@@ -282,20 +283,20 @@ class ProxyObject:
         """
         if not serializers:
             raise ValueError("Please specify a list of serializers")
-        serializers = tuple(serializers)
 
         with self._obj_pxy_lock:
             if self._obj_pxy_is_serialized():
-                if self._obj_pxy["serializers"] == serializers:
+                if self._obj_pxy["serializer"] in serializers:
                     return self._obj_pxy["obj"]  # Nothing to be done
                 else:
                     # The proxied object is serialized with other serializers
                     self._obj_pxy_deserialize()
 
-            self._obj_pxy["obj"] = distributed.protocol.serialize(
+            header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
                 self._obj_pxy["obj"], serializers, on_error="raise"
             )
-            self._obj_pxy["serializers"] = serializers
+            assert "is-collection" not in header  # Collections not allowed
+            self._obj_pxy["serializer"] = header["serializer"]
             hostfile = self._obj_pxy.get("hostfile", lambda: None)()
             if hostfile is not None:
                 external = self._obj_pxy.get("external", self)
@@ -323,7 +324,7 @@ class ProxyObject:
                 hostfile = self._obj_pxy.get("hostfile", lambda: None)()
                 # When not deserializing a CUDA-serialized proxied, we might have
                 # to evict because of the increased device memory usage.
-                if maybe_evict and "cuda" not in self._obj_pxy["serializers"]:
+                if maybe_evict and self._obj_pxy["serializer"] != "cuda":
                     if hostfile is not None:
                         # In order to avoid a potential deadlock, we skip the
                         # `maybe_evict()` call if another thread is also accessing
@@ -336,7 +337,7 @@ class ProxyObject:
 
                 header, frames = self._obj_pxy["obj"]
                 self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
-                self._obj_pxy["serializers"] = None
+                self._obj_pxy["serializer"] = None
                 if hostfile is not None:
                     external = self._obj_pxy.get("external", self)
                     hostfile.proxies_tally.unspill_proxy(external)
@@ -415,7 +416,7 @@ class ProxyObject:
             typename = self._obj_pxy["typename"]
             ret = f"<{dask.utils.typename(type(self))} at {hex(id(self))} of {typename}"
             if self._obj_pxy_is_serialized():
-                ret += f" (serialized={repr(self._obj_pxy['serializers'])})>"
+                ret += f" (serialized={repr(self._obj_pxy['serializer'])})>"
             else:
                 ret += f" at {hex(id(self._obj_pxy['obj']))}>"
             return ret
