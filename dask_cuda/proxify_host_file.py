@@ -1,3 +1,4 @@
+import abc
 import logging
 import threading
 import time
@@ -11,9 +12,11 @@ from typing import (
     Iterator,
     List,
     MutableMapping,
+    Optional,
     Set,
     Tuple,
 )
+from weakref import ReferenceType
 
 import dask
 from dask.sizeof import sizeof
@@ -22,105 +25,224 @@ from .proxify_device_objects import proxify_device_objects, unproxify_device_obj
 from .proxy_object import ProxyObject
 
 
-class UnspilledProxies:
-    """Class to track current unspilled proxies"""
+class Proxies(abc.ABC):
+    """Abstract base class to implement tracking of proxies
+
+    This class is not threadsafe
+    """
 
     def __init__(self):
-        self.dev_mem_usage = 0
+        self._proxy_id_to_proxy: Dict[int, ReferenceType[ProxyObject]] = {}
+        self._mem_usage = 0
+
+    @abc.abstractmethod
+    def mem_usage_add(self, proxy: ProxyObject) -> None:
+        pass
+
+    @abc.abstractmethod
+    def mem_usage_sub(self, proxy: ProxyObject) -> None:
+        pass
+
+    def add(self, proxy: ProxyObject) -> None:
+        assert not self.contains_proxy_id(id(proxy))
+        self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
+        self.mem_usage_add(proxy)
+
+    def remove(self, proxy_id: int) -> None:
+        weak_proxy = self._proxy_id_to_proxy.pop(proxy_id)
+        if weak_proxy is not None:
+            proxy = weak_proxy()
+            assert proxy is not None
+            self.mem_usage_sub(proxy)
+
+    def __iter__(self) -> Iterator[ProxyObject]:
+        for p in self._proxy_id_to_proxy.values():
+            ret = p()
+            if ret is not None:
+                yield ret
+
+    def contains_proxy_id(self, proxy_id: int):
+        return proxy_id in self._proxy_id_to_proxy
+
+    def mem_usage(self) -> int:
+        return self._mem_usage
+
+
+class ProxiesOnHost(Proxies):
+    def mem_usage_add(self, proxy: ProxyObject):
+        self._mem_usage += sizeof(proxy)
+
+    def mem_usage_sub(self, proxy: ProxyObject):
+        self._mem_usage = sizeof(proxy)
+
+
+class ProxiesOnDevice(Proxies):
+    """Implement tracking of proxies on the GPU
+
+    This is a bit more complicated than ProxiesOnHost because we has to
+    handle that multiple proxy objects can refer to the same underlying
+    device memory object. Thus, we have to track aliasing and make sure
+    we don't count down the memory usage prematurely.
+    """
+
+    def __init__(self):
+        super().__init__()
         self.proxy_id_to_dev_mems: DefaultDict[int, Set[Hashable]] = defaultdict(set)
         self.dev_mem_to_proxy_ids: DefaultDict[Hashable, Set[int]] = defaultdict(set)
 
-    def add(self, proxy: ProxyObject):
+    def mem_usage_add(self, proxy: ProxyObject):
         proxy_id = id(proxy)
-        if proxy_id not in self.proxy_id_to_dev_mems:
-            for dev_mem in proxy._obj_pxy_get_device_memory_objects():
-                self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
-                ps = self.dev_mem_to_proxy_ids[dev_mem]
-                if len(ps) == 0:
-                    self.dev_mem_usage += sizeof(dev_mem)
-                ps.add(proxy_id)
+        for dev_mem in proxy._obj_pxy_get_device_memory_objects():
+            self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
+            ps = self.dev_mem_to_proxy_ids[dev_mem]
+            if len(ps) == 0:
+                self._mem_usage += sizeof(dev_mem)
+            ps.add(proxy_id)
 
-    def remove(self, proxy: ProxyObject):
+    def mem_usage_sub(self, proxy: ProxyObject):
         proxy_id = id(proxy)
-        if proxy_id in self.proxy_id_to_dev_mems:
-            for dev_mem in self.proxy_id_to_dev_mems.pop(proxy_id):
-                self.dev_mem_to_proxy_ids[dev_mem].remove(proxy_id)
-                if len(self.dev_mem_to_proxy_ids[dev_mem]) == 0:
-                    del self.dev_mem_to_proxy_ids[dev_mem]
-                    self.dev_mem_usage -= sizeof(dev_mem)
-
-    def __iter__(self):
-        return iter(self.proxy_id_to_dev_mems)
+        for dev_mem in self.proxy_id_to_dev_mems.pop(proxy_id):
+            self.dev_mem_to_proxy_ids[dev_mem].remove(proxy_id)
+            if len(self.dev_mem_to_proxy_ids[dev_mem]) == 0:
+                del self.dev_mem_to_proxy_ids[dev_mem]
+                self._mem_usage -= sizeof(dev_mem)
 
 
-class ProxiesTally:
+class ProxyManager:
     """
-    This class together with UnspilledProxies implements the tracking of current
-    objects in device memory and the total memory usage. It turns out having to
-    re-calculate device memory usage continuously is too expensive.
+    This class together with Proxies, ProxiesOnHost, and ProxiesOnDevice
+    implements the tracking of all known proxies and their total host/device
+    memory usage. It turns out having to re-calculate memory usage continuously
+    is too expensive.
 
-    We have to track four events:
-    - When adding a new key to the host file
-    - When removing a key from the host file
-    - When a proxy in the host file is deserialized
-    - When a proxy in the host file is serialized
+    The idea is to have the ProxifyHostFile or the proxies themself update
+    their location (device or host). The manager then tallies the total memory usage.
 
-    However, it gets a bit complicated because:
-    - The value of a key in the host file can contain many proxy objects and a single
-      proxy object can be referred from many keys
-    - Multiple proxy objects can refer to the same underlying device memory object
-    - Proxy objects are not hashable thus we have to use the `id()` as key in
-      dictionaries
-
-    ProxiesTally and UnspilledProxies implements this by carefully maintaining
-    dictionaries that maps to/from keys, proxy objects, and device memory objects.
+    Notice, the manager only keeps weak references to the proxies.
     """
 
-    def __init__(self):
+    def __init__(self, device_memory_limit: int):
         self.lock = threading.RLock()
-        self.proxy_id_to_proxy: Dict[int, ProxyObject] = {}
-        self.key_to_proxy_ids: DefaultDict[Hashable, Set[int]] = defaultdict(set)
-        self.proxy_id_to_keys: DefaultDict[int, Set[Hashable]] = defaultdict(set)
-        self.unspilled_proxies = UnspilledProxies()
+        self._host = ProxiesOnHost()
+        self._dev = ProxiesOnDevice()
+        self._device_memory_limit = device_memory_limit
 
-    def add_key(self, key, proxies: List[ProxyObject]):
+    def __repr__(self) -> str:
+        return (
+            f"<ProxyManager dev_limit={self._device_memory_limit}"
+            f" host={self._host.mem_usage()} dev={self._dev.mem_usage()}>"
+        )
+
+    def pprint(self):
+        ret = f"{self}:\n"
+        for proxy in self._host:
+            ret += f"  host - {repr(proxy)}\n"
+        for proxy in self._dev:
+            ret += f"  dev  - {repr(proxy)}\n"
+        return ret[:-1]  # Strip last newline
+
+    @staticmethod
+    def serializer_target(serializer: Optional[str]) -> str:
+        if serializer in ("dask", "pickle"):
+            return "host"
+        else:
+            return "dev"
+
+    def contains(self, proxy_id: int):
         with self.lock:
-            for proxy in proxies:
-                proxy_id = id(proxy)
-                self.proxy_id_to_proxy[proxy_id] = proxy
-                self.key_to_proxy_ids[key].add(proxy_id)
-                self.proxy_id_to_keys[proxy_id].add(key)
-                if not proxy._obj_pxy_is_serialized():
-                    self.unspilled_proxies.add(proxy)
+            return self._host.contains_proxy_id(
+                proxy_id
+            ) or self._dev.contains_proxy_id(proxy_id)
 
-    def del_key(self, key):
+    def add(self, proxy: ProxyObject) -> None:
         with self.lock:
-            for proxy_id in self.key_to_proxy_ids.pop(key, ()):
-                self.proxy_id_to_keys[proxy_id].remove(key)
-                if len(self.proxy_id_to_keys[proxy_id]) == 0:
-                    del self.proxy_id_to_keys[proxy_id]
-                    self.unspilled_proxies.remove(self.proxy_id_to_proxy.pop(proxy_id))
+            if not self.contains(id(proxy)):
+                if self.serializer_target(proxy._obj_pxy["serializer"]) == "host":
+                    self._host.add(proxy)
+                else:
+                    self._dev.add(proxy)
 
-    def spill_proxy(self, proxy: ProxyObject):
+    def remove(self, proxy_id: int) -> None:
         with self.lock:
-            self.unspilled_proxies.remove(proxy)
+            if not self.contains(proxy_id):
+                self._host.remove(proxy_id)
+                self._dev.remove(proxy_id)
 
-    def unspill_proxy(self, proxy: ProxyObject):
+    def move(
+        self,
+        proxy: ProxyObject,
+        from_serializer: Optional[str],
+        to_serializer: Optional[str],
+    ) -> None:
         with self.lock:
-            self.unspilled_proxies.add(proxy)
+            src = self.serializer_target(from_serializer)
+            dst = self.serializer_target(to_serializer)
+            if src == "host" and dst == "dev":
+                self._host.remove(id(proxy))
+                self._dev.add(proxy)
+            elif src == "dev" and dst == "host":
+                self._host.add(proxy)
+                self._dev.remove(id(proxy))
 
-    def get_unspilled_proxies(self) -> Iterator[ProxyObject]:
+    def proxify(self, obj: object) -> object:
         with self.lock:
-            for proxy_id in self.unspilled_proxies:
-                ret = self.proxy_id_to_proxy[proxy_id]
-                assert not ret._obj_pxy_is_serialized()
-                yield ret
+            found_proxies: List[ProxyObject] = []
+            proxied_id_to_proxy: Dict[int, ProxyObject] = {}
+            ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
+            last_access = time.monotonic()
+            self_weakref = weakref.ref(self)
+            for p in found_proxies:
+                p._obj_pxy["manager"] = self_weakref
+                p._obj_pxy["last_access"] = last_access
+                p._obj_pxy["finalizer"] = weakref.finalize(p, self.remove, id(p))
+                self.add(p)
+            self.maybe_evict()
+            return ret
 
-    def get_proxied_id_to_proxy(self) -> Dict[int, ProxyObject]:
-        return {id(p._obj_pxy["obj"]): p for p in self.get_unspilled_proxies()}
+    def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
+        with self.lock:
+            # Notice, multiple proxy object can point to different non-overlapping
+            # parts of the same device buffer.
+            ret = defaultdict(list)
+            for proxy in self._dev:
+                for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
+                    ret[dev_buffer].append(proxy)
+            return ret
 
-    def get_dev_mem_usage(self) -> int:
-        return self.unspilled_proxies.dev_mem_usage
+    def get_dev_access_info(
+        self,
+    ) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
+        with self.lock:
+            total_dev_mem_usage = 0
+            dev_buf_access = []
+            for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
+                last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
+                size = sizeof(dev_buf)
+                dev_buf_access.append((last_access, size, proxies))
+                total_dev_mem_usage += size
+            assert total_dev_mem_usage == self._dev.mem_usage()
+            return total_dev_mem_usage, dev_buf_access
+
+    def evict(self, proxy: ProxyObject):
+        proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
+
+    def maybe_evict(self, extra_dev_mem=0):
+        if (  # Shortcut when not evicting
+            self._dev.mem_usage() + extra_dev_mem <= self._device_memory_limit
+        ):
+            return
+
+        with self.lock:
+            total_dev_mem_usage, dev_buf_access = self.get_dev_access_info()
+            total_dev_mem_usage += extra_dev_mem
+            if total_dev_mem_usage > self._device_memory_limit:
+                dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
+                for _, size, proxies in dev_buf_access:
+                    for p in proxies:
+                        self.evict(p)
+                    total_dev_mem_usage -= size
+                    if total_dev_mem_usage <= self._device_memory_limit:
+                        break
 
 
 class ProxifyHostFile(MutableMapping):
@@ -158,7 +280,7 @@ class ProxifyHostFile(MutableMapping):
         self.device_memory_limit = device_memory_limit
         self.store: Dict[Hashable, Any] = {}
         self.lock = threading.RLock()
-        self.proxies_tally = ProxiesTally()
+        self.manager = ProxyManager(device_memory_limit)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -191,122 +313,21 @@ class ProxifyHostFile(MutableMapping):
         )
         return None
 
-    def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
-        with self.lock:
-            # Notice, multiple proxy object can point to different non-overlapping
-            # parts of the same device buffer.
-            ret = defaultdict(list)
-            for proxy in self.proxies_tally.get_unspilled_proxies():
-                for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
-                    ret[dev_buffer].append(proxy)
-            return ret
-
-    def get_access_info(self) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
-        with self.lock:
-            total_dev_mem_usage = 0
-            dev_buf_access = []
-            for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
-                last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
-                size = sizeof(dev_buf)
-                dev_buf_access.append((last_access, size, proxies))
-                total_dev_mem_usage += size
-            return total_dev_mem_usage, dev_buf_access
-
-    def add_external(self, obj):
-        """Add an external object to the hostfile that count against the
-        device_memory_limit but isn't part of the store.
-
-        Normally, we use __setitem__ to store objects in the hostfile and make it
-        count against the device_memory_limit with the inherent consequence that
-        the objects are not freeable before subsequential calls to __delitem__.
-        This is a problem for long running tasks that want objects to count against
-        the device_memory_limit while freeing them ASAP without explicit calls to
-        __delitem__.
-
-        Developer Notes
-        ---------------
-        In order to avoid holding references to the found proxies in `obj`, we
-        wrap them in `weakref.proxy(p)` and adds them to the `proxies_tally`.
-        In order to remove them from the `proxies_tally` again, we attach a
-        finalize(p) on the wrapped proxies that calls del_external().
-        """
-
-        # Notice, since `self.store` isn't modified, no lock is needed
-        found_proxies: List[ProxyObject] = []
-        proxied_id_to_proxy = {}
-        # Notice, we are excluding found objects that are already proxies
-        ret = proxify_device_objects(
-            obj, proxied_id_to_proxy, found_proxies, excl_proxies=True
-        )
-        last_access = time.monotonic()
-        self_weakref = weakref.ref(self)
-        for p in found_proxies:
-            name = id(p)
-            finalize = weakref.finalize(p, self.del_external, name)
-            external = weakref.proxy(p)
-            p._obj_pxy["hostfile"] = self_weakref
-            p._obj_pxy["last_access"] = last_access
-            p._obj_pxy["external"] = external
-            p._obj_pxy["external_finalize"] = finalize
-            self.proxies_tally.add_key(name, [external])
-        self.maybe_evict()
-        return ret
-
-    def del_external(self, name):
-        self.proxies_tally.del_key(name)
-
     def __setitem__(self, key, value):
         with self.lock:
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
-
-            found_proxies: List[ProxyObject] = []
-            proxied_id_to_proxy = self.proxies_tally.get_proxied_id_to_proxy()
-            self.store[key] = proxify_device_objects(
-                value, proxied_id_to_proxy, found_proxies
-            )
-            last_access = time.monotonic()
-            self_weakref = weakref.ref(self)
-            for p in found_proxies:
-                p._obj_pxy["hostfile"] = self_weakref
-                p._obj_pxy["last_access"] = last_access
-                assert "external" not in p._obj_pxy
-
-            self.proxies_tally.add_key(key, found_proxies)
-            self.maybe_evict()
+            self.store[key] = self.manager.proxify(value)
 
     def __getitem__(self, key):
         with self.lock:
             ret = self.store[key]
         if self.compatibility_mode:
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
-            self.maybe_evict()
+            self.manager.maybe_evict()
         return ret
 
     def __delitem__(self, key):
         with self.lock:
             del self.store[key]
-            self.proxies_tally.del_key(key)
-
-    def evict(self, proxy: ProxyObject):
-        proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
-
-    def maybe_evict(self, extra_dev_mem=0):
-        if (  # Shortcut when not evicting
-            self.proxies_tally.get_dev_mem_usage() + extra_dev_mem
-            <= self.device_memory_limit
-        ):
-            return
-
-        with self.lock:
-            total_dev_mem_usage, dev_buf_access = self.get_access_info()
-            total_dev_mem_usage += extra_dev_mem
-            if total_dev_mem_usage > self.device_memory_limit:
-                dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
-                for _, size, proxies in dev_buf_access:
-                    for p in proxies:
-                        self.evict(p)
-                    total_dev_mem_usage -= size
-                    if total_dev_mem_usage <= self.device_memory_limit:
-                        break

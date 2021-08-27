@@ -5,6 +5,9 @@ import pickle
 import threading
 import time
 from collections import OrderedDict
+from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
+    suppress as nullcontext,
+)
 from typing import Any, Dict, Iterable, Optional, Set, Type
 
 import pandas
@@ -292,19 +295,23 @@ class ProxyObject:
                     # The proxied object is serialized with other serializers
                     self._obj_pxy_deserialize()
 
-            header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
-                self._obj_pxy["obj"], serializers, on_error="raise"
-            )
-            assert "is-collection" not in header  # Collections not allowed
-            self._obj_pxy["serializer"] = header["serializer"]
-            hostfile = self._obj_pxy.get("hostfile", lambda: None)()
-            if hostfile is not None:
-                external = self._obj_pxy.get("external", self)
-                hostfile.proxies_tally.spill_proxy(external)
+            # Lock manager (if any)
+            manager = self._obj_pxy.get("manager", lambda: None)()
+            with (nullcontext() if manager is None else manager.lock):
+                header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
+                    self._obj_pxy["obj"], serializers, on_error="raise"
+                )
+                assert "is-collection" not in header  # Collections not allowed
+                org_ser, new_ser = self._obj_pxy["serializer"], header["serializer"]
+                self._obj_pxy["serializer"] = new_ser
 
-            # Invalidate the (possible) cached "device_memory_objects"
-            self._obj_pxy_cache.pop("device_memory_objects", None)
-            return self._obj_pxy["obj"]
+                # Tell the manager (if any) that this proxy has change serializer
+                if manager:
+                    manager.move(self, from_serializer=org_ser, to_serializer=new_ser)
+
+                # Invalidate the (possible) cached "device_memory_objects"
+                self._obj_pxy_cache.pop("device_memory_objects", None)
+                return self._obj_pxy["obj"]
 
     def _obj_pxy_deserialize(self, maybe_evict: bool = True):
         """Inplace deserialization of the proxied object
@@ -321,26 +328,33 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy_is_serialized():
-                hostfile = self._obj_pxy.get("hostfile", lambda: None)()
+                manager = self._obj_pxy.get("manager", lambda: None)()
+                serializer = self._obj_pxy["serializer"]
+
                 # When not deserializing a CUDA-serialized proxied, we might have
                 # to evict because of the increased device memory usage.
-                if maybe_evict and self._obj_pxy["serializer"] != "cuda":
-                    if hostfile is not None:
-                        # In order to avoid a potential deadlock, we skip the
-                        # `maybe_evict()` call if another thread is also accessing
-                        # the hostfile.
-                        if hostfile.lock.acquire(blocking=False):
-                            try:
-                                hostfile.maybe_evict(self.__sizeof__())
-                            finally:
-                                hostfile.lock.release()
+                if manager and maybe_evict and serializer != "cuda":
+                    # In order to avoid a potential deadlock, we skip the
+                    # `maybe_evict()` call if another thread is also accessing
+                    # the hostfile.
+                    if manager.lock.acquire(blocking=False):
+                        try:
+                            manager.maybe_evict(self.__sizeof__())
+                        finally:
+                            manager.lock.release()
 
-                header, frames = self._obj_pxy["obj"]
-                self._obj_pxy["obj"] = distributed.protocol.deserialize(header, frames)
-                self._obj_pxy["serializer"] = None
-                if hostfile is not None:
-                    external = self._obj_pxy.get("external", self)
-                    hostfile.proxies_tally.unspill_proxy(external)
+                # Lock manager (if any)
+                with (nullcontext() if manager is None else manager.lock):
+                    header, frames = self._obj_pxy["obj"]
+                    self._obj_pxy["obj"] = distributed.protocol.deserialize(
+                        header, frames
+                    )
+                    self._obj_pxy["serializer"] = None
+                    # Tell the manager (if any) that this proxy has change serializer
+                    if manager:
+                        manager.move(
+                            self, from_serializer=serializer, to_serializer=None
+                        )
 
             self._obj_pxy["last_access"] = time.monotonic()
             return self._obj_pxy["obj"]
