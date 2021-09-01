@@ -264,3 +264,11 @@ def _register_cudf():
         return proxify(
             obj, proxied_id_to_proxy, found_proxies, subclass=FrameProxyObject
         )
+
+
+    try:
+        from dask.array.dispatch import percentile_lookup
+        from dask_cudf.backends import percentile_cudf
+        percentile_lookup.register(FrameProxyObject, percentile_cudf)
+    except ImportError:
+        pass
