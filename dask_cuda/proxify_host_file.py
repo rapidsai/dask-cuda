@@ -73,13 +73,13 @@ class ProxiesOnHost(Proxies):
         self._mem_usage += sizeof(proxy)
 
     def mem_usage_sub(self, proxy: ProxyObject):
-        self._mem_usage = sizeof(proxy)
+        self._mem_usage -= sizeof(proxy)
 
 
 class ProxiesOnDevice(Proxies):
     """Implement tracking of proxies on the GPU
 
-    This is a bit more complicated than ProxiesOnHost because we has to
+    This is a bit more complicated than ProxiesOnHost because we have to
     handle that multiple proxy objects can refer to the same underlying
     device memory object. Thus, we have to track aliasing and make sure
     we don't count down the memory usage prematurely.
