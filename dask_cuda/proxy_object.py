@@ -303,7 +303,7 @@ class ProxyObject:
                 org_ser, new_ser = self._obj_pxy["serializer"], header["serializer"]
                 self._obj_pxy["serializer"] = new_ser
 
-                # Tell the manager (if any) that this proxy has change serializer
+                # Tell the manager (if any) that this proxy has changed serializer
                 if manager:
                     manager.move(self, from_serializer=org_ser, to_serializer=new_ser)
 
@@ -317,7 +317,7 @@ class ProxyObject:
         Parameters
         ----------
         maybe_evict: bool
-            Before deserializing, call associated hostfile.maybe_evict()
+            Before deserializing, maybe evict managered proxy objects
 
         Returns
         -------
@@ -365,8 +365,7 @@ class ProxyObject:
         ret : boolean
             Is the proxied object a CUDA object?
         """
-        with self._obj_pxy_lock:
-            return self._obj_pxy["is_cuda_object"]
+        return self._obj_pxy["is_cuda_object"]
 
     @_obj_pxy_cache_wrapper("device_memory_objects")
     def _obj_pxy_get_device_memory_objects(self) -> Set:
