@@ -35,6 +35,9 @@ class Proxies(abc.ABC):
         self._proxy_id_to_proxy: Dict[int, ReferenceType[ProxyObject]] = {}
         self._mem_usage = 0
 
+    def __len__(self) -> int:
+        return len(self._proxy_id_to_proxy)
+
     @abc.abstractmethod
     def mem_usage_add(self, proxy: ProxyObject) -> None:
         pass
@@ -49,11 +52,11 @@ class Proxies(abc.ABC):
         self.mem_usage_add(proxy)
 
     def remove(self, proxy_id: int) -> None:
-        weak_proxy = self._proxy_id_to_proxy.pop(proxy_id)
-        if weak_proxy is not None:
-            proxy = weak_proxy()
-            assert proxy is not None
-            self.mem_usage_sub(proxy)
+        proxy = self._proxy_id_to_proxy.pop(proxy_id)()
+        assert proxy is not None
+        self.mem_usage_sub(proxy)
+        if len(self._proxy_id_to_proxy) == 0:
+            assert self._mem_usage == 0, self._mem_usage
 
     def __iter__(self) -> Iterator[ProxyObject]:
         for p in self._proxy_id_to_proxy.values():
@@ -92,6 +95,7 @@ class ProxiesOnDevice(Proxies):
 
     def mem_usage_add(self, proxy: ProxyObject):
         proxy_id = id(proxy)
+        assert proxy_id not in self.proxy_id_to_dev_mems
         for dev_mem in proxy._obj_pxy_get_device_memory_objects():
             self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
             ps = self.dev_mem_to_proxy_ids[dev_mem]
@@ -101,6 +105,7 @@ class ProxiesOnDevice(Proxies):
 
     def mem_usage_sub(self, proxy: ProxyObject):
         proxy_id = id(proxy)
+        assert proxy_id in self.proxy_id_to_dev_mems
         for dev_mem in self.proxy_id_to_dev_mems.pop(proxy_id):
             self.dev_mem_to_proxy_ids[dev_mem].remove(proxy_id)
             if len(self.dev_mem_to_proxy_ids[dev_mem]) == 0:
@@ -130,11 +135,18 @@ class ProxyManager:
     def __repr__(self) -> str:
         return (
             f"<ProxyManager dev_limit={self._device_memory_limit}"
-            f" host={self._host.mem_usage()} dev={self._dev.mem_usage()}>"
+            f" host={self._host.mem_usage()}({len(self._host)})"
+            f" dev={self._dev.mem_usage()}({len(self._dev)})>"
         )
 
-    def pprint(self):
-        ret = f"{self}:\n"
+    def __len__(self) -> int:
+        return len(self._host) + len(self._dev)
+
+    def pprint(self) -> str:
+        ret = f"{self}:"
+        if len(self) == 0:
+            return ret + " Empty"
+        ret += "\n"
         for proxy in self._host:
             ret += f"  host - {repr(proxy)}\n"
         for proxy in self._dev:
@@ -148,7 +160,7 @@ class ProxyManager:
         else:
             return "dev"
 
-    def contains(self, proxy_id: int):
+    def contains(self, proxy_id: int) -> bool:
         with self.lock:
             return self._host.contains_proxy_id(
                 proxy_id
@@ -164,9 +176,15 @@ class ProxyManager:
 
     def remove(self, proxy_id: int) -> None:
         with self.lock:
-            if not self.contains(proxy_id):
-                self._host.remove(proxy_id)
-                self._dev.remove(proxy_id)
+            # Find where the proxy is located and remove it
+            proxies = None
+            if self._host.contains_proxy_id(proxy_id):
+                proxies = self._host
+            if self._dev.contains_proxy_id(proxy_id):
+                assert proxies is None, "Proxy in multiple locations"
+                proxies = self._dev
+            assert proxies is not None, "Trying to remove unknown proxy"
+            proxies.remove(proxy_id)
 
     def move(
         self,
@@ -192,10 +210,11 @@ class ProxyManager:
             last_access = time.monotonic()
             self_weakref = weakref.ref(self)
             for p in found_proxies:
-                p._obj_pxy["manager"] = self_weakref
                 p._obj_pxy["last_access"] = last_access
-                p._obj_pxy["finalizer"] = weakref.finalize(p, self.remove, id(p))
-                self.add(p)
+                if not self.contains(id(p)):
+                    p._obj_pxy["manager"] = self_weakref
+                    p._obj_pxy["finalizer"] = weakref.finalize(p, self.remove, id(p))
+                    self.add(p)
             self.maybe_evict()
             return ret
 
@@ -223,10 +242,10 @@ class ProxyManager:
             assert total_dev_mem_usage == self._dev.mem_usage()
             return total_dev_mem_usage, dev_buf_access
 
-    def evict(self, proxy: ProxyObject):
+    def evict(self, proxy: ProxyObject) -> None:
         proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
 
-    def maybe_evict(self, extra_dev_mem=0):
+    def maybe_evict(self, extra_dev_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._dev.mem_usage() + extra_dev_mem <= self._device_memory_limit
         ):

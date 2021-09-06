@@ -195,23 +195,27 @@ def test_externals():
     assert not k2._obj_pxy_is_serialized()
     assert is_proxies_equal(dhf.manager._host, [k1])
     assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     k1[0]  # Trigger spilling of `k2`
     assert not k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
     assert is_proxies_equal(dhf.manager._host, [k2])
     assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     k2[0]  # Trigger spilling of `k1`
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
     assert is_proxies_equal(dhf.manager._host, [k1])
     assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     # Removing `k2` also removes it from the tally
     del k2
     assert is_proxies_equal(dhf.manager._host, [k1])
     assert is_proxies_equal(dhf.manager._dev, [])
+    assert dhf.manager._dev._mem_usage == 0
 
 
 def test_proxify_device_objects_of_cupy_array():
