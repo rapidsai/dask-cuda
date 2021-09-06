@@ -40,18 +40,20 @@ class Proxies(abc.ABC):
 
     @abc.abstractmethod
     def mem_usage_add(self, proxy: ProxyObject) -> None:
-        pass
+        """Given a new proxy, update `self._mem_usage`"""
 
     @abc.abstractmethod
     def mem_usage_sub(self, proxy: ProxyObject) -> None:
-        pass
+        """Removal of proxy, update `self._mem_usage`"""
 
     def add(self, proxy: ProxyObject) -> None:
+        """Add a proxy for tracking, calls `self.mem_usage_add`"""
         assert not self.contains_proxy_id(id(proxy))
         self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
         self.mem_usage_add(proxy)
 
     def remove(self, proxy_id: int) -> None:
+        """Remove proxy from tracking, calls `self.mem_usage_sub`"""
         proxy = self._proxy_id_to_proxy.pop(proxy_id)()
         assert proxy is not None
         self.mem_usage_sub(proxy)
@@ -64,7 +66,7 @@ class Proxies(abc.ABC):
             if ret is not None:
                 yield ret
 
-    def contains_proxy_id(self, proxy_id: int):
+    def contains_proxy_id(self, proxy_id: int) -> bool:
         return proxy_id in self._proxy_id_to_proxy
 
     def mem_usage(self) -> int:
@@ -72,6 +74,11 @@ class Proxies(abc.ABC):
 
 
 class ProxiesOnHost(Proxies):
+    """Implement tracking of proxies on the CPU
+
+    This uses dask.sizeof to update memory usage.
+    """
+
     def mem_usage_add(self, proxy: ProxyObject):
         self._mem_usage += sizeof(proxy)
 
