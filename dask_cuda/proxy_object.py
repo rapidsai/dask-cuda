@@ -374,9 +374,6 @@ class ProxyObject:
     def _obj_pxy_get_device_memory_objects(self) -> Set:
         """Return all device memory objects within the proxied object.
 
-        Calling this when the proxied object is serialized returns the
-        empty list.
-
         Returns
         -------
         ret : set
