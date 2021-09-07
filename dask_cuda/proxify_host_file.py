@@ -2,6 +2,7 @@ import abc
 import logging
 import threading
 import time
+import warnings
 import weakref
 from collections import defaultdict
 from typing import (
@@ -58,7 +59,13 @@ class Proxies(abc.ABC):
         assert proxy is not None
         self.mem_usage_sub(proxy)
         if len(self._proxy_id_to_proxy) == 0:
-            assert self._mem_usage == 0, self._mem_usage
+            if self._mem_usage != 0:
+                warnings.warn(
+                    "ProxyManager is empty but the tally of "
+                    f"{self} is {self._mem_usage} bytes. "
+                    "Resetting the tally."
+                )
+                self._mem_usage = 0
 
     def __iter__(self) -> Iterator[ProxyObject]:
         for p in self._proxy_id_to_proxy.values():
