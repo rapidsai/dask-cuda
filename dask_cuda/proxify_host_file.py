@@ -321,6 +321,7 @@ class ProxifyHostFile(MutableMapping):
     _spill_directory: Optional[str] = None
     _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
     _spill_to_disk_counter: int = 0
+    lock = threading.RLock()
 
     def __init__(
         self,
@@ -331,7 +332,6 @@ class ProxifyHostFile(MutableMapping):
         compatibility_mode: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
-        self.lock = threading.RLock()
         self.manager = ProxyManager(device_memory_limit, host_memory_limit)
         self.register_disk_spilling(local_directory)
         if compatibility_mode is None:
@@ -446,3 +446,33 @@ class ProxifyHostFile(MutableMapping):
             return merge_and_deserialize(header["disk-sub-header"], frames)
 
         register_serialization_family("disk", disk_dumps, disk_loads)
+
+    @classmethod
+    def serialize_proxy_to_disk_inplace(cls, proxy: ProxyObject):
+        """Serialize `proxy` to disk.
+
+        Avoid de-serializing if `proxy` is serialized using "dask" or
+        "pickle". In this case the already serialized data is written
+        directly to disk.
+
+        Parameters
+        ----------
+        proxy : ProxyObject
+            Proxy object to serialize using the "disk" serialize.
+        """
+        if not proxy._obj_pxy_is_serialized():
+            proxy._obj_pxy_serialize(serializers=("disk",))
+        else:
+            header, frames = proxy._obj_pxy["obj"]
+            if header["serializer"] in ("dask", "pickle"):
+                path = cls.gen_file_path()
+                with open(path, "wb") as f:
+                    f.write(pack_frames(frames))
+                proxy._obj_pxy["obj"] = (
+                    {"serializer": "disk", "path": path, "disk-sub-header": header},
+                    [],
+                )
+                proxy._obj_pxy["serializer"] = "disk"
+            elif header["serializer"] != "disk":
+                proxy._obj_pxy_deserialize()
+                proxy._obj_pxy_serialize(serializers=("disk",))

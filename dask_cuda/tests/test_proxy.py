@@ -302,6 +302,45 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
+@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10 ** 6)])
+def test_serializing_to_disk(obj):
+    """Check serializing to disk"""
+
+    if isinstance(obj, str):
+        backend = pytest.importorskip(obj)
+        obj = backend.arange(100)
+
+    # Serialize from device to disk
+    pxy = proxy_object.asproxy(obj)
+    ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
+    assert pxy._obj_pxy["serializer"] == "disk"
+    assert obj == proxy_object.unproxy(pxy)
+
+    # Serialize from host to disk
+    pxy = proxy_object.asproxy(obj, serializers=("pickle",))
+    ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
+    assert pxy._obj_pxy["serializer"] == "disk"
+    assert obj == proxy_object.unproxy(pxy)
+
+
+@pytest.mark.parametrize("size", [10, 10 ** 4])
+@pytest.mark.parametrize(
+    "serializers", [None, ["dask"], ["cuda", "dask"], ["pickle"], ["disk"]]
+)
+@pytest.mark.parametrize("backend", ["numpy", "cupy"])
+def test_serializing_array_to_disk(backend, serializers, size):
+    """Check serializing arrays to disk"""
+
+    np = pytest.importorskip(backend)
+    obj = np.arange(size)
+
+    # Serialize from host to disk
+    pxy = proxy_object.asproxy(obj, serializers=serializers)
+    ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
+    assert pxy._obj_pxy["serializer"] == "disk"
+    assert list(obj) == list(proxy_object.unproxy(pxy))
+
+
 class _PxyObjTest(proxy_object.ProxyObject):
     """
     A class that:
