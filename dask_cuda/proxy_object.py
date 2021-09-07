@@ -333,7 +333,7 @@ class ProxyObject:
                 # to evict because of the increased device memory usage.
                 if manager and maybe_evict and serializer != "cuda":
                     # In order to avoid a potential deadlock, we skip the
-                    # `maybe_evict()` call if another thread is also accessing
+                    # evict call if another thread is also accessing
                     # the hostfile.
                     if manager.lock.acquire(blocking=False):
                         try:
