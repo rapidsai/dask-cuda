@@ -53,10 +53,9 @@ class Proxies(abc.ABC):
         self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
         self.mem_usage_add(proxy)
 
-    def remove(self, proxy_id: int) -> None:
+    def remove(self, proxy: ProxyObject) -> None:
         """Remove proxy from tracking, calls `self.mem_usage_sub`"""
-        proxy = self._proxy_id_to_proxy.pop(proxy_id)()
-        assert proxy is not None
+        del self._proxy_id_to_proxy[id(proxy)]
         self.mem_usage_sub(proxy)
         if len(self._proxy_id_to_proxy) == 0:
             if self._mem_usage != 0:
@@ -188,17 +187,17 @@ class ProxyManager:
                 else:
                     self._dev.add(proxy)
 
-    def remove(self, proxy_id: int) -> None:
+    def remove(self, proxy: ProxyObject) -> None:
         with self.lock:
             # Find where the proxy is located and remove it
             proxies: Optional[Proxies] = None
-            if self._host.contains_proxy_id(proxy_id):
+            if self._host.contains_proxy_id(id(proxy)):
                 proxies = self._host
-            if self._dev.contains_proxy_id(proxy_id):
+            if self._dev.contains_proxy_id(id(proxy)):
                 assert proxies is None, "Proxy in multiple locations"
                 proxies = self._dev
             assert proxies is not None, "Trying to remove unknown proxy"
-            proxies.remove(proxy_id)
+            proxies.remove(proxy)
 
     def move(
         self,
@@ -210,11 +209,11 @@ class ProxyManager:
             src = self.serializer_target(from_serializer)
             dst = self.serializer_target(to_serializer)
             if src == "host" and dst == "dev":
-                self._host.remove(id(proxy))
+                self._host.remove(proxy)
                 self._dev.add(proxy)
             elif src == "dev" and dst == "host":
                 self._host.add(proxy)
-                self._dev.remove(id(proxy))
+                self._dev.remove(proxy)
 
     def proxify(self, obj: object) -> object:
         with self.lock:
@@ -225,9 +224,7 @@ class ProxyManager:
             for p in found_proxies:
                 p._obj_pxy["last_access"] = last_access
                 if not self.contains(id(p)):
-                    p._obj_pxy_register_manager(
-                        self, weakref.finalize(p, self.remove, id(p))
-                    )
+                    p._obj_pxy_register_manager(self)
                     self.add(p)
             self.maybe_evict()
             return ret

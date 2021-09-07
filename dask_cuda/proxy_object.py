@@ -4,7 +4,6 @@ import operator
 import pickle
 import threading
 import time
-import weakref
 from collections import OrderedDict
 from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
     suppress as nullcontext,
@@ -226,8 +225,10 @@ class ProxyObject:
         self._obj_pxy_cache: Dict[str, Any] = {}
 
     def __del__(self):
-        """In order to call `finalizer()` ASAP, we call it here"""
-        self._obj_pxy.get("finalizer", lambda: None)()
+        """We have to unregister us from the manager if any"""
+        manager: "ProxyManager" = self._obj_pxy.get("manager", None)
+        if manager is not None:
+            manager.remove(self)
 
     def _obj_pxy_get_init_args(self, include_obj=True) -> OrderedDict:
         """Return the attributes needed to initialize a ProxyObject
@@ -268,9 +269,7 @@ class ProxyObject:
         args["obj"] = self._obj_pxy["obj"]
         return type(self)(**args)
 
-    def _obj_pxy_register_manager(
-        self, manager: "ProxyManager", finalizer: weakref.finalize
-    ) -> None:
+    def _obj_pxy_register_manager(self, manager: "ProxyManager") -> None:
         """Register a manager
 
         The manager tallies the total memory usage of proxies and
@@ -283,13 +282,9 @@ class ProxyObject:
         ----------
         manager: ProxyManager
             The manager to manage this proxy object
-        finalizer: weakref.finalize
-            The finalizer that should unregister the proxy from the manager
         """
         assert "manager" not in self._obj_pxy
-        assert "finalizer" not in self._obj_pxy
         self._obj_pxy["manager"] = manager
-        self._obj_pxy["finalizer"] = finalizer
         self._obj_pxy_lock = manager.lock
 
     def _obj_pxy_is_serialized(self) -> bool:
