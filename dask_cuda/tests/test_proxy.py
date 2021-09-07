@@ -17,6 +17,9 @@ import dask_cudf
 import dask_cuda
 from dask_cuda import proxy_object
 from dask_cuda.proxify_device_objects import proxify_device_objects
+from dask_cuda.proxify_host_file import ProxifyHostFile
+
+ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])

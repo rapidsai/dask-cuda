@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 import warnings
 import weakref
 from collections import defaultdict
@@ -22,6 +23,13 @@ from weakref import ReferenceType
 
 import dask
 from dask.sizeof import sizeof
+from distributed.protocol.compression import decompress, maybe_compress
+from distributed.protocol.serialize import (
+    merge_and_deserialize,
+    register_serialization_family,
+    serialize_and_split,
+)
+from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
@@ -296,8 +304,11 @@ class ProxifyHostFile(MutableMapping):
     local_directory : str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
-        ``dask.temporary-directory`` in the local Dask configuration, using the current
-        working directory if this is not set.
+        ``dask.temporary-directory`` in the local Dask configuration, using the
+        current working directory if this is not set.
+        WARNING, this **cannot** change while running thus all serialization to
+        disk are using the same directory.
+
     compatibility_mode: bool or None, default None
         Enables compatibility-mode, which means that items are un-proxified before
         retrieval. This makes it possible to get some of the JIT-unspill benefits
@@ -306,6 +317,10 @@ class ProxifyHostFile(MutableMapping):
         `proxify_device_objects()`. If None, the "jit-unspill-compatibility-mode"
         config value are used, which defaults to False.
     """
+
+    _spill_directory: Optional[str] = None
+    _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
+    _spill_to_disk_counter: int = 0
 
     def __init__(
         self,
@@ -318,12 +333,7 @@ class ProxifyHostFile(MutableMapping):
         self.store: Dict[Hashable, Any] = {}
         self.lock = threading.RLock()
         self.manager = ProxyManager(device_memory_limit, host_memory_limit)
-        self.disk_path = os.path.join(
-            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
-            "dask-worker-space",
-            "jit-unspill-disk-storage",
-        )
-        os.makedirs(self.disk_path, exist_ok=True)
+        self.register_disk_spilling(local_directory)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -374,3 +384,65 @@ class ProxifyHostFile(MutableMapping):
     def __delitem__(self, key):
         with self.lock:
             del self.store[key]
+
+    @classmethod
+    def gen_file_path(cls) -> str:
+        """Generate an unique file path"""
+        with cls.lock:
+            cls._spill_to_disk_counter += 1
+            assert cls._spill_directory is not None
+            return os.path.join(
+                cls._spill_directory,
+                f"{cls._spill_to_disk_prefix}-{cls._spill_to_disk_counter}",
+            )
+
+    @classmethod
+    def register_disk_spilling(cls, local_directory: str = None):
+        """Register Dask serializers that writes to disk
+
+        Parameters
+        ----------
+        local_directory : str or None, default None
+            Path to the root directory to write serialized data.
+            Can be a string or None to fall back on the value of
+            ``dask.temporary-directory`` in the local Dask configuration,
+            using the current working directory if this is not set.
+            WARNING, this **cannot** change while running thus all
+            serialization to disk are using the same directory.
+        """
+        path = os.path.join(
+            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
+            "dask-worker-space",
+            "jit-unspill-disk-storage",
+        )
+        if cls._spill_directory is None:
+            cls._spill_directory = path
+        elif cls._spill_directory != path:
+            raise ValueError("Cannot change the JIT-Unspilling disk path")
+        os.makedirs(cls._spill_directory, exist_ok=True)
+
+        def disk_dumps(x):
+            header, frames = serialize_and_split(x, on_error="raise")
+            if frames:
+                compression, frames = zip(*map(maybe_compress, frames))
+            else:
+                compression = []
+            header["compression"] = compression
+            header["count"] = len(frames)
+
+            path = cls.gen_file_path()
+            with open(path, "wb") as f:
+                f.write(pack_frames(frames))
+            ret = {"serializer": "disk", "path": path, "disk-sub-header": header}, []
+            return ret
+
+        def disk_loads(header, frames):
+            assert frames == []
+            with open(header["path"], "rb") as f:
+                frames = unpack_frames(f.read())
+            os.remove(header["path"])
+            if "compression" in header["disk-sub-header"]:
+                frames = decompress(header["disk-sub-header"], frames)
+            return merge_and_deserialize(header["disk-sub-header"], frames)
+
+        register_serialization_family("disk", disk_dumps, disk_loads)
