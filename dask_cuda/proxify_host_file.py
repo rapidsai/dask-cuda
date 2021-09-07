@@ -166,12 +166,11 @@ class ProxyManager:
             ret += f"  dev  - {repr(proxy)}\n"
         return ret[:-1]  # Strip last newline
 
-    @staticmethod
-    def serializer_target(serializer: Optional[str]) -> str:
+    def get_proxies_by_serializer(self, serializer: Optional[str]) -> Proxies:
         if serializer in ("dask", "pickle"):
-            return "host"
+            return self._host
         else:
-            return "dev"
+            return self._dev
 
     def contains(self, proxy_id: int) -> bool:
         with self.lock:
@@ -182,10 +181,7 @@ class ProxyManager:
     def add(self, proxy: ProxyObject) -> None:
         with self.lock:
             if not self.contains(id(proxy)):
-                if self.serializer_target(proxy._obj_pxy["serializer"]) == "host":
-                    self._host.add(proxy)
-                else:
-                    self._dev.add(proxy)
+                self.get_proxies_by_serializer(proxy._obj_pxy["serializer"]).add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
         with self.lock:
@@ -206,14 +202,11 @@ class ProxyManager:
         to_serializer: Optional[str],
     ) -> None:
         with self.lock:
-            src = self.serializer_target(from_serializer)
-            dst = self.serializer_target(to_serializer)
-            if src == "host" and dst == "dev":
-                self._host.remove(proxy)
-                self._dev.add(proxy)
-            elif src == "dev" and dst == "host":
-                self._host.add(proxy)
-                self._dev.remove(proxy)
+            src = self.get_proxies_by_serializer(from_serializer)
+            dst = self.get_proxies_by_serializer(to_serializer)
+            if src is not dst:
+                src.remove(proxy)
+                dst.add(proxy)
 
     def proxify(self, obj: object) -> object:
         with self.lock:
