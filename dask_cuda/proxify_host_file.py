@@ -218,8 +218,9 @@ class ProxyManager:
             for p in found_proxies:
                 p._obj_pxy["last_access"] = last_access
                 if not self.contains(id(p)):
-                    p._obj_pxy_register_manager(self)
-                    p._obj_pxy["finalizer"] = weakref.finalize(p, self.remove, id(p))
+                    p._obj_pxy_register_manager(
+                        self, weakref.finalize(p, self.remove, id(p))
+                    )
                     self.add(p)
             self.maybe_evict()
             return ret
