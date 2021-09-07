@@ -267,6 +267,7 @@ def _register_cudf():
 
     try:
         from dask.array.dispatch import percentile_lookup
+
         from dask_cudf.backends import percentile_cudf
 
         percentile_lookup.register(FrameProxyObject, percentile_cudf)
