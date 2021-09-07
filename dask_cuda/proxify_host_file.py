@@ -97,12 +97,13 @@ class ProxiesOnDevice(Proxies):
 
     def __init__(self):
         super().__init__()
-        self.proxy_id_to_dev_mems: DefaultDict[int, Set[Hashable]] = defaultdict(set)
+        self.proxy_id_to_dev_mems: Dict[int, Set[Hashable]] = {}
         self.dev_mem_to_proxy_ids: DefaultDict[Hashable, Set[int]] = defaultdict(set)
 
     def mem_usage_add(self, proxy: ProxyObject):
         proxy_id = id(proxy)
         assert proxy_id not in self.proxy_id_to_dev_mems
+        self.proxy_id_to_dev_mems[proxy_id] = set()
         for dev_mem in proxy._obj_pxy_get_device_memory_objects():
             self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
             ps = self.dev_mem_to_proxy_ids[dev_mem]
@@ -112,7 +113,6 @@ class ProxiesOnDevice(Proxies):
 
     def mem_usage_sub(self, proxy: ProxyObject):
         proxy_id = id(proxy)
-        assert proxy_id in self.proxy_id_to_dev_mems
         for dev_mem in self.proxy_id_to_dev_mems.pop(proxy_id):
             self.dev_mem_to_proxy_ids[dev_mem].remove(proxy_id)
             if len(self.dev_mem_to_proxy_ids[dev_mem]) == 0:
