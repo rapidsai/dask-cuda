@@ -184,7 +184,7 @@ class ProxyManager:
     def remove(self, proxy_id: int) -> None:
         with self.lock:
             # Find where the proxy is located and remove it
-            proxies = None
+            proxies: Optional[Proxies] = None
             if self._host.contains_proxy_id(proxy_id):
                 proxies = self._host
             if self._dev.contains_proxy_id(proxy_id):
@@ -215,11 +215,10 @@ class ProxyManager:
             proxied_id_to_proxy: Dict[int, ProxyObject] = {}
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
-            self_weakref = weakref.ref(self)
             for p in found_proxies:
                 p._obj_pxy["last_access"] = last_access
                 if not self.contains(id(p)):
-                    p._obj_pxy["manager"] = self_weakref
+                    p._obj_pxy_register_manager(self)
                     p._obj_pxy["finalizer"] = weakref.finalize(p, self.remove, id(p))
                     self.add(p)
             self.maybe_evict()

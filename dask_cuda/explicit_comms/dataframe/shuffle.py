@@ -148,9 +148,7 @@ async def local_shuffle(
     eps = s["eps"]
 
     try:
-        manager = first(iter(in_parts[0].values()))._obj_pxy.get(
-            "manager", lambda: None
-        )()
+        manager = first(iter(in_parts[0].values()))._obj_pxy.get("manager", None)
     except AttributeError:
         manager = None
 

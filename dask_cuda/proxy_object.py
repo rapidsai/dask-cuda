@@ -8,7 +8,7 @@ from collections import OrderedDict
 from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
     suppress as nullcontext,
 )
-from typing import Any, Dict, Iterable, Optional, Set, Type
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type
 
 import pandas
 
@@ -34,6 +34,10 @@ except ImportError:
 
 from .get_device_memory_objects import get_device_memory_objects
 from .is_device_object import is_device_object
+
+if TYPE_CHECKING:
+    from .proxify_host_file import ProxyManager
+
 
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
@@ -224,7 +228,7 @@ class ProxyObject:
         """In order to call `finalizer()` ASAP, we call it here"""
         self._obj_pxy.get("finalizer", lambda: None)()
 
-    def _obj_pxy_get_init_args(self, include_obj=True):
+    def _obj_pxy_get_init_args(self, include_obj=True) -> OrderedDict:
         """Return the attributes needed to initialize a ProxyObject
 
         Notice, the returned dictionary is ordered as the __init__() arguments
@@ -263,7 +267,13 @@ class ProxyObject:
         args["obj"] = self._obj_pxy["obj"]
         return type(self)(**args)
 
-    def _obj_pxy_is_serialized(self):
+    def _obj_pxy_register_manager(self, manager: "ProxyManager") -> None:
+        with self._obj_pxy_lock:
+            assert "manager" not in self._obj_pxy
+            self._obj_pxy["manager"] = manager
+            self._obj_pxy_lock = manager.lock
+
+    def _obj_pxy_is_serialized(self) -> bool:
         """Return whether the proxied object is serialized or not"""
         return self._obj_pxy["serializer"] is not None
 
@@ -294,7 +304,7 @@ class ProxyObject:
                     self._obj_pxy_deserialize()
 
             # Lock manager (if any)
-            manager = self._obj_pxy.get("manager", lambda: None)()
+            manager = self._obj_pxy.get("manager", None)
             with (nullcontext() if manager is None else manager.lock):
                 header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
                     self._obj_pxy["obj"], serializers, on_error="raise"
@@ -326,7 +336,7 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy_is_serialized():
-                manager = self._obj_pxy.get("manager", lambda: None)()
+                manager = self._obj_pxy.get("manager", None)
                 serializer = self._obj_pxy["serializer"]
 
                 # When not deserializing a CUDA-serialized proxied, we might have
@@ -368,7 +378,7 @@ class ProxyObject:
         return self._obj_pxy["is_cuda_object"]
 
     @_obj_pxy_cache_wrapper("device_memory_objects")
-    def _obj_pxy_get_device_memory_objects(self) -> Set:
+    def _obj_pxy_get_device_memory_objects(self) -> set:
         """Return all device memory objects within the proxied object.
 
         Returns
