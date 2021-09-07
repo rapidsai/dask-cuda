@@ -246,9 +246,6 @@ class ProxyManager:
             assert total_dev_mem_usage == self._dev.mem_usage()
             return total_dev_mem_usage, dev_buf_access
 
-    def evict(self, proxy: ProxyObject) -> None:
-        proxy._obj_pxy_serialize(serializers=("dask", "pickle"))
-
     def maybe_evict(self, extra_dev_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._dev.mem_usage() + extra_dev_mem <= self._device_memory_limit
@@ -262,7 +259,8 @@ class ProxyManager:
                 dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
                 for _, size, proxies in dev_buf_access:
                     for p in proxies:
-                        self.evict(p)
+                        # Serialize to disk, which "dask" and "pickle" does
+                        p._obj_pxy_serialize(serializers=("dask", "pickle"))
                     total_dev_mem_usage -= size
                     if total_dev_mem_usage <= self._device_memory_limit:
                         break
