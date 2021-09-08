@@ -8,6 +8,7 @@ from pandas.testing import assert_frame_equal
 import dask
 import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
+from dask.sizeof import sizeof
 from distributed import Client
 from distributed.client import wait
 from distributed.worker import get_worker
@@ -16,7 +17,7 @@ import dask_cuda
 import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.proxy_object import ProxyObject
+from dask_cuda.proxy_object import ProxyObject, asproxy
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -41,19 +42,21 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     return ids1 == ids2
 
 
-def test_one_item_limit():
+def test_one_dev_item_limit():
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, host_memory_limit=1000)
 
     a1 = one_item_array() + 42
     a2 = one_item_array()
     dhf["k1"] = a1
     dhf["k2"] = a2
+    dhf.manager.validate()
 
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
     k2 = dhf["k2"]
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
@@ -61,6 +64,7 @@ def test_one_item_limit():
     k1_val = k1[0]
     assert k1_val == 42
     assert k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k2])
     assert is_proxies_equal(dhf.manager._dev, [k1])
 
@@ -68,6 +72,7 @@ def test_one_item_limit():
     dhf["k3"] = [k1, k2]
     assert not k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k2])
     assert is_proxies_equal(dhf.manager._dev, [k1])
 
@@ -77,6 +82,7 @@ def test_one_item_limit():
     assert k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
     assert not dhf["k4"]._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k2])
     assert is_proxies_equal(dhf.manager._dev, [k4])
 
@@ -85,15 +91,18 @@ def test_one_item_limit():
     assert k1._obj_pxy_is_serialized()
     assert dhf["k4"]._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
     assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
     del dhf["k2"]
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
@@ -101,8 +110,68 @@ def test_one_item_limit():
     # should empty the device
     dhf["k3"] = "non-cuda-object"
     del k2
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [])
+
+
+def test_one_item_host_limit():
+    host_memory_limit = sizeof(
+        asproxy(one_item_array(), serializers=("dask", "pickle"))
+    )
+    dhf = ProxifyHostFile(
+        device_memory_limit=one_item_nbytes, host_memory_limit=host_memory_limit
+    )
+
+    a1 = one_item_array() + 1
+    a2 = one_item_array() + 2
+    dhf["k1"] = a1
+    dhf["k2"] = a2
+    dhf.manager.validate()
+
+    # Check k1 is spilled because of the newer k2
+    k1 = dhf["k1"]
+    k2 = dhf["k2"]
+    assert k1._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [])
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+
+    # Check k1 is spilled to disk and k2 is spilled to host
+    dhf["k3"] = one_item_array() + 3
+    k3 = dhf["k3"]
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1])
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k3])
+
+    dhf.manager.validate()
+
+    # Accessing k2 spills k3 and unspill k2
+    k2_val = k2[0]
+    assert k2_val == 2
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1])
+    assert is_proxies_equal(dhf.manager._host, [k3])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+
+    # Adding a new array spill k3 to disk and k2 to host
+    dhf["k4"] = one_item_array() + 4
+    k4 = dhf["k4"]
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1, k3])
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k4])
+
+    # Accessing k1 unspills k1 directly to device and spills k4 to host
+    k1_val = k1[0]
+    assert k1_val == 1
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k2, k3])
+    assert is_proxies_equal(dhf.manager._host, [k4])
+    assert is_proxies_equal(dhf.manager._dev, [k1])
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])

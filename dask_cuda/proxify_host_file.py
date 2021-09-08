@@ -7,6 +7,9 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
+from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
+    suppress as nullcontext,
+)
 from typing import (
     Any,
     DefaultDict,
@@ -101,6 +104,10 @@ class ProxiesOnHost(Proxies):
         self._mem_usage -= sizeof(proxy)
 
 
+class ProxiesOnDisk(ProxiesOnHost):
+    """Implement tracking of proxies on the Disk"""
+
+
 class ProxiesOnDevice(Proxies):
     """Implement tracking of proxies on the GPU
 
@@ -150,6 +157,7 @@ class ProxyManager:
 
     def __init__(self, device_memory_limit: int, host_memory_limit: int):
         self.lock = threading.RLock()
+        self._disk = ProxiesOnDisk()
         self._host = ProxiesOnHost()
         self._dev = ProxiesOnDevice()
         self._device_memory_limit = device_memory_limit
@@ -159,18 +167,21 @@ class ProxyManager:
         return (
             f"<ProxyManager dev_limit={self._device_memory_limit}"
             f" host_limit={self._host_memory_limit}"
+            f" disk={self._disk.mem_usage()}({len(self._disk)})"
             f" host={self._host.mem_usage()}({len(self._host)})"
             f" dev={self._dev.mem_usage()}({len(self._dev)})>"
         )
 
     def __len__(self) -> int:
-        return len(self._host) + len(self._dev)
+        return len(self._disk) + len(self._host) + len(self._dev)
 
     def pprint(self) -> str:
         ret = f"{self}:"
         if len(self) == 0:
             return ret + " Empty"
         ret += "\n"
+        for proxy in self._disk:
+            ret += f"  disk - {repr(proxy)}\n"
         for proxy in self._host:
             ret += f"  host - {repr(proxy)}\n"
         for proxy in self._dev:
@@ -178,16 +189,20 @@ class ProxyManager:
         return ret[:-1]  # Strip last newline
 
     def get_proxies_by_serializer(self, serializer: Optional[str]) -> Proxies:
-        if serializer in ("dask", "pickle"):
+        if serializer == "disk":
+            return self._disk
+        elif serializer in ("dask", "pickle"):
             return self._host
         else:
             return self._dev
 
     def contains(self, proxy_id: int) -> bool:
         with self.lock:
-            return self._host.contains_proxy_id(
-                proxy_id
-            ) or self._dev.contains_proxy_id(proxy_id)
+            return (
+                self._disk.contains_proxy_id(proxy_id)
+                or self._host.contains_proxy_id(proxy_id)
+                or self._dev.contains_proxy_id(proxy_id)
+            )
 
     def add(self, proxy: ProxyObject) -> None:
         with self.lock:
@@ -198,6 +213,8 @@ class ProxyManager:
         with self.lock:
             # Find where the proxy is located and remove it
             proxies: Optional[Proxies] = None
+            if self._disk.contains_proxy_id(id(proxy)):
+                proxies = self._disk
             if self._host.contains_proxy_id(id(proxy)):
                 proxies = self._host
             if self._dev.contains_proxy_id(id(proxy)):
@@ -218,6 +235,23 @@ class ProxyManager:
             if src is not dst:
                 src.remove(proxy)
                 dst.add(proxy)
+
+    def validate(self):
+        with self.lock:
+            for serializer in ("disk", "dask", "cuda"):
+                proxies = self.get_proxies_by_serializer(serializer)
+                for p in proxies:
+                    assert (
+                        self.get_proxies_by_serializer(p._obj_pxy["serializer"])
+                        is proxies
+                    )
+                for i, p in proxies._proxy_id_to_proxy.items():
+                    assert p() is not None
+                    assert i == id(p())
+                for p in proxies:
+                    if p._obj_pxy_is_serialized():
+                        header, _ = p._obj_pxy["obj"]
+                        assert header["serializer"] == p._obj_pxy["serializer"]
 
     def proxify(self, obj: object) -> object:
         with self.lock:
@@ -257,7 +291,17 @@ class ProxyManager:
             assert total_dev_mem_usage == self._dev.mem_usage()
             return total_dev_mem_usage, dev_buf_access
 
-    def maybe_evict(self, extra_dev_mem=0) -> None:
+    def get_host_access_info(self) -> Tuple[int, List[Tuple[int, int, ProxyObject]]]:
+        with self.lock:
+            total_mem_usage = 0
+            access_info = []
+            for p in self._host:
+                size = sizeof(p)
+                access_info.append((p._obj_pxy.get("last_access", 0), size, p))
+                total_mem_usage += size
+            return total_mem_usage, access_info
+
+    def maybe_evict_from_device(self, extra_dev_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._dev.mem_usage() + extra_dev_mem <= self._device_memory_limit
         ):
@@ -275,6 +319,27 @@ class ProxyManager:
                     total_dev_mem_usage -= size
                     if total_dev_mem_usage <= self._device_memory_limit:
                         break
+
+    def maybe_evict_from_host(self, extra_host_mem=0):
+        if (  # Shortcut when not evicting
+            self._host.mem_usage() + extra_host_mem <= self._host_memory_limit
+        ):
+            return
+
+        with self.lock:
+            total_host_mem_usage, info = self.get_host_access_info()
+            total_host_mem_usage += extra_host_mem
+            if total_host_mem_usage > self._host_memory_limit:
+                info.sort(key=lambda x: (x[0], -x[1]))
+                for _, size, proxy in info:
+                    ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
+                    total_host_mem_usage -= size
+                    if total_host_mem_usage <= self._host_memory_limit:
+                        break
+
+    def maybe_evict(self, extra_dev_mem=0):
+        self.maybe_evict_from_device(extra_dev_mem)
+        self.maybe_evict_from_host()
 
 
 class ProxifyHostFile(MutableMapping):
@@ -460,19 +525,28 @@ class ProxifyHostFile(MutableMapping):
         proxy : ProxyObject
             Proxy object to serialize using the "disk" serialize.
         """
-        if not proxy._obj_pxy_is_serialized():
-            proxy._obj_pxy_serialize(serializers=("disk",))
-        else:
-            header, frames = proxy._obj_pxy["obj"]
-            if header["serializer"] in ("dask", "pickle"):
-                path = cls.gen_file_path()
-                with open(path, "wb") as f:
-                    f.write(pack_frames(frames))
-                proxy._obj_pxy["obj"] = (
-                    {"serializer": "disk", "path": path, "disk-sub-header": header},
-                    [],
-                )
-                proxy._obj_pxy["serializer"] = "disk"
-            elif header["serializer"] != "disk":
-                proxy._obj_pxy_deserialize()
+        # Lock manager (if any)
+        manager: "ProxyManager" = proxy._obj_pxy.get("manager", None)
+        with (nullcontext() if manager is None else manager.lock):
+            if not proxy._obj_pxy_is_serialized():
                 proxy._obj_pxy_serialize(serializers=("disk",))
+            else:
+                header, frames = proxy._obj_pxy["obj"]
+                if header["serializer"] in ("dask", "pickle"):
+                    path = cls.gen_file_path()
+                    with open(path, "wb") as f:
+                        f.write(pack_frames(frames))
+                    proxy._obj_pxy["obj"] = (
+                        {"serializer": "disk", "path": path, "disk-sub-header": header},
+                        [],
+                    )
+                    proxy._obj_pxy["serializer"] = "disk"
+                    if manager:
+                        manager.move(
+                            proxy,
+                            from_serializer=header["serializer"],
+                            to_serializer="disk",
+                        )
+                elif header["serializer"] != "disk":
+                    proxy._obj_pxy_deserialize()
+                    proxy._obj_pxy_serialize(serializers=("disk",))

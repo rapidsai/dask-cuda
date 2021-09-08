@@ -22,7 +22,7 @@ from dask_cuda.proxify_host_file import ProxifyHostFile
 ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
 
 
-@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle"), ("disk",)])
 def test_proxy_object(serializers):
     """Check "transparency" of the proxy object"""
 
@@ -63,8 +63,8 @@ def test_proxy_object_serializer():
         assert "Cannot wrap a collection" in str(excinfo.value)
 
 
-@pytest.mark.parametrize("serializers_first", [None, ("dask", "pickle")])
-@pytest.mark.parametrize("serializers_second", [None, ("dask", "pickle")])
+@pytest.mark.parametrize("serializers_first", [None, ("dask", "pickle"), ("disk",)])
+@pytest.mark.parametrize("serializers_second", [None, ("dask", "pickle"), ("disk",)])
 def test_double_proxy_object(serializers_first, serializers_second):
     """Check asproxy() when creating a proxy object of a proxy object"""
     serializer1 = serializers_first[0] if serializers_first else None
@@ -81,7 +81,7 @@ def test_double_proxy_object(serializers_first, serializers_second):
     assert pxy1 is pxy2
 
 
-@pytest.mark.parametrize("serializers", [None, ("dask", "pickle")])
+@pytest.mark.parametrize("serializers", [None, ("dask", "pickle"), ("disk",)])
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_proxy_object_of_array(serializers, backend):
     """Check that a proxied array behaves as a regular (numpy or cupy) array"""
@@ -203,7 +203,7 @@ def test_proxy_object_of_array(serializers, backend):
         assert all(expect == got)
 
 
-@pytest.mark.parametrize("serializers", [None, ["dask"]])
+@pytest.mark.parametrize("serializers", [None, ["dask"], ["disk"]])
 def test_proxy_object_of_cudf(serializers):
     """Check that a proxied cudf dataframe behaves as a regular dataframe"""
     cudf = pytest.importorskip("cudf")
@@ -212,7 +212,7 @@ def test_proxy_object_of_cudf(serializers):
     assert_frame_equal(df.to_pandas(), pxy.to_pandas())
 
 
-@pytest.mark.parametrize("proxy_serializers", [None, ["dask"], ["cuda"]])
+@pytest.mark.parametrize("proxy_serializers", [None, ["dask"], ["cuda"], ["disk"]])
 @pytest.mark.parametrize("dask_serializers", [["dask"], ["cuda"]])
 def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
     """Check that we can serialize a proxied cudf dataframe, which might
@@ -401,7 +401,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 
 @pytest.mark.parametrize("array_module", ["numpy", "cupy"])
 @pytest.mark.parametrize(
-    "serializers", [None, ("dask", "pickle"), ("cuda", "dask", "pickle")]
+    "serializers", [None, ("dask", "pickle"), ("cuda", "dask", "pickle"), ("disk",)]
 )
 def test_pickle_proxy_object(array_module, serializers):
     """Check pickle of the proxy object"""

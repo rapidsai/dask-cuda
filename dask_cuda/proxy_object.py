@@ -351,15 +351,16 @@ class ProxyObject:
         with self._obj_pxy_lock:
             if self._obj_pxy_is_serialized():
                 manager: "ProxyManager" = self._obj_pxy.get("manager", None)
-                serializer = self._obj_pxy["serializer"]
-
                 # Lock manager (if any)
                 with (nullcontext() if manager is None else manager.lock):
-
                     # When not deserializing a CUDA-serialized proxied, tell the
                     # manager that it might have to evict because of the increased
                     # device memory usage.
-                    if manager and maybe_evict and serializer != "cuda":
+                    if (
+                        manager
+                        and maybe_evict
+                        and self._obj_pxy["serializer"] != "cuda"
+                    ):
                         manager.maybe_evict(self.__sizeof__())
 
                     # Deserialize the proxied object
@@ -367,12 +368,15 @@ class ProxyObject:
                     self._obj_pxy["obj"] = distributed.protocol.deserialize(
                         header, frames
                     )
-                    self._obj_pxy["serializer"] = None
+
                     # Tell the manager (if any) that this proxy has changed serializer
                     if manager:
                         manager.move(
-                            self, from_serializer=serializer, to_serializer=None
+                            self,
+                            from_serializer=self._obj_pxy["serializer"],
+                            to_serializer=None,
                         )
+                    self._obj_pxy["serializer"] = None
 
             self._obj_pxy["last_access"] = time.monotonic()
             return self._obj_pxy["obj"]
