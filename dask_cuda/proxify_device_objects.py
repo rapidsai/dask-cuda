@@ -165,14 +165,9 @@ def unproxify_decorator(func):
 
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
-    if _id in proxied_id_to_proxy:
-        ret = proxied_id_to_proxy[_id]
-        finalize = ret._obj_pxy.get("external_finalize", None)
-        if finalize:
-            finalize()
-            proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
-    else:
-        proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
+    if _id not in proxied_id_to_proxy:
+        proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
+    ret = proxied_id_to_proxy[_id]
     found_proxies.append(ret)
     return ret
 
@@ -190,25 +185,12 @@ def proxify_device_object_default(
 def proxify_device_object_proxy_object(
     obj, proxied_id_to_proxy, found_proxies, excl_proxies
 ):
-    # We deserialize CUDA-serialized objects since it is very cheap and
-    # makes it easy to administrate device memory usage
-    if obj._obj_pxy_is_serialized() and "cuda" in obj._obj_pxy["serializers"]:
-        obj._obj_pxy_deserialize()
-
     # Check if `obj` is already known
     if not obj._obj_pxy_is_serialized():
         _id = id(obj._obj_pxy["obj"])
         if _id in proxied_id_to_proxy:
             obj = proxied_id_to_proxy[_id]
         else:
-            proxied_id_to_proxy[_id] = obj
-
-    finalize = obj._obj_pxy.get("external_finalize", None)
-    if finalize:
-        finalize()
-        obj = obj._obj_pxy_copy()
-        if not obj._obj_pxy_is_serialized():
-            _id = id(obj._obj_pxy["obj"])
             proxied_id_to_proxy[_id] = obj
 
     if not excl_proxies:

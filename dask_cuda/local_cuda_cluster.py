@@ -273,9 +273,7 @@ class LocalCUDACluster(LocalCluster):
                     {
                         "device_memory_limit": self.device_memory_limit,
                         "memory_limit": self.host_memory_limit,
-                        "local_directory": local_directory
-                        or dask.config.get("temporary-directory")
-                        or os.getcwd(),
+                        "local_directory": local_directory,
                         "log_spilling": log_spilling,
                     },
                 )

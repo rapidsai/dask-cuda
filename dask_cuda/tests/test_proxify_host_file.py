@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import numpy as np
 import pandas
 import pytest
@@ -12,9 +14,9 @@ from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
-import dask_cuda.proxy_object
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
+from dask_cuda.proxy_object import ProxyObject
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -27,53 +29,80 @@ dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
 dask_cuda.proxify_device_objects.ignore_types = ()
 
 
+def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
+    """Check that two collections of proxies contains the same proxies (unordered)
+
+    In order to avoid deserializing proxy objects when comparing them,
+    this funcntion compares object IDs.
+    """
+
+    ids1 = sorted([id(p) for p in p1])
+    ids2 = sorted([id(p) for p in p2])
+    return ids1 == ids2
+
+
 def test_one_item_limit():
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
-    dhf["k1"] = one_item_array() + 42
-    dhf["k2"] = one_item_array()
+
+    a1 = one_item_array() + 42
+    a2 = one_item_array()
+    dhf["k1"] = a1
+    dhf["k2"] = a2
 
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
     k2 = dhf["k2"]
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
 
     # Accessing k1 spills k2 and unspill k1
     k1_val = k1[0]
     assert k1_val == 42
     assert k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k1])
 
     # Duplicate arrays changes nothing
     dhf["k3"] = [k1, k2]
     assert not k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k1])
 
     # Adding a new array spills k1 and k2
     dhf["k4"] = one_item_array()
+    k4 = dhf["k4"]
     assert k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
     assert not dhf["k4"]._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k1, k2])
+    assert is_proxies_equal(dhf.manager._dev, [k4])
 
     # Accessing k2 spills k1 and k4
     k2[0]
     assert k1._obj_pxy_is_serialized()
     assert dhf["k4"]._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
-    p1 = list(dhf.proxies_tally.get_unspilled_proxies())
-    assert len(p1) == 1
+    assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
+    assert is_proxies_equal(dhf.manager._host, [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
     del dhf["k2"]
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
-    p2 = list(dhf.proxies_tally.get_unspilled_proxies())
-    assert len(p2) == 1
-    assert p1[0] is p2[0]
+    assert is_proxies_equal(dhf.manager._host, [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
 
-    # Overwriting "k3" with a non-cuda object, should be noticed
+    # Overwriting "k3" with a non-cuda object and deleting `k2`
+    # should empty the device
     dhf["k3"] = "non-cuda-object"
-    assert dhf.proxies_tally.get_dev_mem_usage() == 0
+    del k2
+    assert is_proxies_equal(dhf.manager._host, [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev, [])
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
@@ -87,7 +116,7 @@ def test_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert "FrameProxyObject" in str(type(x))
-            assert x._obj_pxy["serializers"] == ("dask", "pickle")
+            assert x._obj_pxy["serializer"] == "dask"
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -144,59 +173,49 @@ def test_cudf_get_device_memory_objects():
 
 
 def test_externals():
+    """Test adding objects directly to the manager
+
+    Add an object directly to the manager makes it count against the
+    device_memory_limit but isn't part of the store.
+
+    Normally, we use __setitem__ to store objects in the hostfile and make it
+    count against the device_memory_limit with the inherent consequence that
+    the objects are not freeable before subsequential calls to __delitem__.
+    This is a problem for long running tasks that want objects to count against
+    the device_memory_limit while freeing them ASAP without explicit calls to
+    __delitem__.
+    """
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
-    k2 = dhf.add_external(one_item_array())
+    k2 = dhf.manager.proxify(one_item_array())
     # `k2` isn't part of the store but still triggers spilling of `k1`
     assert len(dhf) == 1
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
+
     k1[0]  # Trigger spilling of `k2`
     assert not k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
+
     k2[0]  # Trigger spilling of `k1`
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert dhf.manager._dev._mem_usage == one_item_nbytes
+
     # Removing `k2` also removes it from the tally
     del k2
-    assert dhf.proxies_tally.get_dev_mem_usage() == 0
-    assert len(list(dhf.proxies_tally.get_unspilled_proxies())) == 0
-
-
-def test_externals_setitem():
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
-    k1 = dhf.add_external(one_item_array())
-    assert type(k1) is dask_cuda.proxy_object.ProxyObject
-    assert len(dhf) == 0
-    assert "external" in k1._obj_pxy
-    assert "external_finalize" in k1._obj_pxy
-    dhf["k1"] = k1
-    k1 = dhf["k1"]
-    assert type(k1) is dask_cuda.proxy_object.ProxyObject
-    assert len(dhf) == 1
-    assert "external" not in k1._obj_pxy
-    assert "external_finalize" not in k1._obj_pxy
-
-    k1 = dhf.add_external(one_item_array())
-    k1._obj_pxy_serialize(serializers=("dask", "pickle"))
-    dhf["k1"] = k1
-    k1 = dhf["k1"]
-    assert type(k1) is dask_cuda.proxy_object.ProxyObject
-    assert len(dhf) == 1
-    assert "external" not in k1._obj_pxy
-    assert "external_finalize" not in k1._obj_pxy
-
-    dhf["k1"] = one_item_array()
-    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
-    k1 = dhf.add_external(k1)
-    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
-    k1 = dhf.add_external(dhf["k1"])
-    assert len(dhf.proxies_tally.proxy_id_to_proxy) == 1
-    assert dhf.proxies_tally.get_dev_mem_usage() == one_item_nbytes
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [])
+    assert dhf.manager._dev._mem_usage == 0
 
 
 def test_proxify_device_objects_of_cupy_array():
