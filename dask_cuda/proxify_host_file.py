@@ -44,7 +44,7 @@ class Proxies(abc.ABC):
         """Given a new proxy, update `self._mem_usage`"""
 
     @abc.abstractmethod
-    def mem_usage_sub(self, proxy: ProxyObject) -> None:
+    def mem_usage_remove(self, proxy: ProxyObject) -> None:
         """Removal of proxy, update `self._mem_usage`"""
 
     def add(self, proxy: ProxyObject) -> None:
@@ -54,9 +54,9 @@ class Proxies(abc.ABC):
         self.mem_usage_add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
-        """Remove proxy from tracking, calls `self.mem_usage_sub`"""
+        """Remove proxy from tracking, calls `self.mem_usage_remove`"""
         del self._proxy_id_to_proxy[id(proxy)]
-        self.mem_usage_sub(proxy)
+        self.mem_usage_remove(proxy)
         if len(self._proxy_id_to_proxy) == 0:
             if self._mem_usage != 0:
                 warnings.warn(
@@ -88,7 +88,7 @@ class ProxiesOnHost(Proxies):
     def mem_usage_add(self, proxy: ProxyObject):
         self._mem_usage += sizeof(proxy)
 
-    def mem_usage_sub(self, proxy: ProxyObject):
+    def mem_usage_remove(self, proxy: ProxyObject):
         self._mem_usage -= sizeof(proxy)
 
 
@@ -117,7 +117,7 @@ class ProxiesOnDevice(Proxies):
                 self._mem_usage += sizeof(dev_mem)
             ps.add(proxy_id)
 
-    def mem_usage_sub(self, proxy: ProxyObject):
+    def mem_usage_remove(self, proxy: ProxyObject):
         proxy_id = id(proxy)
         for dev_mem in self.proxy_id_to_dev_mems.pop(proxy_id):
             self.dev_mem_to_proxy_ids[dev_mem].remove(proxy_id)
