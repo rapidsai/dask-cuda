@@ -320,7 +320,7 @@ class ProxyManager:
                     if total_dev_mem_usage <= self._device_memory_limit:
                         break
 
-    def maybe_evict_from_host(self, extra_host_mem=0):
+    def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._host.mem_usage() + extra_host_mem <= self._host_memory_limit
         ):
@@ -337,7 +337,16 @@ class ProxyManager:
                     if total_host_mem_usage <= self._host_memory_limit:
                         break
 
-    def maybe_evict(self, extra_dev_mem=0):
+    def force_evict_from_host(self) -> int:
+        with self.lock:
+            _, info = self.get_host_access_info()
+            info.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxy in info:
+                ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
+                return size
+            return 0
+
+    def maybe_evict(self, extra_dev_mem=0) -> None:
         self.maybe_evict_from_device(extra_dev_mem)
         self.maybe_evict_from_host()
 
@@ -425,11 +434,15 @@ class ProxifyHostFile(MutableMapping):
     @property
     def fast(self):
         """Dask use this to trigger CPU-to-Disk spilling"""
-        self.logger.warning(
-            "JIT-Unspill doesn't support spilling to "
-            "Disk, see <https://github.com/rapidsai/dask-cuda/issues/657>"
-        )
-        return None
+        if len(self.manager._host) == 0:
+            return False  # We have nothing in host memory to spill
+
+        class EvictDummy:
+            @staticmethod
+            def evict():
+                return None, None, self.manager.force_evict_from_host()
+
+        return EvictDummy()
 
     def __setitem__(self, key, value):
         with self.lock:
