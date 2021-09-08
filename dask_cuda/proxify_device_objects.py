@@ -166,9 +166,8 @@ def unproxify_decorator(func):
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
     if _id not in proxied_id_to_proxy:
-        proxied_id_to_proxy[_id] = ret = asproxy(obj, subclass=subclass)
-    else:
-        ret = proxied_id_to_proxy[_id]
+        proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
+    ret = proxied_id_to_proxy[_id]
     found_proxies.append(ret)
     return ret
 

@@ -450,7 +450,7 @@ class ProxyObject:
             return ret
 
     @property  # type: ignore  # mypy doesn't support decorated property
-    @_obj_pxy_cache_wrapper("type_serialized")  #
+    @_obj_pxy_cache_wrapper("type_serialized")
     def __class__(self):
         return pickle.loads(self._obj_pxy["type_serialized"])
 

@@ -133,7 +133,7 @@ class ProxyManager:
     memory usage. It turns out having to re-calculate memory usage continuously
     is too expensive.
 
-    The idea is to have the ProxifyHostFile or the proxies themself update
+    The idea is to have the ProxifyHostFile or the proxies themselves update
     their location (device or host). The manager then tallies the total memory usage.
 
     Notice, the manager only keeps weak references to the proxies.
