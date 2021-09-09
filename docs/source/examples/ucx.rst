@@ -69,7 +69,6 @@ To start a cluster with all supported transports and an RMM pool:
     > --enable-nvlink \
     > --enable-infiniband \
     > --enable-rdmacm \
-    > --net-devices="auto" \
     > --rmm-pool-size="1GB"
 
 .. note::
