@@ -27,30 +27,30 @@ In addition to installations of UCX and UCX-Py on your system, several options m
 Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
 However, some will affect related libraries, such as RMM:
 
-- ``ucx.cuda_copy: true`` -- **required.**
+- ``distributed.comm.ucx.cuda_copy: true`` -- **required.**
 
   Adds ``cuda_copy`` to ``UCX_TLS``, enabling CUDA transfers over UCX.
 
-- ``ucx.tcp: true`` -- **required.**
+- ``distributed.comm.ucx.tcp: true`` -- **required.**
 
   Adds ``tcp`` to ``UCX_TLS``, enabling TCP transfers over UCX; this is required for very small transfers which are inefficient for NVLink and InfiniBand.
 
-- ``ucx.nvlink: true`` -- **required for NVLink.**
+- ``distributed.comm.ucx.nvlink: true`` -- **required for NVLink.**
 
   Adds ``cuda_ipc`` to ``UCX_TLS``, enabling NVLink transfers over UCX; affects intra-node communication only.
 
-- ``ucx.infiniband: true`` -- **required for InfiniBand.**
+- ``distributed.comm.ucx.infiniband: true`` -- **required for InfiniBand.**
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 
   For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-max-rndv-rails>`_ and `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
 
-- ``ucx.rdmacm: true`` -- **recommended for InfiniBand.**
+- ``distributed.comm.ucx.rdmacm: true`` -- **recommended for InfiniBand.**
 
   Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
   This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
 
-- ``ucx.net-devices: <str>`` -- **recommended for UCX 1.9 and older.**
+- ``distributed.comm.ucx.net-devices: <str>`` -- **recommended for UCX 1.9 and older.**
 
   Explicitly sets ``UCX_NET_DEVICES`` instead of defaulting to ``"all"``, which can result in suboptimal performance.
   If using InfiniBand, set to ``"auto"`` to automatically detect the InfiniBand interface closest to each GPU on UCX 1.9 and below.
@@ -65,14 +65,14 @@ However, some will affect related libraries, such as RMM:
 
 
 
-- ``rmm.pool-size: <str|int>`` -- **recommended.**
+- ``distributed.rmm.pool-size: <str|int>`` -- **recommended.**
 
   Allocates an RMM pool of the specified size for the process; size can be provided with an integer number of bytes or in human readable format, e.g. ``"4GB"``.
   It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
 
 .. note::
     These options can be used with mainline Dask.distributed.
-    However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces. 
+    However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces.
     See `Dask-CUDA -- Motivation <index.html#motivation>`_ for more details on the benefits of using Dask-CUDA.
 
 Usage
