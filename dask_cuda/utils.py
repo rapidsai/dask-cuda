@@ -166,6 +166,24 @@ def get_gpu_count_mig(return_uuids=False):
     return len(uuids)
 
 
+def has_cuda_context():
+    """Check whether the current process already has a CUDA context created.
+
+    Returns
+    -------
+    ``False`` if current process has no CUDA context created, otherwise returns the
+    index of the device for which there's a CUDA context.
+    """
+    pynvml.nvmlInit()
+    for index in range(get_gpu_count()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+        running_processes = pynvml.nvmlDeviceGetComputeRunningProcesses_v2(handle)
+        for proc in running_processes:
+            if os.getpid() == proc.pid:
+                return index
+    return False
+
+
 def get_cpu_affinity(device_index=None):
     """Get a list containing the CPU indices to which a GPU is directly connected.
     Use either the device index or the specified device identifier UUID.
