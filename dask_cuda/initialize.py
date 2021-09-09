@@ -24,7 +24,7 @@ def _create_cuda_context():
                 f"{os.getpid()}. This is often the result of a CUDA-enabled library "
                 "calling a CUDA runtime function before Dask-CUDA can spawn worker "
                 "processes. Please make sure any such function calls don't happen at "
-                "happen at import time or in the global scope of a program."
+                "import time or in the global scope of a program."
             )
 
         numba.cuda.current_context()
