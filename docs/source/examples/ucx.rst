@@ -22,10 +22,12 @@ To connect a client to a cluster with all supported transports and an RMM pool:
         enable_nvlink=True,
         enable_infiniband=True,
         enable_rdmacm=True,
-        ucx_net_devices="auto",
         rmm_pool_size="1GB"
     )
     client = Client(cluster)
+
+.. note::
+    For UCX 1.9 (deprecated) and older, it's necessary to pass ``ucx_net_devices="auto"`` to ``LocalCUDACluster``. UCX 1.11 and above is capable of selecting InfiniBand devices automatically.
 
 dask-cuda-worker
 ----------------
@@ -46,12 +48,13 @@ To start a Dask scheduler using UCX with all supported transports and an gigabyt
     > DASK_DISTRIBUTED__COMM__UCX__NVLINK=True \
     > DASK_DISTRIBUTED__COMM__UCX__INFINIBAND=True \
     > DASK_DISTRIBUTED__COMM__UCX__RDMACM=True \
-    > DASK_DISTRIBUTED__COMM__UCX__NET_DEVICES=mlx5_0:1 \
     > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
     > dask-scheduler --protocol ucx --interface ib0
 
-Note the specification of ``"mlx5_0:1"`` as our UCX net device; because the scheduler does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly.
 We communicate to the scheduler that we will be using UCX with the ``--protocol`` option, and that we will be using InfiniBand with the ``--interface`` option.
+
+.. note::
+    For UCX 1.9 (deprecated) and older it's also necessary to set ``DASK_DISTRIBUTED__COMM__UCX__NET_DEVICES=mlx5_0:1``, where ``"mlx5_0:1"`` is our UCX net device; because the scheduler does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly. UCX 1.11 and above is capable of selecting InfiniBand devices automatically.
 
 Workers
 ^^^^^^^
@@ -69,6 +72,9 @@ To start a cluster with all supported transports and an RMM pool:
     > --net-devices="auto" \
     > --rmm-pool-size="1GB"
 
+.. note::
+    For UCX 1.9 (deprecated) and older it's also necessary to set ``--net-devices="auto"``. UCX 1.11 and above is capable of selecting InfiniBand devices automatically.
+
 Client
 ^^^^^^
 
@@ -85,8 +91,8 @@ To connect a client to the cluster we have made:
         enable_nvlink=True,
         enable_infiniband=True,
         enable_rdmacm=True,
-        net_devices="mlx5_0:1",
     )
     client = Client("ucx://<scheduler_address>:8786")
 
-Note again the specification of ``"mlx5_0:1"`` as our UCX net device, due to the fact that the client does not support automatic detection of InfiniBand interfaces.
+.. note::
+    For UCX 1.9 (deprecated) and older it's also necessary to set ``net_devices="mlx5_0:1"``, where ``"mlx5_0:1"`` is our UCX net device; because the client does not rely upon Dask-CUDA, it cannot automatically detect InfiniBand interfaces, so we must specify one explicitly. UCX 1.11 and above is capable of selecting InfiniBand devices automatically.
