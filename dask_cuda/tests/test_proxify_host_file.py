@@ -1,7 +1,6 @@
 from typing import Iterable
 
 import numpy as np
-import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
@@ -340,21 +339,18 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert all(res)  # Only proxy objects
 
 
-def test_spill_to_disk():
-    """
-    Test Dask triggering CPU-to-Disk spilling,
-    which we do not support at the moment
-    """
+def test_worker_force_spill_to_disk():
+    """ Test Dask triggering CPU-to-Disk spilling """
+    cudf = pytest.importorskip("cudf")
 
     with dask.config.set({"distributed.worker.memory.terminate": 0}):
         with dask_cuda.LocalCUDACluster(
-            n_workers=1, memory_limit=100, jit_unspill=True
+            n_workers=1, device_memory_limit="1MB", jit_unspill=True
         ) as cluster:
             with Client(cluster) as client:
-                ddf = dask.dataframe.from_pandas(
-                    pandas.DataFrame({"key": np.arange(1000)}), npartitions=1
-                )
-                ddf = ddf.persist()
+                # Create a df that are spilled to host memory immediately
+                df = cudf.DataFrame({"key": np.arange(10 ** 8)})
+                ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 wait(ddf)
 
                 def f():
@@ -362,12 +358,20 @@ def test_spill_to_disk():
                     w = get_worker()
 
                     async def y():
+                        # Set a host memory limit that triggers spilling to disk
+                        w.memory_pause_fraction = False
+                        memory = w.monitor.proc.memory_info().rss
+                        w.memory_limit = memory - 10 ** 8
+                        w.memory_target_fraction = 1
                         await w.memory_monitor()
-                        w.memory_limit = 10 ** 6
+                        # Check that host memory are freed
+                        assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
+                        w.memory_limit = memory * 10  # Un-limit
 
                     w.loop.add_callback(y)
 
                 wait(client.submit(f))
-                assert "JIT-Unspill doesn't support spilling to Disk" in str(
+                # Check that the worker doesn't complain about unmanaged memory
+                assert "Unmanaged memory use is high" not in str(
                     client.get_worker_logs()
                 )
