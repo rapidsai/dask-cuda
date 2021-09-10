@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 
 def _create_cuda_context():
     try:
+        # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
+        # context directly from the UCX module, thus avoiding a similar warning there.
         distributed.comm.ucx.init_once()
+
         cuda_visible_device = int(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
