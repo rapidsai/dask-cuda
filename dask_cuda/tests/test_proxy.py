@@ -219,7 +219,6 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
     be serialized already.
     """
     cudf = pytest.importorskip("cudf")
-
     df = cudf.DataFrame({"a": range(10)})
     pxy = proxy_object.asproxy(df, serializers=proxy_serializers)
     header, frames = serialize(pxy, serializers=dask_serializers, on_error="raise")
@@ -394,6 +393,34 @@ def test_communicating_proxy_objects(protocol, send_serializers):
                 df._obj_pxy["assert_on_deserializing"] = False
             else:
                 df._obj_pxy["assert_on_deserializing"] = True
+            df = client.scatter(df)
+            client.submit(task, df).result()
+            client.shutdown()  # Avoids a UCX shutdown error
+
+
+@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("shared_fs", [True, False])
+def test_communicating_disk_objects(protocol, shared_fs):
+    """Testing disk serialization of cuDF dataframe when communicating"""
+    cudf = pytest.importorskip("cudf")
+    ProxifyHostFile._spill_shared_filesystem = shared_fs
+
+    def task(x):
+        # Check that the subclass survives the trip from client to worker
+        assert isinstance(x, _PxyObjTest)
+        serializer_used = x._obj_pxy["serializer"]
+        if shared_fs:
+            assert serializer_used == "disk"
+        else:
+            assert serializer_used == "dask"
+
+    with dask_cuda.LocalCUDACluster(
+        n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
+    ) as cluster:
+        with Client(cluster) as client:
+            df = cudf.DataFrame({"a": range(10)})
+            df = proxy_object.asproxy(df, serializers=("disk",), subclass=_PxyObjTest)
+            df._obj_pxy["assert_on_deserializing"] = False
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error

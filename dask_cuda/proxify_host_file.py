@@ -375,24 +375,29 @@ class ProxifyHostFile(MutableMapping):
         Number of bytes of CUDA device memory used before spilling to host.
     host_memory_limit: int
         Number of bytes of host memory used before spilling to disk.
-    local_directory : str or None, default None
+    local_directory: str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
         ``dask.temporary-directory`` in the local Dask configuration, using the
         current working directory if this is not set.
         WARNING, this **cannot** change while running thus all serialization to
         disk are using the same directory.
-
+    shared_filesystem: bool or None, default None
+        Whether to `local_directory` above is shared between all workers or not.
+        If ``None``, the "jit-unspill-shared-fs" config value are used, which
+        defaults to False.
+        Notice, a shared filesystem must support the `os.link()` operation.
     compatibility_mode: bool or None, default None
         Enables compatibility-mode, which means that items are un-proxified before
         retrieval. This makes it possible to get some of the JIT-unspill benefits
         without having to be ProxyObject compatible. In order to still allow specific
         ProxyObjects, set the `mark_as_explicit_proxies=True` when proxifying with
-        `proxify_device_objects()`. If None, the "jit-unspill-compatibility-mode"
+        `proxify_device_objects()`. If ``None``, the "jit-unspill-compatibility-mode"
         config value are used, which defaults to False.
     """
 
     _spill_directory: Optional[str] = None
+    _spill_shared_filesystem: bool
     _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
     _spill_to_disk_counter: int = 0
     lock = threading.RLock()
@@ -403,11 +408,12 @@ class ProxifyHostFile(MutableMapping):
         device_memory_limit: int,
         host_memory_limit: int,
         local_directory: str = None,
+        shared_filesystem: bool = None,
         compatibility_mode: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, host_memory_limit)
-        self.register_disk_spilling(local_directory)
+        self.register_disk_spilling(local_directory, shared_filesystem)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -475,7 +481,9 @@ class ProxifyHostFile(MutableMapping):
             )
 
     @classmethod
-    def register_disk_spilling(cls, local_directory: str = None):
+    def register_disk_spilling(
+        cls, local_directory: str = None, shared_filesystem: bool = None
+    ):
         """Register Dask serializers that writes to disk
 
         Parameters
@@ -487,6 +495,10 @@ class ProxifyHostFile(MutableMapping):
             using the current working directory if this is not set.
             WARNING, this **cannot** change while running thus all
             serialization to disk are using the same directory.
+        shared_filesystem: bool or None, default None
+            Whether to `local_directory` above is shared between all workers or not.
+            If ``None``, the "jit-unspill-shared-fs" config value are used, which
+            defaults to False.
         """
         path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
@@ -498,6 +510,13 @@ class ProxifyHostFile(MutableMapping):
         elif cls._spill_directory != path:
             raise ValueError("Cannot change the JIT-Unspilling disk path")
         os.makedirs(cls._spill_directory, exist_ok=True)
+
+        if shared_filesystem is None:
+            cls._spill_shared_filesystem = dask.config.get(
+                "jit-unspill-shared-fs", default=False
+            )
+        else:
+            cls._spill_shared_filesystem = shared_filesystem
 
         def disk_dumps(x):
             header, frames = serialize_and_split(x, on_error="raise")
@@ -511,8 +530,15 @@ class ProxifyHostFile(MutableMapping):
             path = cls.gen_file_path()
             with open(path, "wb") as f:
                 f.write(pack_frames(frames))
-            ret = {"serializer": "disk", "path": path, "disk-sub-header": header}, []
-            return ret
+            return (
+                {
+                    "serializer": "disk",
+                    "path": path,
+                    "shared-filesystem": cls._spill_shared_filesystem,
+                    "disk-sub-header": header,
+                },
+                [],
+            )
 
         def disk_loads(header, frames):
             assert frames == []
@@ -550,7 +576,12 @@ class ProxifyHostFile(MutableMapping):
                     with open(path, "wb") as f:
                         f.write(pack_frames(frames))
                     proxy._obj_pxy["obj"] = (
-                        {"serializer": "disk", "path": path, "disk-sub-header": header},
+                        {
+                            "serializer": "disk",
+                            "path": path,
+                            "shared-filesystem": cls._spill_shared_filesystem,
+                            "disk-sub-header": header,
+                        },
                         [],
                     )
                     proxy._obj_pxy["serializer"] = "disk"

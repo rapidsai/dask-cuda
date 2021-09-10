@@ -1,9 +1,11 @@
 import copy
 import functools
 import operator
+import os
 import pickle
 import threading
 import time
+import uuid
 from collections import OrderedDict
 from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
     suppress as nullcontext,
@@ -20,6 +22,8 @@ import dask.utils
 import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
+from distributed.protocol.compression import decompress
+from distributed.protocol.utils import unpack_frames
 from distributed.worker import dumps_function, loads_function
 
 try:
@@ -229,6 +233,10 @@ class ProxyObject:
         manager: "ProxyManager" = self._obj_pxy.get("manager", None)
         if manager is not None:
             manager.remove(self)
+
+        if self._obj_pxy["serializer"] == "disk":
+            header, _ = self._obj_pxy["obj"]
+            os.remove(header["path"])
 
     def _obj_pxy_get_init_args(self, include_obj=True) -> OrderedDict:
         """Return the attributes needed to initialize a ProxyObject
@@ -699,27 +707,63 @@ def obj_pxy_is_device_object(obj: ProxyObject):
     return obj._obj_pxy_is_cuda_object()
 
 
+def handle_serialize_of_disk(obj: ProxyObject):
+    """Handle serialization of an already disk serialized proxy
+
+    On a shared filesystem, we do not have to deserialize instead we
+    make a hard link of the file.
+
+    On a non-shared filesystem, we deserialize the proxy to host memory.
+    """
+
+    header, frames = obj._obj_pxy["obj"]
+    if header["shared-filesystem"]:
+        old_path = header["path"]
+        new_path = f"{old_path}-linked-{uuid.uuid4()}"
+        os.link(old_path, new_path)
+        header = copy.copy(header)
+        header["path"] = new_path
+    else:
+        # When not on a shared filesystem, we deserialize to host memory
+        assert frames == []
+        with open(header["path"], "rb") as f:
+            frames = unpack_frames(f.read())
+        os.remove(header["path"])
+        if "compression" in header["disk-sub-header"]:
+            frames = decompress(header["disk-sub-header"], frames)
+        header = header["disk-sub-header"]
+        obj._obj_pxy["serializer"] = header["serializer"]
+    return header, frames
+
+
 @distributed.protocol.dask_serialize.register(ProxyObject)
 def obj_pxy_dask_serialize(obj: ProxyObject):
+    """The dask serialization of ProxyObject used by Dask when communicating using TCP
+
+    As serializers, it uses "dask" or "pickle", which means that proxied CUDA objects
+    are spilled to main memory before communicated. Unless `obj` is serialized to disk
+    on a shared filesystem then no deserialization is needed.
     """
-    The generic serialization of ProxyObject used by Dask when communicating
-    ProxyObject. As serializers, it uses "dask" or "pickle", which means
-    that proxied CUDA objects are spilled to main memory before communicated.
-    """
-    header, frames = obj._obj_pxy_serialize(serializers=("dask", "pickle"))
+    if obj._obj_pxy["serializer"] == "disk":
+        header, frames = handle_serialize_of_disk(obj)
+    else:
+        header, frames = obj._obj_pxy_serialize(serializers=("dask", "pickle"))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
     return {"proxied-header": header, "obj-pxy-meta": meta}, frames
 
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
 def obj_pxy_cuda_serialize(obj: ProxyObject):
+    """ The CUDA serialization of ProxyObject used by Dask when communicating using UCX
+
+    As serializers, it uses "cuda", which means that proxied CUDA objects are _not_
+    spilled to main memory before communicated. However, we still have to disk
+    serialized proxied like in `obj_pxy_dask_serialize()`
     """
-    The CUDA serialization of ProxyObject used by Dask when communicating using UCX
-    or another CUDA friendly communication library. As serializers, it uses "cuda",
-    which means that proxied CUDA objects are _not_ spilled to main memory.
-    """
-    if obj._obj_pxy_is_serialized():  # Already serialized
+    if obj._obj_pxy["serializer"] in ("dask", "pickle"):
         header, frames = obj._obj_pxy["obj"]
+    elif obj._obj_pxy["serializer"] == "disk":
+        header, frames = handle_serialize_of_disk(obj)
     else:
         # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
