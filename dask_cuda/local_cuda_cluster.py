@@ -77,6 +77,12 @@ class LocalCUDACluster(LocalCluster):
         ``"path/to/files"``) or ``None`` to fall back on the value of
         ``dask.temporary-directory`` in the local Dask configuration, using the current
         working directory if this is not set.
+    shared_filesystem: bool or None, default None
+        Whether the `local_directory` above is shared between all workers or not.
+        If ``None``, the "jit-unspill-shared-fs" config value are used, which
+        defaults to True. Notice, in all other cases this option defaults to False,
+        but on a local cluster it defaults to True -- we assume all workers use the
+        same filesystem.
     protocol : str or None, default None
         Protocol to use for communication. Can be a string (like ``"tcp"`` or
         ``"ucx"``), or ``None`` to automatically choose the correct protocol.
@@ -180,6 +186,7 @@ class LocalCUDACluster(LocalCluster):
         device_memory_limit=0.8,
         data=None,
         local_directory=None,
+        shared_filesystem=None,
         protocol=None,
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
@@ -260,6 +267,10 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
+        if shared_filesystem is None:
+            # Notice, we assume a shared filesystem
+            shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
+
         data = kwargs.pop("data", None)
         if data is None:
             if self.jit_unspill:
@@ -269,6 +280,7 @@ class LocalCUDACluster(LocalCluster):
                         "device_memory_limit": self.device_memory_limit,
                         "host_memory_limit": self.host_memory_limit,
                         "local_directory": local_directory,
+                        "shared_filesystem": shared_filesystem,
                     },
                 )
             else:

@@ -66,6 +66,7 @@ class CUDAWorker(Server):
         dashboard=True,
         dashboard_address=":0",
         local_directory=None,
+        shared_filesystem=None,
         scheduler_file=None,
         interface=None,
         preload=[],
@@ -199,6 +200,9 @@ class CUDAWorker(Server):
                     "device_memory_limit": parse_device_memory_limit(
                         device_memory_limit, device_index=i
                     ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                    "shared_filesystem": shared_filesystem,
                 },
             )
         else:

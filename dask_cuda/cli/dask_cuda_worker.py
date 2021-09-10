@@ -143,6 +143,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     working directory if this is not set.""",
 )
 @click.option(
+    "--shared-filesystem",
+    default=None,
+    type=bool,
+    help="""Whether the `local_directory` above is shared between all workers or not.
+    If ``None``, the "jit-unspill-shared-fs" config value are used, which
+    defaults to False.
+    Notice, a shared filesystem must support the `os.link()` operation.""",
+)
+@click.option(
     "--scheduler-file",
     type=str,
     default="",
@@ -274,6 +283,7 @@ def main(
     dashboard,
     dashboard_address,
     local_directory,
+    shared_filesystem,
     scheduler_file,
     interface,
     preload,
@@ -323,6 +333,7 @@ def main(
         dashboard,
         dashboard_address,
         local_directory,
+        shared_filesystem,
         scheduler_file,
         interface,
         preload,

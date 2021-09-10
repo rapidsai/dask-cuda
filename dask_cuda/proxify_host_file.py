@@ -383,7 +383,7 @@ class ProxifyHostFile(MutableMapping):
         WARNING, this **cannot** change while running thus all serialization to
         disk are using the same directory.
     shared_filesystem: bool or None, default None
-        Whether to `local_directory` above is shared between all workers or not.
+        Whether the `local_directory` above is shared between all workers or not.
         If ``None``, the "jit-unspill-shared-fs" config value are used, which
         defaults to False.
         Notice, a shared filesystem must support the `os.link()` operation.
@@ -496,7 +496,7 @@ class ProxifyHostFile(MutableMapping):
             WARNING, this **cannot** change while running thus all
             serialization to disk are using the same directory.
         shared_filesystem: bool or None, default None
-            Whether to `local_directory` above is shared between all workers or not.
+            Whether the `local_directory` above is shared between all workers or not.
             If ``None``, the "jit-unspill-shared-fs" config value are used, which
             defaults to False.
         """
