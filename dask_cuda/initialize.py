@@ -118,10 +118,6 @@ def initialize(
         it is callable. Can be an integer or ``None`` if ``net_devices`` is not
         callable.
     """
-
-    if create_cuda_context:
-        _create_cuda_context()
-
     ucx_config = get_ucx_config(
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
@@ -131,6 +127,9 @@ def initialize(
         cuda_device_index=cuda_device_index,
     )
     dask.config.set({"distributed.comm.ucx": ucx_config})
+
+    if create_cuda_context:
+        _create_cuda_context()
 
 
 @click.command()
