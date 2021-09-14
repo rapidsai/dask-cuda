@@ -7,8 +7,9 @@ import numba.cuda
 
 import dask
 import distributed.comm.ucx
+from distributed.diagnostics.nvml import has_cuda_context
 
-from .utils import get_ucx_config, has_cuda_context
+from .utils import get_ucx_config
 
 logger = logging.getLogger(__name__)
 
