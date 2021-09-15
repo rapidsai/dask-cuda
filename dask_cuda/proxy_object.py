@@ -7,9 +7,7 @@ import threading
 import time
 import uuid
 from collections import OrderedDict
-from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
-    suppress as nullcontext,
-)
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type
 
 import pandas

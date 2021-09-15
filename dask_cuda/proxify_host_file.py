@@ -7,9 +7,7 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from contextlib import (  # TODO: use `contextlib.nullcontext()` from Python 3.7+
-    suppress as nullcontext,
-)
+from contextlib import nullcontext
 from typing import (
     Any,
     DefaultDict,
