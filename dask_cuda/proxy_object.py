@@ -755,7 +755,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     """ The CUDA serialization of ProxyObject used by Dask when communicating using UCX
 
     As serializers, it uses "cuda", which means that proxied CUDA objects are _not_
-    spilled to main memory before communicated. However, we still have to disk
+    spilled to main memory before communicated. However, we still have to handle disk
     serialized proxied like in `obj_pxy_dask_serialize()`
     """
     if obj._obj_pxy["serializer"] in ("dask", "pickle"):
