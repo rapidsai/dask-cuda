@@ -143,12 +143,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     working directory if this is not set.""",
 )
 @click.option(
-    "--shared-filesystem",
+    "--shared-filesystem/--no-shared-filesystem",
     default=None,
     type=bool,
-    help="""Whether the `local_directory` above is shared between all workers or not.
-    If ``None``, the "jit-unspill-shared-fs" config value are used, which
-    defaults to False.
+    help="""If `--shared-filesystem` is specified, inform JIT-Unspill that
+    `local_directory` is a shared filesystem available for all workers, whereas
+    `--no-shared-filesystem` informs it may not assume it's a shared filesystem.
+    If neither is specified, JIT-Unspill will decide based on the Dask config value 
+    specified by `"jit-unspill-shared-fs"`.
     Notice, a shared filesystem must support the `os.link()` operation.""",
 )
 @click.option(

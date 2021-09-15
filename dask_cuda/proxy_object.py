@@ -705,7 +705,7 @@ def obj_pxy_is_device_object(obj: ProxyObject):
     return obj._obj_pxy_is_cuda_object()
 
 
-def handle_serialize_of_disk(obj: ProxyObject):
+def handle_disk_serialized(obj: ProxyObject):
     """Handle serialization of an already disk serialized proxy
 
     On a shared filesystem, we do not have to deserialize instead we
@@ -743,7 +743,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
     on a shared filesystem then no deserialization is needed.
     """
     if obj._obj_pxy["serializer"] == "disk":
-        header, frames = handle_serialize_of_disk(obj)
+        header, frames = handle_disk_serialized(obj)
     else:
         header, frames = obj._obj_pxy_serialize(serializers=("dask", "pickle"))
     meta = obj._obj_pxy_get_init_args(include_obj=False)
@@ -761,7 +761,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     if obj._obj_pxy["serializer"] in ("dask", "pickle"):
         header, frames = obj._obj_pxy["obj"]
     elif obj._obj_pxy["serializer"] == "disk":
-        header, frames = handle_serialize_of_disk(obj)
+        header, frames = handle_disk_serialized(obj)
     else:
         # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
