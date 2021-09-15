@@ -739,8 +739,8 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
     """The dask serialization of ProxyObject used by Dask when communicating using TCP
 
     As serializers, it uses "dask" or "pickle", which means that proxied CUDA objects
-    are spilled to main memory before communicated. Unless `obj` is serialized to disk
-    on a shared filesystem then no deserialization is needed.
+    are spilled to main memory before communicated. Deserialization is needed, unless
+    obj is serialized to disk on a shared filesystem see `handle_disk_serialized()`.
     """
     if obj._obj_pxy["serializer"] == "disk":
         header, frames = handle_disk_serialized(obj)
