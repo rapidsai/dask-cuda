@@ -394,6 +394,8 @@ class ProxifyHostFile(MutableMapping):
         config value are used, which defaults to False.
     """
 
+    # Notice, we define the following as static variables because they are used by
+    # the static register_disk_spilling() method.
     _spill_directory: Optional[str] = None
     _spill_shared_filesystem: bool
     _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
@@ -483,6 +485,11 @@ class ProxifyHostFile(MutableMapping):
         cls, local_directory: str = None, shared_filesystem: bool = None
     ):
         """Register Dask serializers that writes to disk
+
+        This is a static method because the registration of a Dask
+        serializer/deserializer par is a global operation thus we can
+        only register one such par. This means that all instances of
+        the ProxifyHostFile end up using the same local_directory.
 
         Parameters
         ----------
