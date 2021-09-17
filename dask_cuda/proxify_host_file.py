@@ -162,29 +162,31 @@ class ProxyManager:
         self._host_memory_limit = host_memory_limit
 
     def __repr__(self) -> str:
-        return (
-            f"<ProxyManager dev_limit={self._device_memory_limit}"
-            f" host_limit={self._host_memory_limit}"
-            f" disk={self._disk.mem_usage()}({len(self._disk)})"
-            f" host={self._host.mem_usage()}({len(self._host)})"
-            f" dev={self._dev.mem_usage()}({len(self._dev)})>"
-        )
+        with self.lock:
+            return (
+                f"<ProxyManager dev_limit={self._device_memory_limit}"
+                f" host_limit={self._host_memory_limit}"
+                f" disk={self._disk.mem_usage()}({len(self._disk)})"
+                f" host={self._host.mem_usage()}({len(self._host)})"
+                f" dev={self._dev.mem_usage()}({len(self._dev)})>"
+            )
 
     def __len__(self) -> int:
         return len(self._disk) + len(self._host) + len(self._dev)
 
     def pprint(self) -> str:
-        ret = f"{self}:"
-        if len(self) == 0:
-            return ret + " Empty"
-        ret += "\n"
-        for proxy in self._disk:
-            ret += f"  disk - {repr(proxy)}\n"
-        for proxy in self._host:
-            ret += f"  host - {repr(proxy)}\n"
-        for proxy in self._dev:
-            ret += f"  dev  - {repr(proxy)}\n"
-        return ret[:-1]  # Strip last newline
+        with self.lock:
+            ret = f"{self}:"
+            if len(self) == 0:
+                return ret + " Empty"
+            ret += "\n"
+            for proxy in self._disk:
+                ret += f"  disk - {repr(proxy)}\n"
+            for proxy in self._host:
+                ret += f"  host - {repr(proxy)}\n"
+            for proxy in self._dev:
+                ret += f"  dev  - {repr(proxy)}\n"
+            return ret[:-1]  # Strip last newline
 
     def get_proxies_by_serializer(self, serializer: Optional[str]) -> Proxies:
         if serializer == "disk":
