@@ -487,9 +487,9 @@ class ProxifyHostFile(MutableMapping):
         """Register Dask serializers that writes to disk
 
         This is a static method because the registration of a Dask
-        serializer/deserializer par is a global operation thus we can
-        only register one such par. This means that all instances of
-        the ProxifyHostFile end up using the same local_directory.
+        serializer/deserializer pair is a global operation thus we can
+        only register one such pair. This means that all instances of
+        the ``ProxifyHostFile`` end up using the same ``local_directory``.
 
         Parameters
         ----------
