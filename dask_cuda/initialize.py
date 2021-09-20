@@ -17,7 +17,13 @@ def _create_cuda_context():
     try:
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
         # context directly from the UCX module, thus avoiding a similar warning there.
-        distributed.comm.ucx.init_once()
+        try:
+            distributed.comm.ucx.init_once()
+        except ModuleNotFoundError:
+            # UCX intialization has to be delegated to Distributed, it will take care
+            # of setting correct environment variables and importing `ucp` after that.
+            # Therefore if ``import ucp`` fails we can just continue here.
+            pass
 
         cuda_visible_device = int(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
