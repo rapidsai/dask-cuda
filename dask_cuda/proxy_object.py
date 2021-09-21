@@ -441,6 +441,14 @@ class ProxyObject:
             o._obj_pxy_deserialize() if isinstance(o, ProxyObject) else o
             for o in inputs
         )
+        kwargs = dict(
+            {
+                key: value._obj_pxy_deserialize()
+                if isinstance(value, ProxyObject)
+                else value
+                for key, value in kwargs.items()
+            }
+        )
         return self._obj_pxy_deserialize().__array_ufunc__(
             ufunc, method, *inputs, **kwargs
         )
