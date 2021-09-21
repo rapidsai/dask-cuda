@@ -2,10 +2,10 @@ import operator
 import pickle
 from types import SimpleNamespace
 
+import numpy as np
 import pandas
 import pytest
 from pandas.testing import assert_frame_equal, assert_series_equal
-import numpy as np
 
 import dask
 import dask.array
