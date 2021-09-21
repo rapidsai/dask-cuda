@@ -436,6 +436,21 @@ class ProxyObject:
             else:
                 object.__setattr__(self._obj_pxy_deserialize(), name, val)
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        inputs = tuple(
+            o._obj_pxy_deserialize() if isinstance(o, ProxyObject) else o
+            for o in inputs
+        )
+        kwargs = {
+            key: value._obj_pxy_deserialize()
+            if isinstance(value, ProxyObject)
+            else value
+            for key, value in kwargs.items()
+        }
+        return self._obj_pxy_deserialize().__array_ufunc__(
+            ufunc, method, *inputs, **kwargs
+        )
+
     def __str__(self):
         return str(self._obj_pxy_deserialize())
 
