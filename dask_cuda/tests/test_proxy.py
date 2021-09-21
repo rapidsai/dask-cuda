@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 import pandas
 import pytest
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
+import numpy as np
 
 import dask
 import dask.array
@@ -478,3 +479,18 @@ def test_merge_sorted_of_proxied_cudf_dataframes():
     got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
     expected = cudf.merge_sorted(dfs)
     assert_frame_equal(got.to_pandas(), expected.to_pandas())
+
+
+@pytest.mark.parametrize(
+    "np_func", [np.less, np.less_equal, np.greater, np.greater_equal, np.equal]
+)
+def test_array_ufucn_proxified_object(np_func):
+    cudf = pytest.importorskip("cudf")
+
+    np_array = np.array(100)
+    ser = cudf.Series([1, 2, 3])
+    proxy_obj = proxify_device_objects(ser)
+    expected = np_func(ser, np_array)
+    actual = np_func(proxy_obj, np_array)
+
+    assert_series_equal(expected.to_pandas(), actual.to_pandas())
