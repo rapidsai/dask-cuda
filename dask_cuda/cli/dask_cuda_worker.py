@@ -143,6 +143,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     working directory if this is not set.""",
 )
 @click.option(
+    "--shared-filesystem/--no-shared-filesystem",
+    default=None,
+    type=bool,
+    help="""If `--shared-filesystem` is specified, inform JIT-Unspill that
+    `local_directory` is a shared filesystem available for all workers, whereas
+    `--no-shared-filesystem` informs it may not assume it's a shared filesystem.
+    If neither is specified, JIT-Unspill will decide based on the Dask config value
+    specified by `"jit-unspill-shared-fs"`.
+    Notice, a shared filesystem must support the `os.link()` operation.""",
+)
+@click.option(
     "--scheduler-file",
     type=str,
     default="",
@@ -274,6 +285,7 @@ def main(
     dashboard,
     dashboard_address,
     local_directory,
+    shared_filesystem,
     scheduler_file,
     interface,
     preload,
@@ -323,6 +335,7 @@ def main(
         dashboard,
         dashboard_address,
         local_directory,
+        shared_filesystem,
         scheduler_file,
         interface,
         preload,
