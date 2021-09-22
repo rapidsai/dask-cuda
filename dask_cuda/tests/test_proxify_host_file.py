@@ -1,13 +1,13 @@
 from typing import Iterable
 
 import numpy as np
-import pandas
 import pytest
 from pandas.testing import assert_frame_equal
 
 import dask
 import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
+from dask.sizeof import sizeof
 from distributed import Client
 from distributed.client import wait
 from distributed.worker import get_worker
@@ -16,7 +16,7 @@ import dask_cuda
 import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.proxy_object import ProxyObject
+from dask_cuda.proxy_object import ProxyObject, asproxy
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -41,19 +41,21 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     return ids1 == ids2
 
 
-def test_one_item_limit():
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
+def test_one_dev_item_limit():
+    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
 
     a1 = one_item_array() + 42
     a2 = one_item_array()
     dhf["k1"] = a1
     dhf["k2"] = a2
+    dhf.manager.validate()
 
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
     k2 = dhf["k2"]
     assert k1._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
@@ -61,6 +63,7 @@ def test_one_item_limit():
     k1_val = k1[0]
     assert k1_val == 42
     assert k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k2])
     assert is_proxies_equal(dhf.manager._dev, [k1])
 
@@ -68,6 +71,7 @@ def test_one_item_limit():
     dhf["k3"] = [k1, k2]
     assert not k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k2])
     assert is_proxies_equal(dhf.manager._dev, [k1])
 
@@ -77,6 +81,7 @@ def test_one_item_limit():
     assert k1._obj_pxy_is_serialized()
     assert k2._obj_pxy_is_serialized()
     assert not dhf["k4"]._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k2])
     assert is_proxies_equal(dhf.manager._dev, [k4])
 
@@ -85,15 +90,18 @@ def test_one_item_limit():
     assert k1._obj_pxy_is_serialized()
     assert dhf["k4"]._obj_pxy_is_serialized()
     assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
     assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
     del dhf["k2"]
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [k2])
 
@@ -101,8 +109,66 @@ def test_one_item_limit():
     # should empty the device
     dhf["k3"] = "non-cuda-object"
     del k2
+    dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host, [k1, k4])
     assert is_proxies_equal(dhf.manager._dev, [])
+
+
+def test_one_item_host_limit():
+    memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
+    dhf = ProxifyHostFile(
+        device_memory_limit=one_item_nbytes, memory_limit=memory_limit
+    )
+
+    a1 = one_item_array() + 1
+    a2 = one_item_array() + 2
+    dhf["k1"] = a1
+    dhf["k2"] = a2
+    dhf.manager.validate()
+
+    # Check k1 is spilled because of the newer k2
+    k1 = dhf["k1"]
+    k2 = dhf["k2"]
+    assert k1._obj_pxy_is_serialized()
+    assert not k2._obj_pxy_is_serialized()
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [])
+    assert is_proxies_equal(dhf.manager._host, [k1])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+
+    # Check k1 is spilled to disk and k2 is spilled to host
+    dhf["k3"] = one_item_array() + 3
+    k3 = dhf["k3"]
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1])
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k3])
+
+    dhf.manager.validate()
+
+    # Accessing k2 spills k3 and unspill k2
+    k2_val = k2[0]
+    assert k2_val == 2
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1])
+    assert is_proxies_equal(dhf.manager._host, [k3])
+    assert is_proxies_equal(dhf.manager._dev, [k2])
+
+    # Adding a new array spill k3 to disk and k2 to host
+    dhf["k4"] = one_item_array() + 4
+    k4 = dhf["k4"]
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k1, k3])
+    assert is_proxies_equal(dhf.manager._host, [k2])
+    assert is_proxies_equal(dhf.manager._dev, [k4])
+
+    # Accessing k1 unspills k1 directly to device and spills k4 to host
+    k1_val = k1[0]
+    assert k1_val == 1
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._disk, [k2, k3])
+    assert is_proxies_equal(dhf.manager._host, [k4])
+    assert is_proxies_equal(dhf.manager._dev, [k1])
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
@@ -146,7 +212,7 @@ def test_dataframes_share_dev_mem():
     # They still share the same underlying device memory
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
-    dhf = ProxifyHostFile(device_memory_limit=160)
+    dhf = ProxifyHostFile(device_memory_limit=160, memory_limit=1000)
     dhf["v1"] = view1
     dhf["v2"] = view2
     v1 = dhf["v1"]
@@ -185,7 +251,7 @@ def test_externals():
     the device_memory_limit while freeing them ASAP without explicit calls to
     __delitem__.
     """
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes)
+    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
     k2 = dhf.manager.proxify(one_item_array())
@@ -271,21 +337,18 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert all(res)  # Only proxy objects
 
 
-def test_spill_to_disk():
-    """
-    Test Dask triggering CPU-to-Disk spilling,
-    which we do not support at the moment
-    """
+def test_worker_force_spill_to_disk():
+    """ Test Dask triggering CPU-to-Disk spilling """
+    cudf = pytest.importorskip("cudf")
 
     with dask.config.set({"distributed.worker.memory.terminate": 0}):
         with dask_cuda.LocalCUDACluster(
-            n_workers=1, memory_limit=100, jit_unspill=True
+            n_workers=1, device_memory_limit="1MB", jit_unspill=True
         ) as cluster:
             with Client(cluster) as client:
-                ddf = dask.dataframe.from_pandas(
-                    pandas.DataFrame({"key": np.arange(1000)}), npartitions=1
-                )
-                ddf = ddf.persist()
+                # Create a df that are spilled to host memory immediately
+                df = cudf.DataFrame({"key": np.arange(10 ** 8)})
+                ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 wait(ddf)
 
                 def f():
@@ -293,12 +356,20 @@ def test_spill_to_disk():
                     w = get_worker()
 
                     async def y():
+                        # Set a host memory limit that triggers spilling to disk
+                        w.memory_pause_fraction = False
+                        memory = w.monitor.proc.memory_info().rss
+                        w.memory_limit = memory - 10 ** 8
+                        w.memory_target_fraction = 1
                         await w.memory_monitor()
-                        w.memory_limit = 10 ** 6
+                        # Check that host memory are freed
+                        assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
+                        w.memory_limit = memory * 10  # Un-limit
 
                     w.loop.add_callback(y)
 
                 wait(client.submit(f))
-                assert "JIT-Unspill doesn't support spilling to Disk" in str(
+                # Check that the worker doesn't complain about unmanaged memory
+                assert "Unmanaged memory use is high" not in str(
                     client.get_worker_logs()
                 )
