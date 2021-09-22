@@ -153,13 +153,13 @@ class ProxyManager:
     Notice, the manager only keeps weak references to the proxies.
     """
 
-    def __init__(self, device_memory_limit: int, host_memory_limit: int):
+    def __init__(self, device_memory_limit: int, memory_limit: int):
         self.lock = threading.RLock()
         self._disk = ProxiesOnDisk()
         self._host = ProxiesOnHost()
         self._dev = ProxiesOnDevice()
         self._device_memory_limit = device_memory_limit
-        self._host_memory_limit = host_memory_limit
+        self._host_memory_limit = memory_limit
 
     def __repr__(self) -> str:
         with self.lock:
@@ -373,7 +373,7 @@ class ProxifyHostFile(MutableMapping):
     ----------
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
-    host_memory_limit: int
+    memory_limit: int
         Number of bytes of host memory used before spilling to disk.
     local_directory: str or None, default None
         Path on local machine to store temporary files. Can be a string (like
@@ -408,13 +408,13 @@ class ProxifyHostFile(MutableMapping):
         self,
         *,
         device_memory_limit: int,
-        host_memory_limit: int,
+        memory_limit: int,
         local_directory: str = None,
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
-        self.manager = ProxyManager(device_memory_limit, host_memory_limit)
+        self.manager = ProxyManager(device_memory_limit, memory_limit)
         self.register_disk_spilling(local_directory, shared_filesystem)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(

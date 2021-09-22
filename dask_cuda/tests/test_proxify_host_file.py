@@ -42,7 +42,7 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
 
 
 def test_one_dev_item_limit():
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, host_memory_limit=1000)
+    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
 
     a1 = one_item_array() + 42
     a2 = one_item_array()
@@ -115,11 +115,9 @@ def test_one_dev_item_limit():
 
 
 def test_one_item_host_limit():
-    host_memory_limit = sizeof(
-        asproxy(one_item_array(), serializers=("dask", "pickle"))
-    )
+    memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        device_memory_limit=one_item_nbytes, host_memory_limit=host_memory_limit
+        device_memory_limit=one_item_nbytes, memory_limit=memory_limit
     )
 
     a1 = one_item_array() + 1
@@ -214,7 +212,7 @@ def test_dataframes_share_dev_mem():
     # They still share the same underlying device memory
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
-    dhf = ProxifyHostFile(device_memory_limit=160, host_memory_limit=1000)
+    dhf = ProxifyHostFile(device_memory_limit=160, memory_limit=1000)
     dhf["v1"] = view1
     dhf["v2"] = view2
     v1 = dhf["v1"]
@@ -253,7 +251,7 @@ def test_externals():
     the device_memory_limit while freeing them ASAP without explicit calls to
     __delitem__.
     """
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, host_memory_limit=1000)
+    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
     k2 = dhf.manager.proxify(one_item_array())

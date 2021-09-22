@@ -220,7 +220,7 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
-        self.host_memory_limit = parse_memory_limit(
+        self.memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = parse_device_memory_limit(
@@ -278,7 +278,7 @@ class LocalCUDACluster(LocalCluster):
                     ProxifyHostFile,
                     {
                         "device_memory_limit": self.device_memory_limit,
-                        "host_memory_limit": self.host_memory_limit,
+                        "memory_limit": self.memory_limit,
                         "local_directory": local_directory,
                         "shared_filesystem": shared_filesystem,
                     },
@@ -288,7 +288,7 @@ class LocalCUDACluster(LocalCluster):
                     DeviceHostFile,
                     {
                         "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.host_memory_limit,
+                        "memory_limit": self.memory_limit,
                         "local_directory": local_directory,
                         "log_spilling": log_spilling,
                     },
@@ -346,7 +346,7 @@ class LocalCUDACluster(LocalCluster):
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
-            memory_limit=self.host_memory_limit,
+            memory_limit=self.memory_limit,
             processes=True,
             data=data,
             local_directory=local_directory,
