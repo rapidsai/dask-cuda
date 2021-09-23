@@ -7,7 +7,6 @@ import uuid
 import warnings
 import weakref
 from collections import defaultdict
-from contextlib import nullcontext
 from typing import (
     Any,
     DefaultDict,
@@ -571,9 +570,8 @@ class ProxifyHostFile(MutableMapping):
         proxy : ProxyObject
             Proxy object to serialize using the "disk" serialize.
         """
-        # Lock manager (if any)
-        manager: "ProxyManager" = proxy._obj_pxy.get("manager", None)
-        with (nullcontext() if manager is None else manager.lock):
+        manager = proxy._obj_pxy_get_manager()
+        with manager.lock:
             if not proxy._obj_pxy_is_serialized():
                 proxy._obj_pxy_serialize(serializers=("disk",))
             else:
@@ -592,12 +590,11 @@ class ProxifyHostFile(MutableMapping):
                         [],
                     )
                     proxy._obj_pxy["serializer"] = "disk"
-                    if manager:
-                        manager.move(
-                            proxy,
-                            from_serializer=header["serializer"],
-                            to_serializer="disk",
-                        )
+                    manager.move(
+                        proxy,
+                        from_serializer=header["serializer"],
+                        to_serializer="disk",
+                    )
                 elif header["serializer"] != "disk":
                     proxy._obj_pxy_deserialize()
                     proxy._obj_pxy_serialize(serializers=("disk",))
