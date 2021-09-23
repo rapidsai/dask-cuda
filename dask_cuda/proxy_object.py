@@ -8,7 +8,7 @@ import time
 import uuid
 from collections import OrderedDict
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 
 import pandas
 
@@ -142,6 +142,31 @@ def _obj_pxy_cache_wrapper(attr_name: str):
     return wrapper1
 
 
+class ProxyManagerDummy:
+    """Dummy of a ProxyManager that does nothing
+
+    This is a dummy class returned by `ProxyObject._obj_pxy_get_manager()`
+    when no manager has been registered the proxy object. It implements
+    dummy methods that doesn't do anything it is purely for convenience.
+    """
+
+    def add(self, *args, **kwargs):
+        pass
+
+    def remove(self, *args, **kwargs):
+        pass
+
+    def move(self, *args, **kwargs):
+        pass
+
+    def maybe_evict(self, *args, **kwargs):
+        pass
+
+    @property
+    def lock(self):
+        return nullcontext()
+
+
 class ProxyObject:
     """Object wrapper/proxy for serializable objects
 
@@ -228,10 +253,7 @@ class ProxyObject:
 
     def __del__(self):
         """We have to unregister us from the manager if any"""
-        manager: "ProxyManager" = self._obj_pxy.get("manager", None)
-        if manager is not None:
-            manager.remove(self)
-
+        self._obj_pxy_get_manager().remove(self)
         if self._obj_pxy["serializer"] == "disk":
             header, _ = self._obj_pxy["obj"]
             os.remove(header["path"])
@@ -293,6 +315,19 @@ class ProxyObject:
         self._obj_pxy["manager"] = manager
         self._obj_pxy_lock = manager.lock
 
+    def _obj_pxy_get_manager(self) -> Union["ProxyManager", ProxyManagerDummy]:
+        """Get the registered manager or a dummy
+
+        Parameters
+        ----------
+        manager: ProxyManager or ProxyManagerDummy
+            The manager to manage this proxy object or a dummy
+        """
+        ret = self._obj_pxy.get("manager", None)
+        if ret is None:
+            ret = ProxyManagerDummy()
+        return ret
+
     def _obj_pxy_is_serialized(self) -> bool:
         """Return whether the proxied object is serialized or not"""
         return self._obj_pxy["serializer"] is not None
@@ -323,9 +358,8 @@ class ProxyObject:
                     # The proxied object is serialized with other serializers
                     self._obj_pxy_deserialize()
 
-            # Lock manager (if any)
-            manager: "ProxyManager" = self._obj_pxy.get("manager", None)
-            with (nullcontext() if manager is None else manager.lock):
+            manager = self._obj_pxy_get_manager()
+            with manager.lock:
                 header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
                     self._obj_pxy["obj"], serializers, on_error="raise"
                 )
@@ -334,8 +368,7 @@ class ProxyObject:
                 self._obj_pxy["serializer"] = new_ser
 
                 # Tell the manager (if any) that this proxy has changed serializer
-                if manager:
-                    manager.move(self, from_serializer=org_ser, to_serializer=new_ser)
+                manager.move(self, from_serializer=org_ser, to_serializer=new_ser)
 
                 # Invalidate the (possible) cached "device_memory_objects"
                 self._obj_pxy_cache.pop("device_memory_objects", None)
@@ -356,9 +389,8 @@ class ProxyObject:
         """
         with self._obj_pxy_lock:
             if self._obj_pxy_is_serialized():
-                manager: "ProxyManager" = self._obj_pxy.get("manager", None)
-                # Lock manager (if any)
-                with (nullcontext() if manager is None else manager.lock):
+                manager = self._obj_pxy_get_manager()
+                with manager.lock:
                     # When not deserializing a CUDA-serialized proxied, tell the
                     # manager that it might have to evict because of the increased
                     # device memory usage.
@@ -376,12 +408,11 @@ class ProxyObject:
                     )
 
                     # Tell the manager (if any) that this proxy has changed serializer
-                    if manager:
-                        manager.move(
-                            self,
-                            from_serializer=self._obj_pxy["serializer"],
-                            to_serializer=None,
-                        )
+                    manager.move(
+                        self,
+                        from_serializer=self._obj_pxy["serializer"],
+                        to_serializer=None,
+                    )
                     self._obj_pxy["serializer"] = None
 
             self._obj_pxy["last_access"] = time.monotonic()
