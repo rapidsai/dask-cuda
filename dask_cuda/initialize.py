@@ -14,6 +14,16 @@ from .utils import get_ucx_config
 logger = logging.getLogger(__name__)
 
 
+def _create_cuda_context_handler():
+    if int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0:
+        try:
+            numba.cuda.current_context()
+        except numba.cuda.cudadrv.error.CudaSupportError:
+            pass
+    else:
+        numba.cuda.current_context()
+
+
 def _create_cuda_context():
     try:
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
@@ -39,7 +49,7 @@ def _create_cuda_context():
                 "import time or in the global scope of a program."
             )
 
-        numba.cuda.current_context()
+        _create_cuda_context_handler()
 
         if distributed.comm.ucx.cuda_context_created is False:
             ctx = has_cuda_context()
