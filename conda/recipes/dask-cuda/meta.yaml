@@ -27,8 +27,8 @@ requirements:
     - setuptools
   run:
     - python
-    - dask=2021.09.1
-    - distributed=2021.09.1
+    - dask>=2021.09.1
+    - distributed>=2021.09.1
     - pynvml >=8.0.3
     - numpy >=1.16.0
     - numba >=0.53.1
