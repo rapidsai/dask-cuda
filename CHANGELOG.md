@@ -1,10 +1,46 @@
+# dask-cuda 21.12.00 (Date TBD)
+
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.12.00a for the latest changes to this development branch.
+
 # dask-cuda 21.10.00 (Date TBD)
 
 Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.10.00a for the latest changes to this development branch.
 
-# dask-cuda 21.08.00 (Date TBD)
+# dask-cuda 21.08.00 (4 Aug 2021)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.08.00a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Use aliases to check for installed UCX version ([#692](https://github.com/rapidsai/dask-cuda/pull/692)) [@pentschev](https://github.com/pentschev)
+- Don&#39;t install Dask main branch in CI for 21.08 release ([#687](https://github.com/rapidsai/dask-cuda/pull/687)) [@pentschev](https://github.com/pentschev)
+- Skip test_get_ucx_net_devices_raises on UCX &gt;= 1.11.0 ([#685](https://github.com/rapidsai/dask-cuda/pull/685)) [@pentschev](https://github.com/pentschev)
+- Fix NVML index usage in CUDAWorker/LocalCUDACluster ([#671](https://github.com/rapidsai/dask-cuda/pull/671)) [@pentschev](https://github.com/pentschev)
+- Add --protocol flag to dask-cuda-worker ([#670](https://github.com/rapidsai/dask-cuda/pull/670)) [@jacobtomlinson](https://github.com/jacobtomlinson)
+- Fix `assert_eq` related imports ([#663](https://github.com/rapidsai/dask-cuda/pull/663)) [@galipremsagar](https://github.com/galipremsagar)
+- Small tweaks to make compatible with dask-mpi ([#656](https://github.com/rapidsai/dask-cuda/pull/656)) [@jacobtomlinson](https://github.com/jacobtomlinson)
+- Remove Dask version pin ([#647](https://github.com/rapidsai/dask-cuda/pull/647)) [@pentschev](https://github.com/pentschev)
+- Fix CUDA_VISIBLE_DEVICES tests ([#638](https://github.com/rapidsai/dask-cuda/pull/638)) [@pentschev](https://github.com/pentschev)
+- Add `make_meta_dispatch` handling ([#637](https://github.com/rapidsai/dask-cuda/pull/637)) [@galipremsagar](https://github.com/galipremsagar)
+- Update UCX-Py version in CI to 0.21.* ([#636](https://github.com/rapidsai/dask-cuda/pull/636)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Deprecation warning for ucx_net_devices=&#39;auto&#39; on UCX 1.11+ ([#681](https://github.com/rapidsai/dask-cuda/pull/681)) [@pentschev](https://github.com/pentschev)
+- Update documentation on InfiniBand with UCX &gt;= 1.11 ([#669](https://github.com/rapidsai/dask-cuda/pull/669)) [@pentschev](https://github.com/pentschev)
+- Merge branch-21.06 ([#622](https://github.com/rapidsai/dask-cuda/pull/622)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Treat Deprecation/Future warnings as errors ([#672](https://github.com/rapidsai/dask-cuda/pull/672)) [@pentschev](https://github.com/pentschev)
+- Update parse_bytes imports to resolve deprecation warnings ([#662](https://github.com/rapidsai/dask-cuda/pull/662)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Pin max `dask` &amp; `distributed` versions ([#686](https://github.com/rapidsai/dask-cuda/pull/686)) [@galipremsagar](https://github.com/galipremsagar)
+- Fix DGX tests warnings on RMM pool size and file not closed ([#673](https://github.com/rapidsai/dask-cuda/pull/673)) [@pentschev](https://github.com/pentschev)
+- Remove dot calling style for pytest ([#661](https://github.com/rapidsai/dask-cuda/pull/661)) [@quasiben](https://github.com/quasiben)
+- get_device_memory_objects(): dispatch on cudf.core.frame.Frame ([#658](https://github.com/rapidsai/dask-cuda/pull/658)) [@madsbk](https://github.com/madsbk)
+- Fix `21.08` forward-merge conflicts ([#655](https://github.com/rapidsai/dask-cuda/pull/655)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Fix conflicts in `643` ([#644](https://github.com/rapidsai/dask-cuda/pull/644)) [@ajschmidt8](https://github.com/ajschmidt8)
 
 # dask-cuda 21.06.00 (9 Jun 2021)
 
