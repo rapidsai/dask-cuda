@@ -135,7 +135,8 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--multi-node",
         action="store_true",
         dest="multi_node",
-        help="Runs a multi-node cluster on the hosts specified by --hosts.",
+        help="Runs a multi-node cluster on the hosts specified by --hosts."
+        "Requires the ``asyncssh`` module to be installed.",
     )
     parser.add_argument(
         "--scheduler-address",
