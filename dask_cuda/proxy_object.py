@@ -170,7 +170,13 @@ class ProxyManagerDummy:
 
 
 class ProxyDetail:
-    """
+    """ Details of a ProxyObject
+
+    In order to avoid having to use thread locks, a ProxyObject maintains
+    its state in a ProxyDetail object. The idea is to first make a copy
+    of the ProxyDetail object before modifying it and then assing the copy
+    back to the ProxyObject in one atomic instruction.
+
     Parameters
     ----------
     obj: object
@@ -298,21 +304,20 @@ class ProxyDetail:
         """
 
         if self.is_serialized():
-            with self.manager.lock:
-                # When not deserializing a CUDA-serialized proxied, tell the
-                # manager that it might have to evict because of the increased
-                # device memory usage.
-                if maybe_evict and self.serializer != "cuda":
-                    if nbytes is None:
-                        _, frames = self.obj
-                        nbytes = sum(map(distributed.utils.nbytes, frames))
-                    self.manager.maybe_evict(nbytes)
+            # When not deserializing a CUDA-serialized proxied, tell the
+            # manager that it might have to evict because of the increased
+            # device memory usage.
+            if maybe_evict and self.serializer != "cuda":
+                if nbytes is None:
+                    _, frames = self.obj
+                    nbytes = sum(map(distributed.utils.nbytes, frames))
+                self.manager.maybe_evict(nbytes)
 
-                # Deserialize the proxied object
-                header, frames = self.obj
-                self.obj = distributed.protocol.deserialize(header, frames)
-                self.serializer = None
-                self.last_access = time.monotonic()
+            # Deserialize the proxied object
+            header, frames = self.obj
+            self.obj = distributed.protocol.deserialize(header, frames)
+            self.serializer = None
+            self.last_access = time.monotonic()
         return self.obj
 
 
@@ -342,10 +347,10 @@ class ProxyObject:
 
     Attributes
     ----------
-    _obj_pxy: dict
-        Dictionary of all proxy information of the underlaying proxied object.
-        Access to the dictionary is not pass-through to the proxied object,
-        which is the case for most other access to the ProxyObject.
+    _pxy: ProxyDetail
+        Details of all proxy information of the underlaying proxied object.
+        Access to _pxy is not pass-through to the proxied object, which is
+        the case for most other access to the ProxyObject.
 
     _pxy_cache: dict
         A dictionary used for caching attributes
@@ -354,23 +359,6 @@ class ProxyObject:
     ----------
     detail: ProxyDetail
         The Any kind of object to be proxied.
-    fixed_attr: dict
-        Dictionary of attributes that are accessible without deserializing
-        the proxied object.
-    type_serialized: bytes
-        Pickled type of `obj`.
-    typename: str
-        Name of the type of `obj`.
-    is_cuda_object: boolean
-        Whether `obj` is a CUDA object or not.
-    subclass: bytes
-        Pickled type to use instead of ProxyObject when deserializing. The type
-        must inherit from ProxyObject.
-    serializers: str, optional
-        Serializers to use to serialize `obj`. If None, no serialization is done.
-    explicit_proxy: bool
-        Mark the proxy object as "explicit", which means that the user allows it
-        as input argument to dask tasks even in compatibility-mode.
     """
 
     def __init__(self, detail: ProxyDetail):
@@ -384,7 +372,9 @@ class ProxyObject:
             return self._pxy_
 
     def _pxy_set(self, proxy_detail: ProxyDetail):
-        self._pxy_ = proxy_detail
+        with proxy_detail.manager.lock:
+            self._pxy_ = proxy_detail
+            proxy_detail.manager.add(proxy=self, serializer=proxy_detail.serializer)
 
     def __del__(self):
         """We have to unregister us from the manager if any"""
@@ -395,8 +385,8 @@ class ProxyObject:
             os.remove(header["path"])
 
     def _pxy_serialize(
-        self, serializers: Iterable[str], proxy_detail: ProxyDetail = None
-    ):
+        self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
+    ) -> None:
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters
@@ -416,16 +406,13 @@ class ProxyObject:
 
         pxy = self._pxy_get(copy=True) if not proxy_detail else proxy_detail
         if pxy.serializer is not None and pxy.serializer in serializers:
-            return pxy.obj  # Nothing to be done
+            return  # Nothing to be done
 
-        ret = pxy.serialize(serializers=serializers)
-        with pxy.manager.lock:
-            self._pxy_set(pxy)
-            pxy.manager.add(proxy=self, proxy_detail=pxy)
+        pxy.serialize(serializers=serializers)
+        self._pxy_set(pxy)
 
         # Invalidate the (possible) cached "device_memory_objects"
         self._pxy_cache.pop("device_memory_objects", None)
-        return ret
 
     def _pxy_deserialize(
         self, maybe_evict: bool = True, proxy_detail: ProxyDetail = None
@@ -448,11 +435,7 @@ class ProxyObject:
             return pxy.obj
 
         ret = pxy.deserialize(maybe_evict=maybe_evict, nbytes=self.__sizeof__())
-
-        with pxy.manager.lock:
-            self._pxy_set(pxy)
-            pxy.manager.add(proxy=self, proxy_detail=pxy)
-
+        self._pxy_set(pxy)
         return ret
 
     @_pxy_cache_wrapper("device_memory_objects")
@@ -478,10 +461,7 @@ class ProxyObject:
         # Make sure the frames are all bytes
         header, frames = pxy.obj
         pxy.obj = (header, [bytes(f) for f in frames])
-        with pxy.manager.lock:
-            self._pxy_set(pxy)
-            pxy.manager.add(self)
-
+        self._pxy_set(pxy)
         return (subclass, (pxy,))
 
     def __getattr__(self, name):
@@ -839,9 +819,8 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
         header, frames = handle_disk_serialized(pxy)
     else:
         header, frames = pxy.serialize(serializers=("dask", "pickle"))
-    with pxy.manager.lock:
-        obj._pxy_set(pxy)
-        pxy.manager.add(proxy=obj, proxy_detail=pxy)
+    obj._pxy_set(pxy)
+
     return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
 
 
@@ -858,9 +837,8 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
         header, frames = pxy.obj
     elif pxy.serializer == "disk":
         header, frames = handle_disk_serialized(pxy)
-        with pxy.manager.lock:
-            obj._pxy_set(pxy)
-            pxy.manager.add(proxy=obj, proxy_detail=pxy)
+        obj._pxy_set(pxy)
+
     else:
         # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in

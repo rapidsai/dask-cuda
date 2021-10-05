@@ -32,7 +32,7 @@ from distributed.protocol.serialize import (
 from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
-from .proxy_object import ProxyDetail, ProxyObject
+from .proxy_object import ProxyObject
 
 
 class Proxies(abc.ABC):
@@ -213,10 +213,10 @@ class ProxyManager:
                 or self._dev.contains_proxy_id(proxy_id)
             )
 
-    def add(self, proxy: ProxyObject, proxy_detail: ProxyDetail) -> None:
+    def add(self, proxy: ProxyObject, serializer: Optional[str]) -> None:
         with self.lock:
             old_proxies = self.get_proxies_by_proxy_object(proxy)
-            new_proxies = self.get_proxies_by_serializer(proxy_detail.serializer)
+            new_proxies = self.get_proxies_by_serializer(serializer)
             if old_proxies is not new_proxies:
                 if old_proxies is not None:
                     old_proxies.remove(proxy)
@@ -266,7 +266,7 @@ class ProxyManager:
                 pxy.last_access = last_access
                 if not self.contains(id(p)):
                     pxy.manager = self
-                    self.add(proxy=p, proxy_detail=pxy)
+                    self.add(proxy=p, serializer=pxy.serializer)
             self.maybe_evict()
             return ret
 
@@ -591,8 +591,6 @@ class ProxifyHostFile(MutableMapping):
                     [],
                 )
                 pxy.serializer = "disk"
-                with pxy.manager.lock:
-                    proxy._pxy_set(pxy)
-                    pxy.manager.add(proxy=proxy, proxy_detail=pxy)
+                proxy._pxy_set(pxy)
                 return
         proxy._pxy_serialize(serializers=("disk",), proxy_detail=pxy)
