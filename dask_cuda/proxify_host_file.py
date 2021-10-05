@@ -195,6 +195,16 @@ class ProxyManager:
         else:
             return self._dev
 
+    def get_proxies_by_proxy_object(self, proxy: ProxyObject) -> Optional[Proxies]:
+        proxy_id = id(proxy)
+        if self._dev.contains_proxy_id(proxy_id):
+            return self._dev
+        if self._host.contains_proxy_id(proxy_id):
+            return self._host
+        if self._disk.contains_proxy_id(proxy_id):
+            return self._disk
+        return None
+
     def contains(self, proxy_id: int) -> bool:
         with self.lock:
             return (
@@ -205,35 +215,27 @@ class ProxyManager:
 
     def add(self, proxy: ProxyObject) -> None:
         with self.lock:
-            if not self.contains(id(proxy)):
-                self.get_proxies_by_serializer(proxy._obj_pxy["serializer"]).add(proxy)
+            old_proxies = self.get_proxies_by_proxy_object(proxy)
+            new_proxies = self.get_proxies_by_serializer(proxy._obj_pxy["serializer"])
+            if old_proxies is not new_proxies:
+                if old_proxies is not None:
+                    old_proxies.remove(proxy)
+                new_proxies.add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
         with self.lock:
-            # Find where the proxy is located and remove it
+            # Find where the proxy is located (if found) and remove it
             proxies: Optional[Proxies] = None
             if self._disk.contains_proxy_id(id(proxy)):
                 proxies = self._disk
             if self._host.contains_proxy_id(id(proxy)):
+                assert proxies is None, "Proxy in multiple locations"
                 proxies = self._host
             if self._dev.contains_proxy_id(id(proxy)):
                 assert proxies is None, "Proxy in multiple locations"
                 proxies = self._dev
             assert proxies is not None, "Trying to remove unknown proxy"
             proxies.remove(proxy)
-
-    def move(
-        self,
-        proxy: ProxyObject,
-        from_serializer: Optional[str],
-        to_serializer: Optional[str],
-    ) -> None:
-        with self.lock:
-            src = self.get_proxies_by_serializer(from_serializer)
-            dst = self.get_proxies_by_serializer(to_serializer)
-            if src is not dst:
-                src.remove(proxy)
-                dst.add(proxy)
 
     def validate(self):
         with self.lock:
@@ -590,11 +592,7 @@ class ProxifyHostFile(MutableMapping):
                         [],
                     )
                     proxy._obj_pxy["serializer"] = "disk"
-                    manager.move(
-                        proxy,
-                        from_serializer=header["serializer"],
-                        to_serializer="disk",
-                    )
+                    manager.add(proxy)
                 elif header["serializer"] != "disk":
                     proxy._obj_pxy_deserialize()
                     proxy._obj_pxy_serialize(serializers=("disk",))

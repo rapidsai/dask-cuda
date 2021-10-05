@@ -364,11 +364,10 @@ class ProxyObject:
                     self._obj_pxy["obj"], serializers, on_error="raise"
                 )
                 assert "is-collection" not in header  # Collections not allowed
-                org_ser, new_ser = self._obj_pxy["serializer"], header["serializer"]
-                self._obj_pxy["serializer"] = new_ser
+                self._obj_pxy["serializer"] = header["serializer"]
 
                 # Tell the manager (if any) that this proxy has changed serializer
-                manager.move(self, from_serializer=org_ser, to_serializer=new_ser)
+                manager.add(self)
 
                 # Invalidate the (possible) cached "device_memory_objects"
                 self._obj_pxy_cache.pop("device_memory_objects", None)
@@ -408,12 +407,8 @@ class ProxyObject:
                     )
 
                     # Tell the manager (if any) that this proxy has changed serializer
-                    manager.move(
-                        self,
-                        from_serializer=self._obj_pxy["serializer"],
-                        to_serializer=None,
-                    )
                     self._obj_pxy["serializer"] = None
+                    manager.add(self)
 
             self._obj_pxy["last_access"] = time.monotonic()
             return self._obj_pxy["obj"]
