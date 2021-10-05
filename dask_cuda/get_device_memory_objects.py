@@ -27,8 +27,10 @@ def get_device_memory_objects(obj) -> set:
 
 @dispatch.register(object)
 def get_device_memory_objects_default(obj):
-    if hasattr(obj, "_obj_pxy"):
-        return dispatch(obj._obj_pxy["obj"])
+    from dask_cuda.proxy_object import ProxyObject
+
+    if isinstance(obj, ProxyObject):
+        return dispatch(obj._pxy_get().obj)
     if hasattr(obj, "data"):
         return dispatch(obj.data)
     if hasattr(obj, "_owner") and obj._owner is not None:

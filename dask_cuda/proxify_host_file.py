@@ -32,7 +32,7 @@ from distributed.protocol.serialize import (
 from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
-from .proxy_object import ProxyObject
+from .proxy_object import ProxyDetail, ProxyObject
 
 
 class Proxies(abc.ABC):
@@ -123,7 +123,7 @@ class ProxiesOnDevice(Proxies):
         proxy_id = id(proxy)
         assert proxy_id not in self.proxy_id_to_dev_mems
         self.proxy_id_to_dev_mems[proxy_id] = set()
-        for dev_mem in proxy._obj_pxy_get_device_memory_objects():
+        for dev_mem in proxy._pxy_get_device_memory_objects():
             self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
             ps = self.dev_mem_to_proxy_ids[dev_mem]
             if len(ps) == 0:
@@ -213,10 +213,10 @@ class ProxyManager:
                 or self._dev.contains_proxy_id(proxy_id)
             )
 
-    def add(self, proxy: ProxyObject) -> None:
+    def add(self, proxy: ProxyObject, proxy_detail: ProxyDetail) -> None:
         with self.lock:
             old_proxies = self.get_proxies_by_proxy_object(proxy)
-            new_proxies = self.get_proxies_by_serializer(proxy._obj_pxy["serializer"])
+            new_proxies = self.get_proxies_by_serializer(proxy_detail.serializer)
             if old_proxies is not new_proxies:
                 if old_proxies is not None:
                     old_proxies.remove(proxy)
@@ -243,16 +243,17 @@ class ProxyManager:
                 proxies = self.get_proxies_by_serializer(serializer)
                 for p in proxies:
                     assert (
-                        self.get_proxies_by_serializer(p._obj_pxy["serializer"])
+                        self.get_proxies_by_serializer(p._pxy_get().serializer)
                         is proxies
                     )
                 for i, p in proxies._proxy_id_to_proxy.items():
                     assert p() is not None
                     assert i == id(p())
                 for p in proxies:
-                    if p._obj_pxy_is_serialized():
-                        header, _ = p._obj_pxy["obj"]
-                        assert header["serializer"] == p._obj_pxy["serializer"]
+                    pxy = p._pxy_get()
+                    if pxy.is_serialized():
+                        header, _ = pxy.obj
+                        assert header["serializer"] == pxy.serializer
 
     def proxify(self, obj: object) -> object:
         with self.lock:
@@ -261,10 +262,11 @@ class ProxyManager:
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
-                p._obj_pxy["last_access"] = last_access
+                pxy = p._pxy_get()
+                pxy.last_access = last_access
                 if not self.contains(id(p)):
-                    p._obj_pxy_register_manager(self)
-                    self.add(p)
+                    pxy.manager = self
+                    self.add(proxy=p, proxy_detail=pxy)
             self.maybe_evict()
             return ret
 
@@ -274,31 +276,31 @@ class ProxyManager:
             # parts of the same device buffer.
             ret = defaultdict(list)
             for proxy in self._dev:
-                for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
+                for dev_buffer in proxy._pxy_get_device_memory_objects():
                     ret[dev_buffer].append(proxy)
             return ret
 
     def get_dev_access_info(
         self,
-    ) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
+    ) -> Tuple[int, List[Tuple[float, int, List[ProxyObject]]]]:
         with self.lock:
             total_dev_mem_usage = 0
             dev_buf_access = []
             for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
-                last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
+                last_access = max(p._pxy_get().last_access for p in proxies)
                 size = sizeof(dev_buf)
                 dev_buf_access.append((last_access, size, proxies))
                 total_dev_mem_usage += size
             assert total_dev_mem_usage == self._dev.mem_usage()
             return total_dev_mem_usage, dev_buf_access
 
-    def get_host_access_info(self) -> Tuple[int, List[Tuple[int, int, ProxyObject]]]:
+    def get_host_access_info(self) -> Tuple[int, List[Tuple[float, int, ProxyObject]]]:
         with self.lock:
             total_mem_usage = 0
             access_info = []
             for p in self._host:
                 size = sizeof(p)
-                access_info.append((p._obj_pxy.get("last_access", 0), size, p))
+                access_info.append((p._pxy_get().last_access, size, p))
                 total_mem_usage += size
             return total_mem_usage, access_info
 
@@ -316,7 +318,7 @@ class ProxyManager:
                 for _, size, proxies in dev_buf_access:
                     for p in proxies:
                         # Serialize to disk, which "dask" and "pickle" does
-                        p._obj_pxy_serialize(serializers=("dask", "pickle"))
+                        p._pxy_serialize(serializers=("dask", "pickle"))
                     total_dev_mem_usage -= size
                     if total_dev_mem_usage <= self._device_memory_limit:
                         break
@@ -572,27 +574,25 @@ class ProxifyHostFile(MutableMapping):
         proxy : ProxyObject
             Proxy object to serialize using the "disk" serialize.
         """
-        manager = proxy._obj_pxy_get_manager()
-        with manager.lock:
-            if not proxy._obj_pxy_is_serialized():
-                proxy._obj_pxy_serialize(serializers=("disk",))
-            else:
-                header, frames = proxy._obj_pxy["obj"]
-                if header["serializer"] in ("dask", "pickle"):
-                    path = cls.gen_file_path()
-                    with open(path, "wb") as f:
-                        f.write(pack_frames(frames))
-                    proxy._obj_pxy["obj"] = (
-                        {
-                            "serializer": "disk",
-                            "path": path,
-                            "shared-filesystem": cls._spill_shared_filesystem,
-                            "disk-sub-header": header,
-                        },
-                        [],
-                    )
-                    proxy._obj_pxy["serializer"] = "disk"
-                    manager.add(proxy)
-                elif header["serializer"] != "disk":
-                    proxy._obj_pxy_deserialize()
-                    proxy._obj_pxy_serialize(serializers=("disk",))
+        pxy = proxy._pxy_get(copy=True)
+        if pxy.is_serialized():
+            header, frames = pxy.obj
+            if header["serializer"] in ("dask", "pickle"):
+                path = cls.gen_file_path()
+                with open(path, "wb") as f:
+                    f.write(pack_frames(frames))
+                pxy.obj = (
+                    {
+                        "serializer": "disk",
+                        "path": path,
+                        "shared-filesystem": cls._spill_shared_filesystem,
+                        "disk-sub-header": header,
+                    },
+                    [],
+                )
+                pxy.serializer = "disk"
+                with pxy.manager.lock:
+                    proxy._pxy_set(pxy)
+                    pxy.manager.add(proxy=proxy, proxy_detail=pxy)
+                return
+        proxy._pxy_serialize(serializers=("disk",), proxy_detail=pxy)

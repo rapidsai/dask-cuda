@@ -93,7 +93,7 @@ def proxify_device_objects(
     ret = dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
     if mark_as_explicit_proxies:
         for p in found_proxies:
-            p._obj_pxy["explicit_proxy"] = True
+            p._pxy_get().explicit_proxy = True
     return ret
 
 
@@ -124,10 +124,11 @@ def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
             unproxify_device_objects(i, skip_explicit_proxies) for i in obj
         )
 
-    if hasattr(obj, "_obj_pxy"):
-        if not skip_explicit_proxies or not obj._obj_pxy["explicit_proxy"]:
-            obj._obj_pxy["explicit_proxy"] = False
-            obj = obj._obj_pxy_deserialize(maybe_evict=False)
+    if isinstance(obj, ProxyObject):
+        pxy = obj._pxy_get(copy=True)
+        if not skip_explicit_proxies or not pxy.explicit_proxy:
+            pxy.explicit_proxy = False
+            obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
     return obj
 
 
@@ -183,11 +184,12 @@ def proxify_device_object_default(
 
 @dispatch.register(ProxyObject)
 def proxify_device_object_proxy_object(
-    obj, proxied_id_to_proxy, found_proxies, excl_proxies
+    obj: ProxyObject, proxied_id_to_proxy, found_proxies, excl_proxies
 ):
     # Check if `obj` is already known
-    if not obj._obj_pxy_is_serialized():
-        _id = id(obj._obj_pxy["obj"])
+    pxy = obj._pxy_get()
+    if not pxy.is_serialized():
+        _id = id(pxy.obj)
         if _id in proxied_id_to_proxy:
             obj = proxied_id_to_proxy[_id]
         else:

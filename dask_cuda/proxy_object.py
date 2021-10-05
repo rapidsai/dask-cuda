@@ -3,12 +3,12 @@ import functools
 import operator
 import os
 import pickle
-import threading
 import time
 import uuid
 from collections import OrderedDict
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
+from copy import copy as _copy
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import pandas
 
@@ -87,17 +87,19 @@ def asproxy(
             subclass_serialized = dumps_function(subclass)
 
         ret = subclass(
-            obj=obj,
-            fixed_attr=fixed_attr,
-            type_serialized=pickle.dumps(type(obj)),
-            typename=dask.utils.typename(type(obj)),
-            is_cuda_object=is_device_object(obj),
-            subclass=subclass_serialized,
-            serializer=None,
-            explicit_proxy=False,
+            ProxyDetail(
+                obj=obj,
+                fixed_attr=fixed_attr,
+                type_serialized=pickle.dumps(type(obj)),
+                typename=dask.utils.typename(type(obj)),
+                is_cuda_object=is_device_object(obj),
+                subclass=subclass_serialized,
+                serializer=None,
+                explicit_proxy=False,
+            )
         )
     if serializers is not None:
-        ret._obj_pxy_serialize(serializers=serializers)
+        ret._pxy_serialize(serializers=serializers)
     return ret
 
 
@@ -117,24 +119,24 @@ def unproxy(obj):
     The proxied object or `obj` itself if it isn't a ProxyObject
     """
     try:
-        obj = obj._obj_pxy_deserialize()
+        obj = obj._pxy_deserialize()
     except AttributeError:
         if type(obj) in (list, tuple, set, frozenset):
             return type(obj)(unproxy(o) for o in obj)
     return obj
 
 
-def _obj_pxy_cache_wrapper(attr_name: str):
-    """Caching the access of attr_name in ProxyObject._obj_pxy_cache"""
+def _pxy_cache_wrapper(attr_name: str):
+    """Caching the access of attr_name in ProxyObject._pxy_cache"""
 
     def wrapper1(func):
         @functools.wraps(func)
         def wrapper2(self: "ProxyObject"):
             try:
-                return self._obj_pxy_cache[attr_name]
+                return self._pxy_cache[attr_name]
             except KeyError:
                 ret = func(self)
-                self._obj_pxy_cache[attr_name] = ret
+                self._pxy_cache[attr_name] = ret
                 return ret
 
         return wrapper2
@@ -165,6 +167,153 @@ class ProxyManagerDummy:
     @property
     def lock(self):
         return nullcontext()
+
+
+class ProxyDetail:
+    """
+    Parameters
+    ----------
+    obj: object
+        Any kind of object to be proxied.
+    fixed_attr: dict
+        Dictionary of attributes that are accessible without deserializing
+        the proxied object.
+    type_serialized: bytes
+        Pickled type of `obj`.
+    typename: str
+        Name of the type of `obj`.
+    is_cuda_object: boolean
+        Whether `obj` is a CUDA object or not.
+    subclass: bytes
+        Pickled type to use instead of ProxyObject when deserializing. The type
+        must inherit from ProxyObject.
+    serializers: str, optional
+        Serializers to use to serialize `obj`. If None, no serialization is done.
+    explicit_proxy: bool
+        Mark the proxy object as "explicit", which means that the user allows it
+        as input argument to dask tasks even in compatibility-mode.
+    manager: ProxyManager or ProxyManagerDummy
+        The manager to manage this proxy object or a dummy.
+        The manager tallies the total memory usage of proxies and
+        evicts/serialize proxy objects as needed.
+    """
+
+    def __init__(
+        self,
+        obj: Any,
+        fixed_attr: Dict[str, Any],
+        type_serialized: bytes,
+        typename: str,
+        is_cuda_object: bool,
+        subclass: Optional[bytes],
+        serializer: Optional[str],
+        explicit_proxy: bool,
+        manager: Union["ProxyManager", ProxyManagerDummy] = ProxyManagerDummy(),
+    ):
+        self.obj = obj
+        self.fixed_attr = fixed_attr
+        self.type_serialized = type_serialized
+        self.typename = typename
+        self.is_cuda_object = is_cuda_object
+        self.subclass = subclass
+        self.serializer = serializer
+        self.explicit_proxy = explicit_proxy
+        self.manager = manager
+        self.last_access: float = 0.0
+
+    def get_init_args(self, include_obj=False) -> OrderedDict:
+        """Return the attributes needed to initialize a ProxyObject
+
+        Notice, the returned dictionary is ordered as the __init__() arguments
+
+        Parameters
+        ----------
+        include_obj: bool
+            Whether to include the "obj" argument or not
+
+        Returns
+        -------
+        Dictionary of attributes
+        """
+        args = ["obj"] if include_obj else []
+        args += [
+            "fixed_attr",
+            "type_serialized",
+            "typename",
+            "is_cuda_object",
+            "subclass",
+            "serializer",
+            "explicit_proxy",
+        ]
+        return OrderedDict([(a, getattr(self, a)) for a in args])
+
+    def is_serialized(self) -> bool:
+        """Return whether the proxied object is serialized or not"""
+        return self.serializer is not None
+
+    def serialize(self, serializers: Iterable[str]) -> Tuple[dict, list]:
+        """Inplace serialization of the proxied object using the `serializers`
+
+        Parameters
+        ----------
+        serializers: Iterable[str]
+            Serializers to use to serialize the proxied object.
+
+        Returns
+        -------
+        header: dict
+            The header of the serialized frames
+        frames: list[bytes]
+            List of frames that make up the serialized object
+        """
+        if not serializers:
+            raise ValueError("Please specify a list of serializers")
+
+        if self.serializer is not None:
+            if self.serializer in serializers:
+                return self.obj  # Nothing to be done
+            else:
+                # The proxied object is serialized with other serializers
+                self.deserialize()
+
+        header, _ = self.obj = distributed.protocol.serialize(
+            self.obj, serializers, on_error="raise"
+        )
+        assert "is-collection" not in header  # Collections not allowed
+        self.serializer = header["serializer"]
+        return self.obj
+
+    def deserialize(self, maybe_evict: bool = True, nbytes=None):
+        """Inplace deserialization of the proxied object
+
+        Parameters
+        ----------
+        maybe_evict: bool
+            Before deserializing, maybe evict managered proxy objects
+
+        Returns
+        -------
+        object
+            The proxied object (deserialized)
+        """
+
+        if self.is_serialized():
+            with self.manager.lock:
+                # When not deserializing a CUDA-serialized proxied, tell the
+                # manager that it might have to evict because of the increased
+                # device memory usage.
+                if maybe_evict and self.serializer != "cuda":
+                    if nbytes is None:
+                        _, frames = self.obj
+                        nbytes = sum(map(distributed.utils.nbytes, frames))
+                    self.manager.maybe_evict(nbytes)
+
+                # Deserialize the proxied object
+                header, frames = self.obj
+                self.obj = distributed.protocol.deserialize(header, frames)
+                self.serializer = None
+                self.last_access = time.monotonic()
+        return self.obj
 
 
 class ProxyObject:
@@ -198,16 +347,13 @@ class ProxyObject:
         Access to the dictionary is not pass-through to the proxied object,
         which is the case for most other access to the ProxyObject.
 
-    _obj_pxy_lock: threading.RLock
-        Threading lock for `self._obj_pxy` access
-
-    _obj_pxy_cache: dict
+    _pxy_cache: dict
         A dictionary used for caching attributes
 
     Parameters
     ----------
-    obj: object
-        Any kind of object to be proxied.
+    detail: ProxyDetail
+        The Any kind of object to be proxied.
     fixed_attr: dict
         Dictionary of attributes that are accessible without deserializing
         the proxied object.
@@ -227,112 +373,30 @@ class ProxyObject:
         as input argument to dask tasks even in compatibility-mode.
     """
 
-    def __init__(
-        self,
-        obj: Any,
-        fixed_attr: Dict[str, Any],
-        type_serialized: bytes,
-        typename: str,
-        is_cuda_object: bool,
-        subclass: Optional[bytes],
-        serializer: Optional[str],
-        explicit_proxy: bool,
-    ):
-        self._obj_pxy = {
-            "obj": obj,
-            "fixed_attr": fixed_attr,
-            "type_serialized": type_serialized,
-            "typename": typename,
-            "is_cuda_object": is_cuda_object,
-            "subclass": subclass,
-            "serializer": serializer,
-            "explicit_proxy": explicit_proxy,
-        }
-        self._obj_pxy_lock = threading.RLock()
-        self._obj_pxy_cache: Dict[str, Any] = {}
+    def __init__(self, detail: ProxyDetail):
+        self._pxy_ = detail
+        self._pxy_cache: Dict[str, Any] = {}
+
+    def _pxy_get(self, copy=False) -> ProxyDetail:
+        if copy:
+            return _copy(self._pxy_)
+        else:
+            return self._pxy_
+
+    def _pxy_set(self, proxy_detail: ProxyDetail):
+        self._pxy_ = proxy_detail
 
     def __del__(self):
         """We have to unregister us from the manager if any"""
-        self._obj_pxy_get_manager().remove(self)
-        if self._obj_pxy["serializer"] == "disk":
-            header, _ = self._obj_pxy["obj"]
+        pxy = self._pxy_get()
+        pxy.manager.remove(self)
+        if pxy.serializer == "disk":
+            header, _ = pxy.obj
             os.remove(header["path"])
 
-    def _obj_pxy_get_init_args(self, include_obj=True) -> OrderedDict:
-        """Return the attributes needed to initialize a ProxyObject
-
-        Notice, the returned dictionary is ordered as the __init__() arguments
-
-        Parameters
-        ----------
-        include_obj: bool
-            Whether to include the "obj" argument or not
-
-        Returns
-        -------
-        Dictionary of attributes
-        """
-        args = ["obj"] if include_obj else []
-        args += [
-            "fixed_attr",
-            "type_serialized",
-            "typename",
-            "is_cuda_object",
-            "subclass",
-            "serializer",
-            "explicit_proxy",
-        ]
-        return OrderedDict([(a, self._obj_pxy[a]) for a in args])
-
-    def _obj_pxy_copy(self) -> "ProxyObject":
-        """Return a deepcopy of the proxy meta data
-
-        Use this to copy the proxy without copying the proxied object.
-
-        Returns
-        -------
-        Copy of the proxy object that points to the same proxied object
-        """
-        args = copy.deepcopy(self._obj_pxy_get_init_args(include_obj=False))
-        args["obj"] = self._obj_pxy["obj"]
-        return type(self)(**args)
-
-    def _obj_pxy_register_manager(self, manager: "ProxyManager") -> None:
-        """Register a manager
-
-        The manager tallies the total memory usage of proxies and
-        evicts/serialize proxy objects as needed.
-
-        In order to prevent deadlocks, the proxy now use the lock of the
-        manager.
-
-        Parameters
-        ----------
-        manager: ProxyManager
-            The manager to manage this proxy object
-        """
-        assert "manager" not in self._obj_pxy
-        self._obj_pxy["manager"] = manager
-        self._obj_pxy_lock = manager.lock
-
-    def _obj_pxy_get_manager(self) -> Union["ProxyManager", ProxyManagerDummy]:
-        """Get the registered manager or a dummy
-
-        Parameters
-        ----------
-        manager: ProxyManager or ProxyManagerDummy
-            The manager to manage this proxy object or a dummy
-        """
-        ret = self._obj_pxy.get("manager", None)
-        if ret is None:
-            ret = ProxyManagerDummy()
-        return ret
-
-    def _obj_pxy_is_serialized(self) -> bool:
-        """Return whether the proxied object is serialized or not"""
-        return self._obj_pxy["serializer"] is not None
-
-    def _obj_pxy_serialize(self, serializers: Iterable[str]):
+    def _pxy_serialize(
+        self, serializers: Iterable[str], proxy_detail: ProxyDetail = None
+    ):
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters
@@ -350,30 +414,22 @@ class ProxyObject:
         if not serializers:
             raise ValueError("Please specify a list of serializers")
 
-        with self._obj_pxy_lock:
-            if self._obj_pxy_is_serialized():
-                if self._obj_pxy["serializer"] in serializers:
-                    return self._obj_pxy["obj"]  # Nothing to be done
-                else:
-                    # The proxied object is serialized with other serializers
-                    self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True) if not proxy_detail else proxy_detail
+        if pxy.serializer is not None and pxy.serializer in serializers:
+            return pxy.obj  # Nothing to be done
 
-            manager = self._obj_pxy_get_manager()
-            with manager.lock:
-                header, _ = self._obj_pxy["obj"] = distributed.protocol.serialize(
-                    self._obj_pxy["obj"], serializers, on_error="raise"
-                )
-                assert "is-collection" not in header  # Collections not allowed
-                self._obj_pxy["serializer"] = header["serializer"]
+        ret = pxy.serialize(serializers=serializers)
+        with pxy.manager.lock:
+            self._pxy_set(pxy)
+            pxy.manager.add(proxy=self, proxy_detail=pxy)
 
-                # Tell the manager (if any) that this proxy has changed serializer
-                manager.add(self)
+        # Invalidate the (possible) cached "device_memory_objects"
+        self._pxy_cache.pop("device_memory_objects", None)
+        return ret
 
-                # Invalidate the (possible) cached "device_memory_objects"
-                self._obj_pxy_cache.pop("device_memory_objects", None)
-                return self._obj_pxy["obj"]
-
-    def _obj_pxy_deserialize(self, maybe_evict: bool = True):
+    def _pxy_deserialize(
+        self, maybe_evict: bool = True, proxy_detail: ProxyDetail = None
+    ):
         """Inplace deserialization of the proxied object
 
         Parameters
@@ -386,45 +442,21 @@ class ProxyObject:
         object
             The proxied object (deserialized)
         """
-        with self._obj_pxy_lock:
-            if self._obj_pxy_is_serialized():
-                manager = self._obj_pxy_get_manager()
-                with manager.lock:
-                    # When not deserializing a CUDA-serialized proxied, tell the
-                    # manager that it might have to evict because of the increased
-                    # device memory usage.
-                    if (
-                        manager
-                        and maybe_evict
-                        and self._obj_pxy["serializer"] != "cuda"
-                    ):
-                        manager.maybe_evict(self.__sizeof__())
 
-                    # Deserialize the proxied object
-                    header, frames = self._obj_pxy["obj"]
-                    self._obj_pxy["obj"] = distributed.protocol.deserialize(
-                        header, frames
-                    )
+        pxy = self._pxy_get(copy=True) if not proxy_detail else proxy_detail
+        if not pxy.is_serialized():
+            return pxy.obj
 
-                    # Tell the manager (if any) that this proxy has changed serializer
-                    self._obj_pxy["serializer"] = None
-                    manager.add(self)
+        ret = pxy.deserialize(maybe_evict=maybe_evict, nbytes=self.__sizeof__())
 
-            self._obj_pxy["last_access"] = time.monotonic()
-            return self._obj_pxy["obj"]
+        with pxy.manager.lock:
+            self._pxy_set(pxy)
+            pxy.manager.add(proxy=self, proxy_detail=pxy)
 
-    def _obj_pxy_is_cuda_object(self) -> bool:
-        """Return whether the proxied object is a CUDA or not
+        return ret
 
-        Returns
-        -------
-        ret : boolean
-            Is the proxied object a CUDA object?
-        """
-        return self._obj_pxy["is_cuda_object"]
-
-    @_obj_pxy_cache_wrapper("device_memory_objects")
-    def _obj_pxy_get_device_memory_objects(self) -> set:
+    @_pxy_cache_wrapper("device_memory_objects")
+    def _pxy_get_device_memory_objects(self) -> set:
         """Return all device memory objects within the proxied object.
 
         Returns
@@ -432,321 +464,341 @@ class ProxyObject:
         ret : set
             Set of device memory objects
         """
-        return get_device_memory_objects(self._obj_pxy["obj"])
+        return get_device_memory_objects(self._pxy_get().obj)
 
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""
-        self._obj_pxy_serialize(serializers=("pickle",))
-        args = self._obj_pxy_get_init_args()
-        if args["subclass"]:
-            subclass = loads_function(args["subclass"])
+        pxy = self._pxy_get(copy=True)
+        pxy.serialize(serializers=("pickle",))
+        if pxy.subclass:
+            subclass = loads_function(pxy.subclass)
         else:
             subclass = ProxyObject
 
         # Make sure the frames are all bytes
-        header, frames = args["obj"]
-        args["obj"] = (header, [bytes(f) for f in frames])
+        header, frames = pxy.obj
+        pxy.obj = (header, [bytes(f) for f in frames])
+        with pxy.manager.lock:
+            self._pxy_set(pxy)
+            pxy.manager.add(self)
 
-        return (subclass, tuple(args.values()))
+        return (subclass, (pxy,))
 
     def __getattr__(self, name):
-        with self._obj_pxy_lock:
-            typename = self._obj_pxy["typename"]
-            if name in _FIXED_ATTRS:
-                try:
-                    return self._obj_pxy["fixed_attr"][name]
-                except KeyError:
-                    raise AttributeError(
-                        f"type object '{typename}' has no attribute '{name}'"
-                    )
+        pxy = self._pxy_get()
+        if name in _FIXED_ATTRS:
+            try:
+                return pxy.fixed_attr[name]
+            except KeyError:
+                raise AttributeError(
+                    f"type object '{pxy.typename}' has no attribute '{name}'"
+                )
+        return getattr(self._pxy_deserialize(), name)
 
-            return getattr(self._obj_pxy_deserialize(), name)
-
-    def __setattr__(self, name, val):
-        if name in ("_obj_pxy", "_obj_pxy_lock", "_obj_pxy_cache"):
+    def __setattr__(self, name: str, val):
+        if name.startswith("_pxy_"):
             return object.__setattr__(self, name, val)
 
-        with self._obj_pxy_lock:
-            if name in _FIXED_ATTRS:
-                self._obj_pxy["fixed_attr"][name] = val
-            else:
-                object.__setattr__(self._obj_pxy_deserialize(), name, val)
+        pxy = self._pxy_get(copy=True)
+        if name in _FIXED_ATTRS:
+            pxy.fixed_attr[name] = val
+        else:
+            object.__setattr__(pxy.deserialize(nbytes=self.__sizeof__()), name, val)
+        self._pxy_set(pxy)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         inputs = tuple(
-            o._obj_pxy_deserialize() if isinstance(o, ProxyObject) else o
-            for o in inputs
+            o._pxy_deserialize() if isinstance(o, ProxyObject) else o for o in inputs
         )
         kwargs = {
-            key: value._obj_pxy_deserialize()
-            if isinstance(value, ProxyObject)
-            else value
+            key: value._pxy_deserialize() if isinstance(value, ProxyObject) else value
             for key, value in kwargs.items()
         }
-        return self._obj_pxy_deserialize().__array_ufunc__(
-            ufunc, method, *inputs, **kwargs
-        )
+        return self._pxy_deserialize().__array_ufunc__(ufunc, method, *inputs, **kwargs)
 
     def __str__(self):
-        return str(self._obj_pxy_deserialize())
+        return str(self._pxy_deserialize())
 
     def __repr__(self):
-        with self._obj_pxy_lock:
-            typename = self._obj_pxy["typename"]
-            ret = f"<{dask.utils.typename(type(self))} at {hex(id(self))} of {typename}"
-            if self._obj_pxy_is_serialized():
-                ret += f" (serialized={repr(self._obj_pxy['serializer'])})>"
-            else:
-                ret += f" at {hex(id(self._obj_pxy['obj']))}>"
-            return ret
+        pxy = self._pxy_get()
+        ret = f"<{dask.utils.typename(type(self))} "
+        ret += f"at {hex(id(self))} of {pxy.typename}"
+        if pxy.is_serialized():
+            ret += f" (serialized={repr(pxy.serializer)})>"
+        else:
+            ret += f" at {hex(id(pxy.obj))}>"
+        return ret
 
     @property  # type: ignore  # mypy doesn't support decorated property
-    @_obj_pxy_cache_wrapper("type_serialized")
+    @_pxy_cache_wrapper("type_serialized")
     def __class__(self):
-        return pickle.loads(self._obj_pxy["type_serialized"])
+        return pickle.loads(self._pxy_get().type_serialized)
 
-    @_obj_pxy_cache_wrapper("sizeof")
+    @_pxy_cache_wrapper("sizeof")
     def __sizeof__(self):
         """Returns either the size of the proxied object
 
         Notice, we cache the result even though the size of proxied object
         when serialized or not serialized might slightly differ.
         """
-        with self._obj_pxy_lock:
-            if self._obj_pxy_is_serialized():
-                frames = self._obj_pxy["obj"][1]
-                return sum(map(distributed.utils.nbytes, frames))
-            else:
-                return sizeof(self._obj_pxy_deserialize())
+        pxy = self._pxy_get()
+        if pxy.is_serialized():
+            _, frames = pxy.obj
+            return sum(map(distributed.utils.nbytes, frames))
+        else:
+            return sizeof(self._pxy_deserialize())
 
     def __len__(self):
-        with self._obj_pxy_lock:
-            ret = self._obj_pxy["fixed_attr"].get("__len__", None)
-            if ret is None:
-                ret = len(self._obj_pxy_deserialize())
-                self._obj_pxy["fixed_attr"]["__len__"] = ret
-            return ret
+        pxy = self._pxy_get(copy=True)
+        ret = pxy.fixed_attr.get("__len__", None)
+        if ret is None:
+            ret = len(pxy.deserialize(nbytes=self.__sizeof__()))
+            pxy.fixed_attr["__len__"] = ret
+            self._pxy_set(pxy)
+        return ret
 
     def __contains__(self, value):
-        return value in self._obj_pxy_deserialize()
+        return value in self._pxy_deserialize()
 
     def __getitem__(self, key):
-        return self._obj_pxy_deserialize()[key]
+        return self._pxy_deserialize()[key]
 
     def __setitem__(self, key, value):
-        self._obj_pxy_deserialize()[key] = value
+        self._pxy_deserialize()[key] = value
 
     def __delitem__(self, key):
-        del self._obj_pxy_deserialize()[key]
+        del self._pxy_deserialize()[key]
 
     def __getslice__(self, i, j):
-        return self._obj_pxy_deserialize()[i:j]
+        return self._pxy_deserialize()[i:j]
 
     def __setslice__(self, i, j, value):
-        self._obj_pxy_deserialize()[i:j] = value
+        self._pxy_deserialize()[i:j] = value
 
     def __delslice__(self, i, j):
-        del self._obj_pxy_deserialize()[i:j]
+        del self._pxy_deserialize()[i:j]
 
     def __iter__(self):
-        return iter(self._obj_pxy_deserialize())
+        return iter(self._pxy_deserialize())
 
     def __array__(self, *args, **kwargs):
-        return getattr(self._obj_pxy_deserialize(), "__array__")(*args, **kwargs)
+        return getattr(self._pxy_deserialize(), "__array__")(*args, **kwargs)
 
     def __lt__(self, other):
-        return self._obj_pxy_deserialize() < other
+        return self._pxy_deserialize() < other
 
     def __le__(self, other):
-        return self._obj_pxy_deserialize() <= other
+        return self._pxy_deserialize() <= other
 
     def __eq__(self, other):
-        return self._obj_pxy_deserialize() == other
+        return self._pxy_deserialize() == other
 
     def __ne__(self, other):
-        return self._obj_pxy_deserialize() != other
+        return self._pxy_deserialize() != other
 
     def __gt__(self, other):
-        return self._obj_pxy_deserialize() > other
+        return self._pxy_deserialize() > other
 
     def __ge__(self, other):
-        return self._obj_pxy_deserialize() >= other
+        return self._pxy_deserialize() >= other
 
     def __add__(self, other):
-        return self._obj_pxy_deserialize() + other
+        return self._pxy_deserialize() + other
 
     def __sub__(self, other):
-        return self._obj_pxy_deserialize() - other
+        return self._pxy_deserialize() - other
 
     def __mul__(self, other):
-        return self._obj_pxy_deserialize() * other
+        return self._pxy_deserialize() * other
 
     def __truediv__(self, other):
-        return operator.truediv(self._obj_pxy_deserialize(), other)
+        return operator.truediv(self._pxy_deserialize(), other)
 
     def __floordiv__(self, other):
-        return self._obj_pxy_deserialize() // other
+        return self._pxy_deserialize() // other
 
     def __mod__(self, other):
-        return self._obj_pxy_deserialize() % other
+        return self._pxy_deserialize() % other
 
     def __divmod__(self, other):
-        return divmod(self._obj_pxy_deserialize(), other)
+        return divmod(self._pxy_deserialize(), other)
 
     def __pow__(self, other):
-        return pow(self._obj_pxy_deserialize(), other)
+        return pow(self._pxy_deserialize(), other)
 
     def __lshift__(self, other):
-        return self._obj_pxy_deserialize() << other
+        return self._pxy_deserialize() << other
 
     def __rshift__(self, other):
-        return self._obj_pxy_deserialize() >> other
+        return self._pxy_deserialize() >> other
 
     def __and__(self, other):
-        return self._obj_pxy_deserialize() & other
+        return self._pxy_deserialize() & other
 
     def __xor__(self, other):
-        return self._obj_pxy_deserialize() ^ other
+        return self._pxy_deserialize() ^ other
 
     def __or__(self, other):
-        return self._obj_pxy_deserialize() | other
+        return self._pxy_deserialize() | other
 
     def __radd__(self, other):
-        return other + self._obj_pxy_deserialize()
+        return other + self._pxy_deserialize()
 
     def __rsub__(self, other):
-        return other - self._obj_pxy_deserialize()
+        return other - self._pxy_deserialize()
 
     def __rmul__(self, other):
-        return other * self._obj_pxy_deserialize()
+        return other * self._pxy_deserialize()
 
     def __rtruediv__(self, other):
-        return operator.truediv(other, self._obj_pxy_deserialize())
+        return operator.truediv(other, self._pxy_deserialize())
 
     def __rfloordiv__(self, other):
-        return other // self._obj_pxy_deserialize()
+        return other // self._pxy_deserialize()
 
     def __rmod__(self, other):
-        return other % self._obj_pxy_deserialize()
+        return other % self._pxy_deserialize()
 
     def __rdivmod__(self, other):
-        return divmod(other, self._obj_pxy_deserialize())
+        return divmod(other, self._pxy_deserialize())
 
     def __rpow__(self, other, *args):
-        return pow(other, self._obj_pxy_deserialize(), *args)
+        return pow(other, self._pxy_deserialize(), *args)
 
     def __rlshift__(self, other):
-        return other << self._obj_pxy_deserialize()
+        return other << self._pxy_deserialize()
 
     def __rrshift__(self, other):
-        return other >> self._obj_pxy_deserialize()
+        return other >> self._pxy_deserialize()
 
     def __rand__(self, other):
-        return other & self._obj_pxy_deserialize()
+        return other & self._pxy_deserialize()
 
     def __rxor__(self, other):
-        return other ^ self._obj_pxy_deserialize()
+        return other ^ self._pxy_deserialize()
 
     def __ror__(self, other):
-        return other | self._obj_pxy_deserialize()
+        return other | self._pxy_deserialize()
 
     def __iadd__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied += other
+        self._pxy_set(pxy)
         return self
 
     def __isub__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied -= other
+        self._pxy_set(pxy)
         return self
 
     def __imul__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied *= other
+        self._pxy_set(pxy)
         return self
 
     def __itruediv__(self, other):
-        with self._obj_pxy_lock:
-            proxied = self._obj_pxy_deserialize()
-            self._obj_pxy["obj"] = operator.itruediv(proxied, other)
-        return self
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
+        pxy.obj = operator.itruediv(proxied, other)
+        self._pxy_set(pxy)
 
     def __ifloordiv__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied //= other
+        self._pxy_set(pxy)
         return self
 
     def __imod__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied %= other
+        self._pxy_set(pxy)
         return self
 
     def __ipow__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied **= other
+        self._pxy_set(pxy)
         return self
 
     def __ilshift__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied <<= other
+        self._pxy_set(pxy)
         return self
 
     def __irshift__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied >>= other
+        self._pxy_set(pxy)
         return self
 
     def __iand__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied &= other
+        self._pxy_set(pxy)
         return self
 
     def __ixor__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied ^= other
+        self._pxy_set(pxy)
         return self
 
     def __ior__(self, other):
-        proxied = self._obj_pxy_deserialize()
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied |= other
+        self._pxy_set(pxy)
         return self
 
     def __neg__(self):
-        return -self._obj_pxy_deserialize()
+        return -self._pxy_deserialize()
 
     def __pos__(self):
-        return +self._obj_pxy_deserialize()
+        return +self._pxy_deserialize()
 
     def __abs__(self):
-        return abs(self._obj_pxy_deserialize())
+        return abs(self._pxy_deserialize())
 
     def __invert__(self):
-        return ~self._obj_pxy_deserialize()
+        return ~self._pxy_deserialize()
 
     def __int__(self):
-        return int(self._obj_pxy_deserialize())
+        return int(self._pxy_deserialize())
 
     def __float__(self):
-        return float(self._obj_pxy_deserialize())
+        return float(self._pxy_deserialize())
 
     def __complex__(self):
-        return complex(self._obj_pxy_deserialize())
+        return complex(self._pxy_deserialize())
 
     def __index__(self):
-        return operator.index(self._obj_pxy_deserialize())
+        return operator.index(self._pxy_deserialize())
 
 
 @is_device_object.register(ProxyObject)
 def obj_pxy_is_device_object(obj: ProxyObject):
     """
-    In order to avoid de-serializing the proxied object, we call
-    `_obj_pxy_is_cuda_object()` instead of the default
+    In order to avoid de-serializing the proxied object,
+    we check `is_cuda_object` instead of the default
     `hasattr(o, "__cuda_array_interface__")` check.
     """
-    return obj._obj_pxy_is_cuda_object()
+    return obj._pxy_get().is_cuda_object
 
 
-def handle_disk_serialized(obj: ProxyObject):
+def handle_disk_serialized(pxy: ProxyDetail):
     """Handle serialization of an already disk serialized proxy
 
     On a shared filesystem, we do not have to deserialize instead we
@@ -754,8 +806,7 @@ def handle_disk_serialized(obj: ProxyObject):
 
     On a non-shared filesystem, we deserialize the proxy to host memory.
     """
-
-    header, frames = obj._obj_pxy["obj"]
+    header, frames = pxy.obj
     if header["shared-filesystem"]:
         old_path = header["path"]
         new_path = f"{old_path}-linked-{uuid.uuid4()}"
@@ -771,7 +822,7 @@ def handle_disk_serialized(obj: ProxyObject):
         if "compression" in header["disk-sub-header"]:
             frames = decompress(header["disk-sub-header"], frames)
         header = header["disk-sub-header"]
-        obj._obj_pxy["serializer"] = header["serializer"]
+        pxy.serializer = header["serializer"]
     return header, frames
 
 
@@ -783,12 +834,15 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
     are spilled to main memory before communicated. Deserialization is needed, unless
     obj is serialized to disk on a shared filesystem see `handle_disk_serialized()`.
     """
-    if obj._obj_pxy["serializer"] == "disk":
-        header, frames = handle_disk_serialized(obj)
+    pxy = obj._pxy_get(copy=True)
+    if pxy.serializer == "disk":
+        header, frames = handle_disk_serialized(pxy)
     else:
-        header, frames = obj._obj_pxy_serialize(serializers=("dask", "pickle"))
-    meta = obj._obj_pxy_get_init_args(include_obj=False)
-    return {"proxied-header": header, "obj-pxy-meta": meta}, frames
+        header, frames = pxy.serialize(serializers=("dask", "pickle"))
+    with pxy.manager.lock:
+        obj._pxy_set(pxy)
+        pxy.manager.add(proxy=obj, proxy_detail=pxy)
+    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
 
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
@@ -799,18 +853,21 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     spilled to main memory before communicated. However, we still have to handle disk
     serialized proxied like in `obj_pxy_dask_serialize()`
     """
-    if obj._obj_pxy["serializer"] in ("dask", "pickle"):
-        header, frames = obj._obj_pxy["obj"]
-    elif obj._obj_pxy["serializer"] == "disk":
-        header, frames = handle_disk_serialized(obj)
+    pxy = obj._pxy_get(copy=True)
+    if pxy.serializer in ("dask", "pickle"):
+        header, frames = pxy.obj
+    elif pxy.serializer == "disk":
+        header, frames = handle_disk_serialized(pxy)
+        with pxy.manager.lock:
+            obj._pxy_set(pxy)
+            pxy.manager.add(proxy=obj, proxy_detail=pxy)
     else:
         # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
         # the worker's data store.
-        obj = obj._obj_pxy_copy()
-        header, frames = obj._obj_pxy_serialize(serializers=("cuda",))
-    meta = obj._obj_pxy_get_init_args(include_obj=False)
-    return {"proxied-header": header, "obj-pxy-meta": meta}, frames
+        header, frames = pxy.serialize(serializers=("cuda",))
+
+    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
 
 
 @distributed.protocol.dask_deserialize.register(ProxyObject)
@@ -822,12 +879,12 @@ def obj_pxy_dask_deserialize(header, frames):
     deserialized using the same serializers that were used when the object was
     serialized.
     """
-    meta = header["obj-pxy-meta"]
-    if meta["subclass"] is None:
+    args = header["obj-pxy-detail"]
+    if args["subclass"] is None:
         subclass = ProxyObject
     else:
-        subclass = loads_function(meta["subclass"])
-    return subclass(obj=(header["proxied-header"], frames), **header["obj-pxy-meta"],)
+        subclass = loads_function(args["subclass"])
+    return subclass(ProxyDetail(obj=(header["proxied-header"], frames), **args))
 
 
 @dask.dataframe.core.get_parallel_type.register(ProxyObject)
