@@ -6,6 +6,7 @@ import pickle
 import time
 import uuid
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from copy import copy as _copy
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
@@ -321,6 +322,16 @@ class ProxyDetail:
         return self.obj
 
 
+thread_pool = ThreadPoolExecutor(max_workers=5)
+
+
+def serialize_and_update_manager(
+    proxy: "ProxyObject", proxy_detail: ProxyDetail, serializers: Iterable[str]
+) -> None:
+    proxy_detail.serialize(serializers=serializers)
+    proxy._pxy_set(proxy_detail)
+
+
 class ProxyObject:
     """Object wrapper/proxy for serializable objects
 
@@ -385,7 +396,10 @@ class ProxyObject:
             os.remove(header["path"])
 
     def _pxy_serialize(
-        self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
+        self,
+        serializers: Iterable[str],
+        proxy_detail: ProxyDetail = None,
+        asynchronous=False,
     ) -> None:
         """Inplace serialization of the proxied object using the `serializers`
 
@@ -408,8 +422,25 @@ class ProxyObject:
         if pxy.serializer is not None and pxy.serializer in serializers:
             return  # Nothing to be done
 
-        pxy.serialize(serializers=serializers)
-        self._pxy_set(pxy)
+        if asynchronous:
+            # We don't know exactly which serializer will be used but we
+            # can make an educated guess.
+            # When `serialize_and_update_manager()` finishes, it will update
+            # the serializer to the actual serializer used.
+            if "disk" in serializers:
+                serializer = "disk"
+            elif "dask" in serializers:
+                serializer = "dask"
+            elif "pickle" in serializers:
+                serializer = "pickle"
+            else:
+                serializer = "cuda"
+            pxy.manager.add(proxy=self, serializer=serializer)
+            thread_pool.submit(serialize_and_update_manager, self, pxy, serializers)
+        else:
+            serialize_and_update_manager(
+                proxy=self, proxy_detail=pxy, serializers=serializers
+            )
 
         # Invalidate the (possible) cached "device_memory_objects"
         self._pxy_cache.pop("device_memory_objects", None)

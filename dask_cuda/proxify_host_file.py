@@ -157,13 +157,16 @@ class ProxyManager:
     Notice, the manager only keeps weak references to the proxies.
     """
 
-    def __init__(self, device_memory_limit: int, memory_limit: int):
+    def __init__(
+        self, device_memory_limit: int, memory_limit: int, async_spilling: bool
+    ):
         self.lock = threading.RLock()
         self._disk = ProxiesOnDisk()
         self._host = ProxiesOnHost()
         self._dev = ProxiesOnDevice()
         self._device_memory_limit = device_memory_limit
         self._host_memory_limit = memory_limit
+        self._async_spilling = async_spilling
 
     def __repr__(self) -> str:
         with self.lock:
@@ -334,7 +337,9 @@ class ProxyManager:
             # Avoid trying to serialize the same proxy multiple times
             if id(p) not in serialized_proxies:
                 serialized_proxies.add(id(p))
-                p._pxy_serialize(serializers=("dask", "pickle"))
+                p._pxy_serialize(
+                    serializers=("dask", "pickle"), asynchronous=self._async_spilling
+                )
 
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         if (  # Shortcut when not evicting
@@ -436,16 +441,20 @@ class ProxifyHostFile(MutableMapping):
         local_directory: str = None,
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
+        async_spilling: bool = None,
     ):
-        self.store: Dict[Hashable, Any] = {}
-        self.manager = ProxyManager(device_memory_limit, memory_limit)
-        self.register_disk_spilling(local_directory, shared_filesystem)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
             )
         else:
             self.compatibility_mode = compatibility_mode
+        if async_spilling is None:
+            async_spilling = dask.config.get("jit-unspill-async", default=False)
+
+        self.store: Dict[Hashable, Any] = {}
+        self.manager = ProxyManager(device_memory_limit, memory_limit, async_spilling)
+        self.register_disk_spilling(local_directory, shared_filesystem)
 
         # It is a bit hacky to forcefully capture the "distributed.worker" logger,
         # eventually it would be better to have a different logger. For now this
