@@ -34,9 +34,7 @@ def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
 
         return MultiLock(*args, **kwargs)
     else:
-        # Use a null context that doesn't do anything
-        # TODO: use `contextlib.nullcontext()` from Python 3.7+
-        return contextlib.suppress()
+        return contextlib.nullcontext()
 
 
 def default_comms(client: Optional[Client] = None) -> "CommsContext":

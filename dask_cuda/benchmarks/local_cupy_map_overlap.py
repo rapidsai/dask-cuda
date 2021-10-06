@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from json import dumps
 from time import perf_counter as clock
 from warnings import filterwarnings
 
@@ -125,28 +126,68 @@ async def run(args):
 
             print("Roundtrip benchmark")
             print("--------------------------")
-            print(f"Size        | {args.size}*{args.size}")
-            print(f"Chunk-size  | {args.chunk_size}")
-            print(f"Ignore-size | {format_bytes(args.ignore_size)}")
-            print(f"Protocol    | {args.protocol}")
-            print(f"Device(s)   | {args.devs}")
+            print(f"Size         | {args.size}*{args.size}")
+            print(f"Chunk-size   | {args.chunk_size}")
+            print(f"Ignore-size  | {format_bytes(args.ignore_size)}")
+            print(f"Protocol     | {args.protocol}")
+            print(f"Device(s)    | {args.devs}")
+            if args.device_memory_limit:
+                print(f"memory-limit | {format_bytes(args.device_memory_limit)}")
             print("==========================")
-            print("Wall-clock  | npartitions")
+            print("Wall-clock   | npartitions")
             print("--------------------------")
             for (took, npartitions) in took_list:
                 t = format_time(took)
-                t += " " * (11 - len(t))
+                t += " " * (12 - len(t))
                 print(f"{t} | {npartitions}")
             print("==========================")
-            print("(w1,w2)     | 25% 50% 75% (total nbytes)")
+            print("(w1,w2)      | 25% 50% 75% (total nbytes)")
             print("--------------------------")
             for (d1, d2), bw in sorted(bandwidths.items()):
                 fmt = (
-                    "(%s,%s)     | %s %s %s (%s)"
+                    "(%s,%s)      | %s %s %s (%s)"
                     if args.multi_node or args.sched_addr
-                    else "(%02d,%02d)     | %s %s %s (%s)"
+                    else "(%02d,%02d)      | %s %s %s (%s)"
                 )
                 print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+
+            if args.benchmark_json:
+                bandwidths_json = {
+                    "bandwidth_({d1},{d2})_{i}"
+                    if args.multi_node or args.sched_addr
+                    else "(%02d,%02d)_%s" % (d1, d2, i): parse_bytes(v.rstrip("/s"))
+                    for (d1, d2), bw in sorted(bandwidths.items())
+                    for i, v in zip(
+                        ["25%", "50%", "75%", "total_nbytes"],
+                        [bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]],
+                    )
+                }
+
+                with open(args.benchmark_json, "a") as fp:
+                    for took, npartitions in took_list:
+                        fp.write(
+                            dumps(
+                                dict(
+                                    {
+                                        "size": args.size * args.size,
+                                        "chunk_size": args.chunk_size,
+                                        "ignore_size": args.ignore_size,
+                                        "protocol": args.protocol,
+                                        "devs": args.devs,
+                                        "device_memory_limit": args.device_memory_limit,
+                                        "worker_threads": args.threads_per_worker,
+                                        "rmm_pool": not args.disable_rmm_pool,
+                                        "tcp": args.enable_tcp_over_ucx,
+                                        "ib": args.enable_infiniband,
+                                        "nvlink": args.enable_nvlink,
+                                        "wall_clock": took,
+                                        "npartitions": npartitions,
+                                    },
+                                    **bandwidths_json,
+                                )
+                            )
+                            + "\n"
+                        )
 
             # An SSHCluster will not automatically shut down, we have to
             # ensure it does.

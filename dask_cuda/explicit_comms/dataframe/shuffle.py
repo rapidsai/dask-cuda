@@ -18,7 +18,7 @@ from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 
-from ...proxify_host_file import ProxifyHostFile
+from ...proxify_host_file import ProxyManager
 from .. import comms
 
 
@@ -148,19 +148,17 @@ async def local_shuffle(
     eps = s["eps"]
 
     try:
-        hostfile = first(iter(in_parts[0].values()))._obj_pxy.get(
-            "hostfile", lambda: None
-        )()
+        manager = first(iter(in_parts[0].values()))._obj_pxy.get("manager", None)
     except AttributeError:
-        hostfile = None
+        manager = None
 
-    if isinstance(hostfile, ProxifyHostFile):
+    if isinstance(manager, ProxyManager):
 
         def concat(args, ignore_index=False):
             if len(args) < 2:
                 return args[0]
 
-            return hostfile.add_external(dd_concat(args, ignore_index=ignore_index))
+            return manager.proxify(dd_concat(args, ignore_index=ignore_index))
 
     else:
         concat = dd_concat

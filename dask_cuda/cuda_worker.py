@@ -66,6 +66,7 @@ class CUDAWorker(Server):
         dashboard=True,
         dashboard_address=":0",
         local_directory=None,
+        shared_filesystem=None,
         scheduler_file=None,
         interface=None,
         preload=[],
@@ -199,6 +200,9 @@ class CUDAWorker(Server):
                     "device_memory_limit": parse_device_memory_limit(
                         device_memory_limit, device_index=i
                     ),
+                    "memory_limit": memory_limit,
+                    "local_directory": local_directory,
+                    "shared_filesystem": shared_filesystem,
                 },
             )
         else:
@@ -241,7 +245,7 @@ class CUDAWorker(Server):
                 name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
-                    "ucx": get_ucx_config(
+                    "distributed.comm.ucx": get_ucx_config(
                         enable_tcp_over_ucx=enable_tcp_over_ucx,
                         enable_infiniband=enable_infiniband,
                         enable_nvlink=enable_nvlink,

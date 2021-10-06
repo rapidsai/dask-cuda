@@ -1,6 +1,7 @@
 import contextlib
 import math
 from collections import defaultdict
+from json import dumps
 from time import perf_counter
 from warnings import filterwarnings
 
@@ -278,6 +279,8 @@ def main(args):
     print(f"broadcast      | {broadcast}")
     print(f"protocol       | {args.protocol}")
     print(f"device(s)      | {args.devs}")
+    if args.device_memory_limit:
+        print(f"memory-limit   | {format_bytes(args.device_memory_limit)}")
     print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
     print(f"frac-match     | {args.frac_match}")
     if args.protocol == "ucx":
@@ -304,17 +307,58 @@ def main(args):
     if args.backend == "dask":
         if args.markdown:
             print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
-        print("(w1,w2)     | 25% 50% 75% (total nbytes)")
+        print("(w1,w2)        | 25% 50% 75% (total nbytes)")
         print("-------------------------------")
         for (d1, d2), bw in sorted(bandwidths.items()):
             fmt = (
-                "(%s,%s)     | %s %s %s (%s)"
+                "(%s,%s)        | %s %s %s (%s)"
                 if args.multi_node or args.sched_addr
-                else "(%02d,%02d)     | %s %s %s (%s)"
+                else "(%02d,%02d)        | %s %s %s (%s)"
             )
             print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
         if args.markdown:
             print("```\n</details>\n")
+
+    if args.benchmark_json:
+        bandwidths_json = {
+            "bandwidth_({d1},{d2})_{i}"
+            if args.multi_node or args.sched_addr
+            else "(%02d,%02d)_%s" % (d1, d2, i): parse_bytes(v.rstrip("/s"))
+            for (d1, d2), bw in sorted(bandwidths.items())
+            for i, v in zip(
+                ["25%", "50%", "75%", "total_nbytes"],
+                [bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]],
+            )
+        }
+
+        with open(args.benchmark_json, "a") as fp:
+            for data_processed, took in took_list:
+                fp.write(
+                    dumps(
+                        dict(
+                            {
+                                "backend": args.backend,
+                                "merge_type": args.type,
+                                "rows_per_chunk": args.chunk_size,
+                                "base_chunks": args.base_chunks,
+                                "other_chunks": args.other_chunks,
+                                "broadcast": broadcast,
+                                "protocol": args.protocol,
+                                "devs": args.devs,
+                                "device_memory_limit": args.device_memory_limit,
+                                "rmm_pool": not args.disable_rmm_pool,
+                                "tcp": args.enable_tcp_over_ucx,
+                                "ib": args.enable_infiniband,
+                                "nvlink": args.enable_nvlink,
+                                "data_processed": data_processed,
+                                "wall_clock": took,
+                                "throughput": data_processed / took,
+                            },
+                            **bandwidths_json,
+                        )
+                    )
+                    + "\n"
+                )
 
     if args.multi_node:
         client.shutdown()

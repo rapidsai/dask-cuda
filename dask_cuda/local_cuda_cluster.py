@@ -77,6 +77,12 @@ class LocalCUDACluster(LocalCluster):
         ``"path/to/files"``) or ``None`` to fall back on the value of
         ``dask.temporary-directory`` in the local Dask configuration, using the current
         working directory if this is not set.
+    shared_filesystem: bool or None, default None
+        Whether the `local_directory` above is shared between all workers or not.
+        If ``None``, the "jit-unspill-shared-fs" config value are used, which
+        defaults to True. Notice, in all other cases this option defaults to False,
+        but on a local cluster it defaults to True -- we assume all workers use the
+        same filesystem.
     protocol : str or None, default None
         Protocol to use for communication. Can be a string (like ``"tcp"`` or
         ``"ucx"``), or ``None`` to automatically choose the correct protocol.
@@ -180,6 +186,7 @@ class LocalCUDACluster(LocalCluster):
         device_memory_limit=0.8,
         data=None,
         local_directory=None,
+        shared_filesystem=None,
         protocol=None,
         enable_tcp_over_ucx=False,
         enable_infiniband=False,
@@ -213,7 +220,7 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
-        self.host_memory_limit = parse_memory_limit(
+        self.memory_limit = parse_memory_limit(
             memory_limit, threads_per_worker, n_workers
         )
         self.device_memory_limit = parse_device_memory_limit(
@@ -260,22 +267,29 @@ class LocalCUDACluster(LocalCluster):
         else:
             self.jit_unspill = jit_unspill
 
+        if shared_filesystem is None:
+            # Notice, we assume a shared filesystem
+            shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
+
         data = kwargs.pop("data", None)
         if data is None:
             if self.jit_unspill:
                 data = (
                     ProxifyHostFile,
-                    {"device_memory_limit": self.device_memory_limit,},
+                    {
+                        "device_memory_limit": self.device_memory_limit,
+                        "memory_limit": self.memory_limit,
+                        "local_directory": local_directory,
+                        "shared_filesystem": shared_filesystem,
+                    },
                 )
             else:
                 data = (
                     DeviceHostFile,
                     {
                         "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.host_memory_limit,
-                        "local_directory": local_directory
-                        or dask.config.get("temporary-directory")
-                        or os.getcwd(),
+                        "memory_limit": self.memory_limit,
+                        "local_directory": local_directory,
                         "log_spilling": log_spilling,
                     },
                 )
@@ -309,7 +323,7 @@ class LocalCUDACluster(LocalCluster):
         elif ucx_net_devices == "":
             raise ValueError("ucx_net_devices can not be an empty string")
         self.ucx_net_devices = ucx_net_devices
-        self.set_ucx_net_devices = enable_infiniband
+        self.set_ucx_net_devices = enable_infiniband and ucx_net_devices is not None
         self.host = kwargs.get("host", None)
 
         initialize(
@@ -332,14 +346,14 @@ class LocalCUDACluster(LocalCluster):
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
-            memory_limit=self.host_memory_limit,
+            memory_limit=self.memory_limit,
             processes=True,
             data=data,
             local_directory=local_directory,
             protocol=protocol,
             worker_class=worker_class,
             config={
-                "ucx": get_ucx_config(
+                "distributed.comm.ucx": get_ucx_config(
                     enable_tcp_over_ucx=enable_tcp_over_ucx,
                     enable_nvlink=enable_nvlink,
                     enable_infiniband=enable_infiniband,
@@ -394,7 +408,9 @@ class LocalCUDACluster(LocalCluster):
             net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
             if net_dev is not None:
                 spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
-                spec["options"]["config"]["ucx"]["net-devices"] = net_dev
+                spec["options"]["config"]["distributed.comm.ucx"][
+                    "net-devices"
+                ] = net_dev
 
             spec["options"]["interface"] = get_ucx_net_devices(
                 cuda_device_index,
