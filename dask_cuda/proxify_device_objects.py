@@ -224,17 +224,22 @@ def proxify_device_object_python_dict(
 @dispatch.register_lazy("cudf")
 def _register_cudf():
     import cudf
-    import cudf._lib.table
+
+    try:
+        # In v21.12, cuDF removed Table in favor of Frame as base class
+        from cudf._lib.table import Table as Frame
+    except ImportError:
+        from cudf.core.frame import Frame
 
     # In order to support the cuDF API implemented in Cython, we inherit from
-    # `cudf._lib.table.Table`, which is the base class of Index, Series, and
+    # `cudf.core.frame.Frame`, which is the base class of Index, Series, and
     # Dataframes in cuDF.
     # Notice, the order of base classes matters. Since ProxyObject is the first
     # base class, ProxyObject.__init__() is called on creation, which doesn't
-    # define the Table._data and Table._index attributes. Thus, accessing
+    # define the Frame._data and Frame._index attributes. Thus, accessing
     # FrameProxyObject._data and FrameProxyObject._index is pass-through to
     # ProxyObejct.__getattr__(), which is what we want.
-    class FrameProxyObject(ProxyObject, cudf._lib.table.Table):
+    class FrameProxyObject(ProxyObject, Frame):
         pass
 
     @dispatch.register(cudf.DataFrame)
