@@ -227,20 +227,23 @@ def _register_cudf():
 
     try:
         # In v21.12, cuDF removed Table in favor of Frame as base class
-        from cudf._lib.table import Table as Frame
+        from cudf._lib.table import Table
     except ImportError:
-        from cudf.core.frame import Frame
 
-    # In order to support the cuDF API implemented in Cython, we inherit from
-    # `cudf.core.frame.Frame`, which is the base class of Index, Series, and
-    # Dataframes in cuDF.
-    # Notice, the order of base classes matters. Since ProxyObject is the first
-    # base class, ProxyObject.__init__() is called on creation, which doesn't
-    # define the Frame._data and Frame._index attributes. Thus, accessing
-    # FrameProxyObject._data and FrameProxyObject._index is pass-through to
-    # ProxyObejct.__getattr__(), which is what we want.
-    class FrameProxyObject(ProxyObject, Frame):
-        pass
+        class FrameProxyObject(ProxyObject):
+            pass
+
+    else:
+        # In order to support the cuDF API implemented in Cython, we inherit from
+        # `cudf.core.frame.Frame`, which is the base class of Index, Series, and
+        # Dataframes in cuDF.
+        # Notice, the order of base classes matters. Since ProxyObject is the first
+        # base class, ProxyObject.__init__() is called on creation, which doesn't
+        # define the Frame._data and Frame._index attributes. Thus, accessing
+        # FrameProxyObject._data and FrameProxyObject._index is pass-through to
+        # ProxyObejct.__getattr__(), which is what we want.
+        class FrameProxyObject(ProxyObject, Table):
+            pass
 
     @dispatch.register(cudf.DataFrame)
     @dispatch.register(cudf.Series)
