@@ -571,3 +571,10 @@ def test_cudf_copy():
     df = proxify_device_objects(df)
     cpy = df.copy()
     assert_frame_equal(cpy.to_pandas(), df.to_pandas())
+
+
+def test_cudf_fillna():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    df = df.fillna(0)
