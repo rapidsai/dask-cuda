@@ -563,3 +563,11 @@ def test_array_ufucn_proxified_object(np_func):
     actual = np_func(proxy_obj, np_array)
 
     assert_series_equal(expected.to_pandas(), actual.to_pandas())
+
+
+def test_cudf_copy():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    cpy = df.copy()
+    assert_frame_equal(cpy.to_pandas(), df.to_pandas())
