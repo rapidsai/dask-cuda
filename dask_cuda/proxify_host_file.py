@@ -31,7 +31,7 @@ from distributed.protocol.serialize import (
 from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
-from .proxy_object import ProxyObject
+from .proxy_object import ProxyDetail, ProxyObject, thread_pool
 
 
 class Proxies(abc.ABC):
@@ -380,6 +380,27 @@ class ProxyManager:
         self.maybe_evict_from_host()
 
 
+def serialize_host_to_disk_and_update_manager(
+    proxy: "ProxyObject", proxy_detail: ProxyDetail
+) -> None:
+
+    header, frames = proxy_detail.obj
+    path = ProxifyHostFile.gen_file_path()
+    with open(path, "wb") as f:
+        f.write(pack_frames(frames))
+    proxy_detail.obj = (
+        {
+            "serializer": "disk",
+            "path": path,
+            "shared-filesystem": ProxifyHostFile._spill_shared_filesystem,
+            "disk-sub-header": header,
+        },
+        [],
+    )
+    proxy_detail.serializer = "disk"
+    proxy._pxy_set(proxy_detail)
+
+
 class ProxifyHostFile(MutableMapping):
     """Host file that proxify stored data
 
@@ -592,7 +613,9 @@ class ProxifyHostFile(MutableMapping):
         register_serialization_family("disk", disk_dumps, disk_loads)
 
     @classmethod
-    def serialize_proxy_to_disk_inplace(cls, proxy: ProxyObject):
+    def serialize_proxy_to_disk_inplace(
+        cls, proxy: ProxyObject, asynchronous=False
+    ) -> None:
         """Serialize `proxy` to disk.
 
         Avoid de-serializing if `proxy` is serialized using "dask" or
@@ -606,21 +629,18 @@ class ProxifyHostFile(MutableMapping):
         """
         pxy = proxy._pxy_get(copy=True)
         if pxy.is_serialized():
-            header, frames = pxy.obj
+            header, _ = pxy.obj
             if header["serializer"] in ("dask", "pickle"):
-                path = cls.gen_file_path()
-                with open(path, "wb") as f:
-                    f.write(pack_frames(frames))
-                pxy.obj = (
-                    {
-                        "serializer": "disk",
-                        "path": path,
-                        "shared-filesystem": cls._spill_shared_filesystem,
-                        "disk-sub-header": header,
-                    },
-                    [],
-                )
-                pxy.serializer = "disk"
-                proxy._pxy_set(pxy)
+                # Handle the special case where we are serialzing from host to disk.
+                if asynchronous:
+                    pxy.manager.add(proxy=proxy, serializer="disk")
+                    thread_pool.submit(
+                        serialize_host_to_disk_and_update_manager, proxy, pxy
+                    )
+                else:
+                    serialize_host_to_disk_and_update_manager(
+                        proxy=proxy, proxy_detail=pxy
+                    )
                 return
+        # If not serialzing from host to disk, use the regular implementation
         proxy._pxy_serialize(serializers=("disk",), proxy_detail=pxy)
