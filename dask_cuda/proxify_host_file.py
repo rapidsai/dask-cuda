@@ -267,8 +267,8 @@ class ProxyManager:
                 if not self.contains(id(p)):
                     pxy.manager = self
                     self.add(proxy=p, serializer=pxy.serializer)
-            self.maybe_evict()
-            return ret
+        self.maybe_evict()
+        return ret
 
     def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
         with self.lock:
@@ -310,6 +310,7 @@ class ProxyManager:
         ):
             return
 
+        proxies_to_serialize: List[ProxyObject] = []
         with self.lock:
             total_dev_mem_usage, dev_buf_access = self.get_dev_access_info()
             total_dev_mem_usage += extra_dev_mem
@@ -317,11 +318,17 @@ class ProxyManager:
                 dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
                 for _, size, proxies in dev_buf_access:
                     for p in proxies:
-                        # Serialize to disk, which "dask" and "pickle" does
-                        p._pxy_serialize(serializers=("dask", "pickle"))
+                        proxies_to_serialize.append(p)
                     total_dev_mem_usage -= size
                     if total_dev_mem_usage <= self._device_memory_limit:
                         break
+
+        serialized_proxies: Set[int] = set()
+        for p in proxies_to_serialize:
+            # Avoid trying to serialize the same proxy multiple times
+            if id(p) not in serialized_proxies:
+                serialized_proxies.add(id(p))
+                p._pxy_serialize(serializers=("dask", "pickle"))
 
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         if (  # Shortcut when not evicting
@@ -344,10 +351,10 @@ class ProxyManager:
         with self.lock:
             _, info = self.get_host_access_info()
             info.sort(key=lambda x: (x[0], -x[1]))
-            for _, size, proxy in info:
-                ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
-                return size
-            return 0
+        for _, size, proxy in info:
+            ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
+            return size
+        return 0
 
     def maybe_evict(self, extra_dev_mem=0) -> None:
         self.maybe_evict_from_device(extra_dev_mem)
