@@ -19,10 +19,10 @@ from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
 
-pytest.mark.skipif(
-    sys.version_info.minor < 8,
+pytestmark = pytest.mark.skipif(
+    sys.version_info.minor < 80,
     reason="Temporarily skipping some tests because of a bug "
-    "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>"
+    "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>",
 )
 
 
