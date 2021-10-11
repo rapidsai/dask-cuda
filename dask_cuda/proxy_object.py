@@ -147,9 +147,9 @@ def _pxy_cache_wrapper(attr_name: str):
 class ProxyManagerDummy:
     """Dummy of a ProxyManager that does nothing
 
-    This is a dummy class returned by `ProxyObject._obj_pxy_get_manager()`
-    when no manager has been registered the proxy object. It implements
-    dummy methods that doesn't do anything it is purely for convenience.
+    This is a dummy class used as the manager when no manager has been
+    registered the proxy object. It implements dummy methods that doesn't
+    do anything it is purely for convenience.
     """
 
     def add(self, *args, **kwargs):
@@ -840,7 +840,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
         obj._pxy_set(pxy)
 
     else:
-        # Notice, since obj._obj_pxy_serialize() is a inplace operation, we make a
+        # Notice, since obj._pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
         # the worker's data store.
         header, frames = pxy.serialize(serializers=("cuda",))

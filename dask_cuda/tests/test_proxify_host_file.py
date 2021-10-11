@@ -182,7 +182,7 @@ def test_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert "ProxyObject" in str(type(x))
-            assert x._obj_pxy["serializer"] == "dask"
+            assert x._pxy_get().serializer == "dask"
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
