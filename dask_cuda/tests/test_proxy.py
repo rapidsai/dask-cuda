@@ -285,7 +285,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert "FrameProxyObject" in str(type(x))
+            assert "ProxyObject" in str(type(x))
             assert x._obj_pxy["serializer"] == "dask"
         else:
             assert type(x) == cudf.DataFrame
@@ -569,3 +569,18 @@ def test_array_ufucn_proxified_object(np_func):
     actual = np_func(proxy_obj, np_array)
 
     assert_series_equal(expected.to_pandas(), actual.to_pandas())
+
+
+def test_cudf_copy():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    cpy = df.copy()
+    assert_frame_equal(cpy.to_pandas(), df.to_pandas())
+
+
+def test_cudf_fillna():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    df = df.fillna(0)
