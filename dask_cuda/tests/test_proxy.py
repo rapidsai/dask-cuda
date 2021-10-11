@@ -21,12 +21,11 @@ from dask_cuda import proxy_object
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-if sys.version_info.minor < 8:
-    pytest.skip(
-        "Temporarily skipping some tests because of a bug "
-        "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>"
-    )
-
+pytest.mark.skipif(
+    sys.version_info.minor < 8,
+    reason="Temporarily skipping some tests because of a bug "
+    "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>"
+)
 ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
 
 
