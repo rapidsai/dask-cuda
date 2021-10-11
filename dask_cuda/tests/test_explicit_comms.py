@@ -1,5 +1,6 @@
 import asyncio
 import multiprocessing as mp
+import sys
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,13 @@ from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
+
+if sys.version_info.minor < 8:
+    pytest.skip(
+        "Temporarily skipping some tests because of a bug "
+        "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>"
+    )
+
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
