@@ -342,16 +342,24 @@ class ProxyManager:
         ):
             return
 
+        proxies_to_serialize: List[ProxyObject] = []
         with self.lock:
             total_host_mem_usage, info = self.get_host_access_info()
             total_host_mem_usage += extra_host_mem
             if total_host_mem_usage > self._host_memory_limit:
                 info.sort(key=lambda x: (x[0], -x[1]))
                 for _, size, proxy in info:
-                    ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
+                    proxies_to_serialize.append(proxy)
                     total_host_mem_usage -= size
                     if total_host_mem_usage <= self._host_memory_limit:
                         break
+
+        serialized_proxies: Set[int] = set()
+        for p in proxies_to_serialize:
+            # Avoid trying to serialize the same proxy multiple times
+            if id(p) not in serialized_proxies:
+                serialized_proxies.add(id(p))
+                ProxifyHostFile.serialize_proxy_to_disk_inplace(p)
 
     def force_evict_from_host(self) -> int:
         with self.lock:
