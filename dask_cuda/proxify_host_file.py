@@ -12,7 +12,6 @@ from typing import (
     DefaultDict,
     Dict,
     Hashable,
-    Iterator,
     List,
     MutableMapping,
     Optional,
@@ -44,6 +43,7 @@ class Proxies(abc.ABC):
     def __init__(self):
         self._proxy_id_to_proxy: Dict[int, ReferenceType[ProxyObject]] = {}
         self._mem_usage = 0
+        self._lock = threading.Lock()
 
     def __len__(self) -> int:
         return len(self._proxy_id_to_proxy)
@@ -59,12 +59,14 @@ class Proxies(abc.ABC):
     def add(self, proxy: ProxyObject) -> None:
         """Add a proxy for tracking, calls `self.mem_usage_add`"""
         assert not self.contains_proxy_id(id(proxy))
-        self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
+        with self._lock:
+            self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
         self.mem_usage_add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
         """Remove proxy from tracking, calls `self.mem_usage_remove`"""
-        del self._proxy_id_to_proxy[id(proxy)]
+        with self._lock:
+            del self._proxy_id_to_proxy[id(proxy)]
         self.mem_usage_remove(proxy)
         if len(self._proxy_id_to_proxy) == 0:
             if self._mem_usage != 0:
@@ -75,11 +77,14 @@ class Proxies(abc.ABC):
                 )
                 self._mem_usage = 0
 
-    def __iter__(self) -> Iterator[ProxyObject]:
-        for p in self._proxy_id_to_proxy.values():
-            ret = p()
-            if ret is not None:
-                yield ret
+    def get_proxies(self) -> List[ProxyObject]:
+        with self._lock:
+            ret = []
+            for p in self._proxy_id_to_proxy.values():
+                proxy = p()
+                if proxy is not None:
+                    ret.append(proxy)
+            return ret
 
     def contains_proxy_id(self, proxy_id: int) -> bool:
         return proxy_id in self._proxy_id_to_proxy
@@ -179,11 +184,11 @@ class ProxyManager:
             if len(self) == 0:
                 return ret + " Empty"
             ret += "\n"
-            for proxy in self._disk:
+            for proxy in self._disk.get_proxies():
                 ret += f"  disk - {repr(proxy)}\n"
-            for proxy in self._host:
+            for proxy in self._host.get_proxies():
                 ret += f"  host - {repr(proxy)}\n"
-            for proxy in self._dev:
+            for proxy in self._dev.get_proxies():
                 ret += f"  dev  - {repr(proxy)}\n"
             return ret[:-1]  # Strip last newline
 
@@ -241,15 +246,16 @@ class ProxyManager:
         with self.lock:
             for serializer in ("disk", "dask", "cuda"):
                 proxies = self.get_proxies_by_serializer(serializer)
-                for p in proxies:
+                for p in proxies.get_proxies():
                     assert (
                         self.get_proxies_by_serializer(p._pxy_get().serializer)
                         is proxies
                     )
-                for i, p in proxies._proxy_id_to_proxy.items():
-                    assert p() is not None
-                    assert i == id(p())
-                for p in proxies:
+                with proxies._lock:
+                    for i, p in proxies._proxy_id_to_proxy.items():
+                        assert p() is not None
+                        assert i == id(p())
+                for p in proxies.get_proxies():
                     pxy = p._pxy_get()
                     if pxy.is_serialized():
                         header, _ = pxy.obj
@@ -275,7 +281,7 @@ class ProxyManager:
             # Notice, multiple proxy object can point to different non-overlapping
             # parts of the same device buffer.
             ret = defaultdict(list)
-            for proxy in self._dev:
+            for proxy in self._dev.get_proxies():
                 for dev_buffer in proxy._pxy_get_device_memory_objects():
                     ret[dev_buffer].append(proxy)
             return ret
@@ -298,7 +304,7 @@ class ProxyManager:
         with self.lock:
             total_mem_usage = 0
             access_info = []
-            for p in self._host:
+            for p in self._host.get_proxies():
                 size = sizeof(p)
                 access_info.append((p._pxy_get().last_access, size, p))
                 total_mem_usage += size
