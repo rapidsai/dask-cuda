@@ -242,7 +242,7 @@ class CUDAWorker(Server):
                         rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
                     ),
                 },
-                name=name if nprocs == 1 or not name else str(name) + "-" + str(i),
+                name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={
                     "distributed.comm.ucx": get_ucx_config(
