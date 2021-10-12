@@ -174,7 +174,7 @@ class ProxyDetail:
 
     In order to avoid having to use thread locks, a ProxyObject maintains
     its state in a ProxyDetail object. The idea is to first make a copy
-    of the ProxyDetail object before modifying it and then assing the copy
+    of the ProxyDetail object before modifying it and then assign the copy
     back to the ProxyObject in one atomic instruction.
 
     Parameters
