@@ -362,18 +362,18 @@ class ProxyObject:
     """
 
     def __init__(self, detail: ProxyDetail):
-        self._pxy_ = detail
+        self._pxy_detail = detail
         self._pxy_cache: Dict[str, Any] = {}
 
     def _pxy_get(self, copy=False) -> ProxyDetail:
         if copy:
-            return _copy(self._pxy_)
+            return _copy(self._pxy_detail)
         else:
-            return self._pxy_
+            return self._pxy_detail
 
     def _pxy_set(self, proxy_detail: ProxyDetail):
         with proxy_detail.manager.lock:
-            self._pxy_ = proxy_detail
+            self._pxy_detail = proxy_detail
             proxy_detail.manager.add(proxy=self, serializer=proxy_detail.serializer)
 
     def __del__(self):
