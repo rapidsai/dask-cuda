@@ -53,65 +53,65 @@ def test_one_dev_item_limit():
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
     k2 = dhf["k2"]
-    assert k1._obj_pxy_is_serialized()
-    assert not k2._obj_pxy_is_serialized()
+    assert k1._pxy_get().is_serialized()
+    assert not k2._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
     # Accessing k1 spills k2 and unspill k1
     k1_val = k1[0]
     assert k1_val == 42
-    assert k2._obj_pxy_is_serialized()
+    assert k2._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k2])
-    assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
     # Duplicate arrays changes nothing
     dhf["k3"] = [k1, k2]
-    assert not k1._obj_pxy_is_serialized()
-    assert k2._obj_pxy_is_serialized()
+    assert not k1._pxy_get().is_serialized()
+    assert k2._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k2])
-    assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
     # Adding a new array spills k1 and k2
     dhf["k4"] = one_item_array()
     k4 = dhf["k4"]
-    assert k1._obj_pxy_is_serialized()
-    assert k2._obj_pxy_is_serialized()
-    assert not dhf["k4"]._obj_pxy_is_serialized()
+    assert k1._pxy_get().is_serialized()
+    assert k2._pxy_get().is_serialized()
+    assert not dhf["k4"]._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1, k2])
-    assert is_proxies_equal(dhf.manager._dev, [k4])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k4])
 
     # Accessing k2 spills k1 and k4
     k2[0]
-    assert k1._obj_pxy_is_serialized()
-    assert dhf["k4"]._obj_pxy_is_serialized()
-    assert not k2._obj_pxy_is_serialized()
+    assert k1._pxy_get().is_serialized()
+    assert dhf["k4"]._pxy_get().is_serialized()
+    assert not k2._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1, k4])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
     assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1, k4])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
     del dhf["k2"]
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1, k4])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
     # Overwriting "k3" with a non-cuda object and deleting `k2`
     # should empty the device
     dhf["k3"] = "non-cuda-object"
     del k2
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._host, [k1, k4])
-    assert is_proxies_equal(dhf.manager._dev, [])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [])
 
 
 def test_one_item_host_limit():
@@ -129,20 +129,20 @@ def test_one_item_host_limit():
     # Check k1 is spilled because of the newer k2
     k1 = dhf["k1"]
     k2 = dhf["k2"]
-    assert k1._obj_pxy_is_serialized()
-    assert not k2._obj_pxy_is_serialized()
+    assert k1._pxy_get().is_serialized()
+    assert not k2._pxy_get().is_serialized()
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._disk, [])
-    assert is_proxies_equal(dhf.manager._host, [k1])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._disk.get_proxies(), [])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
     # Check k1 is spilled to disk and k2 is spilled to host
     dhf["k3"] = one_item_array() + 3
     k3 = dhf["k3"]
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._disk, [k1])
-    assert is_proxies_equal(dhf.manager._host, [k2])
-    assert is_proxies_equal(dhf.manager._dev, [k3])
+    assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k3])
 
     dhf.manager.validate()
 
@@ -150,25 +150,25 @@ def test_one_item_host_limit():
     k2_val = k2[0]
     assert k2_val == 2
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._disk, [k1])
-    assert is_proxies_equal(dhf.manager._host, [k3])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k3])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
     # Adding a new array spill k3 to disk and k2 to host
     dhf["k4"] = one_item_array() + 4
     k4 = dhf["k4"]
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._disk, [k1, k3])
-    assert is_proxies_equal(dhf.manager._host, [k2])
-    assert is_proxies_equal(dhf.manager._dev, [k4])
+    assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k1, k3])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k4])
 
     # Accessing k1 unspills k1 directly to device and spills k4 to host
     k1_val = k1[0]
     assert k1_val == 1
     dhf.manager.validate()
-    assert is_proxies_equal(dhf.manager._disk, [k2, k3])
-    assert is_proxies_equal(dhf.manager._host, [k4])
-    assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k2, k3])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
@@ -182,7 +182,7 @@ def test_local_cuda_cluster(jit_unspill):
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
             assert "ProxyObject" in str(type(x))
-            assert x._obj_pxy["serializer"] == "dask"
+            assert x._pxy_get().serializer == "dask"
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -218,12 +218,12 @@ def test_dataframes_share_dev_mem():
     v1 = dhf["v1"]
     v2 = dhf["v2"]
     # The device_memory_limit is not exceeded since both dataframes share device memory
-    assert not v1._obj_pxy_is_serialized()
-    assert not v2._obj_pxy_is_serialized()
+    assert not v1._pxy_get().is_serialized()
+    assert not v2._pxy_get().is_serialized()
     # Now the device_memory_limit is exceeded, which should evict both dataframes
     dhf["k1"] = one_item_array()
-    assert v1._obj_pxy_is_serialized()
-    assert v2._obj_pxy_is_serialized()
+    assert v1._pxy_get().is_serialized()
+    assert v2._pxy_get().is_serialized()
 
 
 def test_cudf_get_device_memory_objects():
@@ -257,30 +257,30 @@ def test_externals():
     k2 = dhf.manager.proxify(one_item_array())
     # `k2` isn't part of the store but still triggers spilling of `k1`
     assert len(dhf) == 1
-    assert k1._obj_pxy_is_serialized()
-    assert not k2._obj_pxy_is_serialized()
-    assert is_proxies_equal(dhf.manager._host, [k1])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert k1._pxy_get().is_serialized()
+    assert not k2._pxy_get().is_serialized()
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
     assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     k1[0]  # Trigger spilling of `k2`
-    assert not k1._obj_pxy_is_serialized()
-    assert k2._obj_pxy_is_serialized()
-    assert is_proxies_equal(dhf.manager._host, [k2])
-    assert is_proxies_equal(dhf.manager._dev, [k1])
+    assert not k1._pxy_get().is_serialized()
+    assert k2._pxy_get().is_serialized()
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
     assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     k2[0]  # Trigger spilling of `k1`
-    assert k1._obj_pxy_is_serialized()
-    assert not k2._obj_pxy_is_serialized()
-    assert is_proxies_equal(dhf.manager._host, [k1])
-    assert is_proxies_equal(dhf.manager._dev, [k2])
+    assert k1._pxy_get().is_serialized()
+    assert not k2._pxy_get().is_serialized()
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
     assert dhf.manager._dev._mem_usage == one_item_nbytes
 
     # Removing `k2` also removes it from the tally
     del k2
-    assert is_proxies_equal(dhf.manager._host, [k1])
-    assert is_proxies_equal(dhf.manager._dev, [])
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [])
     assert dhf.manager._dev._mem_usage == 0
 
 
