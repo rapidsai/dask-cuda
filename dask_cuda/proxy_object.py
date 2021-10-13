@@ -395,10 +395,14 @@ class ProxyObject:
             self._pxy_detail = proxy_detail
             proxy_detail.manager.add(proxy=self, serializer=proxy_detail.serializer)
 
-    def _pxy_wait(self):
+    def _pxy_wait(self, cancel=False):
         future = self._pxy_future
         if future is not None:
-            future.result()
+            if cancel:
+                future.cancel()
+            else:
+                future.result()
+        self._pxy_future = None
 
     def __del__(self):
         """We have to unregister us from the manager if any"""
@@ -431,6 +435,7 @@ class ProxyObject:
         if not serializers:
             raise ValueError("Please specify a list of serializers")
 
+        self._pxy_wait()
         pxy = self._pxy_get(copy=True) if not proxy_detail else proxy_detail
         if pxy.serializer is not None and pxy.serializer in serializers:
             return  # Nothing to be done
@@ -479,6 +484,7 @@ class ProxyObject:
             The proxied object (deserialized)
         """
 
+        self._pxy_wait(cancel=True)
         pxy = self._pxy_get(copy=True) if not proxy_detail else proxy_detail
         if not pxy.is_serialized():
             return pxy.obj
