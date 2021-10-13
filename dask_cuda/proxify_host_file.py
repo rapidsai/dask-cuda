@@ -31,7 +31,7 @@ from distributed.protocol.serialize import (
 from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
-from .proxy_object import ProxyDetail, ProxyObject, thread_pool
+from .proxy_object import ProxyDetail, ProxyObject, async_thread_pool
 
 
 class Proxies(abc.ABC):
@@ -167,6 +167,8 @@ class ProxyManager:
         self._device_memory_limit = device_memory_limit
         self._host_memory_limit = memory_limit
         self._async_spilling = async_spilling
+        self._dev_in_transit = ProxiesOnDevice()
+        self._host_in_transit = ProxiesOnHost()
 
     def __repr__(self) -> str:
         with self.lock:
@@ -221,7 +223,9 @@ class ProxyManager:
                 or self._dev.contains_proxy_id(proxy_id)
             )
 
-    def add(self, proxy: ProxyObject, serializer: Optional[str]) -> None:
+    def add(
+        self, proxy: ProxyObject, serializer: Optional[str], in_transit: bool = False
+    ) -> None:
         with self.lock:
             old_proxies = self.get_proxies_by_proxy_object(proxy)
             new_proxies = self.get_proxies_by_serializer(serializer)
@@ -229,6 +233,21 @@ class ProxyManager:
                 if old_proxies is not None:
                     old_proxies.remove(proxy)
                 new_proxies.add(proxy)
+                if in_transit:
+                    if old_proxies is self._dev:
+                        self._dev_in_transit.add(proxy)
+                    elif old_proxies is self._host:
+                        self._host_in_transit.add(proxy)
+                    else:
+                        raise TypeError("Unknown in-transit type")
+
+    def remove_in_transit(self, proxy: ProxyObject):
+        with self.lock:
+            proxy._pxy_future = None
+            if self._dev_in_transit.contains_proxy_id(id(proxy)):
+                self._dev_in_transit.remove(proxy)
+            if self._host_in_transit.contains_proxy_id(id(proxy)):
+                self._host_in_transit.remove(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
         with self.lock:
@@ -364,9 +383,16 @@ class ProxyManager:
             # Avoid trying to serialize the same proxy multiple times
             if id(p) not in serialized_proxies:
                 serialized_proxies.add(id(p))
+                p._pxy_wait()
                 ProxifyHostFile.serialize_proxy_to_disk_inplace(p)
 
     def force_evict_from_host(self) -> int:
+        # Before continue, let's wait on any async spilling still in transit
+        for proxy in self._host.get_proxies():
+            proxy._pxy_wait()
+        for proxy in self._dev.get_proxies():
+            proxy._pxy_wait()
+
         with self.lock:
             _, info = self.get_host_access_info()
             info.sort(key=lambda x: (x[0], -x[1]))
@@ -381,7 +407,7 @@ class ProxyManager:
 
 
 def serialize_host_to_disk_and_update_manager(
-    proxy: "ProxyObject", proxy_detail: ProxyDetail
+    proxy: "ProxyObject", proxy_detail: ProxyDetail, asynchronous: bool
 ) -> None:
 
     header, frames = proxy_detail.obj
@@ -398,7 +424,9 @@ def serialize_host_to_disk_and_update_manager(
         [],
     )
     proxy_detail.serializer = "disk"
-    proxy._pxy_set(proxy_detail)
+    with proxy_detail.manager.lock:
+        proxy._pxy_set(proxy_detail)
+        proxy_detail.manager.remove_in_transit(proxy)
 
 
 class ProxifyHostFile(MutableMapping):
@@ -634,12 +662,15 @@ class ProxifyHostFile(MutableMapping):
                 # Handle the special case where we are serialzing from host to disk.
                 if asynchronous:
                     pxy.manager.add(proxy=proxy, serializer="disk")
-                    thread_pool.submit(
-                        serialize_host_to_disk_and_update_manager, proxy, pxy
+                    async_thread_pool.submit(
+                        serialize_host_to_disk_and_update_manager,
+                        proxy,
+                        pxy,
+                        asynchronous,
                     )
                 else:
                     serialize_host_to_disk_and_update_manager(
-                        proxy=proxy, proxy_detail=pxy
+                        proxy=proxy, proxy_detail=pxy, asynchronous=False
                     )
                 return
         # If not serialzing from host to disk, use the regular implementation

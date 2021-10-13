@@ -6,7 +6,7 @@ import pickle
 import time
 import uuid
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import nullcontext
 from copy import copy as _copy
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
@@ -45,6 +45,9 @@ if TYPE_CHECKING:
 # List of attributes that should be copied to the proxy at creation, which makes
 # them accessible without deserialization of the proxied object
 _FIXED_ATTRS = ["name", "__len__"]
+
+# Thread pool for asynchronous spilling
+async_thread_pool = ThreadPoolExecutor(max_workers=5)
 
 
 def asproxy(
@@ -159,7 +162,7 @@ class ProxyManagerDummy:
     def remove(self, *args, **kwargs):
         pass
 
-    def move(self, *args, **kwargs):
+    def remove_in_transit(self, *args, **kwargs):
         pass
 
     def maybe_evict(self, *args, **kwargs):
@@ -322,14 +325,16 @@ class ProxyDetail:
         return self.obj
 
 
-thread_pool = ThreadPoolExecutor(max_workers=5)
-
-
 def serialize_and_update_manager(
-    proxy: "ProxyObject", proxy_detail: ProxyDetail, serializers: Iterable[str]
+    proxy: "ProxyObject",
+    proxy_detail: ProxyDetail,
+    serializers: Iterable[str],
+    asynchronous: bool,
 ) -> None:
     proxy_detail.serialize(serializers=serializers)
-    proxy._pxy_set(proxy_detail)
+    with proxy_detail.manager.lock:
+        proxy._pxy_set(proxy_detail)
+        proxy_detail.manager.remove_in_transit(proxy)
 
 
 class ProxyObject:
@@ -375,6 +380,7 @@ class ProxyObject:
     def __init__(self, detail: ProxyDetail):
         self._pxy_detail = detail
         self._pxy_cache: Dict[str, Any] = {}
+        self._pxy_future: Optional[Future] = None
 
     def _pxy_get(self, copy=False) -> ProxyDetail:
         if copy:
@@ -386,6 +392,11 @@ class ProxyObject:
         with proxy_detail.manager.lock:
             self._pxy_detail = proxy_detail
             proxy_detail.manager.add(proxy=self, serializer=proxy_detail.serializer)
+
+    def _pxy_wait(self):
+        future = self._pxy_future
+        if future is not None:
+            future.result()
 
     def __del__(self):
         """We have to unregister us from the manager if any"""
@@ -436,10 +447,15 @@ class ProxyObject:
             else:
                 serializer = "cuda"
             pxy.manager.add(proxy=self, serializer=serializer)
-            thread_pool.submit(serialize_and_update_manager, self, pxy, serializers)
+            self._pxy_future = async_thread_pool.submit(
+                serialize_and_update_manager, self, pxy, serializers, asynchronous
+            )
         else:
             serialize_and_update_manager(
-                proxy=self, proxy_detail=pxy, serializers=serializers
+                proxy=self,
+                proxy_detail=pxy,
+                serializers=serializers,
+                asynchronous=False,
             )
 
         # Invalidate the (possible) cached "device_memory_objects"
