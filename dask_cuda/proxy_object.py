@@ -261,7 +261,9 @@ class ProxyDetail:
         """Return whether the proxied object is serialized or not"""
         return self.serializer is not None
 
-    def serialize(self, serializers: Iterable[str]) -> Tuple[dict, list]:
+    def serialize(
+        self, serializers: Iterable[str], asynchronous=False
+    ) -> Tuple[dict, list]:
         """Inplace serialization of the proxied object using the `serializers`
 
         Parameters
@@ -331,7 +333,7 @@ def serialize_and_update_manager(
     serializers: Iterable[str],
     asynchronous: bool,
 ) -> None:
-    proxy_detail.serialize(serializers=serializers)
+    proxy_detail.serialize(serializers=serializers, asynchronous=asynchronous)
     with proxy_detail.manager.lock:
         proxy._pxy_set(proxy_detail)
         proxy_detail.manager.remove_in_transit(proxy)
@@ -446,7 +448,7 @@ class ProxyObject:
                 serializer = "pickle"
             else:
                 serializer = "cuda"
-            pxy.manager.add(proxy=self, serializer=serializer)
+            pxy.manager.add(proxy=self, serializer=serializer, in_transit=True)
             self._pxy_future = async_thread_pool.submit(
                 serialize_and_update_manager, self, pxy, serializers, asynchronous
             )

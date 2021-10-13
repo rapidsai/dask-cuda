@@ -384,7 +384,9 @@ class ProxyManager:
             if id(p) not in serialized_proxies:
                 serialized_proxies.add(id(p))
                 p._pxy_wait()
-                ProxifyHostFile.serialize_proxy_to_disk_inplace(p)
+                ProxifyHostFile.serialize_proxy_to_disk_inplace(
+                    p, asynchronous=self._async_spilling
+                )
 
     def force_evict_from_host(self) -> int:
         # Before continue, let's wait on any async spilling still in transit
@@ -661,7 +663,7 @@ class ProxifyHostFile(MutableMapping):
             if header["serializer"] in ("dask", "pickle"):
                 # Handle the special case where we are serialzing from host to disk.
                 if asynchronous:
-                    pxy.manager.add(proxy=proxy, serializer="disk")
+                    pxy.manager.add(proxy=proxy, serializer="disk", in_transit=True)
                     async_thread_pool.submit(
                         serialize_host_to_disk_and_update_manager,
                         proxy,
