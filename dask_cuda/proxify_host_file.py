@@ -22,6 +22,7 @@ from weakref import ReferenceType
 
 import dask
 from dask.sizeof import sizeof
+from dask.utils import format_bytes
 from distributed.protocol.compression import decompress, maybe_compress
 from distributed.protocol.serialize import (
     merge_and_deserialize,
@@ -144,6 +145,98 @@ class ProxiesOnDevice(Proxies):
                 self._mem_usage -= sizeof(dev_mem)
 
 
+class Statistics:
+    def __init__(self):
+        self.data: Dict[str, dict] = defaultdict(dict)
+        self.last_print = time.monotonic()
+        self.start_time = time.monotonic()
+
+    def printing_tick(self, delay=10):
+        if self.last_print + delay < time.monotonic():
+            self.last_print = time.monotonic()
+            print(self)
+
+    def add_timing(self, name: str, timing: float):
+        data = self.data[name]
+        data["timing"] = data.get("timing", 0.0) + timing
+        data["count"] = data.get("count", 0) + 1
+        self.printing_tick()
+
+    def add_buffer(self, name: str, bytes: int):
+        data = self.data[name]
+        data["buf-total"] = data.get("buf-total", 0) + bytes
+        data["buf-peak"] = max(data.get("buf-peak", 0), bytes)
+        data["buf-count"] = data.get("buf-count", 0) + 1
+        self.printing_tick()
+
+    def add_mem_usage(self, name: str, bytes: int):
+        data = self.data[name]
+        data["mem-usage"] = max(data.get("mem-usage", 0), bytes)
+        self.printing_tick()
+
+    def add_mem_in_transit(self, name: str, bytes: int, num_allocations: int):
+        data = self.data[name]
+        data["mem-in-transit"] = max(data.get("mem-in-transit", 0), bytes)
+        if bytes == data["mem-in-transit"]:
+            data["mem-in-transit-count"] = num_allocations
+        self.printing_tick()
+
+    def __str__(self) -> str:
+        if not self.data:
+            return "Statistics Empty"
+
+        max_str_len = max([len(s) for s in self.data.keys()]) + 3
+        ret = "Statistics\n"
+
+        timings = [(k, v) for k, v in self.data.items() if "timing" in v]
+        if timings:
+            ret += "  Timings:\n"
+            self.data["atime"] = {
+                "timing": time.monotonic() - self.start_time,
+                "count": 0,
+            }
+            sum_values = [v for name, v in timings if name not in ("atime", "sum")]
+            self.data["sum"] = {
+                "timing": sum(d["timing"] for d in sum_values),
+                "count": sum(d["count"] for d in sum_values),
+            }
+            for k, v in sorted(timings):
+                k += "." * (max_str_len - len(k))
+                ret += "    %s: %6.2fs (%d)\n" % (k, v["timing"], v["count"])
+
+        buffer = [(k, v) for k, v in self.data.items() if "buf-total" in v]
+        if buffer:
+            ret += "  Buffers:\n"
+            for k, v in sorted(buffer):
+                k += "." * (max_str_len - len(k))
+                ret += "    %s: %s total, %s peak, %d count\n" % (
+                    k,
+                    format_bytes(v["buf-total"]),
+                    format_bytes(v["buf-peak"]),
+                    v["buf-count"],
+                )
+
+        memory = [(k, v) for k, v in self.data.items() if "mem-usage" in v]
+        if memory:
+            ret += "  Peak memory:\n"
+            for k, v in sorted(memory):
+                k += "." * (max_str_len - len(k))
+                ret += "    %s: %s\n" % (k, format_bytes(v["mem-usage"]))
+
+        in_transit = [(k, v) for k, v in self.data.items() if "mem-in-transit" in v]
+        if in_transit:
+            ret += "  In transit:\n"
+            for k, v in sorted(in_transit):
+                k += "." * (max_str_len - len(k))
+                ret += "    %s: %s (%d)\n" % (
+                    k,
+                    format_bytes(v["mem-in-transit"]),
+                    v["mem-in-transit-count"],
+                )
+
+        return ret[:-1]  # Strip last newline
+
+
 class ProxyManager:
     """
     This class together with Proxies, ProxiesOnHost, and ProxiesOnDevice
@@ -158,17 +251,24 @@ class ProxyManager:
     """
 
     def __init__(
-        self, device_memory_limit: int, memory_limit: int, async_spilling: bool
+        self, device_memory_limit: int, memory_limit: int, async_spilling_device: int, async_spilling_host: int
     ):
         self.lock = threading.RLock()
         self._disk = ProxiesOnDisk()
         self._host = ProxiesOnHost()
         self._dev = ProxiesOnDevice()
         self._device_memory_limit = device_memory_limit
-        self._host_memory_limit = memory_limit
-        self._async_spilling = async_spilling
+        self._host_memory_limit = int(memory_limit * 0.5)
         self._dev_in_transit = ProxiesOnDevice()
         self._host_in_transit = ProxiesOnHost()
+
+        self._async_spilling_device = async_spilling_device
+        self._async_spilling_host = async_spilling_host
+
+
+
+        self.statistics = Statistics()
+        weakref.finalize(self, print, self.statistics)
 
     def __repr__(self) -> str:
         with self.lock:
@@ -233,6 +333,12 @@ class ProxyManager:
                 if old_proxies is not None:
                     old_proxies.remove(proxy)
                 new_proxies.add(proxy)
+                self.statistics.add_buffer(
+                    serializer if serializer else "cuda", sizeof(proxy)
+                )
+                self.statistics.add_mem_usage(
+                    serializer if serializer else "cuda", new_proxies.mem_usage()
+                )
                 if in_transit:
                     if old_proxies is self._dev:
                         self._dev_in_transit.add(proxy)
@@ -240,6 +346,16 @@ class ProxyManager:
                         self._host_in_transit.add(proxy)
                     else:
                         raise TypeError("Unknown in-transit type")
+                    self.statistics.add_mem_in_transit(
+                        "cuda->",
+                        self._dev_in_transit.mem_usage(),
+                        len(self._dev_in_transit),
+                    )
+                    self.statistics.add_mem_in_transit(
+                        "dask->",
+                        self._host_in_transit.mem_usage(),
+                        len(self._host_in_transit),
+                    )
 
     def remove_in_transit(self, proxy: ProxyObject):
         with self.lock:
@@ -411,6 +527,7 @@ class ProxyManager:
 def serialize_host_to_disk_and_update_manager(
     proxy: "ProxyObject", proxy_detail: ProxyDetail, asynchronous: bool
 ) -> None:
+    t1 = time.monotonic()
 
     header, frames = proxy_detail.obj
     path = ProxifyHostFile.gen_file_path()
@@ -429,6 +546,10 @@ def serialize_host_to_disk_and_update_manager(
     with proxy_detail.manager.lock:
         proxy._pxy_set(proxy_detail)
         proxy_detail.manager.remove_in_transit(proxy)
+
+    t2 = time.monotonic()
+    b = "a" if asynchronous else "b"
+    proxy_detail.manager.statistics.add_timing(f"dask-{b}->disk", t2 - t1)
 
 
 class ProxifyHostFile(MutableMapping):

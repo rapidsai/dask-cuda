@@ -172,6 +172,12 @@ class ProxyManagerDummy:
     def lock(self):
         return nullcontext()
 
+    @property
+    def statistics(self):
+        from .proxify_host_file import Statistics
+
+        return Statistics()
+
 
 class ProxyDetail:
     """ Details of a ProxyObject
@@ -288,11 +294,16 @@ class ProxyDetail:
                 # The proxied object is serialized with other serializers
                 self.deserialize()
 
+        t1 = time.monotonic()
         header, _ = self.obj = distributed.protocol.serialize(
             self.obj, serializers, on_error="raise"
         )
         assert "is-collection" not in header  # Collections not allowed
         self.serializer = header["serializer"]
+
+        t2 = time.monotonic()
+        b = "a" if asynchronous else "b"
+        self.manager.statistics.add_timing(f"none-{b}->{self.serializer}", t2 - t1)
         return self.obj
 
     def deserialize(self, maybe_evict: bool = True, nbytes=None):
@@ -321,7 +332,12 @@ class ProxyDetail:
 
             # Deserialize the proxied object
             header, frames = self.obj
+            t1 = time.monotonic()
             self.obj = distributed.protocol.deserialize(header, frames)
+            t2 = time.monotonic()
+            self.manager.statistics.add_timing(
+                f"{header['serializer']}-b->none", t2 - t1
+            )
             self.serializer = None
             self.last_access = time.monotonic()
         return self.obj
@@ -398,10 +414,13 @@ class ProxyObject:
     def _pxy_wait(self, cancel=False):
         future = self._pxy_future
         if future is not None:
+            t1 = time.monotonic()
             if cancel:
                 future.cancel()
             else:
                 future.result()
+            t2 = time.monotonic()
+            self._pxy_detail.manager.statistics.add_timing("wait", t2 - t1)
         self._pxy_future = None
 
     def __del__(self):
