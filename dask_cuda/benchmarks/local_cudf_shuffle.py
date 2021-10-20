@@ -82,6 +82,7 @@ def main(args):
             "ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning
         )
 
+        print(cluster_kwargs)
         cluster = Cluster(*cluster_args, **cluster_kwargs)
         if args.multi_node:
             import time
