@@ -24,6 +24,7 @@ def _check_env_value(spec, k, v):
         assert all([i in set(s["options"]["env"][k].split(",")) for s in spec.values()])
 
 
+@pytest.mark.filterwarnings("ignore:Cannot get CPU affinity")
 @pytest.mark.parametrize("num_devices", [1, 4])
 @pytest.mark.parametrize("cls", [Nanny])
 @pytest.mark.parametrize("interface", [None, "eth0", "enp1s0f0"])
