@@ -270,5 +270,5 @@ class CUDAWorker(Server):
     async def finished(self):
         await asyncio.gather(*[n.finished() for n in self.nannies])
 
-    async def close(self, timeout=2):
+    async def close(self, timeout=5):
         await asyncio.gather(*[n.close(timeout=timeout) for n in self.nannies])
