@@ -473,7 +473,7 @@ class ProxifyHostFile(MutableMapping):
         else:
             self.compatibility_mode = compatibility_mode
         if spill_on_demand is None:
-            spill_on_demand = dask.config.get("spill-on-demand", default=False)
+            spill_on_demand = dask.config.get("spill-on-demand", default=True)
         # `None` in this context means: never initialize
         self.spill_on_demand_initialized = False if spill_on_demand else None
 
