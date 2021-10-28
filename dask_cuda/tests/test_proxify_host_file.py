@@ -175,7 +175,7 @@ def test_one_item_host_limit():
 def test_spill_on_demand():
     """
     Test spilling on demand by disabling the device_memory_limit
-    and allocating two large buffers that will fail if not because
+    and allocating two large buffers that will otherwise fail because
     of spilling on demand.
     """
     rmm = pytest.importorskip("rmm")
