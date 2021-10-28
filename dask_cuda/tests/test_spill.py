@@ -153,7 +153,6 @@ async def test_cupy_cluster_device_spill(params):
                         assert dc == 0
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
@@ -210,13 +209,10 @@ async def test_cudf_cluster_device_spill(params):
                 )
 
                 sizes = await client.compute(
-                    cdf.map_partitions(lambda df: df.__sizeof__())
+                    cdf.map_partitions(lambda df: df.memory_usage())
                 )
-                sizes = sizes.tolist()
+                sizes = sizes.to_arrow().to_pylist()
                 nbytes = sum(sizes)
-                part_index_nbytes = (
-                    await client.compute(cdf.partitions[0].index)
-                ).__sizeof__()
 
                 cdf2 = cdf.persist()
                 await wait(cdf2)
@@ -234,7 +230,7 @@ async def test_cudf_cluster_device_spill(params):
                         assert hc > 0
                         assert dc == 0
 
-                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
+                await client.run(worker_assert, nbytes, 32, 2048)
 
                 del cdf2
 
