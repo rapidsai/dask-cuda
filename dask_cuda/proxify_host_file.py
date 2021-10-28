@@ -442,7 +442,7 @@ class ProxifyHostFile(MutableMapping):
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
-        Notice, enabling this when RMM isn't availabe or used does nothing.
+        Notice, enabling this does nothing when RMM isn't availabe or not used.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -494,7 +494,12 @@ class ProxifyHostFile(MutableMapping):
             return iter(self.store)
 
     def initialize_spill_on_demand_once(self):
-        """Register callback function to handle RMM out-of-memory exceptions"""
+        """Register callback function to handle RMM out-of-memory exceptions
+
+        This function is idempotent and should be called at least once. Currently, we
+        do this in __setitem__ instead of in __init__ because a Dask worker might re-
+        initiate the RMM pool and its resource adaptors after creating ProxifyHostFile.
+        """
         if self.spill_on_demand_initialized is False:
             self.spill_on_demand_initialized = True
             try:
@@ -509,7 +514,7 @@ class ProxifyHostFile(MutableMapping):
                     """Try to handle an out-of-memory error by spilling"""
                     freed = self.manager.force_evict_from_device(nbytes)
                     if freed > 0:
-                        return True  # Retry
+                        return True  # Ask RMM to retry the allocation
                     else:
                         # Since we didn't find anything to spill, we give up.
                         return False
