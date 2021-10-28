@@ -336,6 +336,27 @@ class ProxyManager:
                 serialized_proxies.add(id(p))
                 p._pxy_serialize(serializers=("dask", "pickle"))
 
+    def force_evict_from_device(self, nbytes=0) -> int:
+        freed_memory = 0
+        proxies_to_serialize: List[ProxyObject] = []
+        with self.lock:
+            _, dev_buf_access = self.get_dev_access_info()
+            dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxies in dev_buf_access:
+                for p in proxies:
+                    proxies_to_serialize.append(p)
+                freed_memory += size
+                if freed_memory >= nbytes:
+                    break
+
+        serialized_proxies: Set[int] = set()
+        for p in proxies_to_serialize:
+            # Avoid trying to serialize the same proxy multiple times
+            if id(p) not in serialized_proxies:
+                serialized_proxies.add(id(p))
+                p._pxy_serialize(serializers=("dask", "pickle"))
+        return freed_memory
+
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._host.mem_usage() + extra_host_mem <= self._host_memory_limit
