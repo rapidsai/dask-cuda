@@ -17,6 +17,7 @@ import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy
+from dask_cuda.utils import get_device_total_memory
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -169,6 +170,24 @@ def test_one_item_host_limit():
     assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k2, k3])
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
+
+
+def test_spill_on_demand():
+    """
+    Test spilling on demand by disabling the device_memory_limit
+    and allocating two large buffers that will fail if not because
+    of spilling on demand.
+    """
+    rmm = pytest.importorskip("rmm")
+    if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
+        pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
+
+    dhf = ProxifyHostFile(
+        device_memory_limit=1e11, memory_limit=1e11, spill_on_demand=True
+    )
+    total_mem = get_device_total_memory()
+    for i in range(2):
+        dhf[i] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
