@@ -182,12 +182,12 @@ def test_spill_on_demand():
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
 
+    total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
-        device_memory_limit=2 * get_device_total_memory(),
-        memory_limit=2 * get_device_total_memory(),
+        device_memory_limit=2 * total_mem,
+        memory_limit=2 * total_mem,
         spill_on_demand=True,
     )
-    total_mem = get_device_total_memory()
     for i in range(2):
         dhf[i] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
 
