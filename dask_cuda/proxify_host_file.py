@@ -78,6 +78,7 @@ class Proxies(abc.ABC):
                 self._mem_usage = 0
 
     def get_proxies(self) -> List[ProxyObject]:
+        """Return a list of all proxies"""
         with self._lock:
             ret = []
             for p in self._proxy_id_to_proxy.values():
@@ -193,6 +194,7 @@ class ProxyManager:
             return ret[:-1]  # Strip last newline
 
     def get_proxies_by_serializer(self, serializer: Optional[str]) -> Proxies:
+        """Get Proxies collection by serializer"""
         if serializer == "disk":
             return self._disk
         elif serializer in ("dask", "pickle"):
@@ -201,6 +203,7 @@ class ProxyManager:
             return self._dev
 
     def get_proxies_by_proxy_object(self, proxy: ProxyObject) -> Optional[Proxies]:
+        """Get Proxies collection by proxy object"""
         proxy_id = id(proxy)
         if self._dev.contains_proxy_id(proxy_id):
             return self._dev
@@ -211,6 +214,7 @@ class ProxyManager:
         return None
 
     def contains(self, proxy_id: int) -> bool:
+        """Is the proxy in any of the Proxies collection?"""
         with self.lock:
             return (
                 self._disk.contains_proxy_id(proxy_id)
@@ -219,6 +223,7 @@ class ProxyManager:
             )
 
     def add(self, proxy: ProxyObject, serializer: Optional[str]) -> None:
+        """Add the proxy to the Proxies collection by that match the serializer"""
         with self.lock:
             old_proxies = self.get_proxies_by_proxy_object(proxy)
             new_proxies = self.get_proxies_by_serializer(serializer)
@@ -228,6 +233,7 @@ class ProxyManager:
                 new_proxies.add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
+        """Remove the proxy from the Proxies collection it is in"""
         with self.lock:
             # Find where the proxy is located (if found) and remove it
             proxies: Optional[Proxies] = None
@@ -243,6 +249,7 @@ class ProxyManager:
             proxies.remove(proxy)
 
     def validate(self):
+        """Validate the state of the manager"""
         with self.lock:
             for serializer in ("disk", "dask", "cuda"):
                 proxies = self.get_proxies_by_serializer(serializer)
@@ -262,6 +269,7 @@ class ProxyManager:
                         assert header["serializer"] == pxy.serializer
 
     def proxify(self, obj: object) -> object:
+        """Proxify `obj` and add found proxies to the Proxies collections"""
         with self.lock:
             found_proxies: List[ProxyObject] = []
             proxied_id_to_proxy: Dict[int, ProxyObject] = {}
