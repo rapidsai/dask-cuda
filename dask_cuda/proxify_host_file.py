@@ -336,6 +336,27 @@ class ProxyManager:
                 serialized_proxies.add(id(p))
                 p._pxy_serialize(serializers=("dask", "pickle"))
 
+    def force_evict_from_device(self, nbytes=0) -> int:
+        freed_memory = 0
+        proxies_to_serialize: List[ProxyObject] = []
+        with self.lock:
+            _, dev_buf_access = self.get_dev_access_info()
+            dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxies in dev_buf_access:
+                for p in proxies:
+                    proxies_to_serialize.append(p)
+                freed_memory += size
+                if freed_memory >= nbytes:
+                    break
+
+        serialized_proxies: Set[int] = set()
+        for p in proxies_to_serialize:
+            # Avoid trying to serialize the same proxy multiple times
+            if id(p) not in serialized_proxies:
+                serialized_proxies.add(id(p))
+                p._pxy_serialize(serializers=("dask", "pickle"))
+        return freed_memory
+
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         if (  # Shortcut when not evicting
             self._host.mem_usage() + extra_host_mem <= self._host_memory_limit
@@ -418,6 +439,10 @@ class ProxifyHostFile(MutableMapping):
         ProxyObjects, set the `mark_as_explicit_proxies=True` when proxifying with
         `proxify_device_objects()`. If ``None``, the "jit-unspill-compatibility-mode"
         config value are used, which defaults to False.
+    spill_on_demand: bool or None, default None
+        Enables spilling when the RMM memory pool goes out of memory. If ``None``,
+        the "spill-on-demand" config value are used, which defaults to True.
+        Notice, enabling this does nothing when RMM isn't availabe or not used.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -436,6 +461,7 @@ class ProxifyHostFile(MutableMapping):
         local_directory: str = None,
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
+        spill_on_demand: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
@@ -446,6 +472,10 @@ class ProxifyHostFile(MutableMapping):
             )
         else:
             self.compatibility_mode = compatibility_mode
+        if spill_on_demand is None:
+            spill_on_demand = dask.config.get("spill-on-demand", default=True)
+        # `None` in this context means: never initialize
+        self.spill_on_demand_initialized = False if spill_on_demand else None
 
         # It is a bit hacky to forcefully capture the "distributed.worker" logger,
         # eventually it would be better to have a different logger. For now this
@@ -463,6 +493,36 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             return iter(self.store)
 
+    def initialize_spill_on_demand_once(self):
+        """Register callback function to handle RMM out-of-memory exceptions
+
+        This function is idempotent and should be called at least once. Currently, we
+        do this in __setitem__ instead of in __init__ because a Dask worker might re-
+        initiate the RMM pool and its resource adaptors after creating ProxifyHostFile.
+        """
+        if self.spill_on_demand_initialized is False:
+            self.spill_on_demand_initialized = True
+            try:
+                import rmm.mr
+
+                assert hasattr(rmm.mr, "FailureCallbackResourceAdaptor")
+            except (ImportError, AssertionError):
+                pass
+            else:
+
+                def oom(nbytes: int) -> bool:
+                    """Try to handle an out-of-memory error by spilling"""
+                    freed = self.manager.force_evict_from_device(nbytes)
+                    if freed > 0:
+                        return True  # Ask RMM to retry the allocation
+                    else:
+                        # Since we didn't find anything to spill, we give up.
+                        return False
+
+                current_mr = rmm.mr.get_current_device_resource()
+                mr = rmm.mr.FailureCallbackResourceAdaptor(current_mr, oom)
+                rmm.mr.set_current_device_resource(mr)
+
     @property
     def fast(self):
         """Dask use this to trigger CPU-to-Disk spilling"""
@@ -478,6 +538,7 @@ class ProxifyHostFile(MutableMapping):
 
     def __setitem__(self, key, value):
         with self.lock:
+            self.initialize_spill_on_demand_once()
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
