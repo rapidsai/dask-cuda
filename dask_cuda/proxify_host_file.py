@@ -285,32 +285,35 @@ class ProxyManager:
         self.maybe_evict()
         return ret
 
-    def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
-        with self.lock:
-            # Notice, multiple proxy object can point to different non-overlapping
-            # parts of the same device buffer.
-            ret = defaultdict(list)
-            for proxy in self._dev.get_proxies():
-                for dev_buffer in proxy._pxy_get_device_memory_objects():
-                    ret[dev_buffer].append(proxy)
-            return ret
-
     def get_dev_access_info(self) -> List[Tuple[float, int, List[ProxyObject]]]:
+        """Return a list of device buffers packed with associated info like:
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+        """
         with self.lock:
-            dev_buf_access = []
-            for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
+            # Map device buffers to proxy objects. Note, multiple proxy object can
+            # point to different non-overlapping parts of the same device buffer.
+            buffer_to_proxies = defaultdict(list)
+            for proxy in self._dev.get_proxies():
+                for buffer in proxy._pxy_get_device_memory_objects():
+                    buffer_to_proxies[buffer].append(proxy)
+
+            ret = []
+            for dev_buf, proxies in buffer_to_proxies.items():
                 last_access = max(p._pxy_get().last_access for p in proxies)
                 size = sizeof(dev_buf)
-                dev_buf_access.append((last_access, size, proxies))
-            return dev_buf_access
+                ret.append((last_access, size, proxies))
+            return ret
 
     def get_host_access_info(self) -> List[Tuple[float, int, List[ProxyObject]]]:
+        """Return a list of device buffers packed with associated info like:
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+        """
         with self.lock:
-            access_info = []
+            ret = []
             for p in self._host.get_proxies():
                 size = sizeof(p)
-                access_info.append((p._pxy_get().last_access, size, [p]))
-            return access_info
+                ret.append((p._pxy_get().last_access, size, [p]))
+            return ret
 
     def evict(
         self,
@@ -330,9 +333,10 @@ class ProxyManager:
             Number of bytes to evict.
         proxies_access: callable
             Function that returns a list of proxies pack in a tuple like:
-            `[(<access-time>, <size-of-proxy>, proxies), ...]
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
         serializer: callable
             Function that serialize the given proxy object.
+
         Return
         ------
         nbytes: int
@@ -358,6 +362,11 @@ class ProxyManager:
         return freed_memory
 
     def maybe_evict_from_device(self, extra_dev_mem=0) -> None:
+        """Evict buffers until total memory usage is below device-memory-limit
+
+        Adds `extra_dev_mem` to the current total memory usage when comparing
+        against device-memory-limit.
+        """
         mem_over_usage = (
             self._dev.mem_usage() + extra_dev_mem - self._device_memory_limit
         )
@@ -369,6 +378,11 @@ class ProxyManager:
             )
 
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
+        """Evict buffers until total memory usage is below host-memory-limit
+
+        Adds `extra_host_mem` to the current total memory usage when comparing
+        against device-memory-limit.
+        """
         mem_over_usage = (
             self._host.mem_usage() + extra_host_mem - self._host_memory_limit
         )
