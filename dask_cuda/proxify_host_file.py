@@ -368,13 +368,6 @@ class ProxyManager:
                 serializer=lambda p: p._pxy_serialize(serializers=("dask", "pickle")),
             )
 
-    def force_evict_from_device(self, nbytes) -> int:
-        return self.evict(
-            nbytes=nbytes,
-            proxies_access=self.get_dev_access_info,
-            serializer=lambda p: p._pxy_serialize(serializers=("dask", "pickle")),
-        )
-
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         mem_over_usage = (
             self._host.mem_usage() + extra_host_mem - self._host_memory_limit
@@ -385,13 +378,6 @@ class ProxyManager:
                 proxies_access=self.get_host_access_info,
                 serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
             )
-
-    def force_evict_from_host(self, nbytes) -> int:
-        return self.evict(
-            nbytes=nbytes,
-            proxies_access=self.get_host_access_info,
-            serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
-        )
 
     def maybe_evict(self, extra_dev_mem=0) -> None:
         self.maybe_evict_from_device(extra_dev_mem)
@@ -514,8 +500,14 @@ class ProxifyHostFile(MutableMapping):
 
                 def oom(nbytes: int) -> bool:
                     """Try to handle an out-of-memory error by spilling"""
-                    freed = self.manager.force_evict_from_device(nbytes)
-                    if freed > 0:
+                    memory_freed = self.manager.evict(
+                        nbytes=nbytes,
+                        proxies_access=self.manager.get_dev_access_info,
+                        serializer=lambda p: p._pxy_serialize(
+                            serializers=("dask", "pickle")
+                        ),
+                    )
+                    if memory_freed > 0:
                         return True  # Ask RMM to retry the allocation
                     else:
                         # Since we didn't find anything to spill, we give up.
@@ -536,7 +528,15 @@ class ProxifyHostFile(MutableMapping):
             def evict():
                 # We don't know how much we need to spill but Dask will call evict()
                 # repeatedly until enough is spilled. We ask for 100MB each time.
-                return None, None, self.manager.force_evict_from_host(nbytes=2 ** 27)
+                return (
+                    None,
+                    None,
+                    self.manager.evict(
+                        nbytes=2 ** 27,
+                        proxies_access=self.manager.get_host_access_info,
+                        serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
+                    ),
+                )
 
         return EvictDummy()
 
