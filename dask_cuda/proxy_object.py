@@ -158,9 +158,6 @@ class ProxyManagerDummy:
     def remove(self, *args, **kwargs):
         pass
 
-    def move(self, *args, **kwargs):
-        pass
-
     def maybe_evict(self, *args, **kwargs):
         pass
 

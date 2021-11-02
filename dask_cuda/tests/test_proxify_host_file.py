@@ -97,7 +97,7 @@ def test_one_dev_item_limit():
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
-    assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
+    assert dhf.manager._dev.mem_usage() == one_item_nbytes
     dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
