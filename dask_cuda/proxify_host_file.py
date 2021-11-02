@@ -541,12 +541,12 @@ class ProxifyHostFile(MutableMapping):
             @staticmethod
             def evict():
                 # We don't know how much we need to spill but Dask will call evict()
-                # repeatedly until enough is spilled. We ask for 100MB each time.
+                # repeatedly until enough is spilled. We ask for 1% each time.
                 return (
                     None,
                     None,
                     self.manager.evict(
-                        nbytes=2 ** 27,
+                        nbytes=int(self.manager._host_memory_limit * 0.01),
                         proxies_access=self.manager.get_host_access_info,
                         serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
                     ),
