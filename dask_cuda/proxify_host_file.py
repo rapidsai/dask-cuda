@@ -1,4 +1,5 @@
 import abc
+import gc
 import logging
 import os
 import threading
@@ -521,6 +522,7 @@ class ProxifyHostFile(MutableMapping):
                             serializers=("dask", "pickle")
                         ),
                     )
+                    gc.collect()
                     if memory_freed > 0:
                         return True  # Ask RMM to retry the allocation
                     else:
@@ -542,7 +544,7 @@ class ProxifyHostFile(MutableMapping):
             def evict():
                 # We don't know how much we need to spill but Dask will call evict()
                 # repeatedly until enough is spilled. We ask for 1% each time.
-                return (
+                ret = (
                     None,
                     None,
                     self.manager.evict(
@@ -551,6 +553,8 @@ class ProxifyHostFile(MutableMapping):
                         serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
                     ),
                 )
+                gc.collect()
+                return ret
 
         return EvictDummy()
 
