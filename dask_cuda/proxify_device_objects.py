@@ -2,7 +2,7 @@ import functools
 import pydoc
 from collections import defaultdict
 from functools import partial
-from typing import Any, List, MutableMapping
+from typing import List, MutableMapping, TypeVar
 
 import dask
 from dask.utils import Dispatch
@@ -11,6 +11,8 @@ from .proxy_object import ProxyObject, asproxy
 
 dispatch = Dispatch(name="proxify_device_objects")
 ignore_types = None
+
+T = TypeVar("T")
 
 
 def _register_ignore_types():
@@ -49,12 +51,12 @@ def _register_ignore_types():
 
 
 def proxify_device_objects(
-    obj: Any,
+    obj: T,
     proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
     found_proxies: List[ProxyObject] = None,
     excl_proxies: bool = False,
     mark_as_explicit_proxies: bool = False,
-):
+) -> T:
     """ Wrap device objects in ProxyObject
 
     Search through `obj` and wraps all CUDA device objects in ProxyObject.
@@ -97,7 +99,7 @@ def proxify_device_objects(
     return ret
 
 
-def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
+def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
     """ Unproxify device objects
 
     Search through `obj` and un-wraps all CUDA device objects.
@@ -118,12 +120,11 @@ def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
         return {
             k: unproxify_device_objects(v, skip_explicit_proxies)
             for k, v in obj.items()
-        }
+        }  # type: ignore
     if isinstance(obj, (list, tuple, set, frozenset)):
-        return type(obj)(
+        return obj.__class__(
             unproxify_device_objects(i, skip_explicit_proxies) for i in obj
-        )
-
+        )  # type: ignore
     if isinstance(obj, ProxyObject):
         pxy = obj._pxy_get(copy=True)
         if not skip_explicit_proxies or not pxy.explicit_proxy:

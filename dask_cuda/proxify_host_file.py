@@ -18,6 +18,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    TypeVar,
 )
 from weakref import ReferenceType
 
@@ -33,6 +34,8 @@ from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
+
+T = TypeVar("T")
 
 
 class Proxies(abc.ABC):
@@ -269,7 +272,7 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: object) -> object:
+    def proxify(self, obj: T) -> T:
         """Proxify `obj` and add found proxies to the Proxies collections"""
         with self.lock:
             found_proxies: List[ProxyObject] = []
