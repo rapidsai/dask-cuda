@@ -1,4 +1,5 @@
 import abc
+import gc
 import logging
 import os
 import threading
@@ -9,15 +10,16 @@ import weakref
 from collections import defaultdict
 from typing import (
     Any,
+    Callable,
     DefaultDict,
     Dict,
     Hashable,
-    Iterator,
     List,
     MutableMapping,
     Optional,
     Set,
     Tuple,
+    TypeVar,
 )
 from weakref import ReferenceType
 
@@ -34,6 +36,8 @@ from distributed.protocol.utils import pack_frames, unpack_frames
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
 
+T = TypeVar("T")
+
 
 class Proxies(abc.ABC):
     """Abstract base class to implement tracking of proxies
@@ -44,6 +48,7 @@ class Proxies(abc.ABC):
     def __init__(self):
         self._proxy_id_to_proxy: Dict[int, ReferenceType[ProxyObject]] = {}
         self._mem_usage = 0
+        self._lock = threading.Lock()
 
     def __len__(self) -> int:
         return len(self._proxy_id_to_proxy)
@@ -59,12 +64,14 @@ class Proxies(abc.ABC):
     def add(self, proxy: ProxyObject) -> None:
         """Add a proxy for tracking, calls `self.mem_usage_add`"""
         assert not self.contains_proxy_id(id(proxy))
-        self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
+        with self._lock:
+            self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
         self.mem_usage_add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
         """Remove proxy from tracking, calls `self.mem_usage_remove`"""
-        del self._proxy_id_to_proxy[id(proxy)]
+        with self._lock:
+            del self._proxy_id_to_proxy[id(proxy)]
         self.mem_usage_remove(proxy)
         if len(self._proxy_id_to_proxy) == 0:
             if self._mem_usage != 0:
@@ -75,11 +82,15 @@ class Proxies(abc.ABC):
                 )
                 self._mem_usage = 0
 
-    def __iter__(self) -> Iterator[ProxyObject]:
-        for p in self._proxy_id_to_proxy.values():
-            ret = p()
-            if ret is not None:
-                yield ret
+    def get_proxies(self) -> List[ProxyObject]:
+        """Return a list of all proxies"""
+        with self._lock:
+            ret = []
+            for p in self._proxy_id_to_proxy.values():
+                proxy = p()
+                if proxy is not None:
+                    ret.append(proxy)
+            return ret
 
     def contains_proxy_id(self, proxy_id: int) -> bool:
         return proxy_id in self._proxy_id_to_proxy
@@ -123,7 +134,7 @@ class ProxiesOnDevice(Proxies):
         proxy_id = id(proxy)
         assert proxy_id not in self.proxy_id_to_dev_mems
         self.proxy_id_to_dev_mems[proxy_id] = set()
-        for dev_mem in proxy._obj_pxy_get_device_memory_objects():
+        for dev_mem in proxy._pxy_get_device_memory_objects():
             self.proxy_id_to_dev_mems[proxy_id].add(dev_mem)
             ps = self.dev_mem_to_proxy_ids[dev_mem]
             if len(ps) == 0:
@@ -179,15 +190,16 @@ class ProxyManager:
             if len(self) == 0:
                 return ret + " Empty"
             ret += "\n"
-            for proxy in self._disk:
+            for proxy in self._disk.get_proxies():
                 ret += f"  disk - {repr(proxy)}\n"
-            for proxy in self._host:
+            for proxy in self._host.get_proxies():
                 ret += f"  host - {repr(proxy)}\n"
-            for proxy in self._dev:
+            for proxy in self._dev.get_proxies():
                 ret += f"  dev  - {repr(proxy)}\n"
             return ret[:-1]  # Strip last newline
 
     def get_proxies_by_serializer(self, serializer: Optional[str]) -> Proxies:
+        """Get Proxies collection by serializer"""
         if serializer == "disk":
             return self._disk
         elif serializer in ("dask", "pickle"):
@@ -195,7 +207,19 @@ class ProxyManager:
         else:
             return self._dev
 
+    def get_proxies_by_proxy_object(self, proxy: ProxyObject) -> Optional[Proxies]:
+        """Get Proxies collection by proxy object"""
+        proxy_id = id(proxy)
+        if self._dev.contains_proxy_id(proxy_id):
+            return self._dev
+        if self._host.contains_proxy_id(proxy_id):
+            return self._host
+        if self._disk.contains_proxy_id(proxy_id):
+            return self._disk
+        return None
+
     def contains(self, proxy_id: int) -> bool:
+        """Is the proxy in any of the Proxies collection?"""
         with self.lock:
             return (
                 self._disk.contains_proxy_id(proxy_id)
@@ -203,18 +227,25 @@ class ProxyManager:
                 or self._dev.contains_proxy_id(proxy_id)
             )
 
-    def add(self, proxy: ProxyObject) -> None:
+    def add(self, proxy: ProxyObject, serializer: Optional[str]) -> None:
+        """Add the proxy to the Proxies collection by that match the serializer"""
         with self.lock:
-            if not self.contains(id(proxy)):
-                self.get_proxies_by_serializer(proxy._obj_pxy["serializer"]).add(proxy)
+            old_proxies = self.get_proxies_by_proxy_object(proxy)
+            new_proxies = self.get_proxies_by_serializer(serializer)
+            if old_proxies is not new_proxies:
+                if old_proxies is not None:
+                    old_proxies.remove(proxy)
+                new_proxies.add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
+        """Remove the proxy from the Proxies collection it is in"""
         with self.lock:
-            # Find where the proxy is located and remove it
+            # Find where the proxy is located (if found) and remove it
             proxies: Optional[Proxies] = None
             if self._disk.contains_proxy_id(id(proxy)):
                 proxies = self._disk
             if self._host.contains_proxy_id(id(proxy)):
+                assert proxies is None, "Proxy in multiple locations"
                 proxies = self._host
             if self._dev.contains_proxy_id(id(proxy)):
                 assert proxies is None, "Proxy in multiple locations"
@@ -222,128 +253,149 @@ class ProxyManager:
             assert proxies is not None, "Trying to remove unknown proxy"
             proxies.remove(proxy)
 
-    def move(
-        self,
-        proxy: ProxyObject,
-        from_serializer: Optional[str],
-        to_serializer: Optional[str],
-    ) -> None:
-        with self.lock:
-            src = self.get_proxies_by_serializer(from_serializer)
-            dst = self.get_proxies_by_serializer(to_serializer)
-            if src is not dst:
-                src.remove(proxy)
-                dst.add(proxy)
-
     def validate(self):
+        """Validate the state of the manager"""
         with self.lock:
             for serializer in ("disk", "dask", "cuda"):
                 proxies = self.get_proxies_by_serializer(serializer)
-                for p in proxies:
+                for p in proxies.get_proxies():
                     assert (
-                        self.get_proxies_by_serializer(p._obj_pxy["serializer"])
+                        self.get_proxies_by_serializer(p._pxy_get().serializer)
                         is proxies
                     )
-                for i, p in proxies._proxy_id_to_proxy.items():
-                    assert p() is not None
-                    assert i == id(p())
-                for p in proxies:
-                    if p._obj_pxy_is_serialized():
-                        header, _ = p._obj_pxy["obj"]
-                        assert header["serializer"] == p._obj_pxy["serializer"]
+                with proxies._lock:
+                    for i, p in proxies._proxy_id_to_proxy.items():
+                        assert p() is not None
+                        assert i == id(p())
+                for p in proxies.get_proxies():
+                    pxy = p._pxy_get()
+                    if pxy.is_serialized():
+                        header, _ = pxy.obj
+                        assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: object) -> object:
+    def proxify(self, obj: T) -> T:
+        """Proxify `obj` and add found proxies to the Proxies collections"""
         with self.lock:
             found_proxies: List[ProxyObject] = []
             proxied_id_to_proxy: Dict[int, ProxyObject] = {}
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
-                p._obj_pxy["last_access"] = last_access
+                pxy = p._pxy_get()
+                pxy.last_access = last_access
                 if not self.contains(id(p)):
-                    p._obj_pxy_register_manager(self)
-                    self.add(p)
-            self.maybe_evict()
-            return ret
+                    pxy.manager = self
+                    self.add(proxy=p, serializer=pxy.serializer)
+        self.maybe_evict()
+        return ret
 
-    def get_dev_buffer_to_proxies(self) -> DefaultDict[Hashable, List[ProxyObject]]:
+    def get_dev_access_info(self) -> List[Tuple[float, int, List[ProxyObject]]]:
+        """Return a list of device buffers packed with associated info like:
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+        """
         with self.lock:
-            # Notice, multiple proxy object can point to different non-overlapping
-            # parts of the same device buffer.
-            ret = defaultdict(list)
-            for proxy in self._dev:
-                for dev_buffer in proxy._obj_pxy_get_device_memory_objects():
-                    ret[dev_buffer].append(proxy)
-            return ret
+            # Map device buffers to proxy objects. Note, multiple proxy object can
+            # point to different non-overlapping parts of the same device buffer.
+            buffer_to_proxies = defaultdict(list)
+            for proxy in self._dev.get_proxies():
+                for buffer in proxy._pxy_get_device_memory_objects():
+                    buffer_to_proxies[buffer].append(proxy)
 
-    def get_dev_access_info(
-        self,
-    ) -> Tuple[int, List[Tuple[int, int, List[ProxyObject]]]]:
-        with self.lock:
-            total_dev_mem_usage = 0
-            dev_buf_access = []
-            for dev_buf, proxies in self.get_dev_buffer_to_proxies().items():
-                last_access = max(p._obj_pxy.get("last_access", 0) for p in proxies)
+            ret = []
+            for dev_buf, proxies in buffer_to_proxies.items():
+                last_access = max(p._pxy_get().last_access for p in proxies)
                 size = sizeof(dev_buf)
-                dev_buf_access.append((last_access, size, proxies))
-                total_dev_mem_usage += size
-            assert total_dev_mem_usage == self._dev.mem_usage()
-            return total_dev_mem_usage, dev_buf_access
+                ret.append((last_access, size, proxies))
+            return ret
 
-    def get_host_access_info(self) -> Tuple[int, List[Tuple[int, int, ProxyObject]]]:
+    def get_host_access_info(self) -> List[Tuple[float, int, List[ProxyObject]]]:
+        """Return a list of device buffers packed with associated info like:
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+        """
         with self.lock:
-            total_mem_usage = 0
-            access_info = []
-            for p in self._host:
+            ret = []
+            for p in self._host.get_proxies():
                 size = sizeof(p)
-                access_info.append((p._obj_pxy.get("last_access", 0), size, p))
-                total_mem_usage += size
-            return total_mem_usage, access_info
+                ret.append((p._pxy_get().last_access, size, [p]))
+            return ret
+
+    def evict(
+        self,
+        nbytes: int,
+        proxies_access: Callable[[], List[Tuple[float, int, List[ProxyObject]]]],
+        serializer: Callable[[ProxyObject], None],
+    ) -> int:
+        """Evict buffers retrieved by calling `proxies_access`
+
+        Calls `proxies_access` to retrieve a list of proxies and then spills
+        enough proxies to free up at a minimum `nbytes` bytes. In order to
+        spill a proxy, `serializer` is called.
+
+        Parameters
+        ----------
+        nbytes: int
+            Number of bytes to evict.
+        proxies_access: callable
+            Function that returns a list of proxies pack in a tuple like:
+            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+        serializer: callable
+            Function that serialize the given proxy object.
+
+        Return
+        ------
+        nbytes: int
+            Number of bytes spilled.
+        """
+        freed_memory: int = 0
+        proxies_to_serialize: List[ProxyObject] = []
+        with self.lock:
+            access = proxies_access()
+            access.sort(key=lambda x: (x[0], -x[1]))
+            for _, size, proxies in access:
+                proxies_to_serialize.extend(proxies)
+                freed_memory += size
+                if freed_memory >= nbytes:
+                    break
+
+        serialized_proxies: Set[int] = set()
+        for p in proxies_to_serialize:
+            # Avoid trying to serialize the same proxy multiple times
+            if id(p) not in serialized_proxies:
+                serialized_proxies.add(id(p))
+                serializer(p)
+        return freed_memory
 
     def maybe_evict_from_device(self, extra_dev_mem=0) -> None:
-        if (  # Shortcut when not evicting
-            self._dev.mem_usage() + extra_dev_mem <= self._device_memory_limit
-        ):
-            return
+        """Evict buffers until total memory usage is below device-memory-limit
 
-        with self.lock:
-            total_dev_mem_usage, dev_buf_access = self.get_dev_access_info()
-            total_dev_mem_usage += extra_dev_mem
-            if total_dev_mem_usage > self._device_memory_limit:
-                dev_buf_access.sort(key=lambda x: (x[0], -x[1]))
-                for _, size, proxies in dev_buf_access:
-                    for p in proxies:
-                        # Serialize to disk, which "dask" and "pickle" does
-                        p._obj_pxy_serialize(serializers=("dask", "pickle"))
-                    total_dev_mem_usage -= size
-                    if total_dev_mem_usage <= self._device_memory_limit:
-                        break
+        Adds `extra_dev_mem` to the current total memory usage when comparing
+        against device-memory-limit.
+        """
+        mem_over_usage = (
+            self._dev.mem_usage() + extra_dev_mem - self._device_memory_limit
+        )
+        if mem_over_usage > 0:
+            self.evict(
+                nbytes=mem_over_usage,
+                proxies_access=self.get_dev_access_info,
+                serializer=lambda p: p._pxy_serialize(serializers=("dask", "pickle")),
+            )
 
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
-        if (  # Shortcut when not evicting
-            self._host.mem_usage() + extra_host_mem <= self._host_memory_limit
-        ):
-            return
+        """Evict buffers until total memory usage is below host-memory-limit
 
-        with self.lock:
-            total_host_mem_usage, info = self.get_host_access_info()
-            total_host_mem_usage += extra_host_mem
-            if total_host_mem_usage > self._host_memory_limit:
-                info.sort(key=lambda x: (x[0], -x[1]))
-                for _, size, proxy in info:
-                    ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
-                    total_host_mem_usage -= size
-                    if total_host_mem_usage <= self._host_memory_limit:
-                        break
-
-    def force_evict_from_host(self) -> int:
-        with self.lock:
-            _, info = self.get_host_access_info()
-            info.sort(key=lambda x: (x[0], -x[1]))
-            for _, size, proxy in info:
-                ProxifyHostFile.serialize_proxy_to_disk_inplace(proxy)
-                return size
-            return 0
+        Adds `extra_host_mem` to the current total memory usage when comparing
+        against device-memory-limit.
+        """
+        mem_over_usage = (
+            self._host.mem_usage() + extra_host_mem - self._host_memory_limit
+        )
+        if mem_over_usage > 0:
+            self.evict(
+                nbytes=mem_over_usage,
+                proxies_access=self.get_host_access_info,
+                serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
+            )
 
     def maybe_evict(self, extra_dev_mem=0) -> None:
         self.maybe_evict_from_device(extra_dev_mem)
@@ -393,6 +445,10 @@ class ProxifyHostFile(MutableMapping):
         ProxyObjects, set the `mark_as_explicit_proxies=True` when proxifying with
         `proxify_device_objects()`. If ``None``, the "jit-unspill-compatibility-mode"
         config value are used, which defaults to False.
+    spill_on_demand: bool or None, default None
+        Enables spilling when the RMM memory pool goes out of memory. If ``None``,
+        the "spill-on-demand" config value are used, which defaults to True.
+        Notice, enabling this does nothing when RMM isn't availabe or not used.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -411,6 +467,7 @@ class ProxifyHostFile(MutableMapping):
         local_directory: str = None,
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
+        spill_on_demand: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
@@ -421,6 +478,10 @@ class ProxifyHostFile(MutableMapping):
             )
         else:
             self.compatibility_mode = compatibility_mode
+        if spill_on_demand is None:
+            spill_on_demand = dask.config.get("spill-on-demand", default=True)
+        # `None` in this context means: never initialize
+        self.spill_on_demand_initialized = False if spill_on_demand else None
 
         # It is a bit hacky to forcefully capture the "distributed.worker" logger,
         # eventually it would be better to have a different logger. For now this
@@ -438,6 +499,43 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             return iter(self.store)
 
+    def initialize_spill_on_demand_once(self):
+        """Register callback function to handle RMM out-of-memory exceptions
+
+        This function is idempotent and should be called at least once. Currently, we
+        do this in __setitem__ instead of in __init__ because a Dask worker might re-
+        initiate the RMM pool and its resource adaptors after creating ProxifyHostFile.
+        """
+        if self.spill_on_demand_initialized is False:
+            self.spill_on_demand_initialized = True
+            try:
+                import rmm.mr
+
+                assert hasattr(rmm.mr, "FailureCallbackResourceAdaptor")
+            except (ImportError, AssertionError):
+                pass
+            else:
+
+                def oom(nbytes: int) -> bool:
+                    """Try to handle an out-of-memory error by spilling"""
+                    memory_freed = self.manager.evict(
+                        nbytes=nbytes,
+                        proxies_access=self.manager.get_dev_access_info,
+                        serializer=lambda p: p._pxy_serialize(
+                            serializers=("dask", "pickle")
+                        ),
+                    )
+                    gc.collect()
+                    if memory_freed > 0:
+                        return True  # Ask RMM to retry the allocation
+                    else:
+                        # Since we didn't find anything to spill, we give up.
+                        return False
+
+                current_mr = rmm.mr.get_current_device_resource()
+                mr = rmm.mr.FailureCallbackResourceAdaptor(current_mr, oom)
+                rmm.mr.set_current_device_resource(mr)
+
     @property
     def fast(self):
         """Dask use this to trigger CPU-to-Disk spilling"""
@@ -447,12 +545,25 @@ class ProxifyHostFile(MutableMapping):
         class EvictDummy:
             @staticmethod
             def evict():
-                return None, None, self.manager.force_evict_from_host()
+                # We don't know how much we need to spill but Dask will call evict()
+                # repeatedly until enough is spilled. We ask for 1% each time.
+                ret = (
+                    None,
+                    None,
+                    self.manager.evict(
+                        nbytes=int(self.manager._host_memory_limit * 0.01),
+                        proxies_access=self.manager.get_host_access_info,
+                        serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
+                    ),
+                )
+                gc.collect()
+                return ret
 
         return EvictDummy()
 
     def __setitem__(self, key, value):
         with self.lock:
+            self.initialize_spill_on_demand_once()
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
@@ -570,31 +681,23 @@ class ProxifyHostFile(MutableMapping):
         proxy : ProxyObject
             Proxy object to serialize using the "disk" serialize.
         """
-        manager = proxy._obj_pxy_get_manager()
-        with manager.lock:
-            if not proxy._obj_pxy_is_serialized():
-                proxy._obj_pxy_serialize(serializers=("disk",))
-            else:
-                header, frames = proxy._obj_pxy["obj"]
-                if header["serializer"] in ("dask", "pickle"):
-                    path = cls.gen_file_path()
-                    with open(path, "wb") as f:
-                        f.write(pack_frames(frames))
-                    proxy._obj_pxy["obj"] = (
-                        {
-                            "serializer": "disk",
-                            "path": path,
-                            "shared-filesystem": cls._spill_shared_filesystem,
-                            "disk-sub-header": header,
-                        },
-                        [],
-                    )
-                    proxy._obj_pxy["serializer"] = "disk"
-                    manager.move(
-                        proxy,
-                        from_serializer=header["serializer"],
-                        to_serializer="disk",
-                    )
-                elif header["serializer"] != "disk":
-                    proxy._obj_pxy_deserialize()
-                    proxy._obj_pxy_serialize(serializers=("disk",))
+        pxy = proxy._pxy_get(copy=True)
+        if pxy.is_serialized():
+            header, frames = pxy.obj
+            if header["serializer"] in ("dask", "pickle"):
+                path = cls.gen_file_path()
+                with open(path, "wb") as f:
+                    f.write(pack_frames(frames))
+                pxy.obj = (
+                    {
+                        "serializer": "disk",
+                        "path": path,
+                        "shared-filesystem": cls._spill_shared_filesystem,
+                        "disk-sub-header": header,
+                    },
+                    [],
+                )
+                pxy.serializer = "disk"
+                proxy._pxy_set(pxy)
+                return
+        proxy._pxy_serialize(serializers=("disk",), proxy_detail=pxy)

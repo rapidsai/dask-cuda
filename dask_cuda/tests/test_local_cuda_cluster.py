@@ -50,6 +50,7 @@ async def test_local_cuda_cluster():
 
 # Notice, this test might raise errors when the number of available GPUs is less
 # than 8 but as long as the test passes the errors can be ignored.
+@pytest.mark.filterwarnings("ignore:Cannot get CPU affinity")
 @gen_test(timeout=20)
 async def test_with_subset_of_cuda_visible_devices():
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,3,6,8"
@@ -96,6 +97,7 @@ async def test_ucx_protocol(protocol):
 
 
 @pytest.mark.asyncio
+@pytest.mark.filterwarnings("ignore:Exception ignored in")
 async def test_ucx_protocol_type_error():
     pytest.importorskip("ucp")
 

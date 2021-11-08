@@ -327,6 +327,7 @@ class LocalCUDACluster(LocalCluster):
         self.host = kwargs.get("host", None)
 
         initialize(
+            create_cuda_context=False,
             enable_tcp_over_ucx=enable_tcp_over_ucx,
             enable_nvlink=enable_nvlink,
             enable_infiniband=enable_infiniband,

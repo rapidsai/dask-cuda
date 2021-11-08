@@ -38,7 +38,7 @@ def test_proxy_object(serializers):
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
     assert "bytearray at " in repr(pxy)
 
-    pxy._obj_pxy_serialize(serializers=("dask", "pickle"))
+    pxy._pxy_serialize(serializers=("dask", "pickle"))
     assert "dask_cuda.proxy_object.ProxyObject at " in repr(pxy)
     assert "bytearray (serialized='dask')" in repr(pxy)
 
@@ -56,7 +56,7 @@ class DummyObj:
 def test_proxy_object_serializer():
     """Check the serializers argument"""
     pxy = proxy_object.asproxy(DummyObj(), serializers=("dask", "pickle"))
-    assert pxy._obj_pxy["serializer"] == "pickle"
+    assert pxy._pxy_get().serializer == "pickle"
     assert "DummyObj (serialized='pickle')" in repr(pxy)
 
     with pytest.raises(ValueError) as excinfo:
@@ -72,13 +72,13 @@ def test_double_proxy_object(serializers_first, serializers_second):
     serializer2 = serializers_second[0] if serializers_second else None
     org = bytearray(range(10))
     pxy1 = proxy_object.asproxy(org, serializers=serializers_first)
-    assert pxy1._obj_pxy["serializer"] == serializer1
+    assert pxy1._pxy_get().serializer == serializer1
     pxy2 = proxy_object.asproxy(pxy1, serializers=serializers_second)
     if serializers_second is None:
         # Check that `serializers=None` doesn't change the initial serializers
-        assert pxy2._obj_pxy["serializer"] == serializer1
+        assert pxy2._pxy_get().serializer == serializer1
     else:
-        assert pxy2._obj_pxy["serializer"] == serializer2
+        assert pxy2._pxy_get().serializer == serializer2
     assert pxy1 is pxy2
 
 
@@ -239,14 +239,14 @@ def test_fixed_attribute_length(backend):
     pxy = proxy_object.asproxy(np.arange(10), serializers=("dask",))
     assert len(pxy) == 10
     # Accessing the length shouldn't de-serialize the proxied object
-    assert pxy._obj_pxy_is_serialized()
+    assert pxy._pxy_get().is_serialized()
 
     # Access `len()` of a scalar
     pxy = proxy_object.asproxy(np.array(10), serializers=("dask",))
     with pytest.raises(TypeError) as excinfo:
         len(pxy)
         assert "len() of unsized object" in str(excinfo.value)
-        assert pxy._obj_pxy_is_serialized()
+        assert pxy._pxy_get().is_serialized()
 
 
 def test_fixed_attribute_name():
@@ -262,12 +262,12 @@ def test_fixed_attribute_name():
     with pytest.raises(AttributeError) as excinfo:
         pxy.name
         assert "has no attribute 'name'" in str(excinfo.value)
-        assert pxy._obj_pxy_is_serialized()
+        assert pxy._pxy_get().is_serialized()
 
     # Access `name` of a datatype
     pxy = proxy_object.asproxy(obj_with_name, serializers=("pickle",))
     assert pxy.name == "I have a name"
-    assert pxy._obj_pxy_is_serialized()
+    assert pxy._pxy_get().is_serialized()
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
@@ -279,8 +279,8 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         assert isinstance(x, cudf.DataFrame)
         if jit_unspill:
             # Check that `x` is a proxy object and the proxied DataFrame is serialized
-            assert "FrameProxyObject" in str(type(x))
-            assert x._obj_pxy["serializer"] == "dask"
+            assert "ProxyObject" in str(type(x))
+            assert x._pxy_get().serializer == "dask"
         else:
             assert type(x) == cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
@@ -313,13 +313,13 @@ def test_serializing_to_disk(obj):
     # Serialize from device to disk
     pxy = proxy_object.asproxy(obj)
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
-    assert pxy._obj_pxy["serializer"] == "disk"
+    assert pxy._pxy_get().serializer == "disk"
     assert obj == proxy_object.unproxy(pxy)
 
     # Serialize from host to disk
     pxy = proxy_object.asproxy(obj, serializers=("pickle",))
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
-    assert pxy._obj_pxy["serializer"] == "disk"
+    assert pxy._pxy_get().serializer == "disk"
     assert obj == proxy_object.unproxy(pxy)
 
 
@@ -337,7 +337,7 @@ def test_serializing_array_to_disk(backend, serializers, size):
     # Serialize from host to disk
     pxy = proxy_object.asproxy(obj, serializers=serializers)
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
-    assert pxy._obj_pxy["serializer"] == "disk"
+    assert pxy._pxy_get().serializer == "disk"
     assert list(obj) == list(proxy_object.unproxy(pxy))
 
 
@@ -352,10 +352,10 @@ class _PxyObjTest(proxy_object.ProxyObject):
     def __dask_tokenize__(self):
         return 42
 
-    def _obj_pxy_deserialize(self):
-        if self._obj_pxy["assert_on_deserializing"]:
-            assert self._obj_pxy["serializer"] is None
-        return super()._obj_pxy_deserialize()
+    def _pxy_deserialize(self):
+        if self._pxy_get().assert_on_deserializing:
+            assert self._pxy_get().serializer is None
+        return super()._pxy_deserialize()
 
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
@@ -367,7 +367,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializers_used = x._obj_pxy["serializer"]
+        serializers_used = x._pxy_get().serializer
 
         # Check that `x` is serialized with the expected serializers
         if protocol == "ucx":
@@ -391,9 +391,9 @@ def test_communicating_proxy_objects(protocol, send_serializers):
             # Since "tcp" cannot send device memory directly, it will be re-serialized
             # using the default dask serializers that spill the data to main memory.
             if protocol == "tcp" and send_serializers == ("cuda",):
-                df._obj_pxy["assert_on_deserializing"] = False
+                df._pxy_get().assert_on_deserializing = False
             else:
-                df._obj_pxy["assert_on_deserializing"] = True
+                df._pxy_get().assert_on_deserializing = True
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
@@ -409,7 +409,7 @@ def test_communicating_disk_objects(protocol, shared_fs):
     def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
-        serializer_used = x._obj_pxy["serializer"]
+        serializer_used = x._pxy_get().serializer
         if shared_fs:
             assert serializer_used == "disk"
         else:
@@ -421,7 +421,7 @@ def test_communicating_disk_objects(protocol, shared_fs):
         with Client(cluster) as client:
             df = cudf.DataFrame({"a": range(10)})
             df = proxy_object.asproxy(df, serializers=("disk",), subclass=_PxyObjTest)
-            df._obj_pxy["assert_on_deserializing"] = False
+            df._pxy_get().assert_on_deserializing = False
             df = client.scatter(df)
             client.submit(task, df).result()
             client.shutdown()  # Avoids a UCX shutdown error
@@ -563,3 +563,18 @@ def test_array_ufucn_proxified_object(np_func):
     actual = np_func(proxy_obj, np_array)
 
     assert_series_equal(expected.to_pandas(), actual.to_pandas())
+
+
+def test_cudf_copy():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    cpy = df.copy()
+    assert_frame_equal(cpy.to_pandas(), df.to_pandas())
+
+
+def test_cudf_fillna():
+    cudf = pytest.importorskip("cudf")
+    df = cudf.DataFrame({"A": range(10)})
+    df = proxify_device_objects(df)
+    df = df.fillna(0)
