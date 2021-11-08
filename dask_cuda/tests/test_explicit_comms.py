@@ -18,7 +18,6 @@ from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
 
-
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
