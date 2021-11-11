@@ -1,4 +1,5 @@
 import abc
+import gc
 import logging
 import os
 import threading
@@ -18,6 +19,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    TypeVar,
 )
 from weakref import ReferenceType
 
@@ -33,6 +35,8 @@ from distributed.protocol.utils import pack_frames, unpack_frames
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
+
+T = TypeVar("T")
 
 
 class Proxies(abc.ABC):
@@ -269,11 +273,15 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: object) -> object:
+    def proxify(self, obj: T) -> T:
         """Proxify `obj` and add found proxies to the Proxies collections"""
         with self.lock:
             found_proxies: List[ProxyObject] = []
-            proxied_id_to_proxy: Dict[int, ProxyObject] = {}
+            # In order detect already proxied object, proxify_device_objects()
+            # needs a mapping from proxied objects to their proxy objects.
+            proxied_id_to_proxy = {
+                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+            }
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
@@ -521,6 +529,7 @@ class ProxifyHostFile(MutableMapping):
                             serializers=("dask", "pickle")
                         ),
                     )
+                    gc.collect()
                     if memory_freed > 0:
                         return True  # Ask RMM to retry the allocation
                     else:
@@ -542,7 +551,7 @@ class ProxifyHostFile(MutableMapping):
             def evict():
                 # We don't know how much we need to spill but Dask will call evict()
                 # repeatedly until enough is spilled. We ask for 1% each time.
-                return (
+                ret = (
                     None,
                     None,
                     self.manager.evict(
@@ -551,6 +560,8 @@ class ProxifyHostFile(MutableMapping):
                         serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
                     ),
                 )
+                gc.collect()
+                return ret
 
         return EvictDummy()
 
