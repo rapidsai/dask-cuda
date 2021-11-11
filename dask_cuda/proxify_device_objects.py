@@ -93,9 +93,8 @@ def proxify_device_objects(
     if found_proxies is None:
         found_proxies = []
     ret = dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
-    if mark_as_explicit_proxies:
-        for p in found_proxies:
-            p._pxy_get().explicit_proxy = True
+    for p in found_proxies:
+        p._pxy_get().explicit_proxy = mark_as_explicit_proxies
     return ret
 
 
@@ -167,9 +166,10 @@ def unproxify_decorator(func):
 
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
-    if _id not in proxied_id_to_proxy:
-        proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
-    ret = proxied_id_to_proxy[_id]
+    if _id in proxied_id_to_proxy:
+        ret = proxied_id_to_proxy[_id]
+    else:
+        ret = proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
     found_proxies.append(ret)
     return ret
 
