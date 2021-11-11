@@ -513,7 +513,7 @@ class ProxyObject:
 
     @_pxy_cache_wrapper("sizeof")
     def __sizeof__(self):
-        """Returns either the size of the proxied object
+        """Returns the size of the proxy object (serialized or not)
 
         Notice, we cache the result even though the size of proxied object
         when serialized or not serialized might slightly differ.
@@ -523,7 +523,7 @@ class ProxyObject:
             _, frames = pxy.obj
             return sum(map(distributed.utils.nbytes, frames))
         else:
-            return sizeof(self._pxy_deserialize())
+            return sizeof(pxy.obj)
 
     def __len__(self):
         pxy = self._pxy_get(copy=True)
