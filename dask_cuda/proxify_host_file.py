@@ -277,7 +277,11 @@ class ProxyManager:
         """Proxify `obj` and add found proxies to the Proxies collections"""
         with self.lock:
             found_proxies: List[ProxyObject] = []
-            proxied_id_to_proxy: Dict[int, ProxyObject] = {}
+            # In order detect already proxied object, proxify_device_objects()
+            # needs a mapping from proxied objects to their proxy objects.
+            proxied_id_to_proxy = {
+                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+            }
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:

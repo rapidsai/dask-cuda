@@ -16,7 +16,7 @@ import dask_cuda
 import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.proxy_object import ProxyObject, asproxy
+from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
 from dask_cuda.utils import get_device_total_memory
 
 cupy = pytest.importorskip("cupy")
@@ -106,13 +106,22 @@ def test_one_dev_item_limit():
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
-    # Overwriting "k3" with a non-cuda object and deleting `k2`
+    # Overwriting k3 with a non-cuda object and deleting k2
     # should empty the device
     dhf["k3"] = "non-cuda-object"
     del k2
     dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [])
+
+    # Adding the underlying proxied of k1 doesn't change anything.
+    # The host file detects that k1_ary is already proxied by the
+    # existing proxy object k1.
+    k1_ary = unproxy(k1)
+    dhf["k5"] = k1_ary
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
 
 def test_one_item_host_limit():
