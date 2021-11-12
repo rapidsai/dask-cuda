@@ -24,6 +24,7 @@ Contents
 
    install
    quickstart
+   troubleshooting
    api
 
 .. toctree::
