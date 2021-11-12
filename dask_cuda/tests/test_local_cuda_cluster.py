@@ -10,7 +10,7 @@ import rmm
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import MockWorker, get_gpu_count_mig
+from dask_cuda.utils import MockWorker, get_gpu_count_mig, get_gpu_uuid_from_index
 
 _driver_version = rmm._cuda.gpu.driverGetVersion()
 _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
@@ -245,3 +245,15 @@ async def test_available_mig_workers():
             del os.environ["CUDA_VISIBLE_DEVICES"]
         if init_nvmlstatus:
             os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = init_nvmlstatus
+
+
+@gen_test(timeout=20)
+async def test_gpu_uuid():
+    async with LocalCUDACluster(
+        CUDA_VISIBLE_DEVICES=get_gpu_uuid_from_index(0),
+        scheduler_port=0,
+        asynchronous=True,
+    ) as cluster:
+        assert len(cluster.workers) == 1
+        async with Client(cluster, asynchronous=True) as client:
+            await client.wait_for_workers(1)
