@@ -34,7 +34,7 @@ try:
 except ImportError:
     from dask.dataframe.utils import make_meta as make_meta_dispatch
 
-from .get_device_memory_objects import get_device_memory_objects
+
 from .is_device_object import is_device_object
 
 if TYPE_CHECKING:
@@ -167,7 +167,7 @@ class ProxyManagerDummy:
 
 
 class ProxyDetail:
-    """ Details of a ProxyObject
+    """Details of a ProxyObject
 
     In order to avoid having to use thread locks, a ProxyObject maintains
     its state in a ProxyDetail object. The idea is to first make a copy
@@ -434,17 +434,6 @@ class ProxyObject:
         ret = pxy.deserialize(maybe_evict=maybe_evict, nbytes=self.__sizeof__())
         self._pxy_set(pxy)
         return ret
-
-    @_pxy_cache_wrapper("device_memory_objects")
-    def _pxy_get_device_memory_objects(self) -> set:
-        """Return all device memory objects within the proxied object.
-
-        Returns
-        -------
-        ret : set
-            Set of device memory objects
-        """
-        return get_device_memory_objects(self._pxy_get().obj)
 
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""
