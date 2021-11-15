@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
+from unittest.mock import patch
 
 import pytest
 
@@ -245,8 +246,8 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
 
 def test_cuda_visible_devices_uuid(loop):  # noqa: F811
     gpu_uuid = get_gpu_uuid_from_index(0)
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_uuid
-    try:
+
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": gpu_uuid}):
         with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
                 [
@@ -264,5 +265,3 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
 
                     result = client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
                     assert list(result.values())[0] == gpu_uuid
-    finally:
-        del os.environ["CUDA_VISIBLE_DEVICES"]
