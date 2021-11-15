@@ -416,7 +416,6 @@ def test_on_demand_debug_info():
 
     def task():
         rmm.DeviceBuffer(size=total_mem + 1)
-        return 42
 
     with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
         with Client(cluster) as client:
