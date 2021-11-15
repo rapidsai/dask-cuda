@@ -34,7 +34,7 @@ try:
 except ImportError:
     from dask.dataframe.utils import make_meta as make_meta_dispatch
 
-from .get_device_memory_objects import get_device_memory_objects
+
 from .is_device_object import is_device_object
 
 if TYPE_CHECKING:
@@ -158,9 +158,6 @@ class ProxyManagerDummy:
     def remove(self, *args, **kwargs):
         pass
 
-    def move(self, *args, **kwargs):
-        pass
-
     def maybe_evict(self, *args, **kwargs):
         pass
 
@@ -170,7 +167,7 @@ class ProxyManagerDummy:
 
 
 class ProxyDetail:
-    """ Details of a ProxyObject
+    """Details of a ProxyObject
 
     In order to avoid having to use thread locks, a ProxyObject maintains
     its state in a ProxyDetail object. The idea is to first make a copy
@@ -438,17 +435,6 @@ class ProxyObject:
         self._pxy_set(pxy)
         return ret
 
-    @_pxy_cache_wrapper("device_memory_objects")
-    def _pxy_get_device_memory_objects(self) -> set:
-        """Return all device memory objects within the proxied object.
-
-        Returns
-        -------
-        ret : set
-            Set of device memory objects
-        """
-        return get_device_memory_objects(self._pxy_get().obj)
-
     def __reduce__(self):
         """Serialization of ProxyObject that uses pickle"""
         pxy = self._pxy_get(copy=True)
@@ -516,7 +502,7 @@ class ProxyObject:
 
     @_pxy_cache_wrapper("sizeof")
     def __sizeof__(self):
-        """Returns either the size of the proxied object
+        """Returns the size of the proxy object (serialized or not)
 
         Notice, we cache the result even though the size of proxied object
         when serialized or not serialized might slightly differ.
@@ -526,7 +512,7 @@ class ProxyObject:
             _, frames = pxy.obj
             return sum(map(distributed.utils.nbytes, frames))
         else:
-            return sizeof(self._pxy_deserialize())
+            return sizeof(pxy.obj)
 
     def __len__(self):
         pxy = self._pxy_get(copy=True)

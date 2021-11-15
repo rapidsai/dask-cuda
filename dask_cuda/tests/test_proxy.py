@@ -1,6 +1,5 @@
 import operator
 import pickle
-import sys
 from types import SimpleNamespace
 
 import numpy as np
@@ -11,6 +10,7 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 import dask
 import dask.array
 from dask.dataframe.core import has_parallel_type
+from dask.sizeof import sizeof
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
@@ -21,11 +21,6 @@ from dask_cuda import proxy_object
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-pytestmark = pytest.mark.skipif(
-    sys.version_info.minor < 8,
-    reason="Temporarily skipping some tests because of a bug "
-    "in Dask see <https://github.com/rapidsai/dask-cuda/issues/746>",
-)
 ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
 
 
@@ -584,3 +579,32 @@ def test_cudf_fillna():
     df = cudf.DataFrame({"A": range(10)})
     df = proxify_device_objects(df)
     df = df.fillna(0)
+
+
+def test_sizeof_cupy():
+    cupy = pytest.importorskip("cupy")
+    cupy.cuda.set_allocator(None)
+    a = cupy.arange(1e7)
+    a_size = sizeof(a)
+    pxy = proxy_object.asproxy(a)
+    assert a_size == pytest.approx(sizeof(pxy))
+    pxy._pxy_serialize(serializers=("dask",))
+    assert a_size == pytest.approx(sizeof(pxy))
+    assert pxy._pxy_get().is_serialized()
+    pxy._pxy_cache = {}
+    assert a_size == pytest.approx(sizeof(pxy))
+    assert pxy._pxy_get().is_serialized()
+
+
+def test_sizeof_cudf():
+    cudf = pytest.importorskip("cudf")
+    a = cudf.datasets.timeseries().reset_index()
+    a_size = sizeof(a)
+    pxy = proxy_object.asproxy(a)
+    assert a_size == pytest.approx(sizeof(pxy))
+    pxy._pxy_serialize(serializers=("dask",))
+    assert a_size == pytest.approx(sizeof(pxy))
+    assert pxy._pxy_get().is_serialized()
+    pxy._pxy_cache = {}
+    assert a_size == pytest.approx(sizeof(pxy))
+    assert pxy._pxy_get().is_serialized()

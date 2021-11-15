@@ -14,9 +14,10 @@ from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
-from dask_cuda.get_device_memory_objects import get_device_memory_objects
+from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.proxy_object import ProxyObject, asproxy
+from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
+from dask_cuda.utils import get_device_total_memory
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -96,7 +97,7 @@ def test_one_dev_item_limit():
 
     # Deleting k2 does not change anything since k3 still holds a
     # reference to the underlying proxy object
-    assert dhf.manager.get_dev_access_info()[0] == one_item_nbytes
+    assert dhf.manager._dev.mem_usage() == one_item_nbytes
     dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
@@ -105,13 +106,22 @@ def test_one_dev_item_limit():
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k2])
 
-    # Overwriting "k3" with a non-cuda object and deleting `k2`
+    # Overwriting k3 with a non-cuda object and deleting k2
     # should empty the device
     dhf["k3"] = "non-cuda-object"
     del k2
     dhf.manager.validate()
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k1, k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [])
+
+    # Adding the underlying proxied of k1 doesn't change anything.
+    # The host file detects that k1_ary is already proxied by the
+    # existing proxy object k1.
+    k1_ary = unproxy(k1)
+    dhf["k5"] = k1_ary
+    dhf.manager.validate()
+    assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
+    assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
 
 def test_one_item_host_limit():
@@ -169,6 +179,26 @@ def test_one_item_host_limit():
     assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k2, k3])
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
+
+
+def test_spill_on_demand():
+    """
+    Test spilling on demand by disabling the device_memory_limit
+    and allocating two large buffers that will otherwise fail because
+    of spilling on demand.
+    """
+    rmm = pytest.importorskip("rmm")
+    if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
+        pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
+
+    total_mem = get_device_total_memory()
+    dhf = ProxifyHostFile(
+        device_memory_limit=2 * total_mem,
+        memory_limit=2 * total_mem,
+        spill_on_demand=True,
+    )
+    for i in range(2):
+        dhf[i] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
@@ -234,7 +264,7 @@ def test_cudf_get_device_memory_objects():
             levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
         ),
     ]
-    res = get_device_memory_objects(objects)
+    res = get_device_memory_ids(objects)
     assert len(res) == 4, "We expect four buffer objects"
 
 
