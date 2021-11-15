@@ -1,9 +1,11 @@
 import abc
 import gc
+import io
 import logging
 import os
 import threading
 import time
+import traceback
 import uuid
 import warnings
 import weakref
@@ -26,6 +28,7 @@ from weakref import ReferenceType
 
 import dask
 from dask.sizeof import sizeof
+from dask.utils import format_bytes
 from distributed.protocol.compression import decompress, maybe_compress
 from distributed.protocol.serialize import (
     merge_and_deserialize,
@@ -217,11 +220,11 @@ class ProxyManager:
     def __repr__(self) -> str:
         with self.lock:
             return (
-                f"<ProxyManager dev_limit={self._device_memory_limit}"
-                f" host_limit={self._host_memory_limit}"
-                f" disk={self._disk.mem_usage()}({len(self._disk)})"
-                f" host={self._host.mem_usage()}({len(self._host)})"
-                f" dev={self._dev.mem_usage()}({len(self._dev)})>"
+                f"<ProxyManager dev_limit={format_bytes(self._device_memory_limit)}"
+                f" host_limit={format_bytes(self._host_memory_limit)}"
+                f" disk={format_bytes(self._disk.mem_usage())}({len(self._disk)})"
+                f" host={format_bytes(self._host.mem_usage())}({len(self._host)})"
+                f" dev={format_bytes(self._dev.mem_usage())}({len(self._dev)})>"
             )
 
     def __len__(self) -> int:
@@ -546,6 +549,17 @@ class ProxifyHostFile(MutableMapping):
                     if memory_freed > 0:
                         return True  # Ask RMM to retry the allocation
                     else:
+                        with io.StringIO() as f:
+                            traceback.print_stack(file=f)
+                            f.seek(0)
+                            tb = f.read()
+                        self.logger.warning(
+                            "RMM allocation of %s failed, spill-on-demand couldn't "
+                            "find any device memory to spill:\n%s\ntraceback:\n%s\n",
+                            format_bytes(nbytes),
+                            self.manager.pprint(),
+                            tb,
+                        )
                         # Since we didn't find anything to spill, we give up.
                         return False
 

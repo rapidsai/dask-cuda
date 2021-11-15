@@ -1,3 +1,4 @@
+import re
 from typing import Iterable
 
 import numpy as np
@@ -368,7 +369,7 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
 
 
 def test_worker_force_spill_to_disk():
-    """ Test Dask triggering CPU-to-Disk spilling """
+    """Test Dask triggering CPU-to-Disk spilling """
     cudf = pytest.importorskip("cudf")
 
     with dask.config.set({"distributed.worker.memory.terminate": 0}):
@@ -403,3 +404,33 @@ def test_worker_force_spill_to_disk():
                 assert "Unmanaged memory use is high" not in str(
                     client.get_worker_logs()
                 )
+
+
+def test_on_demand_debug_info():
+    """Test worker logging when on-demand-spilling fails"""
+    rmm = pytest.importorskip("rmm")
+    if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
+        pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
+
+    total_mem = get_device_total_memory()
+
+    def task():
+        rmm.DeviceBuffer(size=total_mem + 1)
+
+    with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
+        with Client(cluster) as client:
+            # Warmup, which trigger the initialization of spill on demand
+            client.submit(range, 10).result()
+
+            # Submit too large RMM buffer
+            with pytest.raises(
+                MemoryError, match=r".*std::bad_alloc: CUDA error at:.*"
+            ):
+                client.submit(task).result()
+
+            log = str(client.get_worker_logs())
+            assert re.search(
+                "WARNING - RMM allocation of .* failed, spill-on-demand", log
+            )
+            assert re.search("<ProxyManager dev_limit=.* host_limit=.*>: Empty", log)
+            assert "traceback:" in log
