@@ -14,7 +14,7 @@ from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
-from dask_cuda.get_device_memory_objects import get_device_memory_objects
+from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
 from dask_cuda.utils import get_device_total_memory
@@ -264,7 +264,7 @@ def test_cudf_get_device_memory_objects():
             levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
         ),
     ]
-    res = get_device_memory_objects(objects)
+    res = get_device_memory_ids(objects)
     assert len(res) == 4, "We expect four buffer objects"
 
 
