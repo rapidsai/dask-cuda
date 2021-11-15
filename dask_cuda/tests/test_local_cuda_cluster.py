@@ -249,11 +249,14 @@ async def test_available_mig_workers():
 
 @gen_test(timeout=20)
 async def test_gpu_uuid():
+    gpu_uuid = get_gpu_uuid_from_index(0)
+
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES=get_gpu_uuid_from_index(0),
-        scheduler_port=0,
-        asynchronous=True,
+        CUDA_VISIBLE_DEVICES=gpu_uuid, scheduler_port=0, asynchronous=True,
     ) as cluster:
         assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:
             await client.wait_for_workers(1)
+
+            result = await client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
+            assert list(result.values())[0] == gpu_uuid
