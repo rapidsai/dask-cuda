@@ -10,7 +10,7 @@ class DeviceMemoryId:
     """ID and size of device memory objects
 
     Instead of keeping a reference to device memory objects this class
-    only save the id and size in order to avoid delayed freeing.
+    only saves the id and size in order to avoid delayed freeing.
     """
 
     def __init__(self, obj: object):
