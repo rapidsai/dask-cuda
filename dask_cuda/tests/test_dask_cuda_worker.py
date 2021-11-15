@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
+from unittest.mock import patch
 
 import pytest
 
@@ -12,7 +13,12 @@ from distributed.utils_test import popen
 
 import rmm
 
-from dask_cuda.utils import get_gpu_count_mig, get_n_gpus, wait_workers
+from dask_cuda.utils import (
+    get_gpu_count_mig,
+    get_gpu_uuid_from_index,
+    get_n_gpus,
+    wait_workers,
+)
 
 _driver_version = rmm._cuda.gpu.driverGetVersion()
 _runtime_version = rmm._cuda.gpu.runtimeGetVersion()
@@ -236,3 +242,26 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
             del os.environ["CUDA_VISIBLE_DEVICES"]
         if init_nvmlstatus:
             os.environ["DASK_DISTRIBUTED__DIAGNOSTICS__NVML"] = init_nvmlstatus
+
+
+def test_cuda_visible_devices_uuid(loop):  # noqa: F811
+    gpu_uuid = get_gpu_uuid_from_index(0)
+
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": gpu_uuid}):
+        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+            with popen(
+                [
+                    "dask-cuda-worker",
+                    "127.0.0.1:9359",
+                    "--host",
+                    "127.0.0.1",
+                    "--no-dashboard",
+                    "--worker-class",
+                    "dask_cuda.utils.MockWorker",
+                ]
+            ):
+                with Client("127.0.0.1:9359", loop=loop) as client:
+                    assert wait_workers(client, n_gpus=1)
+
+                    result = client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
+                    assert list(result.values())[0] == gpu_uuid

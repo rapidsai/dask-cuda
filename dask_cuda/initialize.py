@@ -9,7 +9,7 @@ import dask
 import distributed.comm.ucx
 from distributed.diagnostics.nvml import has_cuda_context
 
-from .utils import get_ucx_config
+from .utils import get_ucx_config, parse_cuda_visible_device
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def _create_cuda_context():
             # Therefore if ``import ucp`` fails we can just continue here.
             pass
 
-        cuda_visible_device = int(
+        cuda_visible_device = parse_cuda_visible_device(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
         ctx = has_cuda_context()
