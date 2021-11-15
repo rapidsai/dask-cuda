@@ -106,7 +106,7 @@ else
     gpuci_logger "Python pytest for dask-cuda"
     cd "$WORKSPACE"
     ls dask_cuda/tests/
-    DASK_CUDA_TEST_SINGLE_GPU=1 UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n pytest -vs -Werror::DeprecationWarning -Werror::FutureWarning --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
+    DASK_CUDA_TEST_SINGLE_GPU=1 UCXPY_IFNAME=eth0 UCX_WARN_UNUSED_ENV_VARS=n UCX_MEMTYPE_CACHE=n pytest -vs -Werror::DeprecationWarning -Werror::FutureWarning -Wignore::DeprecationWarning:pkg_resources.*: --cache-clear --basetemp="$WORKSPACE/dask-cuda-tmp" --junitxml="$WORKSPACE/junit-dask-cuda.xml" --cov-config=.coveragerc --cov=dask_cuda --cov-report=xml:"$WORKSPACE/dask-cuda-coverage.xml" --cov-report term dask_cuda/tests/
 
     logger "Run local benchmark..."
     python dask_cuda/benchmarks/local_cudf_shuffle.py --partition-size="1 KiB" -d 0  --runs 1 --backend dask
