@@ -22,8 +22,14 @@ from dask_cuda.benchmarks.utils import (
 async def _run(client, args):
     if args.type == "gpu":
         import cupy as xp
+
+        if args.operation == "richardson_lucy":
+            import cupyx.scipy.ndimage as ndimage
     else:
         import numpy as xp
+
+        if args.operation == "richardson_lucy":
+            import scipy.ndimage as ndimage
 
     # Create a simple random array
     rs = da.random.RandomState(RandomState=xp.random.RandomState)
@@ -133,6 +139,41 @@ async def _run(client, args):
         func_args = (x, idx)
 
         func = lambda x, idx: x[idx]
+    elif args.operation == "richardson_lucy":
+        rng = start_range(message="make array(s)", color="green")
+        image = rs.random((args.size,) * 3, chunks=args.chunk_size).persist()
+        psf = rs.random((args.filter_size,) * 3).persist()
+        im_deconv = (np.full_like(image, 0.5, shape=image.shape)).persist()
+        print(image, im_deconv)
+        psf_mirror = (np.flip(psf)).persist()
+        await wait(image)
+        await wait(psf)
+        await wait(im_deconv)
+        await wait(psf_mirror)
+        end_range(rng)
+
+        def _convolve(a, f, mode="constant"):
+            depth = tuple([s // 2 for s in f.shape])
+            return a.map_overlap(
+                ndimage.convolve,
+                depth=depth,
+                boundary="none",
+                dtype=a.dtype,
+                weights=f,
+                mode=mode,
+            )
+
+        def _richardson_lucy(image, psf, im_deconv, psf_mirror):
+            conv = _convolve(im_deconv, psf, mode="constant")
+            relative_blur = image / conv
+            im_deconv *= _convolve(relative_blur, psf_mirror, mode="constant")
+            return im_deconv
+
+        func_args = (image, psf, im_deconv, psf_mirror)
+        func = _richardson_lucy
+
+        # Variable name 'x' to match other operations
+        x = image
 
     shape = x.shape
     chunksize = x.chunksize
@@ -322,14 +363,23 @@ def parse_args():
             "default": "10000",
             "metavar": "n",
             "type": int,
-            "help": "The array size n in n^2 (default 10000). For 'svd' operation "
-            "the second dimension is given by --second-size.",
+            "help": "The array size n in n^2 (n^3 for 'richardson_lucy'). For "
+            "'svd' operation the second dimension is given by --second-size. "
+            "Default: 10000.",
         },
         {
             "name": ["-2", "--second-size",],
             "default": "1000",
             "type": int,
             "help": "The second dimension size for 'svd' operation (default 1000).",
+        },
+        {
+            "name": ["-f", "--filter-size",],
+            "default": "4",
+            "metavar": "n",
+            "type": int,
+            "help": "The filter size n in n^3 only applicable for 'richardson_lucy'. "
+            "Default: 4.",
         },
         {
             "name": ["-t", "--type",],
