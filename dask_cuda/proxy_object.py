@@ -1,4 +1,4 @@
-import copy
+import copy as _copy
 import functools
 import operator
 import os
@@ -7,7 +7,6 @@ import time
 import uuid
 from collections import OrderedDict
 from contextlib import nullcontext
-from copy import copy as _copy
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import pandas
@@ -21,8 +20,9 @@ import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
 from distributed.protocol.compression import decompress
-from distributed.protocol.utils import unpack_frames
 from distributed.worker import dumps_function, loads_function
+
+from dask_cuda.disk_io import disk_read
 
 try:
     from dask.dataframe.backends import concat_pandas
@@ -33,7 +33,6 @@ try:
     from dask.dataframe.dispatch import make_meta_dispatch as make_meta_dispatch
 except ImportError:
     from dask.dataframe.utils import make_meta as make_meta_dispatch
-
 
 from .is_device_object import is_device_object
 
@@ -364,7 +363,7 @@ class ProxyObject:
 
     def _pxy_get(self, copy=False) -> ProxyDetail:
         if copy:
-            return _copy(self._pxy_detail)
+            return _copy.copy(self._pxy_detail)
         else:
             return self._pxy_detail
 
@@ -773,21 +772,21 @@ def handle_disk_serialized(pxy: ProxyDetail):
     On a non-shared filesystem, we deserialize the proxy to host memory.
     """
     header, frames = pxy.obj
-    if header["shared-filesystem"]:
-        old_path = header["path"]
+    disk_io_header = header["disk-io-header"]
+    if disk_io_header["shared-filesystem"]:
+        old_path = disk_io_header["path"]
         new_path = f"{old_path}-linked-{uuid.uuid4()}"
         os.link(old_path, new_path)
-        header = copy.copy(header)
-        header["path"] = new_path
+        header = _copy.deepcopy(header)
+        header["disk-io-header"]["path"] = new_path
     else:
         # When not on a shared filesystem, we deserialize to host memory
         assert frames == []
-        with open(header["path"], "rb") as f:
-            frames = unpack_frames(f.read())
-        os.remove(header["path"])
-        if "compression" in header["disk-sub-header"]:
-            frames = decompress(header["disk-sub-header"], frames)
-        header = header["disk-sub-header"]
+        frames = disk_read(disk_io_header)
+        os.remove(disk_io_header["path"])
+        if "compression" in header["serialize-header"]:
+            frames = decompress(header["serialize-header"], frames)
+        header = header["serialize-header"]
         pxy.serializer = header["serializer"]
     return header, frames
 
