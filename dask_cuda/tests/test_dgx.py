@@ -167,28 +167,37 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 
     net_devices = _get_dgx_net_devices()
     openfabrics_devices = [d.split(",")[0] for d in net_devices]
-
     ucx_net_devices = None
-    if enable_infiniband and not _ucx_110:
-        ucx_net_devices = "auto"
 
-    if _ucx_110 is True:
-        cm_tls = ["tcp"]
-        if enable_rdmacm is True:
-            cm_tls_priority = "rdmacm"
-        else:
-            cm_tls_priority = "tcp"
+    if enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
+        if _ucx_110 is False:
+            pytest.skip("Specifying transports is required on UCX < 1.10", allow_module_level=True)
+        enable_tcp_over_ucx = None
+        cm_tls = ["all"]
+        cm_tls_priority = ["rdmacm", "tcp", "sockcm"]
     else:
-        cm_tls = ["tcp"]
-        if enable_rdmacm is True:
-            cm_tls.append("rdmacm")
-            cm_tls_priority = "rdmacm"
+        if enable_infiniband and not _ucx_110:
+            ucx_net_devices = "auto"
+
+        enable_tcp_over_ucx = True
+
+        if _ucx_110 is True:
+            cm_tls = ["tcp"]
+            if enable_rdmacm is True:
+                cm_tls_priority = ["rdmacm"]
+            else:
+                cm_tls_priority = ["tcp"]
         else:
-            cm_tls.append("sockcm")
-            cm_tls_priority = "sockcm"
+            cm_tls = ["tcp"]
+            if enable_rdmacm is True:
+                cm_tls.append("rdmacm")
+                cm_tls_priority = ["rdmacm"]
+            else:
+                cm_tls.append("sockcm")
+                cm_tls_priority = ["sockcm"]
 
     initialize(
-        enable_tcp_over_ucx=True,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
@@ -196,7 +205,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 
     with LocalCUDACluster(
         interface="ib0",
-        enable_tcp_over_ucx=True,
+        enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
@@ -211,14 +220,15 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
             def check_ucx_options():
                 conf = ucp.get_config()
                 assert "TLS" in conf
-                assert "tcp" in conf["TLS"]
-                assert "cuda_copy" in conf["TLS"]
                 assert all(t in conf["TLS"] for t in cm_tls)
-                assert cm_tls_priority in conf["SOCKADDR_TLS_PRIORITY"]
-                if enable_nvlink:
-                    assert "cuda_ipc" in conf["TLS"]
-                if enable_infiniband:
-                    assert "rc" in conf["TLS"]
+                assert all(p in conf["SOCKADDR_TLS_PRIORITY"] for p in cm_tls_priority)
+                if cm_tls != ["all"]:
+                    assert "tcp" in conf["TLS"]
+                    assert "cuda_copy" in conf["TLS"]
+                    if enable_nvlink:
+                        assert "cuda_ipc" in conf["TLS"]
+                    if enable_infiniband:
+                        assert "rc" in conf["TLS"]
                 return True
 
             if ucx_net_devices == "auto":
@@ -240,6 +250,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
         {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": False},
         {"enable_infiniband": True, "enable_nvlink": False, "enable_rdmacm": True},
         {"enable_infiniband": True, "enable_nvlink": True, "enable_rdmacm": True},
+        {"enable_infiniband": None, "enable_nvlink": None, "enable_rdmacm": None},
     ],
 )
 @pytest.mark.skipif(

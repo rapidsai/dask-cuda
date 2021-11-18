@@ -143,3 +143,36 @@ def test_initialize_ucx_infiniband():
     p.start()
     p.join()
     assert not p.exitcode
+
+
+def _test_initialize_ucx_all():
+    initialize()
+    with LocalCluster(
+        protocol="ucx",
+        dashboard_address=None,
+        n_workers=1,
+        threads_per_worker=1,
+        processes=True,
+        config={"distributed.comm.ucx": get_ucx_config()},
+    ) as cluster:
+        with Client(cluster) as client:
+            res = da.from_array(numpy.arange(10000), chunks=(1000,))
+            res = res.sum().compute()
+            assert res == 49995000
+
+            def check_ucx_options():
+                conf = ucp.get_config()
+                assert "TLS" in conf
+                assert conf["TLS"] == "all"
+                assert all([p in conf["SOCKADDR_TLS_PRIORITY"] for p in ["rdmacm", "tcp", "sockcm"]])
+                return True
+
+            assert client.run_on_scheduler(check_ucx_options) is True
+            assert all(client.run(check_ucx_options).values())
+
+
+def test_initialize_ucx_all():
+    p = mp.Process(target=_test_initialize_ucx_all)
+    p.start()
+    p.join()
+    assert not p.exitcode

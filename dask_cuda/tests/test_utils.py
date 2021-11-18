@@ -79,6 +79,20 @@ def test_get_device_total_memory():
             assert total_mem > 0
 
 
+def test_get_preload_options_default():
+    pytest.importorskip("ucp")
+
+    opts = get_preload_options(
+        protocol="ucx",
+        create_cuda_context=True,
+    )
+
+    assert "preload" in opts
+    assert opts["preload"] == ["dask_cuda.initialize"]
+    assert "preload_argv" in opts
+    assert opts["preload_argv"] == ["--create-cuda-context"]
+
+
 @pytest.mark.parametrize("enable_tcp", [True, False])
 @pytest.mark.parametrize(
     "enable_infiniband_netdev",
@@ -175,6 +189,8 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
         return
     else:
         ucx_config = get_ucx_config(**kwargs)
+
+    assert ucx_config["create_cuda_context"] is True
 
     if enable_tcp_over_ucx is True:
         assert ucx_config["tcp"] is True
