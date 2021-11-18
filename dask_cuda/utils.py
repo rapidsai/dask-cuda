@@ -283,11 +283,11 @@ def get_ucx_net_devices(
 
 
 def get_ucx_config(
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
-    net_devices="",
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
+    net_devices=None,
     cuda_device_index=None,
 ):
     if net_devices == "auto" and enable_infiniband is False:
@@ -303,6 +303,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "create_cuda_context": True,
         "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:

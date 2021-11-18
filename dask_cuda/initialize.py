@@ -69,10 +69,10 @@ def _create_cuda_context():
 
 def initialize(
     create_cuda_context=True,
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     net_devices="",
     cuda_device_index=None,
 ):

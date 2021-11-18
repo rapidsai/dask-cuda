@@ -210,28 +210,28 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable TCP over UCX, even if InfiniBand and
     NVLink are not supported or disabled.""",
 )
 @click.option(
     "--enable-infiniband/--disable-infiniband",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over InfiniBand, implies
     ``--enable-tcp-over-ucx``.""",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over NVLink, implies
     ``--enable-tcp-over-ucx``.""",
 )
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX RDMA connection manager support,
     requires ``--enable-infiniband``.""",
