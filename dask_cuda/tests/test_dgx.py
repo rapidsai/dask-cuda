@@ -171,7 +171,10 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 
     if enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
         if _ucx_110 is False:
-            pytest.skip("Specifying transports is required on UCX < 1.10", allow_module_level=True)
+            pytest.skip(
+                "Specifying transports is required on UCX < 1.10",
+                allow_module_level=True,
+            )
         enable_tcp_over_ucx = None
         cm_tls = ["all"]
         cm_tls_priority = ["rdmacm", "tcp", "sockcm"]

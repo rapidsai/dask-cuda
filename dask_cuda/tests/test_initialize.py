@@ -164,7 +164,12 @@ def _test_initialize_ucx_all():
                 conf = ucp.get_config()
                 assert "TLS" in conf
                 assert conf["TLS"] == "all"
-                assert all([p in conf["SOCKADDR_TLS_PRIORITY"] for p in ["rdmacm", "tcp", "sockcm"]])
+                assert all(
+                    [
+                        p in conf["SOCKADDR_TLS_PRIORITY"]
+                        for p in ["rdmacm", "tcp", "sockcm"]
+                    ]
+                )
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
