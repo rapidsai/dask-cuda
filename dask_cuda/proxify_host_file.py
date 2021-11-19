@@ -469,6 +469,9 @@ class ProxifyHostFile(MutableMapping):
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
         Notice, enabling this does nothing when RMM isn't availabe or not used.
+    gds_spilling: bool
+        Enable GPUDirect Storage spilling if available. If ``None``, the
+        "gds-spilling" config value are used, which defaults to False.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -490,10 +493,11 @@ class ProxifyHostFile(MutableMapping):
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
         spill_on_demand: bool = None,
+        gds_spilling: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
-        self.register_disk_spilling(local_directory, shared_filesystem)
+        self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -652,6 +656,9 @@ class ProxifyHostFile(MutableMapping):
             Whether the `local_directory` above is shared between all workers or not.
             If ``None``, the "jit-unspill-shared-fs" config value are used, which
             defaults to False.
+        gds: bool
+            Enable the use of GPUDirect Storage if available. If ``None``, the
+            "gds-spilling" config value are used, which defaults to False.
         """
         path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
@@ -672,7 +679,7 @@ class ProxifyHostFile(MutableMapping):
             cls._spill_shared_filesystem = shared_filesystem
 
         if gds is None:
-            gds = dask.config.get("gds", default=False)
+            gds = dask.config.get("gds-spilling", default=False)
         if gds:
             try:
                 import cucim.clara.filesystem as cucim_fs  # noqa F401
