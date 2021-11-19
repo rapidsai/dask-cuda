@@ -1,6 +1,6 @@
 from typing import Iterable, Mapping
 
-import numpy
+import numpy as np
 
 from distributed.utils import nbytes
 
@@ -75,7 +75,7 @@ def disk_read(header: Mapping, gds=False) -> list:
                 if is_cuda:
                     buf = rmm.DeviceBuffer(size=length)
                 else:
-                    buf = numpy.empty((length,), dtype="u1")
+                    buf = np.empty((length,), dtype="u1")
                 f.pread(buf=buf, count=length, file_offset=file_offset, buf_offset=0)
                 file_offset += length
                 ret.append(buf)
