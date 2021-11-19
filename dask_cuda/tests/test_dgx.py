@@ -14,7 +14,7 @@ from distributed.utils import get_ip_interface
 
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import _ucx_110, wait_workers
+from dask_cuda.utils import _ucx_110, _ucx_111, wait_workers
 
 mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
@@ -262,6 +262,9 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 )
 def test_ucx_infiniband_nvlink(params):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
+
+    if not _ucx_111 and enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
+        pytest.skip("Automatic configuration not supported in UCX < 1.11")
 
     if params["enable_infiniband"]:
         if not any([at.startswith("rc") for at in ucp.get_active_transports()]):

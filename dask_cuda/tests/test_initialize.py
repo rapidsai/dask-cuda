@@ -9,7 +9,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import _ucx_110, get_ucx_config
+from dask_cuda.utils import _ucx_110, _ucx_111, get_ucx_config
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
@@ -176,6 +176,9 @@ def _test_initialize_ucx_all():
             assert all(client.run(check_ucx_options).values())
 
 
+@pytest.mark.skipif(
+    not _ucx_111, reason="Automatic configuration not supported in UCX < 1.11",
+)
 def test_initialize_ucx_all():
     p = mp.Process(target=_test_initialize_ucx_all)
     p.start()
