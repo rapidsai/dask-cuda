@@ -220,14 +220,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over InfiniBand, implies
-    ``--enable-tcp-over-ucx``.""",
+    ``--enable-tcp-over-ucx`` when enabled.""",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
     default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over NVLink, implies
-    ``--enable-tcp-over-ucx``.""",
+    ``--enable-tcp-over-ucx`` when enabled.""",
 )
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",

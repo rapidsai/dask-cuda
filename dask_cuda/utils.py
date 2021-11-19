@@ -324,11 +324,11 @@ def get_ucx_config(
 
 def get_preload_options(
     protocol=None,
-    create_cuda_context=False,
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    create_cuda_context=None,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     ucx_net_devices="",
     cuda_device_index=0,
 ):
@@ -338,29 +338,29 @@ def get_preload_options(
 
     Parameters
     ----------
-    protocol: None or str
+    protocol: None or str, default None
         If "ucx", options related to UCX (enable_tcp_over_ucx, enable_infiniband,
         enable_nvlink and ucx_net_devices) are added to preload_argv.
-    create_cuda_context: bool
+    create_cuda_context: bool, default None
         Ensure the CUDA context gets created at initialization, generally
         needed by Dask workers.
-    enable_tcp: bool
+    enable_tcp: bool, default None
         Set environment variables to enable TCP over UCX, even when InfiniBand or
         NVLink support are disabled.
-    enable_infiniband: bool
+    enable_infiniband: bool, default None
         Set environment variables to enable UCX InfiniBand support. Implies
         enable_tcp=True.
-    enable_rdmacm: bool
+    enable_rdmacm: bool, default None
         Set environment variables to enable UCX RDMA connection manager support.
         Currently requires enable_infiniband=True.
-    enable_nvlink: bool
+    enable_nvlink: bool, default None
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp=True.
-    ucx_net_devices: str or callable
+    ucx_net_devices: str or callable, default ""
         A string with the interface name to be used for all devices (empty
         string means use default), or a callable function taking an integer
         identifying the GPU index.
-    cuda_device_index: int
+    cuda_device_index: int, default 0
         The index identifying the CUDA device used by this worker, only used
         when ucx_net_devices is callable.
 
