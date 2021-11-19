@@ -63,10 +63,8 @@ gpuci_mamba_retry install "cudatoolkit=$CUDA_REL" \
 # `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
 gpuci_mamba_retry install "pytest-asyncio=<0.14.0"
 
-# https://docs.rapids.ai/maintainers/depmgmt/
-# gpuci_mamba_retry remove -f rapids-build-env
-# gpuci_mamba_retry install "your-pkg=1.0.0"
-
+# Install cucim in order to test GDS spilling
+gpuci_mamba_retry install "cucim"
 
 conda info
 conda config --show-sources
