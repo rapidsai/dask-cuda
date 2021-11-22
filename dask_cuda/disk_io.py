@@ -1,8 +1,48 @@
-from typing import Iterable, Mapping
+import weakref
+from typing import Callable, Iterable, Mapping, Optional
 
 import numpy as np
 
-from distributed.utils import nbytes
+from distributed.utils import Any, nbytes
+
+_new_cuda_buffer: Optional[Callable[[int], Any]] = None
+
+
+def get_new_cuda_buffer() -> Callable[[int], Any]:
+    """Return a function to create an empty CUDA buffer"""
+    global _new_cuda_buffer
+    if _new_cuda_buffer is not None:
+        return _new_cuda_buffer
+    try:
+        import rmm
+
+        _new_cuda_buffer = lambda n: rmm.DeviceBuffer(size=n)
+        return _new_cuda_buffer
+    except ImportError:
+        pass
+
+    try:
+        import cupy
+
+        _new_cuda_buffer = lambda n: cupy.empty((n,), dtype="u1")
+        return _new_cuda_buffer
+    except ImportError:
+        pass
+
+    try:
+        import numba.cuda
+
+        def numba_device_array(n):
+            a = numba.cuda.device_array((n,), dtype="u1")
+            weakref.finalize(a, numba.cuda.current_context)
+            return a
+
+        _new_cuda_buffer = numba_device_array
+        return _new_cuda_buffer
+    except ImportError:
+        pass
+
+    raise RuntimeError("GPUDirect Storage requires RMM, cuPY, or Numba")
 
 
 def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) -> dict:
@@ -67,13 +107,12 @@ def disk_read(header: Mapping, gds=False) -> list:
     ret = []
     if gds:
         import cucim.clara.filesystem as cucim_fs  # isort:skip
-        import rmm  # isort:skip
 
         with cucim_fs.open(header["path"], "rb") as f:
             file_offset = 0
             for length, is_cuda in zip(header["frame-lengths"], header["cuda-frames"]):
                 if is_cuda:
-                    buf = rmm.DeviceBuffer(size=length)
+                    buf = get_new_cuda_buffer()(length)
                 else:
                     buf = np.empty((length,), dtype="u1")
                 f.pread(buf=buf, count=length, file_offset=file_offset, buf_offset=0)

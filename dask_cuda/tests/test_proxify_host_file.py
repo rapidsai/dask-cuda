@@ -10,7 +10,6 @@ import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from dask.sizeof import sizeof
 from distributed import Client
-from distributed.protocol.serialize import deserialize, serialize
 from distributed.utils_test import gen_test
 from distributed.worker import get_worker
 
@@ -431,23 +430,3 @@ def test_on_demand_debug_info():
             )
             assert re.search("<ProxyManager dev_limit=.* host_limit=.*>: Empty", log)
             assert "traceback:" in log
-
-
-@pytest.mark.parametrize("gds_enabled", [True, False])
-def test_gds(gds_enabled):
-    try:
-        ProxifyHostFile.register_disk_spilling(gds=gds_enabled)
-        if gds_enabled and not ProxifyHostFile._gds_enabled:
-            pytest.importorskip("cucim.clara.filesystem")
-            # In this case, we know that cucim is available but GDS
-            # isn't installed on the system. For testing, we enable
-            # the use of the cucim anyways.
-            ProxifyHostFile._gds_enabled = True
-
-        a = cupy.arange(10)
-        header, frames = serialize(a, serializers=("disk",))
-        b = deserialize(header, frames)
-        assert type(a) == type(b)
-        assert all(a == b)
-    finally:
-        ProxifyHostFile.register_disk_spilling()  # Reset disk spilling options
