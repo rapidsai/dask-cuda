@@ -9,6 +9,8 @@ import numpy as np
 import pynvml
 import toolz
 
+import dask
+import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.utils import parse_bytes
 from distributed import Worker, wait
 
@@ -296,18 +298,18 @@ def get_ucx_config(
             "supported when enable_infiniband=True."
         )
 
-    ucx_config = {
-        "tcp": None,
-        "infiniband": None,
-        "nvlink": None,
-        "rdmacm": None,
-        "net-devices": None,
-        "cuda_copy": None,
-        "create_cuda_context": None,
-        "reuse-endpoints": not _ucx_111,
-    }
+    ucx_config = dask.config.get("distributed.comm.ucx")
+
+    ucx_config["create-cuda-context"] = True
+    ucx_config["reuse-endpoints"] = not _ucx_111
+
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        ucx_config["cuda_copy"] = True
+        # For backwards compatibility with https://github.com/dask/distributed/pull/5539
+        # May be removed once support for Distributed <= 2021.11.2 is dropped
+        if "cuda-copy" in ucx_config:
+            ucx_config["cuda-copy"] = True
+        elif "cuda_copy" in ucx_config:
+            ucx_config["cuda_copy"] = True
     if enable_tcp_over_ucx:
         ucx_config["tcp"] = True
     if enable_infiniband:
@@ -640,15 +642,11 @@ class MockWorker(Worker):
     """
 
     def __init__(self, *args, **kwargs):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
         self._device_get_count = distributed.diagnostics.nvml.device_get_count
         super().__init__(*args, **kwargs)
 
     def __del__(self):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = self._device_get_count
 
     @staticmethod
