@@ -1,10 +1,54 @@
+# dask-cuda 22.02.00 (Date TBD)
+
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.02.00a for the latest changes to this development branch.
+
 # dask-cuda 21.12.00 (Date TBD)
 
 Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.12.00a for the latest changes to this development branch.
 
-# dask-cuda 21.10.00 (Date TBD)
+# dask-cuda 21.10.00 (7 Oct 2021)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v21.10.00a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Drop test setting UCX global options via Dask config ([#738](https://github.com/rapidsai/dask-cuda/pull/738)) [@pentschev](https://github.com/pentschev)
+- Prevent CUDA context errors when testing on single-GPU ([#737](https://github.com/rapidsai/dask-cuda/pull/737)) [@pentschev](https://github.com/pentschev)
+- Handle `ucp` import error during `initialize()` ([#729](https://github.com/rapidsai/dask-cuda/pull/729)) [@pentschev](https://github.com/pentschev)
+- Check if CUDA context was created in distributed.comm.ucx ([#722](https://github.com/rapidsai/dask-cuda/pull/722)) [@pentschev](https://github.com/pentschev)
+- Fix registering correct dispatches for `cudf.Index` ([#718](https://github.com/rapidsai/dask-cuda/pull/718)) [@galipremsagar](https://github.com/galipremsagar)
+- Register `percentile_lookup` for `FrameProxyObject` ([#716](https://github.com/rapidsai/dask-cuda/pull/716)) [@galipremsagar](https://github.com/galipremsagar)
+- Leave interface unset when ucx_net_devices unset in LocalCUDACluster ([#711](https://github.com/rapidsai/dask-cuda/pull/711)) [@pentschev](https://github.com/pentschev)
+- Update to UCX-Py 0.22 ([#710](https://github.com/rapidsai/dask-cuda/pull/710)) [@pentschev](https://github.com/pentschev)
+- Missing fixes to Distributed config namespace refactoring ([#703](https://github.com/rapidsai/dask-cuda/pull/703)) [@pentschev](https://github.com/pentschev)
+- Reset UCX-Py after rdmacm tests run ([#702](https://github.com/rapidsai/dask-cuda/pull/702)) [@pentschev](https://github.com/pentschev)
+- Skip DGX InfiniBand tests when &quot;rc&quot; transport is unavailable ([#701](https://github.com/rapidsai/dask-cuda/pull/701)) [@pentschev](https://github.com/pentschev)
+- Update UCX config namespace ([#695](https://github.com/rapidsai/dask-cuda/pull/695)) [@pentschev](https://github.com/pentschev)
+- Bump isort hook version ([#682](https://github.com/rapidsai/dask-cuda/pull/682)) [@charlesbluca](https://github.com/charlesbluca)
+
+## 📖 Documentation
+
+- Update more docs for UCX 1.11+ ([#720](https://github.com/rapidsai/dask-cuda/pull/720)) [@pentschev](https://github.com/pentschev)
+- Forward-merge branch-21.08 to branch-21.10 ([#707](https://github.com/rapidsai/dask-cuda/pull/707)) [@jakirkham](https://github.com/jakirkham)
+
+## 🚀 New Features
+
+- Warn if CUDA context is created on incorrect device with `LocalCUDACluster` ([#719](https://github.com/rapidsai/dask-cuda/pull/719)) [@pentschev](https://github.com/pentschev)
+- Add `--benchmark-json` option to all benchmarks ([#700](https://github.com/rapidsai/dask-cuda/pull/700)) [@charlesbluca](https://github.com/charlesbluca)
+- Remove Distributed tests from CI ([#699](https://github.com/rapidsai/dask-cuda/pull/699)) [@pentschev](https://github.com/pentschev)
+- Add device memory limit argument to benchmarks ([#683](https://github.com/rapidsai/dask-cuda/pull/683)) [@charlesbluca](https://github.com/charlesbluca)
+- Support for LocalCUDACluster with MIG ([#674](https://github.com/rapidsai/dask-cuda/pull/674)) [@akaanirban](https://github.com/akaanirban)
+
+## 🛠️ Improvements
+
+- Pin max `dask` and `distributed` versions to `2021.09.1` ([#735](https://github.com/rapidsai/dask-cuda/pull/735)) [@galipremsagar](https://github.com/galipremsagar)
+- Implements a ProxyManagerDummy for convenience ([#733](https://github.com/rapidsai/dask-cuda/pull/733)) [@madsbk](https://github.com/madsbk)
+- Add `__array_ufunc__` support for `ProxyObject` ([#731](https://github.com/rapidsai/dask-cuda/pull/731)) [@galipremsagar](https://github.com/galipremsagar)
+- Use `has_cuda_context` from Distributed ([#723](https://github.com/rapidsai/dask-cuda/pull/723)) [@pentschev](https://github.com/pentschev)
+- Fix deadlock and simplify proxy tracking ([#712](https://github.com/rapidsai/dask-cuda/pull/712)) [@madsbk](https://github.com/madsbk)
+- JIT-unspill: support spilling to/from disk ([#708](https://github.com/rapidsai/dask-cuda/pull/708)) [@madsbk](https://github.com/madsbk)
+- Tests: replacing the obsolete cudf.testing._utils.assert_eq calls ([#706](https://github.com/rapidsai/dask-cuda/pull/706)) [@madsbk](https://github.com/madsbk)
+- JIT-unspill: warn when spill to disk triggers ([#705](https://github.com/rapidsai/dask-cuda/pull/705)) [@madsbk](https://github.com/madsbk)
+- Remove max version pin for `dask` &amp; `distributed` on development branch ([#693](https://github.com/rapidsai/dask-cuda/pull/693)) [@galipremsagar](https://github.com/galipremsagar)
+- ENH Replace gpuci_conda_retry with gpuci_mamba_retry ([#675](https://github.com/rapidsai/dask-cuda/pull/675)) [@dillon-cullinan](https://github.com/dillon-cullinan)
 
 # dask-cuda 21.08.00 (4 Aug 2021)
 

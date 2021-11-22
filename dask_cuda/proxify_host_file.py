@@ -35,8 +35,8 @@ from distributed.protocol.serialize import (
     register_serialization_family,
     serialize_and_split,
 )
-from distributed.protocol.utils import pack_frames, unpack_frames
 
+from dask_cuda.disk_io import disk_read, disk_write
 from dask_cuda.get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
@@ -583,7 +583,7 @@ class ProxifyHostFile(MutableMapping):
                     None,
                     self.manager.evict(
                         nbytes=int(self.manager._host_memory_limit * 0.01),
-                        proxies_access=self.manager.get_host_access_info,
+                        proxies_access=self.manager._host.buffer_info,
                         serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
                     ),
                 )
@@ -667,35 +667,33 @@ class ProxifyHostFile(MutableMapping):
             cls._spill_shared_filesystem = shared_filesystem
 
         def disk_dumps(x):
-            header, frames = serialize_and_split(x, on_error="raise")
+            serialize_header, frames = serialize_and_split(x, on_error="raise")
             if frames:
                 compression, frames = zip(*map(maybe_compress, frames))
             else:
                 compression = []
-            header["compression"] = compression
-            header["count"] = len(frames)
-
-            path = cls.gen_file_path()
-            with open(path, "wb") as f:
-                f.write(pack_frames(frames))
+            serialize_header["compression"] = compression
+            serialize_header["count"] = len(frames)
             return (
                 {
                     "serializer": "disk",
-                    "path": path,
-                    "shared-filesystem": cls._spill_shared_filesystem,
-                    "disk-sub-header": header,
+                    "disk-io-header": disk_write(
+                        path=cls.gen_file_path(),
+                        frames=frames,
+                        shared_filesystem=cls._spill_shared_filesystem,
+                    ),
+                    "serialize-header": serialize_header,
                 },
                 [],
             )
 
         def disk_loads(header, frames):
             assert frames == []
-            with open(header["path"], "rb") as f:
-                frames = unpack_frames(f.read())
-            os.remove(header["path"])
-            if "compression" in header["disk-sub-header"]:
-                frames = decompress(header["disk-sub-header"], frames)
-            return merge_and_deserialize(header["disk-sub-header"], frames)
+            frames = disk_read(header["disk-io-header"])
+            os.remove(header["disk-io-header"]["path"])
+            if "compression" in header["serialize-header"]:
+                frames = decompress(header["serialize-header"], frames)
+            return merge_and_deserialize(header["serialize-header"], frames)
 
         register_serialization_family("disk", disk_dumps, disk_loads)
 
@@ -716,15 +714,15 @@ class ProxifyHostFile(MutableMapping):
         if pxy.is_serialized():
             header, frames = pxy.obj
             if header["serializer"] in ("dask", "pickle"):
-                path = cls.gen_file_path()
-                with open(path, "wb") as f:
-                    f.write(pack_frames(frames))
                 pxy.obj = (
                     {
                         "serializer": "disk",
-                        "path": path,
-                        "shared-filesystem": cls._spill_shared_filesystem,
-                        "disk-sub-header": header,
+                        "disk-io-header": disk_write(
+                            path=cls.gen_file_path(),
+                            frames=frames,
+                            shared_filesystem=cls._spill_shared_filesystem,
+                        ),
+                        "serialize-header": header,
                     },
                     [],
                 )
