@@ -471,7 +471,7 @@ class ProxifyHostFile(MutableMapping):
         Notice, enabling this does nothing when RMM isn't availabe or not used.
     gds_spilling: bool
         Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
-        value are used, which defaults to False.
+        value are used, which defaults to ``False``.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -658,7 +658,7 @@ class ProxifyHostFile(MutableMapping):
             defaults to False.
         gds: bool
             Enable the use of GPUDirect Storage. If ``None``, the "gds-spilling"
-            config value are used, which defaults to False.
+            config value are used, which defaults to ``False``.
         """
         path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
