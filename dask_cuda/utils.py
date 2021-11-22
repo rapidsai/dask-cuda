@@ -11,6 +11,7 @@ import toolz
 
 import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
+from dask.config import canonical_name
 from dask.utils import parse_bytes
 from distributed import Worker, wait
 
@@ -300,28 +301,23 @@ def get_ucx_config(
 
     ucx_config = dask.config.get("distributed.comm.ucx")
 
-    ucx_config["create-cuda-context"] = True
-    ucx_config["reuse-endpoints"] = not _ucx_111
+    ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
+    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = not _ucx_111
 
-    ucx_config["tcp"] = enable_tcp_over_ucx
-    ucx_config["infiniband"] = enable_infiniband
-    ucx_config["nvlink"] = enable_nvlink
-    ucx_config["rdmacm"] = enable_rdmacm
+    ucx_config[canonical_name("tcp", ucx_config)] = enable_tcp_over_ucx
+    ucx_config[canonical_name("infiniband", ucx_config)] = enable_infiniband
+    ucx_config[canonical_name("nvlink", ucx_config)] = enable_nvlink
+    ucx_config[canonical_name("rdmacm", ucx_config)] = enable_rdmacm
 
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        cuda_copy = True
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = True
     else:
-        cuda_copy = None
-
-    # For backwards compatibility with https://github.com/dask/distributed/pull/5539
-    # May be removed once support for Distributed <= 2021.11.2 is dropped
-    if "cuda-copy" in ucx_config:
-        ucx_config["cuda-copy"] = cuda_copy
-    elif "cuda_copy" in ucx_config:
-        ucx_config["cuda_copy"] = cuda_copy
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = None
 
     if net_devices is not None and net_devices != "":
-        ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
+        ucx_config[canonical_name("net-devices", ucx_config)] = get_ucx_net_devices(
+            cuda_device_index, net_devices
+        )
     return ucx_config
 
 
