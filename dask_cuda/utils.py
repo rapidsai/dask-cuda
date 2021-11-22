@@ -303,6 +303,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "create_cuda_context": None,
         "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
