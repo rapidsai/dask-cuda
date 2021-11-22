@@ -285,10 +285,10 @@ def get_ucx_net_devices(
 
 
 def get_ucx_config(
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     net_devices="",
     cuda_device_index=None,
 ):
@@ -303,21 +303,22 @@ def get_ucx_config(
     ucx_config["create-cuda-context"] = True
     ucx_config["reuse-endpoints"] = not _ucx_111
 
+    ucx_config["tcp"] = enable_tcp_over_ucx
+    ucx_config["infiniband"] = enable_infiniband
+    ucx_config["nvlink"] = enable_nvlink
+    ucx_config["rdmacm"] = enable_rdmacm
+
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        # For backwards compatibility with https://github.com/dask/distributed/pull/5539
-        # May be removed once support for Distributed <= 2021.11.2 is dropped
-        if "cuda-copy" in ucx_config:
-            ucx_config["cuda-copy"] = True
-        elif "cuda_copy" in ucx_config:
-            ucx_config["cuda_copy"] = True
-    if enable_tcp_over_ucx:
-        ucx_config["tcp"] = True
-    if enable_infiniband:
-        ucx_config["infiniband"] = True
-    if enable_nvlink:
-        ucx_config["nvlink"] = True
-    if enable_rdmacm:
-        ucx_config["rdmacm"] = True
+        cuda_copy = True
+    else:
+        cuda_copy = None
+
+    # For backwards compatibility with https://github.com/dask/distributed/pull/5539
+    # May be removed once support for Distributed <= 2021.11.2 is dropped
+    if "cuda-copy" in ucx_config:
+        ucx_config["cuda-copy"] = cuda_copy
+    elif "cuda_copy" in ucx_config:
+        ucx_config["cuda_copy"] = cuda_copy
 
     if net_devices is not None and net_devices != "":
         ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
