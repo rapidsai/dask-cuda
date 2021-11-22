@@ -470,8 +470,8 @@ class ProxifyHostFile(MutableMapping):
         the "spill-on-demand" config value are used, which defaults to True.
         Notice, enabling this does nothing when RMM isn't availabe or not used.
     gds_spilling: bool
-        Enable GPUDirect Storage spilling if available. If ``None``, the
-        "gds-spilling" config value are used, which defaults to False.
+        Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
+        value are used, which defaults to False.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -657,8 +657,8 @@ class ProxifyHostFile(MutableMapping):
             If ``None``, the "jit-unspill-shared-fs" config value are used, which
             defaults to False.
         gds: bool
-            Enable the use of GPUDirect Storage if available. If ``None``, the
-            "gds-spilling" config value are used, which defaults to False.
+            Enable the use of GPUDirect Storage. If ``None``, the "gds-spilling"
+            config value are used, which defaults to False.
         """
         path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
@@ -684,7 +684,7 @@ class ProxifyHostFile(MutableMapping):
             try:
                 import cucim.clara.filesystem as cucim_fs  # noqa F401
             except ImportError:
-                pass
+                raise ImportError("GPUDirect Storage requires the cucim Python package")
             else:
                 cls._gds_enabled = bool(cucim_fs.is_gds_available())
         else:
