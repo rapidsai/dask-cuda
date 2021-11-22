@@ -42,7 +42,7 @@ def get_new_cuda_buffer() -> Callable[[int], Any]:
     except ImportError:
         pass
 
-    raise RuntimeError("GPUDirect Storage requires RMM, cuPY, or Numba")
+    raise RuntimeError("GPUDirect Storage requires RMM, CuPy, or Numba")
 
 
 def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) -> dict:
