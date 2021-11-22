@@ -10,8 +10,8 @@ import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from dask.sizeof import sizeof
 from distributed import Client
-from distributed.client import wait
 from distributed.protocol.serialize import deserialize, serialize
+from distributed.utils_test import gen_test
 from distributed.worker import get_worker
 
 import dask_cuda
@@ -369,42 +369,38 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert all(res)  # Only proxy objects
 
 
-def test_worker_force_spill_to_disk():
+@gen_test(timeout=20)
+async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling """
     cudf = pytest.importorskip("cudf")
 
     with dask.config.set({"distributed.worker.memory.terminate": 0}):
-        with dask_cuda.LocalCUDACluster(
-            n_workers=1, device_memory_limit="1MB", jit_unspill=True
+        async with dask_cuda.LocalCUDACluster(
+            n_workers=1, device_memory_limit="1MB", jit_unspill=True, asynchronous=True
         ) as cluster:
-            with Client(cluster) as client:
+            async with Client(cluster, asynchronous=True) as client:
                 # Create a df that are spilled to host memory immediately
                 df = cudf.DataFrame({"key": np.arange(10 ** 8)})
                 ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
-                wait(ddf)
+                await ddf
 
-                def f():
+                async def f():
                     """Trigger a memory_monitor() and reset memory_limit"""
                     w = get_worker()
+                    # Set a host memory limit that triggers spilling to disk
+                    w.memory_pause_fraction = False
+                    memory = w.monitor.proc.memory_info().rss
+                    w.memory_limit = memory - 10 ** 8
+                    w.memory_target_fraction = 1
+                    await w.memory_monitor()
+                    # Check that host memory are freed
+                    assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
+                    w.memory_limit = memory * 10  # Un-limit
 
-                    async def y():
-                        # Set a host memory limit that triggers spilling to disk
-                        w.memory_pause_fraction = False
-                        memory = w.monitor.proc.memory_info().rss
-                        w.memory_limit = memory - 10 ** 8
-                        w.memory_target_fraction = 1
-                        await w.memory_monitor()
-                        # Check that host memory are freed
-                        assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
-                        w.memory_limit = memory * 10  # Un-limit
-
-                    w.loop.add_callback(y)
-
-                wait(client.submit(f))
+                await client.submit(f)
+                log = str(await client.get_worker_logs())
                 # Check that the worker doesn't complain about unmanaged memory
-                assert "Unmanaged memory use is high" not in str(
-                    client.get_worker_logs()
-                )
+                assert "Unmanaged memory use is high" not in log
 
 
 def test_on_demand_debug_info():
