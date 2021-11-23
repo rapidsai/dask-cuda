@@ -33,7 +33,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
 # Install dask and distributed from master branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MASTER=1
+export INSTALL_DASK_MASTER=0
 
 ################################################################################
 # SETUP - Check environment
@@ -57,7 +57,7 @@ conda list --show-channel-urls
 # Also installing cucim in order to test GDS spilling
 gpuci_mamba_retry install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "ucx-py=0.23.*" "ucx-proc=*=gpu" \
+              "ucx-py=0.24.*" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*" \
               "cucim"
 

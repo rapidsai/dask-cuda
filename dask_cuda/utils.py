@@ -9,6 +9,9 @@ import numpy as np
 import pynvml
 import toolz
 
+import dask
+import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
+from dask.config import canonical_name
 from dask.utils import parse_bytes
 from distributed import Worker, wait
 
@@ -283,10 +286,10 @@ def get_ucx_net_devices(
 
 
 def get_ucx_config(
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     net_devices="",
     cuda_device_index=None,
 ):
@@ -296,29 +299,25 @@ def get_ucx_config(
             "supported when enable_infiniband=True."
         )
 
-    ucx_config = {
-        "tcp": None,
-        "infiniband": None,
-        "nvlink": None,
-        "rdmacm": None,
-        "net-devices": None,
-        "cuda_copy": None,
-        "create_cuda_context": None,
-        "reuse-endpoints": not _ucx_111,
-    }
+    ucx_config = dask.config.get("distributed.comm.ucx")
+
+    ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
+    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = not _ucx_111
+
+    ucx_config[canonical_name("tcp", ucx_config)] = enable_tcp_over_ucx
+    ucx_config[canonical_name("infiniband", ucx_config)] = enable_infiniband
+    ucx_config[canonical_name("nvlink", ucx_config)] = enable_nvlink
+    ucx_config[canonical_name("rdmacm", ucx_config)] = enable_rdmacm
+
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        ucx_config["cuda_copy"] = True
-    if enable_tcp_over_ucx:
-        ucx_config["tcp"] = True
-    if enable_infiniband:
-        ucx_config["infiniband"] = True
-    if enable_nvlink:
-        ucx_config["nvlink"] = True
-    if enable_rdmacm:
-        ucx_config["rdmacm"] = True
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = True
+    else:
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = None
 
     if net_devices is not None and net_devices != "":
-        ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
+        ucx_config[canonical_name("net-devices", ucx_config)] = get_ucx_net_devices(
+            cuda_device_index, net_devices
+        )
     return ucx_config
 
 
@@ -640,15 +639,11 @@ class MockWorker(Worker):
     """
 
     def __init__(self, *args, **kwargs):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
         self._device_get_count = distributed.diagnostics.nvml.device_get_count
         super().__init__(*args, **kwargs)
 
     def __del__(self):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = self._device_get_count
 
     @staticmethod

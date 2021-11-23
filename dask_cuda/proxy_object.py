@@ -378,7 +378,7 @@ class ProxyObject:
         pxy.manager.remove(self)
         if pxy.serializer == "disk":
             header, _ = pxy.obj
-            os.remove(header["path"])
+            os.remove(header["disk-io-header"]["path"])
 
     def _pxy_serialize(
         self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
