@@ -4,6 +4,8 @@ from unittest.mock import patch
 import pytest
 from numba import cuda
 
+from dask.config import canonical_name
+
 from dask_cuda.utils import (
     _ucx_111,
     cuda_visible_devices,
@@ -176,30 +178,23 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
     else:
         ucx_config = get_ucx_config(**kwargs)
 
-    if enable_tcp_over_ucx is True:
-        assert ucx_config["tcp"] is True
-        assert ucx_config["cuda_copy"] is True
+    assert ucx_config[canonical_name("tcp", ucx_config)] is enable_tcp_over_ucx
+    assert ucx_config[canonical_name("infiniband", ucx_config)] is enable_infiniband
+
+    if enable_tcp_over_ucx is True or enable_infiniband is True:
+        assert ucx_config[canonical_name("cuda-copy", ucx_config)] is True
     else:
-        assert ucx_config["tcp"] is None
+        assert ucx_config[canonical_name("cuda-copy", ucx_config)] is None
 
-    if enable_infiniband is True:
-        assert ucx_config["infiniband"] is True
-        assert ucx_config["cuda_copy"] is True
-    else:
-        assert ucx_config["infiniband"] is None
-
-    if enable_tcp_over_ucx is False and enable_infiniband is False:
-        assert ucx_config["cuda_copy"] is None
-
-    if net_devices == "eth0":
-        assert ucx_config["net-devices"] == "eth0"
-    elif net_devices == "auto":
+    if net_devices == "auto":
         # Since the actual device is system-dependent, we don't do any
         # checks at the moment. If any InfiniBand devices are available,
         # that will be the value of "net-devices", otherwise an empty string.
         pass
-    elif net_devices == "":
-        assert "net-device" not in ucx_config
+    elif net_devices == "eth0":
+        assert ucx_config[canonical_name("net-devices", ucx_config)] == "eth0"
+    else:
+        assert ucx_config[canonical_name("net-devices", ucx_config)] is None
 
 
 def test_parse_visible_devices():
