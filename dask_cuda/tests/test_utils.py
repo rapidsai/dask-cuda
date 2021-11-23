@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 from numba import cuda
@@ -20,14 +21,11 @@ from dask_cuda.utils import (
 )
 
 
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
 def test_get_n_gpus():
     assert isinstance(get_n_gpus(), int)
 
-    try:
-        os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
-        assert get_n_gpus() == 3
-    finally:
-        del os.environ["CUDA_VISIBLE_DEVICES"]
+    assert get_n_gpus() == 3
 
 
 @pytest.mark.parametrize(
@@ -220,16 +218,16 @@ def test_parse_visible_devices():
         uuids.append(pynvml.nvmlDeviceGetUUID(handle).decode("utf-8"))
 
     index_devices = ",".join(indices)
-    os.environ["CUDA_VISIBLE_DEVICES"] = index_devices
-    for index in range(get_gpu_count()):
-        visible = cuda_visible_devices(index)
-        assert visible.split(",")[0] == str(index)
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": index_devices}):
+        for index in range(get_gpu_count()):
+            visible = cuda_visible_devices(index)
+            assert visible.split(",")[0] == str(index)
 
     uuid_devices = ",".join(uuids)
-    os.environ["CUDA_VISIBLE_DEVICES"] = uuid_devices
-    for index in range(get_gpu_count()):
-        visible = cuda_visible_devices(index)
-        assert visible.split(",")[0] == str(uuids[index])
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": uuid_devices}):
+        for index in range(get_gpu_count()):
+            visible = cuda_visible_devices(index)
+            assert visible.split(",")[0] == str(uuids[index])
 
     with pytest.raises(ValueError):
         parse_cuda_visible_device("Foo")
