@@ -469,6 +469,9 @@ class ProxifyHostFile(MutableMapping):
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
         Notice, enabling this does nothing when RMM isn't availabe or not used.
+    gds_spilling: bool
+        Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
+        value are used, which defaults to ``False``.
     """
 
     # Notice, we define the following as static variables because they are used by
@@ -477,6 +480,8 @@ class ProxifyHostFile(MutableMapping):
     _spill_shared_filesystem: bool
     _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
     _spill_to_disk_counter: int = 0
+    _gds_enabled: bool = False
+
     lock = threading.RLock()
 
     def __init__(
@@ -488,10 +493,11 @@ class ProxifyHostFile(MutableMapping):
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
         spill_on_demand: bool = None,
+        gds_spilling: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
-        self.register_disk_spilling(local_directory, shared_filesystem)
+        self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -625,7 +631,10 @@ class ProxifyHostFile(MutableMapping):
 
     @classmethod
     def register_disk_spilling(
-        cls, local_directory: str = None, shared_filesystem: bool = None
+        cls,
+        local_directory: str = None,
+        shared_filesystem: bool = None,
+        gds: bool = None,
     ):
         """Register Dask serializers that writes to disk
 
@@ -647,6 +656,9 @@ class ProxifyHostFile(MutableMapping):
             Whether the `local_directory` above is shared between all workers or not.
             If ``None``, the "jit-unspill-shared-fs" config value are used, which
             defaults to False.
+        gds: bool
+            Enable the use of GPUDirect Storage. If ``None``, the "gds-spilling"
+            config value are used, which defaults to ``False``.
         """
         path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
@@ -666,8 +678,28 @@ class ProxifyHostFile(MutableMapping):
         else:
             cls._spill_shared_filesystem = shared_filesystem
 
+        if gds is None:
+            gds = dask.config.get("gds-spilling", default=False)
+        if gds:
+            try:
+                import cucim.clara.filesystem as cucim_fs  # noqa F401
+            except ImportError:
+                raise ImportError("GPUDirect Storage requires the cucim Python package")
+            else:
+                cls._gds_enabled = bool(cucim_fs.is_gds_available())
+        else:
+            cls._gds_enabled = False
+
         def disk_dumps(x):
-            serialize_header, frames = serialize_and_split(x, on_error="raise")
+            # When using GDS, we prepend "cuda" to serializers to keep the CUDA
+            # objects on the GPU. Otherwise the "dask" or "pickle" serializer will
+            # copy everything to host memory.
+            serializers = ["dask", "pickle"]
+            if cls._gds_enabled:
+                serializers = ["cuda"] + serializers
+            serialize_header, frames = serialize_and_split(
+                x, serializers=serializers, on_error="raise"
+            )
             if frames:
                 compression, frames = zip(*map(maybe_compress, frames))
             else:
@@ -681,6 +713,7 @@ class ProxifyHostFile(MutableMapping):
                         path=cls.gen_file_path(),
                         frames=frames,
                         shared_filesystem=cls._spill_shared_filesystem,
+                        gds=cls._gds_enabled,
                     ),
                     "serialize-header": serialize_header,
                 },
@@ -689,7 +722,7 @@ class ProxifyHostFile(MutableMapping):
 
         def disk_loads(header, frames):
             assert frames == []
-            frames = disk_read(header["disk-io-header"])
+            frames = disk_read(header["disk-io-header"], gds=cls._gds_enabled)
             os.remove(header["disk-io-header"]["path"])
             if "compression" in header["serialize-header"]:
                 frames = decompress(header["serialize-header"], frames)
