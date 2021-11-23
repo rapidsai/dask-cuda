@@ -59,8 +59,10 @@ class LocalCUDACluster(LocalCluster):
         ``[0, 1, 2, 3]``), or ``None`` to use all available GPUs.
     n_workers : int or None, default None
         Number of workers. Can be an integer or ``None`` to fall back on the GPUs
-        specified by ``CUDA_VISIBLE_DEVICES``. Will override the value of
-        ``CUDA_VISIBLE_DEVICES`` if specified.
+        specified by ``CUDA_VISIBLE_DEVICES``. The value of ``n_workers`` must be
+        smaller or equal to the number of GPUs specified in ``CUDA_VISIBLE_DEVICES``
+        when the latter is specified, and if smaller, only the first ``n_workers`` GPUs
+        will be used.
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
     memory_limit : int, float, str, or None, default "auto"
