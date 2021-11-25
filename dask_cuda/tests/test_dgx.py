@@ -263,7 +263,12 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
 def test_ucx_infiniband_nvlink(params):
     ucp = pytest.importorskip("ucp")  # NOQA: F841
 
-    if not _ucx_111 and enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
+    if (
+        not _ucx_111
+        and params["enable_infiniband"] is None
+        and params["enable_nvlink"] is None
+        and params["enable_rdmacm"] is None
+    ):
         pytest.skip("Automatic configuration not supported in UCX < 1.11")
 
     if params["enable_infiniband"]:
