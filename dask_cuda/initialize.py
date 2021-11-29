@@ -69,10 +69,10 @@ def _create_cuda_context():
 
 def initialize(
     create_cuda_context=True,
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     net_devices="",
     cuda_device_index=None,
 ):
@@ -107,16 +107,16 @@ def initialize(
     ----------
     create_cuda_context : bool, default True
         Create CUDA context on initialization.
-    enable_tcp_over_ucx : bool, default False
+    enable_tcp_over_ucx : bool, default None
         Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
         are not supported or disabled.
-    enable_infiniband : bool, default False
+    enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, implies
-        ``enable_tcp_over_ucx=True``.
-    enable_nvlink : bool, default False
+        ``enable_tcp_over_ucx=True`` when ``True``.
+    enable_nvlink : bool, default None
         Set environment variables to enable UCX over NVLink, implies
-        ``enable_tcp_over_ucx=True``.
-    enable_rdmacm : bool, default False
+        ``enable_tcp_over_ucx=True`` when ``True``.
+    enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``enable_infiniband=True``.
     net_devices : str or callable, default ""

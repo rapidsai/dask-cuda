@@ -66,24 +66,28 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
+        default=None,
         action="store_true",
         dest="enable_tcp_over_ucx",
         help="Enable TCP over UCX.",
     )
     parser.add_argument(
         "--enable-infiniband",
+        default=None,
         action="store_true",
         dest="enable_infiniband",
         help="Enable InfiniBand over UCX.",
     )
     parser.add_argument(
         "--enable-nvlink",
+        default=None,
         action="store_true",
         dest="enable_nvlink",
         help="Enable NVLink over UCX.",
     )
     parser.add_argument(
         "--enable-rdmacm",
+        default=None,
         action="store_true",
         dest="enable_rdmacm",
         help="Enable RDMACM with UCX.",
@@ -181,19 +185,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
             name = [name]
         parser.add_argument(*name, **args)
 
-    parser.set_defaults(
-        enable_tcp_over_ucx=True,
-        enable_infiniband=True,
-        enable_nvlink=True,
-        enable_rdmacm=False,
-    )
     args = parser.parse_args()
-
-    if args.protocol == "tcp":
-        args.enable_tcp_over_ucx = False
-        args.enable_infiniband = False
-        args.enable_nvlink = False
-        args.enable_rdmacm = False
 
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
@@ -202,6 +194,14 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
 
 
 def get_cluster_options(args):
+    ucx_options = {
+        "ucx_net_devices": args.ucx_net_devices,
+        "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
+        "enable_infiniband": args.enable_infiniband,
+        "enable_nvlink": args.enable_nvlink,
+        "enable_rdmacm": args.enable_rdmacm,
+    }
+
     if args.multi_node is True:
         Cluster = SSHCluster
         cluster_args = [args.hosts.split(",")]
@@ -214,11 +214,6 @@ def get_cluster_options(args):
             "worker_options": {
                 "protocol": args.protocol,
                 "nthreads": args.threads_per_worker,
-                "net_devices": args.ucx_net_devices,
-                "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
-                "enable_infiniband": args.enable_infiniband,
-                "enable_nvlink": args.enable_nvlink,
-                "enable_rdmacm": args.enable_rdmacm,
                 "interface": args.interface,
                 "device_memory_limit": args.device_memory_limit,
             },
@@ -234,13 +229,9 @@ def get_cluster_options(args):
             "n_workers": len(args.devs.split(",")),
             "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
-            "ucx_net_devices": args.ucx_net_devices,
-            "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
-            "enable_infiniband": args.enable_infiniband,
-            "enable_nvlink": args.enable_nvlink,
-            "enable_rdmacm": args.enable_rdmacm,
             "interface": args.interface,
             "device_memory_limit": args.device_memory_limit,
+            **ucx_options,
         }
         if args.no_silence_logs:
             cluster_kwargs["silence_logs"] = False
