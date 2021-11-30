@@ -1,5 +1,6 @@
 import os
 from time import sleep
+from unittest.mock import patch
 
 import pytest
 from zict.file import _safe_key as safe_key
@@ -153,7 +154,6 @@ async def test_cupy_cluster_device_spill(params):
                         assert dc == 0
 
 
-@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/79")
 @pytest.mark.parametrize(
     "params",
     [
@@ -186,56 +186,58 @@ async def test_cupy_cluster_device_spill(params):
 @pytest.mark.asyncio
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
-    with dask.config.set({"distributed.worker.memory.terminate": False}):
-        async with LocalCUDACluster(
-            n_workers=1,
-            device_memory_limit=params["device_memory_limit"],
-            memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=params["host_pause"],
-            asynchronous=True,
-        ) as cluster:
-            async with Client(cluster, asynchronous=True) as client:
 
-                # There's a known issue with datetime64:
-                # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
-                # The same error above happens when spilling datetime64 to disk
-                cdf = (
-                    dask.datasets.timeseries(
-                        dtypes={"x": int, "y": float}, freq="100ms"
+    # Disabling compression via environment variable seems to be the only way
+    # respected here. It is necessary to ensure spilled size matches the actual
+    # data size.
+    with patch.dict(os.environ, {"DASK_DISTRIBUTED__COMM__COMPRESSION": "False"}):
+        with dask.config.set({"distributed.worker.memory.terminate": False}):
+            async with LocalCUDACluster(
+                n_workers=1,
+                device_memory_limit=params["device_memory_limit"],
+                memory_limit=params["memory_limit"],
+                memory_target_fraction=params["host_target"],
+                memory_spill_fraction=params["host_spill"],
+                memory_pause_fraction=params["host_pause"],
+                asynchronous=True,
+            ) as cluster:
+                async with Client(cluster, asynchronous=True) as client:
+
+                    # There's a known issue with datetime64:
+                    # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
+                    # The same error above happens when spilling datetime64 to disk
+                    cdf = (
+                        dask.datasets.timeseries(
+                            dtypes={"x": int, "y": float}, freq="100ms"
+                        )
+                        .reset_index(drop=True)
+                        .map_partitions(cudf.from_pandas)
                     )
-                    .reset_index(drop=True)
-                    .map_partitions(cudf.from_pandas)
-                )
 
-                sizes = await client.compute(
-                    cdf.map_partitions(lambda df: df.__sizeof__())
-                )
-                sizes = sizes.tolist()
-                nbytes = sum(sizes)
-                part_index_nbytes = (
-                    await client.compute(cdf.partitions[0].index)
-                ).__sizeof__()
+                    sizes = await client.compute(
+                        cdf.map_partitions(lambda df: df.memory_usage())
+                    )
+                    sizes = sizes.to_arrow().to_pylist()
+                    nbytes = sum(sizes)
 
-                cdf2 = cdf.persist()
-                await wait(cdf2)
+                    cdf2 = cdf.persist()
+                    await wait(cdf2)
 
-                del cdf
+                    del cdf
 
-                host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(
-                    lambda: len(get_worker().data.disk or list())
-                )
-                for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
-                    if params["spills_to_disk"]:
-                        assert dc > 0
-                    else:
-                        assert hc > 0
-                        assert dc == 0
+                    host_chunks = await client.run(lambda: len(get_worker().data.host))
+                    disk_chunks = await client.run(
+                        lambda: len(get_worker().data.disk or list())
+                    )
+                    for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
+                        if params["spills_to_disk"]:
+                            assert dc > 0
+                        else:
+                            assert hc > 0
+                            assert dc == 0
 
-                await client.run(worker_assert, nbytes, 32, 2048 + part_index_nbytes)
+                    await client.run(worker_assert, nbytes, 32, 2048)
 
-                del cdf2
+                    del cdf2
 
-                await client.run(delayed_worker_assert, 0, 0, 0)
+                    await client.run(delayed_worker_assert, 0, 0, 0)
