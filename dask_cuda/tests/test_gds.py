@@ -23,8 +23,8 @@ def test_gds(gds_enabled, cuda_lib):
         ProxifyHostFile.register_disk_spilling()
         if gds_enabled and not ProxifyHostFile._gds_enabled:
             pytest.importorskip("cucim.clara.filesystem")
-            # In this case, we know that cucim and for testing we
-            # force enabling cucim even if GDS is unavailable.
+            # In this case, we know that cucim is available and for testing
+            # we enable cucim explicitly even if GDS is unavailable.
             ProxifyHostFile._gds_enabled = True
 
         a = data_create()
