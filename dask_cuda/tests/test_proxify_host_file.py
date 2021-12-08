@@ -429,7 +429,7 @@ def test_on_demand_debug_info():
 
             # Submit too large RMM buffer
             with pytest.raises(
-                MemoryError, match=r".*std::bad_alloc: CUDA error at:.*"
+                MemoryError, match=r".*std::bad_alloc:.*CUDA error at:.*"
             ):
                 client.submit(task).result()
 
