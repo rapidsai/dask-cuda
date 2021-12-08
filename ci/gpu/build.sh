@@ -26,6 +26,7 @@ cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
+export UCXPY_VERSION="`curl -s https://version.gpuci.io/rapids/$MINOR_VERSION`.*"
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
 # will possibly be enabled by default starting on 1.17)
@@ -57,7 +58,7 @@ conda list --show-channel-urls
 # Also installing cucim in order to test GDS spilling
 gpuci_mamba_retry install "cudatoolkit=$CUDA_REL" \
               "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "ucx-py=0.24.*" "ucx-proc=*=gpu" \
+              "ucx-py=${UCXPY_VERSION}" "ucx-proc=*=gpu" \
               "rapids-build-env=$MINOR_VERSION.*" \
               "cucim"
 
