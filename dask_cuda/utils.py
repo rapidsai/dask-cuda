@@ -303,6 +303,7 @@ def get_ucx_config(
         "rdmacm": None,
         "net-devices": None,
         "cuda_copy": None,
+        "create_cuda_context": None,
         "reuse-endpoints": not _ucx_111,
     }
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
@@ -653,3 +654,26 @@ class MockWorker(Worker):
     @staticmethod
     def device_get_count():
         return 0
+
+
+def get_gpu_uuid_from_index(device_index=0):
+    """Get GPU UUID from CUDA device index.
+
+    Parameters
+    ----------
+    device_index: int or str
+        The index of the device from which to obtain the UUID. Default: 0.
+
+    Examples
+    --------
+    >>> get_gpu_uuid_from_index()
+    'GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005'
+
+    >>> get_gpu_uuid_from_index(3)
+    'GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6'
+    """
+    import pynvml
+
+    pynvml.nvmlInit()
+    handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+    return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")

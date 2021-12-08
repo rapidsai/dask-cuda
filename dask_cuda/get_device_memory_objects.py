@@ -1,16 +1,34 @@
+from typing import Set
+
 from dask.sizeof import sizeof
 from dask.utils import Dispatch
 
 dispatch = Dispatch(name="get_device_memory_objects")
 
 
-def get_device_memory_objects(obj) -> set:
-    """ Find all CUDA device objects in `obj`
+class DeviceMemoryId:
+    """ID and size of device memory objects
+
+    Instead of keeping a reference to device memory objects this class
+    only saves the id and size in order to avoid delayed freeing.
+    """
+
+    def __init__(self, obj: object):
+        self.id = id(obj)
+        self.nbytes = sizeof(obj)
+
+    def __hash__(self) -> int:
+        return self.id
+
+    def __eq__(self, o) -> bool:
+        return self.id == hash(o)
+
+
+def get_device_memory_ids(obj) -> Set[DeviceMemoryId]:
+    """Find all CUDA device objects in `obj`
 
     Search through `obj` and find all CUDA device objects, which are objects
     that either are known to `dispatch` or implement `__cuda_array_interface__`.
-
-    Notice, the CUDA device objects must be hashable.
 
     Parameters
     ----------
@@ -19,16 +37,18 @@ def get_device_memory_objects(obj) -> set:
 
     Returns
     -------
-    ret: set
-        Set of CUDA device memory objects
+    ret: Set[DeviceMemoryId]
+        Set of CUDA device memory IDs
     """
-    return set(dispatch(obj))
+    return {DeviceMemoryId(o) for o in dispatch(obj)}
 
 
 @dispatch.register(object)
 def get_device_memory_objects_default(obj):
-    if hasattr(obj, "_obj_pxy"):
-        return dispatch(obj._obj_pxy["obj"])
+    from dask_cuda.proxy_object import ProxyObject
+
+    if isinstance(obj, ProxyObject):
+        return dispatch(obj._pxy_get().obj)
     if hasattr(obj, "data"):
         return dispatch(obj.data)
     if hasattr(obj, "_owner") and obj._owner is not None:

@@ -11,7 +11,7 @@ from distributed.deploy.local import LocalCluster
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import _ucx_110, get_ucx_config
 
-mp = mp.get_context("spawn")
+mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
 # Notice, all of the following tests is executed in a new process such

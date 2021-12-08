@@ -2,7 +2,7 @@ import functools
 import pydoc
 from collections import defaultdict
 from functools import partial
-from typing import Any, List, MutableMapping
+from typing import List, MutableMapping, TypeVar
 
 import dask
 from dask.utils import Dispatch
@@ -11,6 +11,8 @@ from .proxy_object import ProxyObject, asproxy
 
 dispatch = Dispatch(name="proxify_device_objects")
 ignore_types = None
+
+T = TypeVar("T")
 
 
 def _register_ignore_types():
@@ -49,12 +51,12 @@ def _register_ignore_types():
 
 
 def proxify_device_objects(
-    obj: Any,
+    obj: T,
     proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
     found_proxies: List[ProxyObject] = None,
     excl_proxies: bool = False,
     mark_as_explicit_proxies: bool = False,
-):
+) -> T:
     """ Wrap device objects in ProxyObject
 
     Search through `obj` and wraps all CUDA device objects in ProxyObject.
@@ -91,13 +93,12 @@ def proxify_device_objects(
     if found_proxies is None:
         found_proxies = []
     ret = dispatch(obj, proxied_id_to_proxy, found_proxies, excl_proxies)
-    if mark_as_explicit_proxies:
-        for p in found_proxies:
-            p._obj_pxy["explicit_proxy"] = True
+    for p in found_proxies:
+        p._pxy_get().explicit_proxy = mark_as_explicit_proxies
     return ret
 
 
-def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
+def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
     """ Unproxify device objects
 
     Search through `obj` and un-wraps all CUDA device objects.
@@ -118,16 +119,16 @@ def unproxify_device_objects(obj: Any, skip_explicit_proxies: bool = False):
         return {
             k: unproxify_device_objects(v, skip_explicit_proxies)
             for k, v in obj.items()
-        }
+        }  # type: ignore
     if isinstance(obj, (list, tuple, set, frozenset)):
-        return type(obj)(
+        return obj.__class__(
             unproxify_device_objects(i, skip_explicit_proxies) for i in obj
-        )
-
-    if hasattr(obj, "_obj_pxy"):
-        if not skip_explicit_proxies or not obj._obj_pxy["explicit_proxy"]:
-            obj._obj_pxy["explicit_proxy"] = False
-            obj = obj._obj_pxy_deserialize(maybe_evict=False)
+        )  # type: ignore
+    if isinstance(obj, ProxyObject):
+        pxy = obj._pxy_get(copy=True)
+        if not skip_explicit_proxies or not pxy.explicit_proxy:
+            pxy.explicit_proxy = False
+            obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
     return obj
 
 
@@ -165,9 +166,10 @@ def unproxify_decorator(func):
 
 def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
     _id = id(obj)
-    if _id not in proxied_id_to_proxy:
-        proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
-    ret = proxied_id_to_proxy[_id]
+    if _id in proxied_id_to_proxy:
+        ret = proxied_id_to_proxy[_id]
+    else:
+        ret = proxied_id_to_proxy[_id] = asproxy(obj, subclass=subclass)
     found_proxies.append(ret)
     return ret
 
@@ -183,11 +185,12 @@ def proxify_device_object_default(
 
 @dispatch.register(ProxyObject)
 def proxify_device_object_proxy_object(
-    obj, proxied_id_to_proxy, found_proxies, excl_proxies
+    obj: ProxyObject, proxied_id_to_proxy, found_proxies, excl_proxies
 ):
     # Check if `obj` is already known
-    if not obj._obj_pxy_is_serialized():
-        _id = id(obj._obj_pxy["obj"])
+    pxy = obj._pxy_get()
+    if not pxy.is_serialized():
+        _id = id(pxy.obj)
         if _id in proxied_id_to_proxy:
             obj = proxied_id_to_proxy[_id]
         else:
@@ -224,18 +227,6 @@ def proxify_device_object_python_dict(
 @dispatch.register_lazy("cudf")
 def _register_cudf():
     import cudf
-    import cudf._lib.table
-
-    # In order to support the cuDF API implemented in Cython, we inherit from
-    # `cudf._lib.table.Table`, which is the base class of Index, Series, and
-    # Dataframes in cuDF.
-    # Notice, the order of base classes matters. Since ProxyObject is the first
-    # base class, ProxyObject.__init__() is called on creation, which doesn't
-    # define the Table._data and Table._index attributes. Thus, accessing
-    # FrameProxyObject._data and FrameProxyObject._index is pass-through to
-    # ProxyObejct.__getattr__(), which is what we want.
-    class FrameProxyObject(ProxyObject, cudf._lib.table.Table):
-        pass
 
     @dispatch.register(cudf.DataFrame)
     @dispatch.register(cudf.Series)
@@ -243,15 +234,13 @@ def _register_cudf():
     def proxify_device_object_cudf_dataframe(
         obj, proxied_id_to_proxy, found_proxies, excl_proxies
     ):
-        return proxify(
-            obj, proxied_id_to_proxy, found_proxies, subclass=FrameProxyObject
-        )
+        return proxify(obj, proxied_id_to_proxy, found_proxies)
 
     try:
         from dask.array.dispatch import percentile_lookup
 
         from dask_cudf.backends import percentile_cudf
 
-        percentile_lookup.register(FrameProxyObject, percentile_cudf)
+        percentile_lookup.register(ProxyObject, percentile_cudf)
     except ImportError:
         pass

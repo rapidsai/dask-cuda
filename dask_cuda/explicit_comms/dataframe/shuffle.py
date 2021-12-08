@@ -148,7 +148,7 @@ async def local_shuffle(
     eps = s["eps"]
 
     try:
-        manager = first(iter(in_parts[0].values()))._obj_pxy.get("manager", None)
+        manager = first(iter(in_parts[0].values()))._pxy_get().manager
     except AttributeError:
         manager = None
 
@@ -192,9 +192,9 @@ async def local_shuffle(
         dfs = []
         for out_parts in out_parts_list:
             dfs.extend(out_parts[i])
-            out_parts[i] = None
+            out_parts[i] = None  # type: ignore
         dfs.extend(rank_to_out_parts_list[myrank][i])
-        rank_to_out_parts_list[myrank][i] = None
+        rank_to_out_parts_list[myrank][i] = None  # type: ignore
         if len(dfs) > 1:
             ret.append(concat(dfs, ignore_index=ignore_index))
         else:
