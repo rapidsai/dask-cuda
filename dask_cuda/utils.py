@@ -304,6 +304,23 @@ def get_ucx_config(
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
     ucx_config[canonical_name("reuse-endpoints", ucx_config)] = not _ucx_111
 
+    # If any transport is explicitly disabled (`False`) by the user, others that
+    # are not specified should be enabled (`True`). If transports are explicitly
+    # enabled (`True`), then default (`None`) or an explicit `False` will suffice
+    # in disabling others. However, if there's a mix of enable (`True`) and
+    # disable (`False`), then those choices can be assumed as intended by the
+    # user.
+    #
+    # This may be handled more gracefully in Distributed in the future.
+    opts = [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    if any(opt is False for opt in opts) and not any(opt is True for opt in opts):
+        if enable_tcp_over_ucx is None:
+            enable_tcp_over_ucx = True
+        if enable_nvlink is None:
+            enable_nvlink = True
+        if enable_infiniband is None:
+            enable_infiniband = True
+
     ucx_config[canonical_name("tcp", ucx_config)] = enable_tcp_over_ucx
     ucx_config[canonical_name("infiniband", ucx_config)] = enable_infiniband
     ucx_config[canonical_name("nvlink", ucx_config)] = enable_nvlink
