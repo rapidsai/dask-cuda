@@ -170,15 +170,19 @@ def test_get_ucx_net_devices_auto():
         get_ucx_net_devices(idx, "auto")
 
 
-@pytest.mark.parametrize("enable_tcp_over_ucx", [True, False])
-@pytest.mark.parametrize("enable_infiniband", [True, False])
+@pytest.mark.parametrize("enable_tcp_over_ucx", [True, False, None])
+@pytest.mark.parametrize("enable_nvlink", [True, False, None])
+@pytest.mark.parametrize("enable_infiniband", [True, False, None])
 @pytest.mark.parametrize("net_devices", ["eth0", "auto", ""])
-def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
+def test_get_ucx_config(
+    enable_tcp_over_ucx, enable_infiniband, enable_nvlink, net_devices
+):
     pytest.importorskip("ucp")
 
     kwargs = {
         "enable_tcp_over_ucx": enable_tcp_over_ucx,
         "enable_infiniband": enable_infiniband,
+        "enable_nvlink": enable_nvlink,
         "net_devices": net_devices,
         "cuda_device_index": 0,
     }
@@ -191,10 +195,48 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
 
     assert ucx_config[canonical_name("create_cuda_context", ucx_config)] is True
 
-    assert ucx_config[canonical_name("tcp", ucx_config)] is enable_tcp_over_ucx
-    assert ucx_config[canonical_name("infiniband", ucx_config)] is enable_infiniband
+    if enable_tcp_over_ucx is not None:
+        assert ucx_config[canonical_name("tcp", ucx_config)] is enable_tcp_over_ucx
+    else:
+        if (
+            enable_infiniband is not True
+            and enable_nvlink is not True
+            and not (enable_infiniband is None and enable_nvlink is None)
+        ):
+            assert ucx_config[canonical_name("tcp", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("tcp", ucx_config)] is None
 
-    if enable_tcp_over_ucx is True or enable_infiniband is True:
+    if enable_infiniband is not None:
+        assert ucx_config[canonical_name("infiniband", ucx_config)] is enable_infiniband
+    else:
+        if (
+            enable_tcp_over_ucx is not True
+            and enable_nvlink is not True
+            and not (enable_tcp_over_ucx is None and enable_nvlink is None)
+        ):
+            assert ucx_config[canonical_name("infiniband", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("infiniband", ucx_config)] is None
+
+    if enable_nvlink is not None:
+        assert ucx_config[canonical_name("nvlink", ucx_config)] is enable_nvlink
+    else:
+        if (
+            enable_tcp_over_ucx is not True
+            and enable_infiniband is not True
+            and not (enable_tcp_over_ucx is None and enable_infiniband is None)
+        ):
+            assert ucx_config[canonical_name("nvlink", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("nvlink", ucx_config)] is None
+
+    if any(
+        opt is not None
+        for opt in [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    ) and not all(
+        opt is False for opt in [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    ):
         assert ucx_config[canonical_name("cuda-copy", ucx_config)] is True
     else:
         assert ucx_config[canonical_name("cuda-copy", ucx_config)] is None
