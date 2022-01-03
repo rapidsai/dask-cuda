@@ -17,13 +17,12 @@ CURRENT_MAJOR=$(echo $CURRENT_TAG | awk '{split($0, a, "."); print a[1]}')
 CURRENT_MINOR=$(echo $CURRENT_TAG | awk '{split($0, a, "."); print a[2]}')
 CURRENT_PATCH=$(echo $CURRENT_TAG | awk '{split($0, a, "."); print a[3]}')
 CURRENT_SHORT_TAG=${CURRENT_MAJOR}.${CURRENT_MINOR}
-CURRENT_UCXPY_VERSION=$(curl -s https://version.gpuci.io/rapids/${CURRENT_SHORT_TAG}`.*)
 
 #Get <major>.<minor> for next version
 NEXT_MAJOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[1]}')
 NEXT_MINOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[2]}')
 NEXT_SHORT_TAG=${NEXT_MAJOR}.${NEXT_MINOR}
-NEXT_UCXPY_VERSION=$(curl -s https://version.gpuci.io/rapids/${NEXT_SHORT_TAG}`.*)
+NEXT_UCXPY_VERSION="$(curl -s https://version.gpuci.io/rapids/${NEXT_SHORT_TAG}).*"
 
 echo "Preparing release $CURRENT_TAG => $NEXT_FULL_TAG"
 
@@ -33,4 +32,4 @@ function sed_runner() {
 }
 
 # Update UCX-Py version
-sed_runner 's/export UCXPY_VERSION=.*/export UCXPY_VERSION='${NEXT_UCXPY_VERSION}'/g' ci/gpu/build.sh
+sed_runner "s/export UCXPY_VERSION=.*/export UCXPY_VERSION="${NEXT_UCXPY_VERSION}"/g" ci/gpu/build.sh
