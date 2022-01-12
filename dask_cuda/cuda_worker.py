@@ -58,6 +58,7 @@ class CUDAWorker(Server):
         memory_limit="auto",
         device_memory_limit="auto",
         rmm_pool_size=None,
+        rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
@@ -152,6 +153,9 @@ class CUDAWorker(Server):
                 )
             if rmm_pool_size is not None:
                 rmm_pool_size = parse_bytes(rmm_pool_size)
+                if rmm_maximum_pool_size is not None:
+                    rmm_maximum_pool_size = parse_bytes(rmm_maximum_pool_size)
+
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -239,7 +243,11 @@ class CUDAWorker(Server):
                         get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
                     ),
                     RMMSetup(
-                        rmm_pool_size, rmm_managed_memory, rmm_async, rmm_log_directory,
+                        rmm_pool_size,
+                        rmm_maximum_pool_size,
+                        rmm_managed_memory,
+                        rmm_async,
+                        rmm_log_directory,
                     ),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),

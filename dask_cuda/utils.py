@@ -45,8 +45,16 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory, async_alloc, log_directory):
-        self.nbytes = nbytes
+    def __init__(
+        self,
+        initial_pool_size,
+        maximum_pool_size,
+        managed_memory,
+        async_alloc,
+        log_directory,
+    ):
+        self.initial_pool_size = initial_pool_size
+        self.maximum_pool_size = maximum_pool_size
         self.managed_memory = managed_memory
         self.async_alloc = async_alloc
         self.logging = log_directory is not None
@@ -63,15 +71,16 @@ class RMMSetup:
                         worker, self.logging, self.log_directory
                     )
                 )
-        elif self.nbytes is not None or self.managed_memory:
+        elif self.initial_pool_size is not None or self.managed_memory:
             import rmm
 
-            pool_allocator = False if self.nbytes is None else True
+            pool_allocator = False if self.initial_pool_size is None else True
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
-                initial_pool_size=self.nbytes,
+                initial_pool_size=self.initial_pool_size,
+                maximum_pool_size=self.maximum_pool_size,
                 logging=self.logging,
                 log_file_name=get_rmm_log_file_name(
                     worker, self.logging, self.log_directory

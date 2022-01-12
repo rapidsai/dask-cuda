@@ -74,6 +74,17 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
+    "--rmm-maximum-pool-size",
+    default=None,
+    help="""When rmm-pool-size is set, this indicates the maximum pool size .
+        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
+        By default, the total available memory on the GPU is used.
+        When rmm_pool_size is None, this argument is ignored if provided.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.""",
+)
+@click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
     default=False,
     show_default=True,
@@ -277,6 +288,7 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
+    rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
     rmm_log_directory,
@@ -327,6 +339,7 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
+        rmm_maximum_pool_size,
         rmm_managed_memory,
         rmm_async,
         rmm_log_directory,
