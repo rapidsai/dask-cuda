@@ -303,7 +303,7 @@ def main(args):
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     t_p = numpy.asarray(t_p)
     times = numpy.asarray(times)
-    print("===============================")
+    print("================================================================================")
     print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
     print(f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }")
     print("===============================")
