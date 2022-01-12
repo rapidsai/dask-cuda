@@ -290,7 +290,7 @@ def main(args):
     print(f"data-processed | {format_bytes(took_list[0][0])}")
     print("===============================")
     print("Wall-clock     | Throughput")
-    print("-------------------------------")
+    print("--------------------------------------------------------------------------------")
     t_p = []
     times = []
     for idx, (data_processed, took) in enumerate(took_list):
