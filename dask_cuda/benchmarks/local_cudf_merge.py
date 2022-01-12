@@ -258,10 +258,7 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (
-            scheduler_workers[w1].name,
-            scheduler_workers[w2].name,
-        ): format_bytes(sum(nb))
+        (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
 
@@ -293,9 +290,7 @@ def main(args):
     print(f"data-processed | {format_bytes(took_list[0][0])}")
     print("===============================")
     print("Wall-clock     | Throughput")
-    print(
-        "--------------------------------------------------------------------------------"
-    )
+    print("-" * 80)
     t_p = []
     times = []
     for idx, (data_processed, took) in enumerate(took_list):
@@ -308,16 +303,12 @@ def main(args):
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     t_p = numpy.asarray(t_p)
     times = numpy.asarray(times)
-    print(
-        "================================================================================"
-    )
+    print("=" * 80)
     print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
     print(
         f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }"
     )
-    print(
-        "================================================================================"
-    )
+    print("=" * 80)
     if args.markdown:
         print("\n```")
 
@@ -388,30 +379,21 @@ def main(args):
 def parse_args():
     special_args = [
         {
-            "name": [
-                "-b",
-                "--backend",
-            ],
+            "name": ["-b", "--backend",],
             "choices": ["dask", "explicit-comms"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
         },
         {
-            "name": [
-                "-t",
-                "--type",
-            ],
+            "name": ["-t", "--type",],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Do merge with GPU or CPU dataframes",
         },
         {
-            "name": [
-                "-c",
-                "--chunk-size",
-            ],
+            "name": ["-c", "--chunk-size",],
             "default": 1_000_000,
             "metavar": "n",
             "type": int,
@@ -462,17 +444,9 @@ def parse_args():
             "action": "store_true",
             "help": "Write output as markdown",
         },
+        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
         {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
-        },
-        {
-            "name": [
-                "-s",
-                "--set-index",
-            ],
+            "name": ["-s", "--set-index",],
             "action": "store_true",
             "help": "Call set_index on the key column to sort the joined dataframe.",
         },
