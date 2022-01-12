@@ -79,7 +79,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""When rmm-pool-size is set, rmm-maximum-pool-size indicates the maximum pool size.
         Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
         By default, the total available memory on the GPU is used.
-        When rmm_pool_size is None, this argument is ignored if provided.
+        When ``--rmm_pool_size`` is not specified, this argument is ignored if provided.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.""",
