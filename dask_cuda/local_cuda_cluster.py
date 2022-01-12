@@ -119,6 +119,16 @@ class LocalCUDACluster(LocalCluster):
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
+    rmm_maximum_pool_size : int, str or None, default None
+        When ``rmm_pool_size`` is set, this argument indicates
+        the maximum pool size.
+        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
+        By default, the total available memory on the GPU is used.
+        ``rmm_pool_size`` must be specified to use RMM pool and
+        to set the maximum pool size.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.
     rmm_managed_memory : bool, default False
         Initialize each worker with RMM and set it to use managed memory. If disabled,
         RMM may still be used by specifying ``rmm_pool_size``.
@@ -196,6 +206,7 @@ class LocalCUDACluster(LocalCluster):
         enable_rdmacm=None,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
@@ -230,6 +241,7 @@ class LocalCUDACluster(LocalCluster):
         )
 
         self.rmm_pool_size = rmm_pool_size
+        self.rmm_maximum_pool_size = rmm_maximum_pool_size
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         if rmm_pool_size is not None or rmm_managed_memory:
@@ -248,6 +260,8 @@ class LocalCUDACluster(LocalCluster):
                 )
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+                if self.rmm_maximum_pool_size is not None:
+                    self.rmm_maximum_pool_size = parse_bytes(self.rmm_maximum_pool_size)
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -397,6 +411,7 @@ class LocalCUDACluster(LocalCluster):
                     ),
                     RMMSetup(
                         self.rmm_pool_size,
+                        self.rmm_maximum_pool_size,
                         self.rmm_managed_memory,
                         self.rmm_async,
                         self.rmm_log_directory,
