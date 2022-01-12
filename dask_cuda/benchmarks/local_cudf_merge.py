@@ -291,12 +291,21 @@ def main(args):
     print("===============================")
     print("Wall-clock     | Throughput")
     print("-------------------------------")
+    t_p = []
+    times = []
     for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
+        times.append(took)
+        t_p.append(throughput)
         m += " " * (15 - len(m))
         print(f"{m}| {format_bytes(throughput)}/s")
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
+    t_p = numpy.asarray(t_p)
+    times = numpy.asarray(times)
+    print("===============================")
+    print(f"Throughput | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
+    print(f"Wall-Clock | {format_time(times.mean())} +/- {format_time(times.std()) }")
     print("===============================")
     if args.markdown:
         print("\n```")
