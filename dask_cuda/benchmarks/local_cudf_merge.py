@@ -306,7 +306,7 @@ def main(args):
     print("================================================================================")
     print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
     print(f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }")
-    print("===============================")
+    print("================================================================================")
     if args.markdown:
         print("\n```")
 
