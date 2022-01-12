@@ -288,7 +288,7 @@ def main(args):
         print(f"ib             | {args.enable_infiniband}")
         print(f"nvlink         | {args.enable_nvlink}")
     print(f"data-processed | {format_bytes(took_list[0][0])}")
-    print("================================================================================")
+    print("=" * 80)
     print("Wall-clock     | Throughput")
     print("-" * 80)
     t_p = []
