@@ -121,7 +121,7 @@ class LocalCUDACluster(LocalCluster):
             This size is a per-worker configuration, and not cluster-wide.
 
     rmm_maximum_pool_size : int, str or None, default None
-        When rmm_pool_size is set, rmm_maximum_pool_size indicates
+        When ``rmm_pool_size`` is set, this argument indicates
         the maximum pool size.
         Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
         By default, the total available memory on the GPU is used.
