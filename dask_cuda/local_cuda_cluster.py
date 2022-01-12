@@ -119,16 +119,16 @@ class LocalCUDACluster(LocalCluster):
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
-
     rmm_maximum_pool_size : int, str or None, default None
         When ``rmm_pool_size`` is set, this argument indicates
         the maximum pool size.
         Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
         By default, the total available memory on the GPU is used.
-        When ``rmm_pool_size`` is ``None``, this argument is ignored if provided.
+        ``rmm_pool_size`` must be specified to use RMM pool and
+        to set the maximum pool size.
+
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
-
     rmm_managed_memory : bool, default False
         Initialize each worker with RMM and set it to use managed memory. If disabled,
         RMM may still be used by specifying ``rmm_pool_size``.

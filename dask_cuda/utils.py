@@ -53,6 +53,12 @@ class RMMSetup:
         async_alloc,
         log_directory,
     ):
+        if initial_pool_size is None and maximum_pool_size is not None:
+            raise ValueError(
+                "`rmm_maximum_pool_size` was specified without specifying "
+                "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
+            )
+
         self.initial_pool_size = initial_pool_size
         self.maximum_pool_size = maximum_pool_size
         self.managed_memory = managed_memory
