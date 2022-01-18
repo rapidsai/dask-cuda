@@ -26,16 +26,6 @@ except ImportError:
         yield
 
 
-try:
-    import ucp
-
-    _ucx_110 = ucp.get_ucx_version() >= (1, 10, 0)
-    _ucx_111 = ucp.get_ucx_version() >= (1, 11, 0)
-except ImportError:
-    _ucx_110 = False
-    _ucx_111 = False
-
-
 class CPUAffinity:
     def __init__(self, cores):
         self.cores = cores
@@ -258,66 +248,16 @@ def get_device_total_memory(index=0):
     return pynvml.nvmlDeviceGetMemoryInfo(handle).total
 
 
-def get_ucx_net_devices(
-    cuda_device_index, ucx_net_devices, get_openfabrics=True, get_network=False
-):
-    if _ucx_111 and ucx_net_devices == "auto":
-        return None
-
-    if cuda_device_index is None and (
-        callable(ucx_net_devices) or ucx_net_devices == "auto"
-    ):
-        raise ValueError(
-            "A CUDA device index must be specified if the "
-            "ucx_net_devices variable is either callable or 'auto'"
-        )
-    elif cuda_device_index is not None:
-        dev = int(cuda_device_index)
-
-    net_dev = None
-    if callable(ucx_net_devices):
-        net_dev = ucx_net_devices(int(cuda_device_index))
-    elif isinstance(ucx_net_devices, str):
-        if ucx_net_devices == "auto":
-            # If TopologicalDistance from ucp is available, we set the UCX
-            # net device to the closest network device explicitly.
-            from ucp._libs.topological_distance import TopologicalDistance
-
-            net_dev = ""
-            td = TopologicalDistance()
-            if get_openfabrics:
-                ibs = td.get_cuda_distances_from_device_index(dev, "openfabrics")
-                if len(ibs) > 0:
-                    net_dev += ibs[0]["name"] + ":1"
-            if get_network:
-                ifnames = td.get_cuda_distances_from_device_index(dev, "network")
-                if len(ifnames) > 0:
-                    if len(net_dev) > 0:
-                        net_dev += ","
-                    net_dev += ifnames[0]["name"]
-        else:
-            net_dev = ucx_net_devices
-    return net_dev
-
-
 def get_ucx_config(
     enable_tcp_over_ucx=None,
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
-    net_devices=None,
-    cuda_device_index=None,
 ):
-    if net_devices == "auto" and enable_infiniband is False:
-        raise ValueError(
-            "Using ucx_net_devices='auto' is currently only "
-            "supported when enable_infiniband=True."
-        )
-
     ucx_config = dask.config.get("distributed.comm.ucx")
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
-    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = not _ucx_111
+    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = False
 
     # If any transport is explicitly disabled (`False`) by the user, others that
     # are not specified should be enabled (`True`). If transports are explicitly
@@ -346,10 +286,6 @@ def get_ucx_config(
     else:
         ucx_config[canonical_name("cuda-copy", ucx_config)] = None
 
-    if net_devices is not None and net_devices != "":
-        ucx_config[canonical_name("net-devices", ucx_config)] = get_ucx_net_devices(
-            cuda_device_index, net_devices
-        )
     return ucx_config
 
 
@@ -360,8 +296,6 @@ def get_preload_options(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
-    ucx_net_devices="",
-    cuda_device_index=0,
 ):
     """
     Return a dictionary with the preload and preload_argv options required to
@@ -371,7 +305,7 @@ def get_preload_options(
     ----------
     protocol: None or str, default None
         If "ucx", options related to UCX (enable_tcp_over_ucx, enable_infiniband,
-        enable_nvlink and ucx_net_devices) are added to preload_argv.
+        enable_nvlink) are added to preload_argv.
     create_cuda_context: bool, default None
         Ensure the CUDA context gets created at initialization, generally
         needed by Dask workers.
@@ -387,26 +321,18 @@ def get_preload_options(
     enable_nvlink: bool, default None
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp=True.
-    ucx_net_devices: str or callable, default ""
-        A string with the interface name to be used for all devices (empty
-        string means use default), or a callable function taking an integer
-        identifying the GPU index.
-    cuda_device_index: int, default 0
-        The index identifying the CUDA device used by this worker, only used
-        when ucx_net_devices is callable.
 
     Example
     -------
     >>> from dask_cuda.utils import get_preload_options
     >>> get_preload_options()
     {'preload': ['dask_cuda.initialize'], 'preload_argv': []}
-    >>> get_preload_options(protocol="ucx", create_cuda_context=True,
-    ...                     enable_infiniband=True, cuda_device_index=5,
-    ...                     ucx_net_devices=lambda i: "mlx5_%d:1" % (i // 2))
+    >>> get_preload_options(protocol="ucx",
+    ...                     create_cuda_context=True,
+    ...                     enable_infiniband=True)
     {'preload': ['dask_cuda.initialize'],
      'preload_argv': ['--create-cuda-context',
-      '--enable-infiniband',
-      '--net-devices=mlx5_2:1']}
+      '--enable-infiniband']}
     """
     preload_options = {"preload": ["dask_cuda.initialize"], "preload_argv": []}
 
@@ -423,9 +349,6 @@ def get_preload_options(
             initialize_ucx_argv.append("--enable-rdmacm")
         if enable_nvlink:
             initialize_ucx_argv.append("--enable-nvlink")
-        if ucx_net_devices is not None and ucx_net_devices != "":
-            net_dev = get_ucx_net_devices(cuda_device_index, ucx_net_devices)
-            initialize_ucx_argv.append("--net-devices=%s" % net_dev)
 
         preload_options["preload_argv"].extend(initialize_ucx_argv)
 

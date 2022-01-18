@@ -25,27 +25,13 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
-    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_n_gpus,
     get_ucx_config,
-    get_ucx_net_devices,
     nvml_device_index,
     parse_device_memory_limit,
 )
-
-
-def _get_interface(interface, host, cuda_device_index, ucx_net_devices):
-    if host:
-        return None
-    else:
-        return interface or get_ucx_net_devices(
-            cuda_device_index=cuda_device_index,
-            ucx_net_devices=ucx_net_devices,
-            get_openfabrics=False,
-            get_network=True,
-        )
 
 
 class CUDAWorker(Server):
@@ -77,7 +63,6 @@ class CUDAWorker(Server):
         enable_infiniband=None,
         enable_nvlink=None,
         enable_rdmacm=None,
-        net_devices=None,
         jit_unspill=None,
         worker_class=None,
         **kwargs,
@@ -170,16 +155,6 @@ class CUDAWorker(Server):
                 "RMM managed memory and NVLink are currently incompatible."
             )
 
-        if _ucx_111 and net_devices == "auto":
-            warnings.warn(
-                "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
-                "it should now be left unspecified for the same behavior. "
-                "Please make sure to read the updated UCX Configuration section in "
-                "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
-                "where significant performance considerations for InfiniBand with "
-                "UCX 1.11 and above is documented.",
-            )
-
         # Ensure this parent dask-cuda-worker process uses the same UCX
         # configuration as child worker processes created by it.
         initialize(
@@ -188,7 +163,6 @@ class CUDAWorker(Server):
             enable_infiniband=enable_infiniband,
             enable_nvlink=enable_nvlink,
             enable_rdmacm=enable_rdmacm,
-            net_devices=net_devices,
             cuda_device_index=0,
         )
 
@@ -232,7 +206,7 @@ class CUDAWorker(Server):
                 loop=loop,
                 resources=resources,
                 memory_limit=memory_limit,
-                interface=_get_interface(interface, host, i, net_devices),
+                interface=interface,
                 host=host,
                 preload=(list(preload) or []) + ["dask_cuda.initialize"],
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
@@ -258,7 +232,6 @@ class CUDAWorker(Server):
                         enable_infiniband=enable_infiniband,
                         enable_nvlink=enable_nvlink,
                         enable_rdmacm=enable_rdmacm,
-                        net_devices=net_devices,
                         cuda_device_index=i,
                     )
                 },

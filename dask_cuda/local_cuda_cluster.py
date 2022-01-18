@@ -13,11 +13,9 @@ from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
     RMMSetup,
-    _ucx_111,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
-    get_ucx_net_devices,
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
@@ -100,19 +98,6 @@ class LocalCUDACluster(LocalCluster):
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``protocol="ucx"`` and ``enable_infiniband=True``.
-    ucx_net_devices : str, callable, or None, default None
-        Interface(s) used by workers for UCX communication. Can be a string (like
-        ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), a callable
-        function that takes the index of the current GPU to return an interface name
-        (like ``lambda dev: "mlx5_%d:1" % (dev // 2)``), ``"auto"`` (requires
-        ``enable_infiniband=True``) to pick the optimal interface per-worker
-        based on the system's topology, or ``None`` to stay with the default value of
-        ``"all"`` (use all available interfaces).
-
-        .. warning::
-            ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
-            Unexpected errors can occur when using ``"auto"`` if any interfaces are
-            disconnected or improperly configured.
     rmm_pool_size : int, str or None, default None
         RMM pool size to initialize each worker with. Can be an integer (bytes), string
         (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
@@ -177,12 +162,8 @@ class LocalCUDACluster(LocalCluster):
     TypeError
         If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
     ValueError
-        If ``ucx_net_devices=""``, if NVLink and RMM managed memory are
-        both enabled, if RMM pools / managed memory and asynchronous allocator are both
-        enabled, or if ``ucx_net_devices="auto"`` and:
-
-            - UCX-Py is not installed or wasn't compiled with hwloc support; or
-            - ``enable_infiniband=False``
+        If NVLink and RMM managed memory are both enabled, or if RMM pools / managed
+        memory and asynchronous allocator are both enabled.
 
     See Also
     --------
@@ -204,7 +185,6 @@ class LocalCUDACluster(LocalCluster):
         enable_infiniband=None,
         enable_nvlink=None,
         enable_rdmacm=None,
-        ucx_net_devices=None,
         rmm_pool_size=None,
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
@@ -316,30 +296,6 @@ class LocalCUDACluster(LocalCluster):
             elif protocol != "ucx":
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
-        if ucx_net_devices == "auto":
-            if _ucx_111:
-                warnings.warn(
-                    "Starting with UCX 1.11, `ucx_net_devices='auto' is deprecated, "
-                    "it should now be left unspecified for the same behavior. "
-                    "Please make sure to read the updated UCX Configuration section in "
-                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx.html, "
-                    "where significant performance considerations for InfiniBand with "
-                    "UCX 1.11 and above is documented.",
-                )
-            else:
-                try:
-                    from ucp._libs.topological_distance import (  # NOQA
-                        TopologicalDistance,
-                    )
-                except ImportError:
-                    raise ValueError(
-                        "ucx_net_devices set to 'auto' but UCX-Py is not "
-                        "installed or it's compiled without hwloc support"
-                    )
-        elif ucx_net_devices == "":
-            raise ValueError("ucx_net_devices can not be an empty string")
-        self.ucx_net_devices = ucx_net_devices
-        self.set_ucx_net_devices = enable_infiniband and ucx_net_devices is not None
         self.host = kwargs.get("host", None)
 
         initialize(
@@ -348,7 +304,6 @@ class LocalCUDACluster(LocalCluster):
             enable_nvlink=enable_nvlink,
             enable_infiniband=enable_infiniband,
             enable_rdmacm=enable_rdmacm,
-            net_devices=ucx_net_devices,
             cuda_device_index=0,
         )
 
@@ -419,22 +374,5 @@ class LocalCUDACluster(LocalCluster):
                 },
             }
         )
-
-        if self.set_ucx_net_devices:
-            cuda_device_index = visible_devices.split(",")[0]
-
-            net_dev = get_ucx_net_devices(cuda_device_index, self.ucx_net_devices)
-            if net_dev is not None:
-                spec["options"]["env"]["UCX_NET_DEVICES"] = net_dev
-                spec["options"]["config"]["distributed.comm.ucx"][
-                    "net-devices"
-                ] = net_dev
-
-            spec["options"]["interface"] = get_ucx_net_devices(
-                cuda_device_index,
-                self.ucx_net_devices,
-                get_openfabrics=False,
-                get_network=True,
-            )
 
         return {name: spec}
