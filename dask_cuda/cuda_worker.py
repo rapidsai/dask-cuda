@@ -163,7 +163,6 @@ class CUDAWorker(Server):
             enable_infiniband=enable_infiniband,
             enable_nvlink=enable_nvlink,
             enable_rdmacm=enable_rdmacm,
-            cuda_device_index=0,
         )
 
         if jit_unspill is None:
@@ -232,7 +231,6 @@ class CUDAWorker(Server):
                         enable_infiniband=enable_infiniband,
                         enable_nvlink=enable_nvlink,
                         enable_rdmacm=enable_rdmacm,
-                        cuda_device_index=i,
                     )
                 },
                 data=data(nvml_device_index(i, cuda_visible_devices(i))),

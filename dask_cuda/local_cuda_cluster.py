@@ -304,7 +304,6 @@ class LocalCUDACluster(LocalCluster):
             enable_nvlink=enable_nvlink,
             enable_infiniband=enable_infiniband,
             enable_rdmacm=enable_rdmacm,
-            cuda_device_index=0,
         )
 
         if worker_class is not None:
