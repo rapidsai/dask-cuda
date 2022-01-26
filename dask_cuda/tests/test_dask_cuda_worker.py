@@ -253,3 +253,24 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
 
                     result = client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
                     assert list(result.values())[0] == gpu_uuid
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_no_nanny(loop):  # noqa: F811
+    with popen(["dask-scheduler", "--port", "9069", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9069",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+                "--no-nanny",
+            ]
+        ) as worker:
+            with Client("127.0.0.1:9069", loop=loop) as client:
+                assert wait_workers(client, n_gpus=1)
+                assert any(
+                    b"distributed.nanny" not in worker.stderr.readline()
+                    for i in range(5)
+                )

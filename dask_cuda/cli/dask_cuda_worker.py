@@ -281,6 +281,11 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""Use a different class than Distributed's default (``distributed.Worker``)
     to spawn ``distributed.Nanny``.""",
 )
+@click.option(
+    "--nanny/--no-nanny",
+    default=True,
+    help="Start workers in nanny process for management [default: --nanny]",
+)
 def main(
     scheduler,
     host,
@@ -313,6 +318,7 @@ def main(
     net_devices,
     enable_jit_unspill,
     worker_class,
+    nanny,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -362,6 +368,7 @@ def main(
         net_devices,
         enable_jit_unspill,
         worker_class,
+        nanny,
         **kwargs,
     )
 

@@ -10,7 +10,7 @@ from tornado.ioloop import IOLoop
 
 import dask
 from dask.utils import parse_bytes
-from distributed import Nanny
+from distributed import Nanny, Worker
 from distributed.core import Server
 from distributed.deploy.cluster import Cluster
 from distributed.proctitle import (
@@ -80,6 +80,7 @@ class CUDAWorker(Server):
         net_devices=None,
         jit_unspill=None,
         worker_class=None,
+        nanny=True,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -119,7 +120,6 @@ class CUDAWorker(Server):
         loop = IOLoop.current()
 
         preload_argv = kwargs.pop("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
             not scheduler
@@ -221,53 +221,102 @@ class CUDAWorker(Server):
                 },
             )
 
-        self.nannies = [
-            Nanny(
-                scheduler,
-                scheduler_file=scheduler_file,
-                nthreads=nthreads,
-                dashboard=dashboard,
-                dashboard_address=dashboard_address,
-                http_prefix=dashboard_prefix,
-                loop=loop,
-                resources=resources,
-                memory_limit=memory_limit,
-                interface=_get_interface(interface, host, i, net_devices),
-                host=host,
-                preload=(list(preload) or []) + ["dask_cuda.initialize"],
-                preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
-                security=security,
-                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
-                    ),
-                    RMMSetup(
-                        rmm_pool_size,
-                        rmm_maximum_pool_size,
-                        rmm_managed_memory,
-                        rmm_async,
-                        rmm_log_directory,
-                    ),
-                },
-                name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
-                local_directory=local_directory,
-                config={
-                    "distributed.comm.ucx": get_ucx_config(
-                        enable_tcp_over_ucx=enable_tcp_over_ucx,
-                        enable_infiniband=enable_infiniband,
-                        enable_nvlink=enable_nvlink,
-                        enable_rdmacm=enable_rdmacm,
-                        net_devices=net_devices,
-                        cuda_device_index=i,
-                    )
-                },
-                data=data(nvml_device_index(i, cuda_visible_devices(i))),
-                worker_class=worker_class,
-                **kwargs,
-            )
-            for i in range(nprocs)
-        ]
+        if nanny:
+            t = Nanny
+            kwargs = {"worker_port": None, "listen_address": None, **kwargs}
+            self.nannies = [
+                Nanny(
+                    scheduler,
+                    scheduler_file=scheduler_file,
+                    nthreads=nthreads,
+                    dashboard=dashboard,
+                    dashboard_address=dashboard_address,
+                    http_prefix=dashboard_prefix,
+                    loop=loop,
+                    resources=resources,
+                    memory_limit=memory_limit,
+                    interface=_get_interface(interface, host, i, net_devices),
+                    host=host,
+                    preload=(list(preload) or []) + ["dask_cuda.initialize"],
+                    preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
+                    security=security,
+                    env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
+                    plugins={
+                        CPUAffinity(
+                            get_cpu_affinity(
+                                nvml_device_index(i, cuda_visible_devices(i))
+                            )
+                        ),
+                        RMMSetup(
+                            rmm_pool_size,
+                            rmm_maximum_pool_size,
+                            rmm_managed_memory,
+                            rmm_async,
+                            rmm_log_directory,
+                        ),
+                    },
+                    name=name
+                    if nprocs == 1 or name is None
+                    else str(name) + "-" + str(i),
+                    local_directory=local_directory,
+                    config={
+                        "distributed.comm.ucx": get_ucx_config(
+                            enable_tcp_over_ucx=enable_tcp_over_ucx,
+                            enable_infiniband=enable_infiniband,
+                            enable_nvlink=enable_nvlink,
+                            enable_rdmacm=enable_rdmacm,
+                            net_devices=net_devices,
+                            cuda_device_index=i,
+                        )
+                    },
+                    data=data(nvml_device_index(i, cuda_visible_devices(i))),
+                    worker_class=worker_class,
+                    **kwargs,
+                )
+                for i in range(nprocs)
+            ]
+        else:
+            t = Worker
+
+            self.nannies = [
+                t(
+                    scheduler,
+                    scheduler_file=scheduler_file,
+                    nthreads=nthreads,
+                    dashboard=dashboard,
+                    dashboard_address=dashboard_address,
+                    http_prefix=dashboard_prefix,
+                    loop=loop,
+                    resources=resources,
+                    memory_limit=memory_limit,
+                    interface=_get_interface(interface, host, i, net_devices),
+                    host=host,
+                    preload=(list(preload) or []) + ["dask_cuda.initialize"],
+                    preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
+                    security=security,
+                    plugins={
+                        CPUAffinity(
+                            get_cpu_affinity(
+                                nvml_device_index(i, cuda_visible_devices(i))
+                            )
+                        ),
+                        RMMSetup(
+                            rmm_pool_size,
+                            rmm_maximum_pool_size,
+                            rmm_managed_memory,
+                            rmm_async,
+                            rmm_log_directory,
+                        ),
+                    },
+                    name=name
+                    if nprocs == 1 or name is None
+                    else str(name) + "-" + str(i),
+                    local_directory=local_directory,
+                    data=data(nvml_device_index(i, cuda_visible_devices(i))),
+                    **kwargs,
+                )
+                for i in range(nprocs)
+            ]
 
     def __await__(self):
         return self._wait().__await__()
