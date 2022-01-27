@@ -7,7 +7,7 @@ In either case, a ``dask.distributed.Client`` must be made for the worker cluste
 LocalCUDACluster with Automatic Configuration
 ---------------------------------------------
 
-Automatic configuration was introduced in Dask-CUDA 22.20 and requires UCX >= 1.11.1. This allows the user to specify only the UCX protocol and let UCX decide which transports to use.
+Automatic configuration was introduced in Dask-CUDA 22.02 and requires UCX >= 1.11.1. This allows the user to specify only the UCX protocol and let UCX decide which transports to use.
 
 To connect a client to a cluster with automatically-configured UCX and an RMM pool:
 
