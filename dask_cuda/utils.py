@@ -25,6 +25,8 @@ except ImportError:
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
 
+import rmm
+
 
 try:
     import ucp
@@ -52,6 +54,7 @@ class RMMSetup:
         managed_memory,
         async_alloc,
         log_directory,
+        track_allocations
     ):
         if initial_pool_size is None and maximum_pool_size is not None:
             raise ValueError(
@@ -65,10 +68,12 @@ class RMMSetup:
         self.async_alloc = async_alloc
         self.logging = log_directory is not None
         self.log_directory = log_directory
+        self.rmm_track_allocations = track_allocations
 
     def setup(self, worker=None):
+        import rmm
+
         if self.async_alloc:
-            import rmm
 
             rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
             if self.logging:
@@ -78,7 +83,6 @@ class RMMSetup:
                     )
                 )
         elif self.initial_pool_size is not None or self.managed_memory:
-            import rmm
 
             pool_allocator = False if self.initial_pool_size is None else True
 
@@ -91,6 +95,11 @@ class RMMSetup:
                 log_file_name=get_rmm_log_file_name(
                     worker, self.logging, self.log_directory
                 ),
+            )
+        if self.rmm_track_allocations:
+            mr = rmm.mr.get_current_device_resource()
+            rmm.mr.set_current_device_resource(
+                rmm.mr.TrackingResourceAdaptor(mr)
             )
 
 

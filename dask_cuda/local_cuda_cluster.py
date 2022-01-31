@@ -210,6 +210,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
+        rmm_track_allocations=False,
         jit_unspill=None,
         log_spilling=False,
         worker_class=None,
@@ -272,6 +273,7 @@ class LocalCUDACluster(LocalCluster):
                 )
 
         self.rmm_log_directory = rmm_log_directory
+        self.rmm_track_allocations = rmm_track_allocations
 
         if not kwargs.pop("processes", True):
             raise ValueError(
@@ -415,6 +417,7 @@ class LocalCUDACluster(LocalCluster):
                         self.rmm_managed_memory,
                         self.rmm_async,
                         self.rmm_log_directory,
+                        self.rmm_track_allocations
                     ),
                 },
             }
