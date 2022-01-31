@@ -25,8 +25,6 @@ except ImportError:
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
 
-import rmm
-
 
 try:
     import ucp
