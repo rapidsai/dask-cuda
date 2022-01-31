@@ -120,6 +120,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         are specified.""",
 )
 @click.option(
+    "--rmm-track-allocations",
+    default=False,
+    help="""Track memory allocations made by RMM. If ``True``, wraps the memory
+    resource of each worker with a ``rmm.mr.TrackingResourceAdaptor`` that
+    allows querying the amount of memory allocated by RMM."""
+)
+@click.option(
     "--pid-file", type=str, default="", help="File to write the process PID.",
 )
 @click.option(
@@ -293,6 +300,7 @@ def main(
     rmm_managed_memory,
     rmm_async,
     rmm_log_directory,
+    rmm_track_allocations,
     pid_file,
     resources,
     dashboard,
@@ -344,6 +352,7 @@ def main(
         rmm_managed_memory,
         rmm_async,
         rmm_log_directory,
+        rmm_track_allocations,
         pid_file,
         resources,
         dashboard,

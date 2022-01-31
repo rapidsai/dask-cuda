@@ -62,6 +62,7 @@ class CUDAWorker(Server):
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
+        rmm_track_allocations=False,
         pid_file=None,
         resources=None,
         dashboard=True,
@@ -248,6 +249,7 @@ class CUDAWorker(Server):
                         rmm_managed_memory,
                         rmm_async,
                         rmm_log_directory,
+                        rmm_track_allocations
                     ),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
