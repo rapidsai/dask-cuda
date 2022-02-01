@@ -610,3 +610,13 @@ def test_sizeof_cudf():
     pxy._pxy_cache = {}
     assert a_size == pytest.approx(sizeof(pxy), rel=1e-2)
     assert pxy._pxy_get().is_serialized()
+
+
+def test_cupy_broadcast_to():
+    cupy = pytest.importorskip("cupy")
+    a = cupy.arange(10)
+    a_b = np.broadcast_to(a, (10, 10))
+    p_b = np.broadcast_to(proxy_object.asproxy(a), (10, 10))
+
+    assert a_b.shape == p_b.shape
+    assert (a_b == p_b).all()
