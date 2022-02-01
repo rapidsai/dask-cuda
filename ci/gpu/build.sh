@@ -86,10 +86,13 @@ conda list --show-channel-urls
 # BUILD - Build dask-cuda
 ################################################################################
 
+# TODO: Move boa install to gpuci/rapidsai
+gpuci_mamba_retry install boa
+
 gpuci_logger "Build and install dask-cuda"
 cd "${WORKSPACE}"
 CONDA_BLD_DIR="${WORKSPACE}/.conda-bld"
-gpuci_conda_retry build --croot "${CONDA_BLD_DIR}" conda/recipes/dask-cuda --python="${PYTHON}"
+gpuci_conda_retry mambabuild --croot "${CONDA_BLD_DIR}" conda/recipes/dask-cuda --python="${PYTHON}"
 gpuci_mamba_retry install -c "${CONDA_BLD_DIR}" dask-cuda
 
 ################################################################################
