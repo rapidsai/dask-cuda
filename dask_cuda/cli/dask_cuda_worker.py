@@ -74,6 +74,18 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
+    "--rmm-maximum-pool-size",
+    default=None,
+    help="""When ``--rmm-pool-size`` is specified, this argument indicates the maximum pool size.
+        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
+        By default, the total available memory on the GPU is used.
+        ``rmm_pool_size`` must be specified to use RMM pool and
+        to set the maximum pool size.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.""",
+)
+@click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
     default=False,
     show_default=True,
@@ -210,28 +222,28 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 )
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable TCP over UCX, even if InfiniBand and
     NVLink are not supported or disabled.""",
 )
 @click.option(
     "--enable-infiniband/--disable-infiniband",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over InfiniBand, implies
-    ``--enable-tcp-over-ucx``.""",
+    ``--enable-tcp-over-ucx`` when enabled.""",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX over NVLink, implies
-    ``--enable-tcp-over-ucx``.""",
+    ``--enable-tcp-over-ucx`` when enabled.""",
 )
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
-    default=False,
+    default=None,
     show_default=True,
     help="""Set environment variables to enable UCX RDMA connection manager support,
     requires ``--enable-infiniband``.""",
@@ -277,6 +289,7 @@ def main(
     memory_limit,
     device_memory_limit,
     rmm_pool_size,
+    rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
     rmm_log_directory,
@@ -327,6 +340,7 @@ def main(
         memory_limit,
         device_memory_limit,
         rmm_pool_size,
+        rmm_maximum_pool_size,
         rmm_managed_memory,
         rmm_async,
         rmm_log_directory,

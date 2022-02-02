@@ -4,6 +4,8 @@ from unittest.mock import patch
 import pytest
 from numba import cuda
 
+from dask.config import canonical_name
+
 from dask_cuda.utils import (
     _ucx_111,
     cuda_visible_devices,
@@ -77,6 +79,17 @@ def test_get_device_total_memory():
             total_mem = get_device_total_memory(i)
             assert type(total_mem) is int
             assert total_mem > 0
+
+
+def test_get_preload_options_default():
+    pytest.importorskip("ucp")
+
+    opts = get_preload_options(protocol="ucx", create_cuda_context=True,)
+
+    assert "preload" in opts
+    assert opts["preload"] == ["dask_cuda.initialize"]
+    assert "preload_argv" in opts
+    assert opts["preload_argv"] == ["--create-cuda-context"]
 
 
 @pytest.mark.parametrize("enable_tcp", [True, False])
@@ -157,15 +170,19 @@ def test_get_ucx_net_devices_auto():
         get_ucx_net_devices(idx, "auto")
 
 
-@pytest.mark.parametrize("enable_tcp_over_ucx", [True, False])
-@pytest.mark.parametrize("enable_infiniband", [True, False])
+@pytest.mark.parametrize("enable_tcp_over_ucx", [True, False, None])
+@pytest.mark.parametrize("enable_nvlink", [True, False, None])
+@pytest.mark.parametrize("enable_infiniband", [True, False, None])
 @pytest.mark.parametrize("net_devices", ["eth0", "auto", ""])
-def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
+def test_get_ucx_config(
+    enable_tcp_over_ucx, enable_infiniband, enable_nvlink, net_devices
+):
     pytest.importorskip("ucp")
 
     kwargs = {
         "enable_tcp_over_ucx": enable_tcp_over_ucx,
         "enable_infiniband": enable_infiniband,
+        "enable_nvlink": enable_nvlink,
         "net_devices": net_devices,
         "cuda_device_index": 0,
     }
@@ -176,30 +193,63 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, net_devices):
     else:
         ucx_config = get_ucx_config(**kwargs)
 
-    if enable_tcp_over_ucx is True:
-        assert ucx_config["tcp"] is True
-        assert ucx_config["cuda_copy"] is True
+    assert ucx_config[canonical_name("create_cuda_context", ucx_config)] is True
+
+    if enable_tcp_over_ucx is not None:
+        assert ucx_config[canonical_name("tcp", ucx_config)] is enable_tcp_over_ucx
     else:
-        assert ucx_config["tcp"] is None
+        if (
+            enable_infiniband is not True
+            and enable_nvlink is not True
+            and not (enable_infiniband is None and enable_nvlink is None)
+        ):
+            assert ucx_config[canonical_name("tcp", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("tcp", ucx_config)] is None
 
-    if enable_infiniband is True:
-        assert ucx_config["infiniband"] is True
-        assert ucx_config["cuda_copy"] is True
+    if enable_infiniband is not None:
+        assert ucx_config[canonical_name("infiniband", ucx_config)] is enable_infiniband
     else:
-        assert ucx_config["infiniband"] is None
+        if (
+            enable_tcp_over_ucx is not True
+            and enable_nvlink is not True
+            and not (enable_tcp_over_ucx is None and enable_nvlink is None)
+        ):
+            assert ucx_config[canonical_name("infiniband", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("infiniband", ucx_config)] is None
 
-    if enable_tcp_over_ucx is False and enable_infiniband is False:
-        assert ucx_config["cuda_copy"] is None
+    if enable_nvlink is not None:
+        assert ucx_config[canonical_name("nvlink", ucx_config)] is enable_nvlink
+    else:
+        if (
+            enable_tcp_over_ucx is not True
+            and enable_infiniband is not True
+            and not (enable_tcp_over_ucx is None and enable_infiniband is None)
+        ):
+            assert ucx_config[canonical_name("nvlink", ucx_config)] is True
+        else:
+            assert ucx_config[canonical_name("nvlink", ucx_config)] is None
 
-    if net_devices == "eth0":
-        assert ucx_config["net-devices"] == "eth0"
-    elif net_devices == "auto":
+    if any(
+        opt is not None
+        for opt in [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    ) and not all(
+        opt is False for opt in [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    ):
+        assert ucx_config[canonical_name("cuda-copy", ucx_config)] is True
+    else:
+        assert ucx_config[canonical_name("cuda-copy", ucx_config)] is None
+
+    if net_devices == "auto":
         # Since the actual device is system-dependent, we don't do any
         # checks at the moment. If any InfiniBand devices are available,
         # that will be the value of "net-devices", otherwise an empty string.
         pass
-    elif net_devices == "":
-        assert "net-device" not in ucx_config
+    elif net_devices == "eth0":
+        assert ucx_config[canonical_name("net-devices", ucx_config)] == "eth0"
+    else:
+        assert ucx_config[canonical_name("net-devices", ucx_config)] is None
 
 
 def test_parse_visible_devices():

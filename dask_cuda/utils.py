@@ -9,6 +9,9 @@ import numpy as np
 import pynvml
 import toolz
 
+import dask
+import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
+from dask.config import canonical_name
 from dask.utils import parse_bytes
 from distributed import Worker, wait
 
@@ -42,8 +45,22 @@ class CPUAffinity:
 
 
 class RMMSetup:
-    def __init__(self, nbytes, managed_memory, async_alloc, log_directory):
-        self.nbytes = nbytes
+    def __init__(
+        self,
+        initial_pool_size,
+        maximum_pool_size,
+        managed_memory,
+        async_alloc,
+        log_directory,
+    ):
+        if initial_pool_size is None and maximum_pool_size is not None:
+            raise ValueError(
+                "`rmm_maximum_pool_size` was specified without specifying "
+                "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
+            )
+
+        self.initial_pool_size = initial_pool_size
+        self.maximum_pool_size = maximum_pool_size
         self.managed_memory = managed_memory
         self.async_alloc = async_alloc
         self.logging = log_directory is not None
@@ -60,15 +77,16 @@ class RMMSetup:
                         worker, self.logging, self.log_directory
                     )
                 )
-        elif self.nbytes is not None or self.managed_memory:
+        elif self.initial_pool_size is not None or self.managed_memory:
             import rmm
 
-            pool_allocator = False if self.nbytes is None else True
+            pool_allocator = False if self.initial_pool_size is None else True
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
-                initial_pool_size=self.nbytes,
+                initial_pool_size=self.initial_pool_size,
+                maximum_pool_size=self.maximum_pool_size,
                 logging=self.logging,
                 log_file_name=get_rmm_log_file_name(
                     worker, self.logging, self.log_directory
@@ -283,11 +301,11 @@ def get_ucx_net_devices(
 
 
 def get_ucx_config(
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
-    net_devices="",
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
+    net_devices=None,
     cuda_device_index=None,
 ):
     if net_devices == "auto" and enable_infiniband is False:
@@ -296,39 +314,52 @@ def get_ucx_config(
             "supported when enable_infiniband=True."
         )
 
-    ucx_config = {
-        "tcp": None,
-        "infiniband": None,
-        "nvlink": None,
-        "rdmacm": None,
-        "net-devices": None,
-        "cuda_copy": None,
-        "create_cuda_context": None,
-        "reuse-endpoints": not _ucx_111,
-    }
+    ucx_config = dask.config.get("distributed.comm.ucx")
+
+    ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
+    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = not _ucx_111
+
+    # If any transport is explicitly disabled (`False`) by the user, others that
+    # are not specified should be enabled (`True`). If transports are explicitly
+    # enabled (`True`), then default (`None`) or an explicit `False` will suffice
+    # in disabling others. However, if there's a mix of enable (`True`) and
+    # disable (`False`), then those choices can be assumed as intended by the
+    # user.
+    #
+    # This may be handled more gracefully in Distributed in the future.
+    opts = [enable_tcp_over_ucx, enable_infiniband, enable_nvlink]
+    if any(opt is False for opt in opts) and not any(opt is True for opt in opts):
+        if enable_tcp_over_ucx is None:
+            enable_tcp_over_ucx = True
+        if enable_nvlink is None:
+            enable_nvlink = True
+        if enable_infiniband is None:
+            enable_infiniband = True
+
+    ucx_config[canonical_name("tcp", ucx_config)] = enable_tcp_over_ucx
+    ucx_config[canonical_name("infiniband", ucx_config)] = enable_infiniband
+    ucx_config[canonical_name("nvlink", ucx_config)] = enable_nvlink
+    ucx_config[canonical_name("rdmacm", ucx_config)] = enable_rdmacm
+
     if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        ucx_config["cuda_copy"] = True
-    if enable_tcp_over_ucx:
-        ucx_config["tcp"] = True
-    if enable_infiniband:
-        ucx_config["infiniband"] = True
-    if enable_nvlink:
-        ucx_config["nvlink"] = True
-    if enable_rdmacm:
-        ucx_config["rdmacm"] = True
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = True
+    else:
+        ucx_config[canonical_name("cuda-copy", ucx_config)] = None
 
     if net_devices is not None and net_devices != "":
-        ucx_config["net-devices"] = get_ucx_net_devices(cuda_device_index, net_devices)
+        ucx_config[canonical_name("net-devices", ucx_config)] = get_ucx_net_devices(
+            cuda_device_index, net_devices
+        )
     return ucx_config
 
 
 def get_preload_options(
     protocol=None,
-    create_cuda_context=False,
-    enable_tcp_over_ucx=False,
-    enable_infiniband=False,
-    enable_nvlink=False,
-    enable_rdmacm=False,
+    create_cuda_context=None,
+    enable_tcp_over_ucx=None,
+    enable_infiniband=None,
+    enable_nvlink=None,
+    enable_rdmacm=None,
     ucx_net_devices="",
     cuda_device_index=0,
 ):
@@ -338,29 +369,29 @@ def get_preload_options(
 
     Parameters
     ----------
-    protocol: None or str
+    protocol: None or str, default None
         If "ucx", options related to UCX (enable_tcp_over_ucx, enable_infiniband,
         enable_nvlink and ucx_net_devices) are added to preload_argv.
-    create_cuda_context: bool
+    create_cuda_context: bool, default None
         Ensure the CUDA context gets created at initialization, generally
         needed by Dask workers.
-    enable_tcp: bool
+    enable_tcp: bool, default None
         Set environment variables to enable TCP over UCX, even when InfiniBand or
         NVLink support are disabled.
-    enable_infiniband: bool
+    enable_infiniband: bool, default None
         Set environment variables to enable UCX InfiniBand support. Implies
         enable_tcp=True.
-    enable_rdmacm: bool
+    enable_rdmacm: bool, default None
         Set environment variables to enable UCX RDMA connection manager support.
         Currently requires enable_infiniband=True.
-    enable_nvlink: bool
+    enable_nvlink: bool, default None
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp=True.
-    ucx_net_devices: str or callable
+    ucx_net_devices: str or callable, default ""
         A string with the interface name to be used for all devices (empty
         string means use default), or a callable function taking an integer
         identifying the GPU index.
-    cuda_device_index: int
+    cuda_device_index: int, default 0
         The index identifying the CUDA device used by this worker, only used
         when ucx_net_devices is callable.
 
@@ -640,15 +671,11 @@ class MockWorker(Worker):
     """
 
     def __init__(self, *args, **kwargs):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
         self._device_get_count = distributed.diagnostics.nvml.device_get_count
         super().__init__(*args, **kwargs)
 
     def __del__(self):
-        import distributed
-
         distributed.diagnostics.nvml.device_get_count = self._device_get_count
 
     @staticmethod

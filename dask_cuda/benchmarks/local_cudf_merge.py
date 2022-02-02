@@ -288,16 +288,27 @@ def main(args):
         print(f"ib             | {args.enable_infiniband}")
         print(f"nvlink         | {args.enable_nvlink}")
     print(f"data-processed | {format_bytes(took_list[0][0])}")
-    print("===============================")
+    print("=" * 80)
     print("Wall-clock     | Throughput")
-    print("-------------------------------")
+    print("-" * 80)
+    t_p = []
+    times = []
     for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
+        times.append(took)
+        t_p.append(throughput)
         m += " " * (15 - len(m))
         print(f"{m}| {format_bytes(throughput)}/s")
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
-    print("===============================")
+    t_p = numpy.asarray(t_p)
+    times = numpy.asarray(times)
+    print("=" * 80)
+    print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
+    print(
+        f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }"
+    )
+    print("=" * 80)
     if args.markdown:
         print("\n```")
 

@@ -124,8 +124,13 @@ def test_one_dev_item_limit():
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
 
+    # Clean up
+    del k1, k4
+    dhf.clear()
+    assert len(dhf.manager) == 0
 
-def test_one_item_host_limit():
+
+def test_one_item_host_limit(capsys):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
         device_memory_limit=one_item_nbytes, memory_limit=memory_limit
@@ -154,7 +159,6 @@ def test_one_item_host_limit():
     assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k1])
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k2])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k3])
-
     dhf.manager.validate()
 
     # Accessing k2 spills k3 and unspill k2
@@ -180,6 +184,11 @@ def test_one_item_host_limit():
     assert is_proxies_equal(dhf.manager._disk.get_proxies(), [k2, k3])
     assert is_proxies_equal(dhf.manager._host.get_proxies(), [k4])
     assert is_proxies_equal(dhf.manager._dev.get_proxies(), [k1])
+
+    # Clean up
+    del k1, k2, k3, k4
+    dhf.clear()
+    assert len(dhf.manager) == 0
 
 
 def test_spill_on_demand():
@@ -420,7 +429,7 @@ def test_on_demand_debug_info():
 
             # Submit too large RMM buffer
             with pytest.raises(
-                MemoryError, match=r".*std::bad_alloc: CUDA error at:.*"
+                MemoryError, match=r".*std::bad_alloc:.*CUDA error at:.*"
             ):
                 client.submit(task).result()
 

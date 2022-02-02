@@ -605,6 +605,8 @@ def test_sizeof_cudf():
     pxy._pxy_serialize(serializers=("dask",))
     assert a_size == pytest.approx(sizeof(pxy))
     assert pxy._pxy_get().is_serialized()
+    # By clearing the cache, `sizeof(pxy)` now measure the serialized data
+    # thus we have to increase the tolerance.
     pxy._pxy_cache = {}
-    assert a_size == pytest.approx(sizeof(pxy))
+    assert a_size == pytest.approx(sizeof(pxy), rel=1e-2)
     assert pxy._pxy_get().is_serialized()

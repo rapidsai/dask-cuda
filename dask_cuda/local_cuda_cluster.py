@@ -59,8 +59,10 @@ class LocalCUDACluster(LocalCluster):
         ``[0, 1, 2, 3]``), or ``None`` to use all available GPUs.
     n_workers : int or None, default None
         Number of workers. Can be an integer or ``None`` to fall back on the GPUs
-        specified by ``CUDA_VISIBLE_DEVICES``. Will override the value of
-        ``CUDA_VISIBLE_DEVICES`` if specified.
+        specified by ``CUDA_VISIBLE_DEVICES``. The value of ``n_workers`` must be
+        smaller or equal to the number of GPUs specified in ``CUDA_VISIBLE_DEVICES``
+        when the latter is specified, and if smaller, only the first ``n_workers`` GPUs
+        will be used.
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
     memory_limit : int, float, str, or None, default "auto"
@@ -86,16 +88,16 @@ class LocalCUDACluster(LocalCluster):
     protocol : str or None, default None
         Protocol to use for communication. Can be a string (like ``"tcp"`` or
         ``"ucx"``), or ``None`` to automatically choose the correct protocol.
-    enable_tcp_over_ucx : bool, default False
+    enable_tcp_over_ucx : bool, default None
         Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
         are not supported or disabled.
-    enable_infiniband : bool, default False
+    enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, requires
-        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True``.
-    enable_nvlink : bool, default False
+        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True`` when ``True``.
+    enable_nvlink : bool, default None
         Set environment variables to enable UCX over NVLink, requires ``protocol="ucx"``
-        and implies ``enable_tcp_over_ucx=True``.
-    enable_rdmacm : bool, default False
+        and implies ``enable_tcp_over_ucx=True`` when ``True``.
+    enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``protocol="ucx"`` and ``enable_infiniband=True``.
     ucx_net_devices : str, callable, or None, default None
@@ -114,6 +116,16 @@ class LocalCUDACluster(LocalCluster):
     rmm_pool_size : int, str or None, default None
         RMM pool size to initialize each worker with. Can be an integer (bytes), string
         (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.
+    rmm_maximum_pool_size : int, str or None, default None
+        When ``rmm_pool_size`` is set, this argument indicates
+        the maximum pool size.
+        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
+        By default, the total available memory on the GPU is used.
+        ``rmm_pool_size`` must be specified to use RMM pool and
+        to set the maximum pool size.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
@@ -188,12 +200,13 @@ class LocalCUDACluster(LocalCluster):
         local_directory=None,
         shared_filesystem=None,
         protocol=None,
-        enable_tcp_over_ucx=False,
-        enable_infiniband=False,
-        enable_nvlink=False,
-        enable_rdmacm=False,
+        enable_tcp_over_ucx=None,
+        enable_infiniband=None,
+        enable_nvlink=None,
+        enable_rdmacm=None,
         ucx_net_devices=None,
         rmm_pool_size=None,
+        rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
@@ -228,6 +241,7 @@ class LocalCUDACluster(LocalCluster):
         )
 
         self.rmm_pool_size = rmm_pool_size
+        self.rmm_maximum_pool_size = rmm_maximum_pool_size
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         if rmm_pool_size is not None or rmm_managed_memory:
@@ -246,6 +260,8 @@ class LocalCUDACluster(LocalCluster):
                 )
             if self.rmm_pool_size is not None:
                 self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
+                if self.rmm_maximum_pool_size is not None:
+                    self.rmm_maximum_pool_size = parse_bytes(self.rmm_maximum_pool_size)
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -395,6 +411,7 @@ class LocalCUDACluster(LocalCluster):
                     ),
                     RMMSetup(
                         self.rmm_pool_size,
+                        self.rmm_maximum_pool_size,
                         self.rmm_managed_memory,
                         self.rmm_async,
                         self.rmm_log_directory,
