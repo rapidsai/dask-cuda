@@ -26,7 +26,7 @@ cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
-export UCXPY_VERSION="0.24.*"
+export UCXPY_VERSION=0.24.*
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
 # will possibly be enabled by default starting on 1.17)
