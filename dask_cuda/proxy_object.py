@@ -619,6 +619,9 @@ class ProxyObject:
     def __or__(self, other):
         return self._pxy_deserialize() | other
 
+    def __matmul__(self, other):
+        return self._pxy_deserialize().__matmul__(unproxy(other))
+
     def __radd__(self, other):
         return other + self._pxy_deserialize()
 
@@ -738,6 +741,14 @@ class ProxyObject:
         pxy = self._pxy_get(copy=True)
         proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied |= other
+        self._pxy_set(pxy)
+        return self
+
+    def __imatmul__(self, other):
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
+        proxied @= other
+        pxy.obj = proxied
         self._pxy_set(pxy)
         return self
 
