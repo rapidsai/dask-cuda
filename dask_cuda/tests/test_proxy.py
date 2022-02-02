@@ -620,3 +620,27 @@ def test_cupy_broadcast_to():
 
     assert a_b.shape == p_b.shape
     assert (a_b == p_b).all()
+
+
+def test_cupy_matmul():
+    cupy = pytest.importorskip("cupy")
+    a, b = cupy.arange(10), cupy.arange(10)
+    c = a @ b
+    assert c == proxy_object.asproxy(a) @ b
+    assert c == a @ proxy_object.asproxy(b)
+    assert c == proxy_object.asproxy(a) @ proxy_object.asproxy(b)
+
+
+def test_cupy_imatmul():
+    cupy = pytest.importorskip("cupy")
+    a = cupy.arange(9).reshape(3, 3)
+    c = a.copy()
+    c @= a
+
+    a1 = a.copy()
+    a1 @= proxy_object.asproxy(a)
+    assert (a1 == c).all()
+
+    a2 = proxy_object.asproxy(a.copy())
+    a2 @= a
+    assert (a2 == c).all()
