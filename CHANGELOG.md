@@ -1,6 +1,35 @@
-# dask-cuda 22.02.00 (Date TBD)
+# dask-cuda 22.02.00 (2 Feb 2022)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.02.00a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Ignoe `DepecationWaning` fom `distutils.Vesion` classes ([#823](https://github.com/rapidsai/dask-cuda/pull/823)) [@pentschev](https://github.com/pentschev)
+- Handle explicitly disabled UCX tanspots ([#820](https://github.com/rapidsai/dask-cuda/pull/820)) [@pentschev](https://github.com/pentschev)
+- Fix egex patten to match to in test_on_demand_debug_info ([#819](https://github.com/rapidsai/dask-cuda/pull/819)) [@pentschev](https://github.com/pentschev)
+- Fix skipping GDS test if cucim is not installed ([#813](https://github.com/rapidsai/dask-cuda/pull/813)) [@pentschev](https://github.com/pentschev)
+- Unpin Dask and Distibuted vesions ([#810](https://github.com/rapidsai/dask-cuda/pull/810)) [@pentschev](https://github.com/pentschev)
+- Update to UCX-Py 0.24 ([#805](https://github.com/rapidsai/dask-cuda/pull/805)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Fix Dask-CUDA vesion to 22.02 ([#835](https://github.com/rapidsai/dask-cuda/pull/835)) [@jakikham](https://github.com/jakikham)
+- Mege banch-21.12 into banch-22.02 ([#829](https://github.com/rapidsai/dask-cuda/pull/829)) [@pentschev](https://github.com/pentschev)
+- Claify `LocalCUDACluste`&#39;s `n_wokes` docstings ([#812](https://github.com/rapidsai/dask-cuda/pull/812)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Featues
+
+- Pin `dask` &amp; `distibuted` vesions ([#832](https://github.com/rapidsai/dask-cuda/pull/832)) [@galipemsaga](https://github.com/galipemsaga)
+- Expose mm-maximum_pool_size agument ([#827](https://github.com/rapidsai/dask-cuda/pull/827)) [@VibhuJawa](https://github.com/VibhuJawa)
+- Simplify UCX configs, pemitting UCX_TLS=all ([#792](https://github.com/rapidsai/dask-cuda/pull/792)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Impovements
+
+- Add avg and std calculation fo time and thoughput ([#828](https://github.com/rapidsai/dask-cuda/pull/828)) [@quasiben](https://github.com/quasiben)
+- sizeof test: incease toleance ([#825](https://github.com/rapidsai/dask-cuda/pull/825)) [@madsbk](https://github.com/madsbk)
+- Quey UCX-Py fom gpuCI vesioning sevice ([#818](https://github.com/rapidsai/dask-cuda/pull/818)) [@pentschev](https://github.com/pentschev)
+- Standadize Distibuted config sepaato in get_ucx_config ([#806](https://github.com/rapidsai/dask-cuda/pull/806)) [@pentschev](https://github.com/pentschev)
+- Fixed `PoxyObject.__del__` to use the new Disk IO API fom #791 ([#802](https://github.com/rapidsai/dask-cuda/pull/802)) [@madsbk](https://github.com/madsbk)
+- GPUDiect Stoage (GDS) suppot fo spilling ([#793](https://github.com/rapidsai/dask-cuda/pull/793)) [@madsbk](https://github.com/madsbk)
+- Disk IO inteface ([#791](https://github.com/rapidsai/dask-cuda/pull/791)) [@madsbk](https://github.com/madsbk)
 
 # dask-cuda 21.12.00 (9 Dec 2021)
 
