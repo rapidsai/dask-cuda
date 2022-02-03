@@ -4,7 +4,6 @@ import operator
 import os
 import pickle
 import time
-import uuid
 from collections import OrderedDict
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
@@ -798,8 +797,12 @@ def handle_disk_serialized(pxy: ProxyDetail):
     header, frames = pxy.obj
     disk_io_header = header["disk-io-header"]
     if disk_io_header["shared-filesystem"]:
+        from .proxify_host_file import ProxifyHostFile
+
+        assert ProxifyHostFile._spill_to_disk
+
         old_path = disk_io_header["path"]
-        new_path = f"{old_path}-linked-{uuid.uuid4()}"
+        new_path = ProxifyHostFile._spill_to_disk.gen_file_path()
         os.link(old_path, new_path)
         header = _copy.deepcopy(header)
         header["disk-io-header"]["path"] = new_path
