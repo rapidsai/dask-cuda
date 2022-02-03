@@ -8,12 +8,12 @@ from typing import Callable, Iterable, Mapping, Optional, Union
 import numpy as np
 
 import dask
-from distributed.utils import Any, nbytes
+from distributed.utils import nbytes
 
-_new_cuda_buffer: Optional[Callable[[int], Any]] = None
+_new_cuda_buffer: Optional[Callable[[int], object]] = None
 
 
-def get_new_cuda_buffer() -> Callable[[int], Any]:
+def get_new_cuda_buffer() -> Callable[[int], object]:
     """Return a function to create an empty CUDA buffer"""
     global _new_cuda_buffer
     if _new_cuda_buffer is not None:
