@@ -3,10 +3,11 @@ import gc
 import io
 import logging
 import os
+import os.path
+import pathlib
 import threading
 import time
 import traceback
-import uuid
 import warnings
 import weakref
 from collections import defaultdict
@@ -36,7 +37,7 @@ from distributed.protocol.serialize import (
     serialize_and_split,
 )
 
-from dask_cuda.disk_io import disk_read, disk_write
+from dask_cuda.disk_io import SpillToDiskProperties, disk_read, disk_write
 from dask_cuda.get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
@@ -474,13 +475,9 @@ class ProxifyHostFile(MutableMapping):
         value are used, which defaults to ``False``.
     """
 
-    # Notice, we define the following as static variables because they are used by
+    # Notice, we define `_spill_to_disk` as a static variable because it is used by
     # the static register_disk_spilling() method.
-    _spill_directory: Optional[str] = None
-    _spill_shared_filesystem: bool
-    _spill_to_disk_prefix: str = f"spilled-data-{uuid.uuid4()}"
-    _spill_to_disk_counter: int = 0
-    _gds_enabled: bool = False
+    _spill_to_disk: Optional[SpillToDiskProperties] = None
 
     lock = threading.RLock()
 
@@ -497,7 +494,22 @@ class ProxifyHostFile(MutableMapping):
     ):
         self.store: Dict[Hashable, Any] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
-        self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
+
+        # Create an instance of `SpillToDiskProperties` if it doesn't already exist
+        local_directory = os.path.join(
+            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
+            "dask-worker-space",
+            "jit-unspill-disk-storage",
+        )
+        if ProxifyHostFile._spill_to_disk is None:
+            ProxifyHostFile._spill_to_disk = SpillToDiskProperties(
+                local_directory, shared_filesystem, gds_spilling
+            )
+        elif ProxifyHostFile._spill_to_disk.root_dir != pathlib.Path(local_directory):
+            raise ValueError("Cannot change the JIT-Unspilling disk path")
+
+        self.register_disk_spilling()
+
         if compatibility_mode is None:
             self.compatibility_mode = dask.config.get(
                 "jit-unspill-compatibility-mode", default=False
@@ -619,83 +631,22 @@ class ProxifyHostFile(MutableMapping):
             del self.store[key]
 
     @classmethod
-    def gen_file_path(cls) -> str:
-        """Generate an unique file path"""
-        with cls.lock:
-            cls._spill_to_disk_counter += 1
-            assert cls._spill_directory is not None
-            return os.path.join(
-                cls._spill_directory,
-                f"{cls._spill_to_disk_prefix}-{cls._spill_to_disk_counter}",
-            )
-
-    @classmethod
-    def register_disk_spilling(
-        cls,
-        local_directory: str = None,
-        shared_filesystem: bool = None,
-        gds: bool = None,
-    ):
+    def register_disk_spilling(cls) -> None:
         """Register Dask serializers that writes to disk
 
         This is a static method because the registration of a Dask
         serializer/deserializer pair is a global operation thus we can
         only register one such pair. This means that all instances of
         the ``ProxifyHostFile`` end up using the same ``local_directory``.
-
-        Parameters
-        ----------
-        local_directory : str or None, default None
-            Path to the root directory to write serialized data.
-            Can be a string or None to fall back on the value of
-            ``dask.temporary-directory`` in the local Dask configuration,
-            using the current working directory if this is not set.
-            WARNING, this **cannot** change while running thus all
-            serialization to disk are using the same directory.
-        shared_filesystem: bool or None, default None
-            Whether the `local_directory` above is shared between all workers or not.
-            If ``None``, the "jit-unspill-shared-fs" config value are used, which
-            defaults to False.
-        gds: bool
-            Enable the use of GPUDirect Storage. If ``None``, the "gds-spilling"
-            config value are used, which defaults to ``False``.
         """
-        path = os.path.join(
-            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
-            "dask-worker-space",
-            "jit-unspill-disk-storage",
-        )
-        if cls._spill_directory is None:
-            cls._spill_directory = path
-        elif cls._spill_directory != path:
-            raise ValueError("Cannot change the JIT-Unspilling disk path")
-        os.makedirs(cls._spill_directory, exist_ok=True)
-
-        if shared_filesystem is None:
-            cls._spill_shared_filesystem = dask.config.get(
-                "jit-unspill-shared-fs", default=False
-            )
-        else:
-            cls._spill_shared_filesystem = shared_filesystem
-
-        if gds is None:
-            gds = dask.config.get("gds-spilling", default=False)
-        if gds:
-            try:
-                import cucim.clara.filesystem as cucim_fs  # noqa F401
-            except ImportError:
-                raise ImportError("GPUDirect Storage requires the cucim Python package")
-            else:
-                cls._gds_enabled = bool(cucim_fs.is_gds_available())
-        else:
-            cls._gds_enabled = False
+        assert cls._spill_to_disk is not None
 
         def disk_dumps(x):
             # When using GDS, we prepend "cuda" to serializers to keep the CUDA
             # objects on the GPU. Otherwise the "dask" or "pickle" serializer will
             # copy everything to host memory.
             serializers = ["dask", "pickle"]
-            if cls._gds_enabled:
+            if cls._spill_to_disk.gds_enabled:
                 serializers = ["cuda"] + serializers
             serialize_header, frames = serialize_and_split(
                 x, serializers=serializers, on_error="raise"
@@ -710,10 +661,10 @@ class ProxifyHostFile(MutableMapping):
                 {
                     "serializer": "disk",
                     "disk-io-header": disk_write(
-                        path=cls.gen_file_path(),
+                        path=cls._spill_to_disk.gen_file_path(),
                         frames=frames,
-                        shared_filesystem=cls._spill_shared_filesystem,
-                        gds=cls._gds_enabled,
+                        shared_filesystem=cls._spill_to_disk.shared_filesystem,
+                        gds=cls._spill_to_disk.gds_enabled,
                     ),
                     "serialize-header": serialize_header,
                 },
@@ -722,7 +673,9 @@ class ProxifyHostFile(MutableMapping):
 
         def disk_loads(header, frames):
             assert frames == []
-            frames = disk_read(header["disk-io-header"], gds=cls._gds_enabled)
+            frames = disk_read(
+                header["disk-io-header"], gds=cls._spill_to_disk.gds_enabled
+            )
             os.remove(header["disk-io-header"]["path"])
             if "compression" in header["serialize-header"]:
                 frames = decompress(header["serialize-header"], frames)
@@ -731,7 +684,7 @@ class ProxifyHostFile(MutableMapping):
         register_serialization_family("disk", disk_dumps, disk_loads)
 
     @classmethod
-    def serialize_proxy_to_disk_inplace(cls, proxy: ProxyObject):
+    def serialize_proxy_to_disk_inplace(cls, proxy: ProxyObject) -> None:
         """Serialize `proxy` to disk.
 
         Avoid de-serializing if `proxy` is serialized using "dask" or
@@ -743,6 +696,7 @@ class ProxifyHostFile(MutableMapping):
         proxy : ProxyObject
             Proxy object to serialize using the "disk" serialize.
         """
+        assert cls._spill_to_disk is not None
         pxy = proxy._pxy_get(copy=True)
         if pxy.is_serialized():
             header, frames = pxy.obj
@@ -751,9 +705,9 @@ class ProxifyHostFile(MutableMapping):
                     {
                         "serializer": "disk",
                         "disk-io-header": disk_write(
-                            path=cls.gen_file_path(),
+                            path=cls._spill_to_disk.gen_file_path(),
                             frames=frames,
-                            shared_filesystem=cls._spill_shared_filesystem,
+                            shared_filesystem=cls._spill_to_disk.shared_filesystem,
                         ),
                         "serialize-header": header,
                     },
