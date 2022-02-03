@@ -496,16 +496,20 @@ class ProxifyHostFile(MutableMapping):
         self.manager = ProxyManager(device_memory_limit, memory_limit)
 
         # Create an instance of `SpillToDiskProperties` if it doesn't already exist
-        local_directory = os.path.join(
-            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
-            "dask-worker-space",
-            "jit-unspill-disk-storage",
-        )
+        path = pathlib.Path(
+            os.path.join(
+                local_directory
+                or dask.config.get("temporary-directory")
+                or os.getcwd(),
+                "dask-worker-space",
+                "jit-unspill-disk-storage",
+            )
+        ).resolve()
         if ProxifyHostFile._spill_to_disk is None:
             ProxifyHostFile._spill_to_disk = SpillToDiskProperties(
-                local_directory, shared_filesystem, gds_spilling
+                path, shared_filesystem, gds_spilling
             )
-        elif ProxifyHostFile._spill_to_disk.root_dir != pathlib.Path(local_directory):
+        elif ProxifyHostFile._spill_to_disk.root_dir != path:
             raise ValueError("Cannot change the JIT-Unspilling disk path")
 
         self.register_disk_spilling()

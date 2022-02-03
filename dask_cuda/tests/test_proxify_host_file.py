@@ -1,4 +1,5 @@
 import re
+import tempfile
 from typing import Iterable
 
 import numpy as np
@@ -30,12 +31,24 @@ one_item_nbytes = one_item_array().nbytes
 dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
 dask_cuda.proxify_device_objects.ignore_types = ()
 
+# Make the "disk" serializer available and use a tmp directory
+if ProxifyHostFile._spill_to_disk is None:
+    # Hold on to `tmpdir` to keep dir alive until exit
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+    )
+assert ProxifyHostFile._spill_to_disk is not None
+
+# In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
+root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
+
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     """Check that two collections of proxies contains the same proxies (unordered)
 
     In order to avoid deserializing proxy objects when comparing them,
-    this funcntion compares object IDs.
+    this function compares object IDs.
     """
 
     ids1 = sorted([id(p) for p in p1])
@@ -44,7 +57,9 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
 
 
 def test_one_dev_item_limit():
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+    )
 
     a1 = one_item_array() + 42
     a2 = one_item_array()
@@ -133,7 +148,9 @@ def test_one_dev_item_limit():
 def test_one_item_host_limit(capsys):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        device_memory_limit=one_item_nbytes, memory_limit=memory_limit
+        local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=memory_limit,
     )
 
     a1 = one_item_array() + 1
@@ -203,6 +220,7 @@ def test_spill_on_demand():
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
+        local_directory=root_dir,
         device_memory_limit=2 * total_mem,
         memory_limit=2 * total_mem,
         spill_on_demand=True,
@@ -252,7 +270,9 @@ def test_dataframes_share_dev_mem():
     # They still share the same underlying device memory
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
-    dhf = ProxifyHostFile(device_memory_limit=160, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=160, memory_limit=1000
+    )
     dhf["v1"] = view1
     dhf["v2"] = view2
     v1 = dhf["v1"]
@@ -291,7 +311,9 @@ def test_externals():
     the device_memory_limit while freeing them ASAP without explicit calls to
     __delitem__.
     """
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+    )
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
     k2 = dhf.manager.proxify(one_item_array())

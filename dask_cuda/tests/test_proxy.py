@@ -1,5 +1,6 @@
 import operator
 import pickle
+import tempfile
 from types import SimpleNamespace
 
 import numpy as np
@@ -21,7 +22,13 @@ from dask_cuda import proxy_object
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
+# Make the "disk" serializer available and use a directory that are
+# remove on exit.
+if ProxifyHostFile._spill_to_disk is None:
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+    )
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle"), ("disk",)])
@@ -405,7 +412,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
-    ProxifyHostFile._spill_shared_filesystem = shared_fs
+    ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 
     def task(x):
         # Check that the subclass survives the trip from client to worker
