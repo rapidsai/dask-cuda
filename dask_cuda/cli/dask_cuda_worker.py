@@ -277,6 +277,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""Use a different class than Distributed's default (``distributed.Worker``)
     to spawn ``distributed.Nanny``.""",
 )
+@click.option(
+    "--pre-import",
+    default=None,
+    help="""Pre-import libraries as a Worker plugin to prevent long import times
+    bleeding through later Dask operations. Should be a list of comma-separated names,
+    such as "cudf,rmm".""",
+)
 def main(
     scheduler,
     host,
@@ -309,6 +316,7 @@ def main(
     net_devices,
     enable_jit_unspill,
     worker_class,
+    pre_import,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -358,6 +366,7 @@ def main(
         net_devices,
         enable_jit_unspill,
         worker_class,
+        pre_import,
         **kwargs,
     )
 
