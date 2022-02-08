@@ -276,7 +276,7 @@ class ProxyDetail:
                 return self.obj  # Nothing to be done
             else:
                 # The proxied object is serialized with other serializers
-                self.deserialize()
+                self.deserialize(maybe_evict=False)
 
         header, _ = self.obj = distributed.protocol.serialize(
             self.obj, serializers, on_error="raise"
