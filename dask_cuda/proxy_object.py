@@ -33,6 +33,7 @@ try:
 except ImportError:
     from dask.dataframe.utils import make_meta as make_meta_dispatch
 
+from .disk_io import SpillToDiskFile
 from .is_device_object import is_device_object
 
 if TYPE_CHECKING:
@@ -375,9 +376,6 @@ class ProxyObject:
         """We have to unregister us from the manager if any"""
         pxy = self._pxy_get()
         pxy.manager.remove(self)
-        if pxy.serializer == "disk":
-            header, _ = pxy.obj
-            os.remove(header["disk-io-header"]["path"])
 
     def _pxy_serialize(
         self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
@@ -800,17 +798,20 @@ def handle_disk_serialized(pxy: ProxyDetail):
         from .proxify_host_file import ProxifyHostFile
 
         assert ProxifyHostFile._spill_to_disk
-
-        old_path = disk_io_header["path"]
+        # Since we cannot copy a SpillToDiskFile, we remove it from the header
+        # prior to the deepcopy and then put it back in afterwards.
+        old_path = disk_io_header.pop("path")
         new_path = ProxifyHostFile._spill_to_disk.gen_file_path()
-        os.link(old_path, new_path)
+        os.link(str(old_path), new_path)
         header = _copy.deepcopy(header)
+        disk_io_header["path"] = old_path
+        # Notice, `new_path` is a string thus `obj_pxy_dask_deserialize()`` must
+        # re-wrap the path in a SpillToDiskFile instance.
         header["disk-io-header"]["path"] = new_path
     else:
         # When not on a shared filesystem, we deserialize to host memory
         assert frames == []
         frames = disk_read(disk_io_header)
-        os.remove(disk_io_header["path"])
         if "compression" in header["serialize-header"]:
             frames = decompress(header["serialize-header"], frames)
         header = header["serialize-header"]
@@ -838,7 +839,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
 def obj_pxy_cuda_serialize(obj: ProxyObject):
-    """ The CUDA serialization of ProxyObject used by Dask when communicating using UCX
+    """The CUDA serialization of ProxyObject used by Dask when communicating using UCX
 
     As serializers, it uses "cuda", which means that proxied CUDA objects are _not_
     spilled to main memory before communicated. However, we still have to handle disk
@@ -850,7 +851,6 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     elif pxy.serializer == "disk":
         header, frames = handle_disk_serialized(pxy)
         obj._pxy_set(pxy)
-
     else:
         # Notice, since obj._pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
@@ -874,7 +874,15 @@ def obj_pxy_dask_deserialize(header, frames):
         subclass = ProxyObject
     else:
         subclass = loads_function(args["subclass"])
-    return subclass(ProxyDetail(obj=(header["proxied-header"], frames), **args))
+    pxy = ProxyDetail(obj=(header["proxied-header"], frames), **args)
+    if pxy.serializer == "disk":
+        header, _ = pxy.obj
+        path = header["disk-io-header"]["path"]
+        # Make sure that the path is wrapped in a SpillToDiskFile instance
+        if not isinstance(path, SpillToDiskFile):
+            header["disk-io-header"]["path"] = SpillToDiskFile(path)
+        assert os.path.exists(path)
+    return subclass(pxy)
 
 
 @dask.dataframe.core.get_parallel_type.register(ProxyObject)

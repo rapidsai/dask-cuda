@@ -1,4 +1,5 @@
 import operator
+import os
 import pickle
 import tempfile
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
+from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
@@ -325,6 +327,33 @@ def test_serializing_to_disk(obj):
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
     assert pxy._pxy_get().serializer == "disk"
     assert obj == proxy_object.unproxy(pxy)
+
+
+@pytest.mark.parametrize("serializer", ["dask", "pickle", "disk"])
+def test_multiple_deserializations(serializer):
+    """Check for race conditions when accessing the ProxyDetail"""
+    data1 = bytearray(10)
+    proxy = proxy_object.asproxy(data1, serializers=(serializer,))
+    pxy = proxy._pxy_get()
+    data2 = proxy._pxy_deserialize()
+    assert data1 == data2
+
+    # Check that the spilled file still exist.
+    if serializer == "disk":
+        file_path = pxy.obj[0]["disk-io-header"]["path"]
+        assert isinstance(file_path, SpillToDiskFile)
+        assert file_path.exists()
+        file_path = str(file_path)
+
+    # Check that the spilled data within `pxy` is still available even
+    # though `proxy` has been deserialized.
+    data3 = pxy.deserialize()
+    assert data1 == data3
+
+    # Check that the spilled file has been removed now that all reference
+    # to is has been deleted.
+    if serializer == "disk":
+        assert not os.path.exists(file_path)
 
 
 @pytest.mark.parametrize("size", [10, 10 ** 4])

@@ -680,7 +680,6 @@ class ProxifyHostFile(MutableMapping):
             frames = disk_read(
                 header["disk-io-header"], gds=cls._spill_to_disk.gds_enabled
             )
-            os.remove(header["disk-io-header"]["path"])
             if "compression" in header["serialize-header"]:
                 frames = decompress(header["serialize-header"], frames)
             return merge_and_deserialize(header["serialize-header"], frames)

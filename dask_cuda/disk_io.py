@@ -1,4 +1,5 @@
 import os
+import os.path
 import pathlib
 import tempfile
 import threading
@@ -48,6 +49,37 @@ def get_new_cuda_buffer() -> Callable[[int], object]:
         pass
 
     raise RuntimeError("GPUDirect Storage requires RMM, CuPy, or Numba")
+
+
+class SpillToDiskFile:
+    """File path the gets removed on destruction
+
+    When spilling to disk, we have to delay the removal of the file
+    until no more proxies are pointing to the file.
+    """
+
+    path: str
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def __del__(self):
+        os.remove(self.path)
+
+    def __str__(self) -> str:
+        return self.path
+
+    def exists(self):
+        return os.path.exists(self.path)
+
+    def __copy__(self):
+        raise RuntimeError("Cannot copy, deepcopy, or pickle a SpillToDiskFile")
+
+    def __deepcopy__(self, memo):
+        self.__copy__()
+
+    def __reduce__(self):
+        self.__copy__()
 
 
 class SpillToDiskProperties:
@@ -139,7 +171,7 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
                 f.write(frame)
     return {
         "method": "stdio",
-        "path": path,
+        "path": SpillToDiskFile(path),
         "frame-lengths": tuple(map(nbytes, frames)),
         "shared-filesystem": shared_filesystem,
         "cuda-frames": cuda_frames,
@@ -177,7 +209,7 @@ def disk_read(header: Mapping, gds=False) -> list:
                 file_offset += length
                 ret.append(buf)
     else:
-        with open(header["path"], "rb") as f:
+        with open(str(header["path"]), "rb") as f:
             for length in header["frame-lengths"]:
                 ret.append(f.read(length))
     return ret
