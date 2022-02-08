@@ -314,10 +314,6 @@ def test_spilling_local_cuda_cluster(jit_unspill):
 def test_serializing_to_disk(obj):
     """Check serializing to disk"""
 
-    if isinstance(obj, str):
-        backend = pytest.importorskip(obj)
-        obj = backend.arange(100)
-
     # Serialize from device to disk
     pxy = proxy_object.asproxy(obj)
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
