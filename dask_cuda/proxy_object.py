@@ -792,30 +792,26 @@ def handle_disk_serialized(pxy: ProxyDetail):
 
     On a non-shared filesystem, we deserialize the proxy to host memory.
     """
-    header, frames = pxy.obj
-    disk_io_header = header["disk-io-header"]
-    if disk_io_header["shared-filesystem"]:
+
+    org_header, frames = pxy.obj
+    header = _copy.deepcopy(org_header)
+
+    if header["disk-io-header"]["shared-filesystem"]:
         from .proxify_host_file import ProxifyHostFile
 
         assert ProxifyHostFile._spill_to_disk
-        # Since we cannot copy a SpillToDiskFile, we remove it from the header
-        # prior to the deepcopy and then put it back in afterwards.
-        old_path = disk_io_header.pop("path")
         new_path = ProxifyHostFile._spill_to_disk.gen_file_path()
-        os.link(str(old_path), new_path)
-        header = _copy.deepcopy(header)
-        disk_io_header["path"] = old_path
-        # Notice, `new_path` is a string thus `obj_pxy_dask_deserialize()`` must
-        # re-wrap the path in a SpillToDiskFile instance.
+        os.link(header["disk-io-header"]["path"], new_path)
         header["disk-io-header"]["path"] = new_path
     else:
-        # When not on a shared filesystem, we deserialize to host memory
+        # When not on a shared filesystem, we deserialize to host memory inplace
         assert frames == []
-        frames = disk_read(disk_io_header)
+        frames = disk_read(header.pop("disk-io-header"))
         if "compression" in header["serialize-header"]:
             frames = decompress(header["serialize-header"], frames)
         header = header["serialize-header"]
         pxy.serializer = header["serializer"]
+        pxy.obj = (header, frames)
     return header, frames
 
 

@@ -72,11 +72,16 @@ class SpillToDiskFile:
     def exists(self):
         return os.path.exists(self.path)
 
-    def __copy__(self):
-        raise RuntimeError("Cannot copy, deepcopy, or pickle a SpillToDiskFile")
+    def __deepcopy__(self, memo) -> str:
+        """A deep copy is simple the path as a string.
 
-    def __deepcopy__(self, memo):
-        self.__copy__()
+        In order to avoid multiple instance of SpillToDiskFile pointing
+        to the same file, we do not allow a direct copy.
+        """
+        return self.path
+
+    def __copy__(self):
+        raise RuntimeError("Cannot copy or pickle a SpillToDiskFile")
 
     def __reduce__(self):
         self.__copy__()
