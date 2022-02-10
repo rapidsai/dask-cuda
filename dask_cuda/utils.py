@@ -52,7 +52,7 @@ class RMMSetup:
         managed_memory,
         async_alloc,
         log_directory,
-        track_allocations
+        track_allocations,
     ):
         if initial_pool_size is None and maximum_pool_size is not None:
             raise ValueError(
@@ -96,9 +96,7 @@ class RMMSetup:
             )
         if self.rmm_track_allocations:
             mr = rmm.mr.get_current_device_resource()
-            rmm.mr.set_current_device_resource(
-                rmm.mr.TrackingResourceAdaptor(mr)
-            )
+            rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
 
 
 def unpack_bitmask(x, mask_bits=64):

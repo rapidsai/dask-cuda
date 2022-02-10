@@ -124,7 +124,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     default=False,
     help="""Track memory allocations made by RMM. If ``True``, wraps the memory
     resource of each worker with a ``rmm.mr.TrackingResourceAdaptor`` that
-    allows querying the amount of memory allocated by RMM."""
+    allows querying the amount of memory allocated by RMM.""",
 )
 @click.option(
     "--pid-file", type=str, default="", help="File to write the process PID.",
