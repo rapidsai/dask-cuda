@@ -97,7 +97,9 @@ def proxify_device_objects(
     return ret
 
 
-def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
+def unproxify_device_objects(
+    obj: T, skip_explicit_proxies: bool = False, only_incompatible_types: bool = False
+) -> T:
     """ Unproxify device objects
 
     Search through `obj` and un-wraps all CUDA device objects.
@@ -108,6 +110,9 @@ def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
         Object to search through or unproxify.
     skip_explicit_proxies: bool
         When True, skipping proxy objects marked as explicit proxies.
+    only_incompatible_types: bool
+        When True, ONLY unproxify incompatible type. The skip_explicit_proxies
+        argument is ignored.
 
     Returns
     -------
@@ -116,20 +121,22 @@ def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
     """
     if isinstance(obj, dict):
         return {
-            k: unproxify_device_objects(v, skip_explicit_proxies)
+            k: unproxify_device_objects(
+                v, skip_explicit_proxies, only_incompatible_types
+            )
             for k, v in obj.items()
         }  # type: ignore
     if isinstance(obj, (list, tuple, set, frozenset)):
         return obj.__class__(
-            unproxify_device_objects(i, skip_explicit_proxies) for i in obj
+            unproxify_device_objects(i, skip_explicit_proxies, only_incompatible_types)
+            for i in obj
         )  # type: ignore
     if isinstance(obj, ProxyObject):
         pxy = obj._pxy_get(copy=True)
-        if (
-            not skip_explicit_proxies
-            or not pxy.explicit_proxy
-            or (incompatible_types and isinstance(obj, incompatible_types))
-        ):
+        if only_incompatible_types:
+            if incompatible_types and isinstance(obj, incompatible_types):
+                obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
+        elif not skip_explicit_proxies or not pxy.explicit_proxy:
             pxy.explicit_proxy = False
             obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
     return obj

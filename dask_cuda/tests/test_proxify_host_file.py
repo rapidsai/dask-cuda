@@ -333,12 +333,16 @@ def test_incompatible_types():
     Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
     """
     cupy = pytest.importorskip("cupy")
+    cudf = pytest.importorskip("cudf")
     dhf = ProxifyHostFile(device_memory_limit=100, memory_limit=100)
 
-    org = cupy.arange(9)
-    dhf["a"] = org
-    pxy = dhf["a"]
-    assert org is pxy
+    # We expect `dhf` to unproxify `a1` (but not `a2`) on retrival
+    a1, a2 = (cupy.arange(9), cudf.Series([1, 2, 3]))
+    dhf["a"] = (a1, a2)
+    b1, b2 = dhf["a"]
+    assert a1 is b1
+    assert isinstance(b2, ProxyObject)
+    assert a2 is unproxy(b2)
 
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
