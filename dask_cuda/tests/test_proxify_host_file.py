@@ -36,7 +36,7 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     """Check that two collections of proxies contains the same proxies (unordered)
 
     In order to avoid deserializing proxy objects when comparing them,
-    this funcntion compares object IDs.
+    this function compares object IDs.
     """
 
     ids1 = sorted([id(p) for p in p1])
@@ -295,7 +295,8 @@ def test_externals():
     dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
-    k2 = dhf.manager.proxify(one_item_array())
+    k2, incompatible_type_found = dhf.manager.proxify(one_item_array())
+    assert not incompatible_type_found
     # `k2` isn't part of the store but still triggers spilling of `k1`
     assert len(dhf) == 1
     assert k1._pxy_get().is_serialized()

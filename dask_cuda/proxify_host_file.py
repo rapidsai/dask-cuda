@@ -319,8 +319,13 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: T) -> T:
-        """Proxify `obj` and add found proxies to the Proxies collections"""
+    def proxify(self, obj: T) -> Tuple[T, bool]:
+        """Proxify `obj` and add found proxies to the Proxies collections
+
+        Returns the proxified object and a boolean, which is True when one or
+        more incompatible-types were found.
+        """
+        incompatible_type_found = False
         with self.lock:
             found_proxies: List[ProxyObject] = []
             # In order detect already proxied object, proxify_device_objects()
@@ -336,8 +341,10 @@ class ProxyManager:
                 if not self.contains(id(p)):
                     pxy.manager = self
                     self.add(proxy=p, serializer=pxy.serializer)
+                if pdo.incompatible_types and isinstance(p, pdo.incompatible_types):
+                    incompatible_type_found = True
         self.maybe_evict()
-        return ret
+        return ret, incompatible_type_found
 
     def evict(
         self,
@@ -496,6 +503,7 @@ class ProxifyHostFile(MutableMapping):
         gds_spilling: bool = None,
     ):
         self.store: Dict[Hashable, Any] = {}
+        self.key_containts_incompatible_type: Dict[Hashable, bool] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
         self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
         if compatibility_mode is None:
@@ -604,7 +612,8 @@ class ProxifyHostFile(MutableMapping):
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
-            self.store[key] = self.manager.proxify(value)
+            self.store[key], incompatible_type_found = self.manager.proxify(value)
+            self.key_containts_incompatible_type[key] = incompatible_type_found
 
     def __getitem__(self, key):
         with self.lock:
@@ -612,7 +621,9 @@ class ProxifyHostFile(MutableMapping):
         if self.compatibility_mode:
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
             self.manager.maybe_evict()
-        elif pdo.incompatible_types:
+        elif self.key_containts_incompatible_type[key]:
+            # Notice, we only call `unproxify_device_objects()` when `key`
+            # contains incompatible types.
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
             self.manager.maybe_evict()
         return ret
@@ -620,6 +631,7 @@ class ProxifyHostFile(MutableMapping):
     def __delitem__(self, key):
         with self.lock:
             del self.store[key]
+            del self.key_containts_incompatible_type[key]
 
     @classmethod
     def gen_file_path(cls) -> str:
