@@ -328,7 +328,7 @@ def test_externals():
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
 def test_incompatible_types():
-    """Check that ProxifyHostFile unproxify `cupy.ndarray` on retrival
+    """Check that ProxifyHostFile unproxify `cupy.ndarray` on retrieval
 
     Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
     """
@@ -336,7 +336,7 @@ def test_incompatible_types():
     cudf = pytest.importorskip("cudf")
     dhf = ProxifyHostFile(device_memory_limit=100, memory_limit=100)
 
-    # We expect `dhf` to unproxify `a1` (but not `a2`) on retrival
+    # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval
     a1, a2 = (cupy.arange(9), cudf.Series([1, 2, 3]))
     dhf["a"] = (a1, a2)
     b1, b2 = dhf["a"]
