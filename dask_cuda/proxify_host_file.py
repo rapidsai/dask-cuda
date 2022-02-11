@@ -618,12 +618,7 @@ class ProxifyHostFile(MutableMapping):
     def __getitem__(self, key):
         with self.lock:
             ret = self.store[key]
-        if self.compatibility_mode:
-            ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
-            self.manager.maybe_evict()
-        elif self.key_containts_incompatible_type[key]:
-            # Notice, we only call `unproxify_device_objects()` when `key`
-            # contains incompatible types.
+        if self.compatibility_mode or self.key_containts_incompatible_type[key]:
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
             self.manager.maybe_evict()
         return ret
