@@ -1,5 +1,6 @@
 import re
 from typing import Iterable
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -25,10 +26,10 @@ cupy.cuda.set_allocator(None)
 one_item_array = lambda: cupy.arange(1)
 one_item_nbytes = one_item_array().nbytes
 
-# While testing we want to proxify `cupy.ndarray` even though
-# it is on the ignore_type list by default.
+# While testing we don't want to unproxify `cupy.ndarray` even though
+# it is on the incompatible_types list by default.
 dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
-dask_cuda.proxify_device_objects.ignore_types = ()
+dask_cuda.proxify_device_objects.incompatible_types = ()  # type: ignore
 
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
@@ -324,29 +325,19 @@ def test_externals():
     assert dhf.manager._dev._mem_usage == 0
 
 
-def test_proxify_device_objects_of_cupy_array():
-    """Check that a proxied array behaves as a regular cupy array
+@patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
+def test_incompatible_types():
+    """Check that ProxifyHostFile unproxify `cupy.ndarray` on retrival
 
-    Notice, in this test we add `cupy.ndarray` to the ignore_types temporarily.
+    Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
     """
     cupy = pytest.importorskip("cupy")
-    dask_cuda.proxify_device_objects.ignore_types = (cupy.ndarray,)
-    try:
-        # Make sure that equality works, which we use to test the other operators
-        org = cupy.arange(9).reshape((3, 3)) + 1
-        pxy = dask_cuda.proxify_device_objects.proxify_device_objects(
-            org.copy(), {}, []
-        )
-        assert (org == pxy).all()
-        assert (org + 1 != pxy).all()
+    dhf = ProxifyHostFile(device_memory_limit=100, memory_limit=100)
 
-        for op in [cupy.dot]:
-            res = op(org, org)
-            assert (op(pxy, pxy) == res).all()
-            assert (op(org, pxy) == res).all()
-            assert (op(pxy, org) == res).all()
-    finally:
-        dask_cuda.proxify_device_objects.ignore_types = ()
+    org = cupy.arange(9)
+    dhf["a"] = org
+    pxy = dhf["a"]
+    assert org is pxy
 
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])

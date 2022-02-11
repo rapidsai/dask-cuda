@@ -36,9 +36,9 @@ from distributed.protocol.serialize import (
     serialize_and_split,
 )
 
-from dask_cuda.disk_io import disk_read, disk_write
-from dask_cuda.get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
-
+from . import proxify_device_objects as pdo
+from .disk_io import disk_read, disk_write
+from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
 
@@ -610,6 +610,9 @@ class ProxifyHostFile(MutableMapping):
         with self.lock:
             ret = self.store[key]
         if self.compatibility_mode:
+            ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
+            self.manager.maybe_evict()
+        elif pdo.incompatible_types:
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
             self.manager.maybe_evict()
         return ret
