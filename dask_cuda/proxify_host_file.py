@@ -502,6 +502,9 @@ class ProxifyHostFile(MutableMapping):
         spill_on_demand: bool = None,
         gds_spilling: bool = None,
     ):
+        # each value of self.store is a tuple containing the proxified
+        # object, as well as a boolean indicating whether any
+        # incompatible types were found when proxifying it
         self.store: Dict[Hashable, Tuple[Any, bool]] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
         self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
