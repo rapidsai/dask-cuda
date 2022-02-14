@@ -2,8 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
+import sys
 from unittest.mock import patch
 
+import pkg_resources
 import pytest
 
 from distributed import Client, wait
@@ -162,8 +164,8 @@ def test_rmm_logging(loop):  # noqa: F811
                     assert v is rmm.mr.LoggingResourceAdaptor
 
 
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_dashboard_address(loop):  # noqa: F811
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -187,6 +189,41 @@ def test_unknown_argument():
     ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
     assert ret.returncode != 0
     assert b"Scheduler address: --my-argument" in ret.stderr
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_pre_import(loop):  # noqa: F811
+    module = None
+
+    # Pick a module that isn't currently loaded
+    for m in pkg_resources.working_set:
+        if m.key not in sys.modules.keys():
+            module = m.key
+            break
+
+    if module is None:
+        pytest.skip("No module found that isn't already loaded")
+
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            ["dask-cuda-worker", "127.0.0.1:9369", "--pre-import", module,]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                imported = client.run(lambda: module in sys.modules)
+                assert all(imported)
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_pre_import_not_found():
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        ret = subprocess.run(
+            ["dask-cuda-worker", "127.0.0.1:9369", "--pre-import", "my_module"],
+            capture_output=True,
+        )
+        assert ret.returncode != 0
+        assert b"ModuleNotFoundError: No module named 'my_module'" in ret.stderr
 
 
 @patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})

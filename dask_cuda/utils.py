@@ -105,7 +105,6 @@ class PreImport:
 
     def setup(self, worker=None):
         for l in self.libraries:
-            print(f"Importing {l}")
             importlib.import_module(l)
 
 
