@@ -328,7 +328,7 @@ def test_externals():
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
 def test_incompatible_types():
-    """Check that ProxifyHostFile unproxify `cupy.ndarray` on retrieval
+    """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
 
     Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
     """
