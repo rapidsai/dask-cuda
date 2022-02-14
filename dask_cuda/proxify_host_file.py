@@ -502,8 +502,7 @@ class ProxifyHostFile(MutableMapping):
         spill_on_demand: bool = None,
         gds_spilling: bool = None,
     ):
-        self.store: Dict[Hashable, Any] = {}
-        self.key_contains_incompatible_type: Dict[Hashable, bool] = {}
+        self.store: Dict[Hashable, Tuple[Any, bool]] = {}
         self.manager = ProxyManager(device_memory_limit, memory_limit)
         self.register_disk_spilling(local_directory, shared_filesystem, gds_spilling)
         if compatibility_mode is None:
@@ -612,16 +611,15 @@ class ProxifyHostFile(MutableMapping):
             if key in self.store:
                 # Make sure we register the removal of an existing key
                 del self[key]
-            self.store[key], incompatible_type_found = self.manager.proxify(value)
-            self.key_contains_incompatible_type[key] = incompatible_type_found
+            self.store[key] = self.manager.proxify(value)
 
     def __getitem__(self, key):
         with self.lock:
-            ret = self.store[key]
+            ret, incompatible_type_found = self.store[key]
         if self.compatibility_mode:
             ret = unproxify_device_objects(ret, skip_explicit_proxies=True)
             self.manager.maybe_evict()
-        elif self.key_contains_incompatible_type[key]:
+        elif incompatible_type_found:
             # Notice, we only call `unproxify_device_objects()` when `key`
             # contains incompatible types.
             ret = unproxify_device_objects(ret, only_incompatible_types=True)
@@ -631,7 +629,6 @@ class ProxifyHostFile(MutableMapping):
     def __delitem__(self, key):
         with self.lock:
             del self.store[key]
-            del self.key_contains_incompatible_type[key]
 
     @classmethod
     def gen_file_path(cls) -> str:
