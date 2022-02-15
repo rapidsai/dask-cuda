@@ -377,7 +377,7 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert all(res)  # Only proxy objects
 
 
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling """
     cudf = pytest.importorskip("cudf")
