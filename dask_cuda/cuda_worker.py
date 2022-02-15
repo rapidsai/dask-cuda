@@ -24,6 +24,7 @@ from .initialize import initialize
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
+    PreImport,
     RMMSetup,
     _ucx_111,
     cuda_visible_devices,
@@ -80,6 +81,7 @@ class CUDAWorker(Server):
         net_devices=None,
         jit_unspill=None,
         worker_class=None,
+        pre_import=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -249,6 +251,7 @@ class CUDAWorker(Server):
                         rmm_async,
                         rmm_log_directory,
                     ),
+                    PreImport(pre_import),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,

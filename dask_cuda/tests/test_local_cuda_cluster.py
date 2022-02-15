@@ -1,6 +1,8 @@
 import os
+import sys
 from unittest.mock import patch
 
+import pkg_resources
 import pytest
 
 from dask.distributed import Client
@@ -82,6 +84,7 @@ async def test_with_subset_of_cuda_visible_devices():
 
 @pytest.mark.parametrize("protocol", ["ucx", None])
 @pytest.mark.asyncio
+@gen_test(timeout=20)
 async def test_ucx_protocol(protocol):
     pytest.importorskip("ucp")
 
@@ -96,6 +99,7 @@ async def test_ucx_protocol(protocol):
 
 @pytest.mark.asyncio
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
+@gen_test(timeout=20)
 async def test_ucx_protocol_type_error():
     pytest.importorskip("ucp")
 
@@ -200,6 +204,36 @@ async def test_rmm_logging():
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.LoggingResourceAdaptor
+
+
+@gen_test(timeout=20)
+async def test_pre_import():
+    module = None
+
+    # Pick a module that isn't currently loaded
+    for m in pkg_resources.working_set:
+        if m.key not in sys.modules.keys():
+            module = m.key
+            break
+
+    if module is None:
+        pytest.skip("No module found that isn't already loaded")
+
+    async with LocalCUDACluster(
+        n_workers=1, pre_import=module, asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            imported = await client.run(lambda: module in sys.modules)
+
+            assert all(imported.values())
+
+
+# Intentionally not using @gen_test to skip cleanup checks
+async def test_pre_import_not_found():
+    with pytest.raises(ModuleNotFoundError):
+        await LocalCUDACluster(
+            n_workers=1, pre_import="my_module", asynchronous=True,
+        )
 
 
 @gen_test(timeout=20)
