@@ -320,9 +320,9 @@ class ProxyManager:
                         assert header["serializer"] == pxy.serializer
 
     def proxify(self, obj: T) -> Tuple[T, bool]:
-        """Proxify `obj` and add found proxies to the Proxies collections
+        """Proxify `obj` and add found proxies to the `Proxies` collections
 
-        Returns the proxified object and a boolean, which is True when one or
+        Returns the proxified object and a boolean, which is `True` when one or
         more incompatible-types were found.
         """
         incompatible_type_found = False
