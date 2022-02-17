@@ -254,7 +254,7 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
                     result = client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
                     assert list(result.values())[0] == gpu_uuid
 
-                    
+
 def test_rmm_track_allocations(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
