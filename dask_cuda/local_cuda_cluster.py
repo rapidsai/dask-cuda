@@ -417,7 +417,7 @@ class LocalCUDACluster(LocalCluster):
                         self.rmm_managed_memory,
                         self.rmm_async,
                         self.rmm_log_directory,
-                        self.rmm_track_allocations
+                        self.rmm_track_allocations,
                     ),
                 },
             }

@@ -249,7 +249,7 @@ class CUDAWorker(Server):
                         rmm_managed_memory,
                         rmm_async,
                         rmm_log_directory,
-                        rmm_track_allocations
+                        rmm_track_allocations,
                     ),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
