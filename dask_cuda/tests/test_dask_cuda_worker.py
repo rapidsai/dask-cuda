@@ -267,7 +267,7 @@ def test_rmm_track_allocations(loop):  # noqa: F811
                 "--rmm-pool-size",
                 "2 GB",
                 "--no-dashboard",
-                "--rmm-track-allocations"
+                "--rmm-track-allocations",
             ]
         ):
             with Client("127.0.0.1:9369", loop=loop) as client:
