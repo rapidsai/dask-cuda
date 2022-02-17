@@ -120,8 +120,9 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         are specified.""",
 )
 @click.option(
-    "--rmm-track-allocations",
+    "--rmm-track-allocations/--no-rmm-track-allocations",
     default=False,
+    show_default=True,
     help="""Track memory allocations made by RMM. If ``True``, wraps the memory
     resource of each worker with a ``rmm.mr.TrackingResourceAdaptor`` that
     allows querying the amount of memory allocated by RMM."""
