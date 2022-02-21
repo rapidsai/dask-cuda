@@ -358,7 +358,9 @@ def test_incompatible_types():
     """
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")
-    dhf = ProxifyHostFile(device_memory_limit=100, memory_limit=100)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=100, memory_limit=100
+    )
 
     # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval
     a1, a2 = (cupy.arange(9), cudf.Series([1, 2, 3]))
