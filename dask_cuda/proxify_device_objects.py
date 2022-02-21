@@ -2,7 +2,7 @@ import functools
 import pydoc
 from collections import defaultdict
 from functools import partial
-from typing import List, MutableMapping, TypeVar
+from typing import List, MutableMapping, Optional, Tuple, TypeVar
 
 import dask
 from dask.utils import Dispatch
@@ -10,33 +10,30 @@ from dask.utils import Dispatch
 from .proxy_object import ProxyObject, asproxy
 
 dispatch = Dispatch(name="proxify_device_objects")
-ignore_types = None
+incompatible_types: Optional[Tuple[type]] = None
 
 T = TypeVar("T")
 
 
-def _register_ignore_types():
-    """Lazy register types that shouldn't be proxified
+def _register_incompatible_types():
+    """Lazy register types that ProxifyHostFile should unproxify on retrieval.
 
-    It reads the config key "jit-unspill-ignore" (DASK_JIT_UNSPILL_IGNORE),
-    which should be a comma seperated list of types to ignore. The default
-    value is:
-        DASK_JIT_UNSPILL_IGNORE="cupy.ndarray"
-
-    Notice, it is not possible to ignore types explicitly handled by this
-    module such as `cudf.DataFrame`, `cudf.Series`, and `cudf.Index`.
+    It reads the config key "jit-unspill-incompatible"
+    (DASK_JIT_UNSPILL_INCOMPATIBLE), which should be a comma seperated
+    list of types. The default value is:
+        DASK_JIT_UNSPILL_INCOMPATIBLE="cupy.ndarray"
     """
-    global ignore_types
-    if ignore_types is not None:
+    global incompatible_types
+    if incompatible_types is not None:
         return  # Only register once
     else:
-        ignore_types = ()
+        incompatible_types = ()
 
-    ignores = dask.config.get("jit-unspill-ignore", "cupy.ndarray")
-    ignores = ignores.split(",")
+    incompatibles = dask.config.get("jit-unspill-incompatible", "cupy.ndarray")
+    incompatibles = incompatibles.split(",")
 
     toplevels = defaultdict(set)
-    for path in ignores:
+    for path in incompatibles:
         if path:
             toplevel = path.split(".", maxsplit=1)[0].strip()
             toplevels[toplevel].add(path.strip())
@@ -44,8 +41,10 @@ def _register_ignore_types():
     for toplevel, ignores in toplevels.items():
 
         def f(paths):
-            global ignore_types
-            ignore_types = ignore_types + tuple(pydoc.locate(p) for p in paths)
+            global incompatible_types
+            incompatible_types = incompatible_types + tuple(
+                pydoc.locate(p) for p in paths
+            )
 
         dispatch.register_lazy(toplevel, partial(f, ignores))
 
@@ -86,7 +85,7 @@ def proxify_device_objects(
     ret: Any
         A copy of `obj` where all CUDA device objects are wrapped in ProxyObject
     """
-    _register_ignore_types()
+    _register_incompatible_types()
 
     if proxied_id_to_proxy is None:
         proxied_id_to_proxy = {}
@@ -98,7 +97,9 @@ def proxify_device_objects(
     return ret
 
 
-def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
+def unproxify_device_objects(
+    obj: T, skip_explicit_proxies: bool = False, only_incompatible_types: bool = False
+) -> T:
     """Unproxify device objects
 
     Search through `obj` and un-wraps all CUDA device objects.
@@ -109,6 +110,9 @@ def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
         Object to search through or unproxify.
     skip_explicit_proxies: bool
         When True, skipping proxy objects marked as explicit proxies.
+    only_incompatible_types: bool
+        When True, ONLY unproxify incompatible type. The skip_explicit_proxies
+        argument is ignored.
 
     Returns
     -------
@@ -117,16 +121,22 @@ def unproxify_device_objects(obj: T, skip_explicit_proxies: bool = False) -> T:
     """
     if isinstance(obj, dict):
         return {
-            k: unproxify_device_objects(v, skip_explicit_proxies)
+            k: unproxify_device_objects(
+                v, skip_explicit_proxies, only_incompatible_types
+            )
             for k, v in obj.items()
         }  # type: ignore
     if isinstance(obj, (list, tuple, set, frozenset)):
         return obj.__class__(
-            unproxify_device_objects(i, skip_explicit_proxies) for i in obj
+            unproxify_device_objects(i, skip_explicit_proxies, only_incompatible_types)
+            for i in obj
         )  # type: ignore
     if isinstance(obj, ProxyObject):
         pxy = obj._pxy_get(copy=True)
-        if not skip_explicit_proxies or not pxy.explicit_proxy:
+        if only_incompatible_types:
+            if incompatible_types and isinstance(obj, incompatible_types):
+                obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
+        elif not skip_explicit_proxies or not pxy.explicit_proxy:
             pxy.explicit_proxy = False
             obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
     return obj
@@ -178,7 +188,7 @@ def proxify(obj, proxied_id_to_proxy, found_proxies, subclass=None):
 def proxify_device_object_default(
     obj, proxied_id_to_proxy, found_proxies, excl_proxies
 ):
-    if hasattr(obj, "__cuda_array_interface__") and not isinstance(obj, ignore_types):
+    if hasattr(obj, "__cuda_array_interface__"):
         return proxify(obj, proxied_id_to_proxy, found_proxies)
     return obj
 
