@@ -1,3 +1,4 @@
+import importlib
 import math
 import os
 import time
@@ -82,6 +83,19 @@ class RMMSetup:
                     worker, self.logging, self.log_directory
                 ),
             )
+
+
+class PreImport:
+    def __init__(self, libraries):
+        if libraries is None:
+            libraries = []
+        elif isinstance(libraries, str):
+            libraries = libraries.split(",")
+        self.libraries = libraries
+
+    def setup(self, worker=None):
+        for l in self.libraries:
+            importlib.import_module(l)
 
 
 def unpack_bitmask(x, mask_bits=64):

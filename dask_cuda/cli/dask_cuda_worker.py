@@ -43,9 +43,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="""A unique name for the worker. Can be a string (like ``"worker-1"``) or
-    ``None`` for a nameless worker. If used with ``--nprocs``, then the process number
-    will be appended to the worker name, e.g. ``"worker-1-0"``, ``"worker-1-1"``,
-    ``"worker-1-2"``.""",
+    ``None`` for a nameless worker.""",
 )
 @click.option(
     "--memory-limit",
@@ -126,9 +124,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--resources",
     type=str,
     default="",
-    help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``. Resources are
-    applied separately to each worker process (only relevant when starting multiple
-    worker processes with ``--nprocs``).""",
+    help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``.""",
 )
 @click.option(
     "--dashboard/--no-dashboard",
@@ -266,6 +262,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""Use a different class than Distributed's default (``distributed.Worker``)
     to spawn ``distributed.Nanny``.""",
 )
+@click.option(
+    "--pre-import",
+    default=None,
+    help="""Pre-import libraries as a Worker plugin to prevent long import times
+    bleeding through later Dask operations. Should be a list of comma-separated names,
+    such as "cudf,rmm".""",
+)
 def main(
     scheduler,
     host,
@@ -297,6 +300,7 @@ def main(
     enable_rdmacm,
     enable_jit_unspill,
     worker_class,
+    pre_import,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -345,6 +349,7 @@ def main(
         enable_rdmacm,
         enable_jit_unspill,
         worker_class,
+        pre_import,
         **kwargs,
     )
 

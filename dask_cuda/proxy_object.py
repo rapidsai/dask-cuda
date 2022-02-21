@@ -471,15 +471,28 @@ class ProxyObject:
             object.__setattr__(pxy.deserialize(nbytes=self.__sizeof__()), name, val)
         self._pxy_set(pxy)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        inputs = tuple(
-            o._pxy_deserialize() if isinstance(o, ProxyObject) else o for o in inputs
-        )
-        kwargs = {
-            key: value._pxy_deserialize() if isinstance(value, ProxyObject) else value
-            for key, value in kwargs.items()
-        }
-        return self._pxy_deserialize().__array_ufunc__(ufunc, method, *inputs, **kwargs)
+    def __array_ufunc__(self, ufunc, method, *args, **kwargs):
+        from .proxify_device_objects import unproxify_device_objects
+
+        args, kwargs = unproxify_device_objects(args), unproxify_device_objects(kwargs)
+        return self._pxy_deserialize().__array_ufunc__(ufunc, method, *args, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        from .proxify_device_objects import unproxify_device_objects
+
+        kwargs = unproxify_device_objects(kwargs)
+        proxied = self._pxy_deserialize()
+
+        # Unproxify `args` and `types`
+        types = [t for t in types if not issubclass(t, type(self))]
+        args_proxied = []
+        for a in args:
+            if isinstance(a, type(self)):
+                types.append(a.__class__)
+                args_proxied.append(a._pxy_deserialize())
+            else:
+                args_proxied.append(a)
+        return proxied.__array_function__(func, types, args_proxied, kwargs)
 
     def __str__(self):
         return str(self._pxy_deserialize())
@@ -606,6 +619,9 @@ class ProxyObject:
     def __or__(self, other):
         return self._pxy_deserialize() | other
 
+    def __matmul__(self, other):
+        return self._pxy_deserialize().__matmul__(unproxy(other))
+
     def __radd__(self, other):
         return other + self._pxy_deserialize()
 
@@ -725,6 +741,14 @@ class ProxyObject:
         pxy = self._pxy_get(copy=True)
         proxied = pxy.deserialize(nbytes=self.__sizeof__())
         proxied |= other
+        self._pxy_set(pxy)
+        return self
+
+    def __imatmul__(self, other):
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
+        proxied @= other
+        pxy.obj = proxied
         self._pxy_set(pxy)
         return self
 

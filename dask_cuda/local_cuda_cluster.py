@@ -12,6 +12,7 @@ from .initialize import initialize
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     CPUAffinity,
+    PreImport,
     RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
@@ -149,6 +150,10 @@ class LocalCUDACluster(LocalCluster):
     log_spilling : bool, default True
         Enable logging of spilling operations directly to ``distributed.Worker`` with an
         ``INFO`` log level.
+    pre_import : str, list or None, default None
+        Pre-import libraries as a Worker plugin to prevent long import times bleeding
+        through later Dask operations. Should be a list of comma-separated names,
+        such as "cudf,rmm" or a list of strings such as ["cudf", "rmm"].
 
     Examples
     --------
@@ -193,6 +198,7 @@ class LocalCUDACluster(LocalCluster):
         jit_unspill=None,
         log_spilling=False,
         worker_class=None,
+        pre_import=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
@@ -314,6 +320,8 @@ class LocalCUDACluster(LocalCluster):
                 worker_class=worker_class,
             )
 
+        self.pre_import = pre_import
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -370,6 +378,7 @@ class LocalCUDACluster(LocalCluster):
                         self.rmm_async,
                         self.rmm_log_directory,
                     ),
+                    PreImport(self.pre_import),
                 },
             }
         )
