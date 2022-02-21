@@ -6,8 +6,8 @@ from distributed.protocol.serialize import deserialize, serialize
 
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-# Make the "disk" serializer available and use a directory that are
-# remove on exit.
+# Make the "disk" serializer available and use a directory that is
+# removed on exit.
 if ProxifyHostFile._spill_to_disk is None:
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(

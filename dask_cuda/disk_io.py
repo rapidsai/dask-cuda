@@ -73,7 +73,7 @@ class SpillToDiskFile:
         return os.path.exists(self.path)
 
     def __deepcopy__(self, memo) -> str:
-        """A deep copy is simple the path as a string.
+        """A deep copy is simply the path as a string.
 
         In order to avoid multiple instance of SpillToDiskFile pointing
         to the same file, we do not allow a direct copy.
