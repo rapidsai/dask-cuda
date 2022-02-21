@@ -41,6 +41,8 @@ if ProxifyHostFile._spill_to_disk is None:
 assert ProxifyHostFile._spill_to_disk is not None
 
 # In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
+# Notice, we use `../..` to remove the `dask-worker-space/jit-unspill-disk-storage` part
+# added by the ProxifyHostFile implicitly.
 root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
 
 
