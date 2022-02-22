@@ -56,7 +56,7 @@ def proxify_device_objects(
     excl_proxies: bool = False,
     mark_as_explicit_proxies: bool = False,
 ) -> T:
-    """ Wrap device objects in ProxyObject
+    """Wrap device objects in ProxyObject
 
     Search through `obj` and wraps all CUDA device objects in ProxyObject.
     It uses `proxied_id_to_proxy` to make sure that identical CUDA device
@@ -100,7 +100,7 @@ def proxify_device_objects(
 def unproxify_device_objects(
     obj: T, skip_explicit_proxies: bool = False, only_incompatible_types: bool = False
 ) -> T:
-    """ Unproxify device objects
+    """Unproxify device objects
 
     Search through `obj` and un-wraps all CUDA device objects.
 

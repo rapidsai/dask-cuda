@@ -1,5 +1,7 @@
 import operator
+import os
 import pickle
+import tempfile
 from types import SimpleNamespace
 
 import numpy as np
@@ -18,10 +20,17 @@ import dask_cudf
 
 import dask_cuda
 from dask_cuda import proxy_object
+from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
+# Make the "disk" serializer available and use a directory that are
+# remove on exit.
+if ProxifyHostFile._spill_to_disk is None:
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+    )
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle"), ("disk",)])
@@ -307,10 +316,6 @@ def test_spilling_local_cuda_cluster(jit_unspill):
 def test_serializing_to_disk(obj):
     """Check serializing to disk"""
 
-    if isinstance(obj, str):
-        backend = pytest.importorskip(obj)
-        obj = backend.arange(100)
-
     # Serialize from device to disk
     pxy = proxy_object.asproxy(obj)
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
@@ -322,6 +327,33 @@ def test_serializing_to_disk(obj):
     ProxifyHostFile.serialize_proxy_to_disk_inplace(pxy)
     assert pxy._pxy_get().serializer == "disk"
     assert obj == proxy_object.unproxy(pxy)
+
+
+@pytest.mark.parametrize("serializer", ["dask", "pickle", "disk"])
+def test_multiple_deserializations(serializer):
+    """Check for race conditions when accessing the ProxyDetail"""
+    data1 = bytearray(10)
+    proxy = proxy_object.asproxy(data1, serializers=(serializer,))
+    pxy = proxy._pxy_get()
+    data2 = proxy._pxy_deserialize()
+    assert data1 == data2
+
+    # Check that the spilled file still exist.
+    if serializer == "disk":
+        file_path = pxy.obj[0]["disk-io-header"]["path"]
+        assert isinstance(file_path, SpillToDiskFile)
+        assert file_path.exists()
+        file_path = str(file_path)
+
+    # Check that the spilled data within `pxy` is still available even
+    # though `proxy` has been deserialized.
+    data3 = pxy.deserialize()
+    assert data1 == data3
+
+    # Check that the spilled file has been removed now that all reference
+    # to is has been deleted.
+    if serializer == "disk":
+        assert not os.path.exists(file_path)
 
 
 @pytest.mark.parametrize("size", [10, 10 ** 4])
@@ -405,7 +437,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
-    ProxifyHostFile._spill_shared_filesystem = shared_fs
+    ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 
     def task(x):
         # Check that the subclass survives the trip from client to worker
