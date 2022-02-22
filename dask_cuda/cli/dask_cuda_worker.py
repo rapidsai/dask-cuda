@@ -245,21 +245,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     requires ``--enable-infiniband``.""",
 )
 @click.option(
-    "--net-devices",
-    type=str,
-    default=None,
-    help="""Interface(s) used by workers for UCX communication. Can be a string (like
-    ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), ``"auto"``
-    (requires ``--enable-infiniband``) to pick the optimal interface per-worker based on
-    the system's topology, or ``None`` to stay with the default value of ``"all"`` (use
-    all available interfaces).
-
-    .. warning::
-        ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
-        Unexpected errors can occur when using ``"auto"`` if any interfaces are
-        disconnected or improperly configured.""",
-)
-@click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
     help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
@@ -313,7 +298,6 @@ def main(
     enable_infiniband,
     enable_nvlink,
     enable_rdmacm,
-    net_devices,
     enable_jit_unspill,
     worker_class,
     pre_import,
@@ -363,7 +347,6 @@ def main(
         enable_infiniband,
         enable_nvlink,
         enable_rdmacm,
-        net_devices,
         enable_jit_unspill,
         worker_class,
         pre_import,
