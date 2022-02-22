@@ -586,7 +586,7 @@ class ProxifyHostFile(MutableMapping):
     def evict(self) -> int:
         """Manually evict 1% of host limit.
 
-        Dask use this to trigger CPU-to-Disk spilling. We don't know how much
+        Dask uses this to trigger CPU-to-Disk spilling. We don't know how much
         we need to spill but Dask will call `evict()` repeatedly until enough
         is spilled. We ask for 1% each time.
 
@@ -608,7 +608,7 @@ class ProxifyHostFile(MutableMapping):
     def fast(self):
         """Alternative access to `.evict()` used by Dask
 
-        Dask expect `.fast.evict()` to be availabe for manually triggering
+        Dask expects `.fast.evict()` to be availabe for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:
