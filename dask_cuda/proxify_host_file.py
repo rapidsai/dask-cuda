@@ -583,25 +583,44 @@ class ProxifyHostFile(MutableMapping):
                 mr = rmm.mr.FailureCallbackResourceAdaptor(current_mr, oom)
                 rmm.mr.set_current_device_resource(mr)
 
+    def evict(self) -> int:
+        """Manually evict 1% of host limit.
+
+        Dask uses this to trigger CPU-to-Disk spilling. We don't know how much
+        we need to spill but Dask will call `evict()` repeatedly until enough
+        is spilled. We ask for 1% each time.
+
+        Return
+        ------
+        nbytes: int
+            Number of bytes spilled or -1 if nothing to spill.
+        """
+
+        ret = self.manager.evict(
+            nbytes=int(self.manager._host_memory_limit * 0.01),
+            proxies_access=self.manager._host.buffer_info,
+            serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
+        )
+        gc.collect()
+        return ret if ret > 0 else -1
+
     @property
     def fast(self):
-        """Dask use this to trigger CPU-to-Disk spilling"""
+        """Alternative access to `.evict()` used by Dask
+
+        Dask expects `.fast.evict()` to be availabe for manually triggering
+        of CPU-to-Disk spilling.
+        """
         if len(self.manager._host) == 0:
             return False  # We have nothing in host memory to spill
 
         class EvictDummy:
             @staticmethod
             def evict():
-                # We don't know how much we need to spill but Dask will call evict()
-                # repeatedly until enough is spilled. We ask for 1% each time.
                 ret = (
                     None,
                     None,
-                    self.manager.evict(
-                        nbytes=int(self.manager._host_memory_limit * 0.01),
-                        proxies_access=self.manager._host.buffer_info,
-                        serializer=ProxifyHostFile.serialize_proxy_to_disk_inplace,
-                    ),
+                    self.evict(),
                 )
                 gc.collect()
                 return ret
