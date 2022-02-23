@@ -117,13 +117,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Disable RDMACM with UCX.",
     )
     parser.add_argument(
-        "--ucx-net-devices",
-        default=None,
-        type=str,
-        help="The device to be used for UCX communication, or 'auto'. "
-        "Ignored if protocol is 'tcp'",
-    )
-    parser.add_argument(
         "--interface",
         default=None,
         type=str,
@@ -195,7 +188,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
 
 def get_cluster_options(args):
     ucx_options = {
-        "ucx_net_devices": args.ucx_net_devices,
         "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
         "enable_infiniband": args.enable_infiniband,
         "enable_nvlink": args.enable_nvlink,

@@ -1,14 +1,20 @@
+import os
+import os.path
+import pathlib
+import tempfile
+import threading
 import weakref
-from typing import Callable, Iterable, Mapping, Optional
+from typing import Callable, Iterable, Mapping, Optional, Union
 
 import numpy as np
 
-from distributed.utils import Any, nbytes
+import dask
+from distributed.utils import nbytes
 
-_new_cuda_buffer: Optional[Callable[[int], Any]] = None
+_new_cuda_buffer: Optional[Callable[[int], object]] = None
 
 
-def get_new_cuda_buffer() -> Callable[[int], Any]:
+def get_new_cuda_buffer() -> Callable[[int], object]:
     """Return a function to create an empty CUDA buffer"""
     global _new_cuda_buffer
     if _new_cuda_buffer is not None:
@@ -43,6 +49,95 @@ def get_new_cuda_buffer() -> Callable[[int], Any]:
         pass
 
     raise RuntimeError("GPUDirect Storage requires RMM, CuPy, or Numba")
+
+
+class SpillToDiskFile:
+    """File path the gets removed on destruction
+
+    When spilling to disk, we have to delay the removal of the file
+    until no more proxies are pointing to the file.
+    """
+
+    path: str
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def __del__(self):
+        os.remove(self.path)
+
+    def __str__(self) -> str:
+        return self.path
+
+    def exists(self):
+        return os.path.exists(self.path)
+
+    def __deepcopy__(self, memo) -> str:
+        """A deep copy is simply the path as a string.
+
+        In order to avoid multiple instance of SpillToDiskFile pointing
+        to the same file, we do not allow a direct copy.
+        """
+        return self.path
+
+    def __copy__(self):
+        raise RuntimeError("Cannot copy or pickle a SpillToDiskFile")
+
+    def __reduce__(self):
+        self.__copy__()
+
+
+class SpillToDiskProperties:
+    gds_enabled: bool
+    shared_filesystem: bool
+    root_dir: pathlib.Path
+    tmpdir: tempfile.TemporaryDirectory
+
+    def __init__(
+        self,
+        root_dir: Union[str, os.PathLike],
+        shared_filesystem: bool = None,
+        gds: bool = None,
+    ):
+        """
+        Parameters
+        ----------
+        root_dir : os.PathLike
+            Path to the root directory to write serialized data.
+        shared_filesystem: bool or None, default None
+            Whether the `root_dir` above is shared between all workers or not.
+            If ``None``, the "jit-unspill-shared-fs" config value are used, which
+            defaults to False.
+        gds: bool
+            Enable the use of GPUDirect Storage. If ``None``, the "gds-spilling"
+            config value are used, which defaults to ``False``.
+        """
+        self.lock = threading.Lock()
+        self.counter = 0
+        self.root_dir = pathlib.Path(root_dir)
+        os.makedirs(self.root_dir, exist_ok=True)
+        self.tmpdir = tempfile.TemporaryDirectory(dir=self.root_dir)
+
+        self.shared_filesystem = shared_filesystem or dask.config.get(
+            "jit-unspill-shared-fs", default=False
+        )
+        self.gds_enabled = gds or dask.config.get("gds-spilling", default=False)
+
+        if self.gds_enabled:
+            try:
+                import cucim.clara.filesystem as cucim_fs  # noqa F401
+            except ImportError:
+                raise ImportError("GPUDirect Storage requires the cucim Python package")
+            else:
+                self.gds_enabled = bool(cucim_fs.is_gds_available())
+
+    def gen_file_path(self) -> str:
+        """Generate an unique file path"""
+        with self.lock:
+            self.counter += 1
+            return str(
+                pathlib.Path(self.tmpdir.name) / pathlib.Path("%04d" % self.counter)
+            )
 
 
 def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) -> dict:
@@ -81,7 +176,7 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
                 f.write(frame)
     return {
         "method": "stdio",
-        "path": path,
+        "path": SpillToDiskFile(path),
         "frame-lengths": tuple(map(nbytes, frames)),
         "shared-filesystem": shared_filesystem,
         "cuda-frames": cuda_frames,
@@ -119,7 +214,7 @@ def disk_read(header: Mapping, gds=False) -> list:
                 file_offset += length
                 ret.append(buf)
     else:
-        with open(header["path"], "rb") as f:
+        with open(str(header["path"]), "rb") as f:
             for length in header["frame-lengths"]:
                 ret.append(f.read(length))
     return ret
