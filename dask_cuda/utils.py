@@ -60,8 +60,6 @@ class RMMSetup:
         self.rmm_track_allocations = track_allocations
 
     def setup(self, worker=None):
-        import rmm
-
         if self.async_alloc:
 
             rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
