@@ -84,6 +84,8 @@ class RMMSetup:
                 ),
             )
         if self.rmm_track_allocations:
+            import rmm
+
             mr = rmm.mr.get_current_device_resource()
             rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
 
