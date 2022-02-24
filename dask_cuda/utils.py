@@ -61,6 +61,7 @@ class RMMSetup:
 
     def setup(self, worker=None):
         if self.async_alloc:
+            import rmm
 
             rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
             if self.logging:
@@ -70,6 +71,7 @@ class RMMSetup:
                     )
                 )
         elif self.initial_pool_size is not None or self.managed_memory:
+            import rmm
 
             pool_allocator = False if self.initial_pool_size is None else True
 
