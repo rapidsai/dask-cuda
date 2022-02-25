@@ -43,6 +43,7 @@ class RMMSetup:
         managed_memory,
         async_alloc,
         log_directory,
+        track_allocations,
     ):
         if initial_pool_size is None and maximum_pool_size is not None:
             raise ValueError(
@@ -56,6 +57,7 @@ class RMMSetup:
         self.async_alloc = async_alloc
         self.logging = log_directory is not None
         self.log_directory = log_directory
+        self.rmm_track_allocations = track_allocations
 
     def setup(self, worker=None):
         if self.async_alloc:
@@ -83,6 +85,11 @@ class RMMSetup:
                     worker, self.logging, self.log_directory
                 ),
             )
+        if self.rmm_track_allocations:
+            import rmm
+
+            mr = rmm.mr.get_current_device_resource()
+            rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
 
 
 class PreImport:

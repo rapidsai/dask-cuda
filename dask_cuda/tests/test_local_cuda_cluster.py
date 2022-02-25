@@ -289,3 +289,23 @@ async def test_gpu_uuid():
 
             result = await client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
             assert list(result.values())[0] == gpu_uuid
+
+
+@gen_test(timeout=20)
+async def test_rmm_track_allocations():
+    rmm = pytest.importorskip("rmm")
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB", asynchronous=True, rmm_track_allocations=True
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_type = await client.run(
+                rmm.mr.get_current_device_resource_type
+            )
+            for v in memory_resource_type.values():
+                assert v is rmm.mr.TrackingResourceAdaptor
+
+            memory_resource_upstream_type = await client.run(
+                lambda: type(rmm.mr.get_current_device_resource().upstream_mr)
+            )
+            for v in memory_resource_upstream_type.values():
+                assert v is rmm.mr.PoolMemoryResource

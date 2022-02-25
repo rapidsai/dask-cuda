@@ -290,3 +290,34 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
 
                     result = client.run(lambda: os.environ["CUDA_VISIBLE_DEVICES"])
                     assert list(result.values())[0] == gpu_uuid
+
+
+def test_rmm_track_allocations(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--rmm-pool-size",
+                "2 GB",
+                "--no-dashboard",
+                "--rmm-track-allocations",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                memory_resource_type = client.run(
+                    rmm.mr.get_current_device_resource_type
+                )
+                for v in memory_resource_type.values():
+                    assert v is rmm.mr.TrackingResourceAdaptor
+
+                memory_resource_upstream_type = client.run(
+                    lambda: type(rmm.mr.get_current_device_resource().upstream_mr)
+                )
+                for v in memory_resource_upstream_type.values():
+                    assert v is rmm.mr.PoolMemoryResource

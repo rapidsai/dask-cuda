@@ -138,6 +138,16 @@ class LocalCUDACluster(LocalCluster):
         .. note::
             Logging will only be enabled if ``rmm_pool_size`` is specified or
             ``rmm_managed_memory=True``.
+    rmm_track_allocations : bool, default False
+        If True, wraps the memory resource used by each worker with a
+        ``rmm.mr.TrackingResourceAdaptor``, which tracks the amount of
+        memory allocated.
+
+        .. note::
+             This option enables additional diagnostics to be collected and
+             reported by the Dask dashboard. However, there is significant overhead
+             associated with this and it should only be used for debugging and
+             memory profiling.
     jit_unspill : bool or None, default None
         Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
         the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
@@ -195,6 +205,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_managed_memory=False,
         rmm_async=False,
         rmm_log_directory=None,
+        rmm_track_allocations=False,
         jit_unspill=None,
         log_spilling=False,
         worker_class=None,
@@ -258,6 +269,7 @@ class LocalCUDACluster(LocalCluster):
                 )
 
         self.rmm_log_directory = rmm_log_directory
+        self.rmm_track_allocations = rmm_track_allocations
 
         if not kwargs.pop("processes", True):
             raise ValueError(
@@ -377,6 +389,7 @@ class LocalCUDACluster(LocalCluster):
                         self.rmm_managed_memory,
                         self.rmm_async,
                         self.rmm_log_directory,
+                        self.rmm_track_allocations,
                     ),
                     PreImport(self.pre_import),
                 },
