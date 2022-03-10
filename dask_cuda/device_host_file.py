@@ -260,6 +260,16 @@ class DeviceHostFile(ZictBase):
         self.device_keys.discard(key)
         del self.device_buffer[key]
 
+    def evict(self):
+        """Evicts least recently used host buffer (aka, CPU or system memory)
+
+        Implements distributed.spill.ManualEvictProto interface"""
+        try:
+            _, _, weight = self.host_buffer.fast.evict()
+            return weight
+        except Exception:  # We catch all `Exception`s, just like zict.LRU
+            return -1
+
     def set_address(self, addr):
         if isinstance(self.host_buffer, LoggedBuffer):
             self.host_buffer.set_address(addr)
