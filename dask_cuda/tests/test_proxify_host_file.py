@@ -392,7 +392,6 @@ async def test_worker_force_spill_to_disk():
                 ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 await ddf
 
-
                 async def f():
                     """Trigger a memory_monitor() and reset memory_limit"""
                     w = get_worker()
