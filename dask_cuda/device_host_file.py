@@ -158,8 +158,8 @@ class DeviceHostFile(ZictBase):
         spills to host cache once filled.
     memory_limit: int
         Number of bytes of host memory for host LRU cache, spills to
-        disk once filled. Setting this to 0 means unlimited host memory,
-        implies no spilling to disk.
+        disk once filled. Setting this to `0` or `None` means unlimited
+        host memory, implies no spilling to disk.
     local_directory: path
         Path where to store serialized objects on disk
     log_spilling: bool
@@ -182,6 +182,9 @@ class DeviceHostFile(ZictBase):
         )
         os.makedirs(self.disk_func_path, exist_ok=True)
 
+        if memory_limit == 0:
+            memory_limit = None
+
         self.host_func = dict()
         self.disk_func = Func(
             functools.partial(serialize_bytelist, on_error="raise"),
@@ -197,7 +200,7 @@ class DeviceHostFile(ZictBase):
             host_buffer_kwargs = {"fast_name": "Host", "slow_name": "Disk"}
             device_buffer_kwargs = {"fast_name": "Device", "slow_name": "Host"}
 
-        if memory_limit == 0:
+        if memory_limit is None:
             self.host_buffer = self.host_func
         else:
             self.host_buffer = buffer_class(
@@ -220,11 +223,13 @@ class DeviceHostFile(ZictBase):
         )
 
         self.device = self.device_buffer.fast.d
-        self.host = self.host_buffer if memory_limit == 0 else self.host_buffer.fast.d
-        self.disk = None if memory_limit == 0 else self.host_buffer.slow.d
+        self.host = (
+            self.host_buffer if memory_limit is None else self.host_buffer.fast.d
+        )
+        self.disk = None if memory_limit is None else self.host_buffer.slow.d
 
         # For Worker compatibility only, where `fast` is host memory buffer
-        self.fast = self.host_buffer if memory_limit == 0 else self.host_buffer.fast
+        self.fast = self.host_buffer if memory_limit is None else self.host_buffer.fast
 
     def __setitem__(self, key, value):
         if key in self.device_buffer:
