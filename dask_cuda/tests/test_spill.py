@@ -105,7 +105,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             "memory_limit": int(1000e6),
             "host_target": None,
             "host_spill": None,
-            "host_pause": None,
+            "host_pause": False,
             "spills_to_disk": True,
         },
         {
@@ -119,6 +119,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
     ],
 )
 @pytest.mark.asyncio
+@gen_test(timeout=20)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
@@ -190,7 +191,7 @@ async def test_cupy_cluster_device_spill(params):
             "memory_limit": int(2000e6),
             "host_target": None,
             "host_spill": None,
-            "host_pause": None,
+            "host_pause": False,
             "spills_to_disk": True,
         },
         {
@@ -204,6 +205,7 @@ async def test_cupy_cluster_device_spill(params):
     ],
 )
 @pytest.mark.asyncio
+@gen_test(timeout=20)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
