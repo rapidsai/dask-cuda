@@ -102,7 +102,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
             # This test setup differs from the one above as Distributed worker
             # pausing is enabled and thus triggers `DeviceHostFile.evict()`
             "device_memory_limit": int(200e6),
-            "memory_limit": int(1000e6),
+            "memory_limit": int(200e6),
             "host_target": None,
             "host_spill": None,
             "host_pause": False,
@@ -118,7 +118,6 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         },
     ],
 )
-@pytest.mark.asyncio
 @gen_test(timeout=20)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
@@ -188,7 +187,7 @@ async def test_cupy_cluster_device_spill(params):
             # This test setup differs from the one above as Distributed worker
             # pausing is enabled and thus triggers `DeviceHostFile.evict()`
             "device_memory_limit": int(200e6),
-            "memory_limit": int(2000e6),
+            "memory_limit": int(200e6),
             "host_target": None,
             "host_spill": None,
             "host_pause": False,
@@ -204,7 +203,6 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
-@pytest.mark.asyncio
 @gen_test(timeout=20)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
