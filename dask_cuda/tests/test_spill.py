@@ -84,31 +84,41 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
     [
         {
             "device_memory_limit": int(200e6),
-            "memory_limit": int(800e6),
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "memory_limit": int(2000e6),
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": int(200e6),
             "memory_limit": int(200e6),
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
+            "spills_to_disk": True,
+        },
+        {
+            # This test setup differs from the one above as Distributed worker
+            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            "device_memory_limit": int(200e6),
+            "memory_limit": int(200e6),
+            "host_target": None,
+            "host_spill": None,
+            "host_pause": False,
             "spills_to_disk": True,
         },
         {
             "device_memory_limit": int(200e6),
-            "memory_limit": 0,
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "memory_limit": None,
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
             "spills_to_disk": False,
         },
     ],
 )
-@pytest.mark.asyncio
+@gen_test(timeout=20)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
@@ -159,31 +169,41 @@ async def test_cupy_cluster_device_spill(params):
     [
         {
             "device_memory_limit": int(200e6),
-            "memory_limit": int(800e6),
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "memory_limit": int(4000e6),
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
             "spills_to_disk": False,
         },
         {
             "device_memory_limit": int(200e6),
             "memory_limit": int(200e6),
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
+            "spills_to_disk": True,
+        },
+        {
+            # This test setup differs from the one above as Distributed worker
+            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            "device_memory_limit": int(200e6),
+            "memory_limit": int(200e6),
+            "host_target": None,
+            "host_spill": None,
+            "host_pause": False,
             "spills_to_disk": True,
         },
         {
             "device_memory_limit": int(200e6),
-            "memory_limit": 0,
-            "host_target": 0.0,
-            "host_spill": 0.0,
-            "host_pause": 0.0,
+            "memory_limit": None,
+            "host_target": False,
+            "host_spill": False,
+            "host_pause": False,
             "spills_to_disk": False,
         },
     ],
 )
-@pytest.mark.asyncio
+@gen_test(timeout=20)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
