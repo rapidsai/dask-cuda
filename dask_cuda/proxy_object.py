@@ -4,7 +4,6 @@ import operator
 import os
 import pickle
 import time
-import uuid
 from collections import OrderedDict
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Union
@@ -34,6 +33,7 @@ try:
 except ImportError:
     from dask.dataframe.utils import make_meta as make_meta_dispatch
 
+from .disk_io import SpillToDiskFile
 from .is_device_object import is_device_object
 
 if TYPE_CHECKING:
@@ -276,7 +276,7 @@ class ProxyDetail:
                 return self.obj  # Nothing to be done
             else:
                 # The proxied object is serialized with other serializers
-                self.deserialize()
+                self.deserialize(maybe_evict=False)
 
         header, _ = self.obj = distributed.protocol.serialize(
             self.obj, serializers, on_error="raise"
@@ -376,9 +376,6 @@ class ProxyObject:
         """We have to unregister us from the manager if any"""
         pxy = self._pxy_get()
         pxy.manager.remove(self)
-        if pxy.serializer == "disk":
-            header, _ = pxy.obj
-            os.remove(header["disk-io-header"]["path"])
 
     def _pxy_serialize(
         self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
@@ -471,15 +468,28 @@ class ProxyObject:
             object.__setattr__(pxy.deserialize(nbytes=self.__sizeof__()), name, val)
         self._pxy_set(pxy)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        inputs = tuple(
-            o._pxy_deserialize() if isinstance(o, ProxyObject) else o for o in inputs
-        )
-        kwargs = {
-            key: value._pxy_deserialize() if isinstance(value, ProxyObject) else value
-            for key, value in kwargs.items()
-        }
-        return self._pxy_deserialize().__array_ufunc__(ufunc, method, *inputs, **kwargs)
+    def __array_ufunc__(self, ufunc, method, *args, **kwargs):
+        from .proxify_device_objects import unproxify_device_objects
+
+        args, kwargs = unproxify_device_objects(args), unproxify_device_objects(kwargs)
+        return self._pxy_deserialize().__array_ufunc__(ufunc, method, *args, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        from .proxify_device_objects import unproxify_device_objects
+
+        kwargs = unproxify_device_objects(kwargs)
+        proxied = self._pxy_deserialize()
+
+        # Unproxify `args` and `types`
+        types = [t for t in types if not issubclass(t, type(self))]
+        args_proxied = []
+        for a in args:
+            if isinstance(a, type(self)):
+                types.append(a.__class__)
+                args_proxied.append(a._pxy_deserialize())
+            else:
+                args_proxied.append(a)
+        return proxied.__array_function__(func, types, args_proxied, kwargs)
 
     def __str__(self):
         return str(self._pxy_deserialize())
@@ -606,6 +616,9 @@ class ProxyObject:
     def __or__(self, other):
         return self._pxy_deserialize() | other
 
+    def __matmul__(self, other):
+        return self._pxy_deserialize().__matmul__(unproxy(other))
+
     def __radd__(self, other):
         return other + self._pxy_deserialize()
 
@@ -728,6 +741,14 @@ class ProxyObject:
         self._pxy_set(pxy)
         return self
 
+    def __imatmul__(self, other):
+        pxy = self._pxy_get(copy=True)
+        proxied = pxy.deserialize(nbytes=self.__sizeof__())
+        proxied @= other
+        pxy.obj = proxied
+        self._pxy_set(pxy)
+        return self
+
     def __neg__(self):
         return -self._pxy_deserialize()
 
@@ -771,23 +792,26 @@ def handle_disk_serialized(pxy: ProxyDetail):
 
     On a non-shared filesystem, we deserialize the proxy to host memory.
     """
-    header, frames = pxy.obj
-    disk_io_header = header["disk-io-header"]
-    if disk_io_header["shared-filesystem"]:
-        old_path = disk_io_header["path"]
-        new_path = f"{old_path}-linked-{uuid.uuid4()}"
-        os.link(old_path, new_path)
-        header = _copy.deepcopy(header)
+
+    org_header, frames = pxy.obj
+    header = _copy.deepcopy(org_header)
+
+    if header["disk-io-header"]["shared-filesystem"]:
+        from .proxify_host_file import ProxifyHostFile
+
+        assert ProxifyHostFile._spill_to_disk
+        new_path = ProxifyHostFile._spill_to_disk.gen_file_path()
+        os.link(header["disk-io-header"]["path"], new_path)
         header["disk-io-header"]["path"] = new_path
     else:
-        # When not on a shared filesystem, we deserialize to host memory
+        # When not on a shared filesystem, we deserialize to host memory inplace
         assert frames == []
-        frames = disk_read(disk_io_header)
-        os.remove(disk_io_header["path"])
+        frames = disk_read(header.pop("disk-io-header"))
         if "compression" in header["serialize-header"]:
             frames = decompress(header["serialize-header"], frames)
         header = header["serialize-header"]
         pxy.serializer = header["serializer"]
+        pxy.obj = (header, frames)
     return header, frames
 
 
@@ -811,7 +835,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
 def obj_pxy_cuda_serialize(obj: ProxyObject):
-    """ The CUDA serialization of ProxyObject used by Dask when communicating using UCX
+    """The CUDA serialization of ProxyObject used by Dask when communicating using UCX
 
     As serializers, it uses "cuda", which means that proxied CUDA objects are _not_
     spilled to main memory before communicated. However, we still have to handle disk
@@ -823,7 +847,6 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
     elif pxy.serializer == "disk":
         header, frames = handle_disk_serialized(pxy)
         obj._pxy_set(pxy)
-
     else:
         # Notice, since obj._pxy_serialize() is a inplace operation, we make a
         # shallow copy of `obj` to avoid introducing a CUDA-serialized object in
@@ -847,7 +870,15 @@ def obj_pxy_dask_deserialize(header, frames):
         subclass = ProxyObject
     else:
         subclass = loads_function(args["subclass"])
-    return subclass(ProxyDetail(obj=(header["proxied-header"], frames), **args))
+    pxy = ProxyDetail(obj=(header["proxied-header"], frames), **args)
+    if pxy.serializer == "disk":
+        header, _ = pxy.obj
+        path = header["disk-io-header"]["path"]
+        # Make sure that the path is wrapped in a SpillToDiskFile instance
+        if not isinstance(path, SpillToDiskFile):
+            header["disk-io-header"]["path"] = SpillToDiskFile(path)
+        assert os.path.exists(path)
+    return subclass(pxy)
 
 
 @dask.dataframe.core.get_parallel_type.register(ProxyObject)

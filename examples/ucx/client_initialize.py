@@ -21,16 +21,14 @@ from dask_cuda.initialize import initialize
     default=False,
     help="Enable InfiniBand communication with RDMA",
 )
+@click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, requires --enable-infiniband",
+)
 def main(
-    address, enable_nvlink, enable_infiniband,
+    address, enable_nvlink, enable_infiniband, enable_rdmacm,
 ):
-
-    enable_rdmacm = False
-    ucx_net_devices = None
-
-    if enable_infiniband:
-        # enable_rdmacm = True  # RDMACM not working right now
-        ucx_net_devices = "mlx5_0:1"
 
     # set up environment
     initialize(
@@ -38,7 +36,6 @@ def main(
         enable_nvlink=enable_nvlink,
         enable_infiniband=enable_infiniband,
         enable_rdmacm=enable_rdmacm,
-        net_devices=ucx_net_devices,
     )
 
     # initialize client

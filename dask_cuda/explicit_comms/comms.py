@@ -150,10 +150,10 @@ async def _stop_ucp_listeners(session_state):
 class CommsContext:
     """Communication handler for explicit communication
 
-        Parameters
-        ----------
-        client: Client, optional
-            Specify client to use for communication. If None, use the default client.
+    Parameters
+    ----------
+    client: Client, optional
+        Specify client to use for communication. If None, use the default client.
     """
 
     client: Client

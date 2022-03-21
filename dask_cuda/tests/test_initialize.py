@@ -9,7 +9,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import _ucx_110, _ucx_111, get_ucx_config
+from dask_cuda.utils import get_ucx_config
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
@@ -41,11 +41,7 @@ def _test_initialize_ucx_tcp():
                 assert "TLS" in conf
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                if _ucx_110:
-                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
-                else:
-                    assert "sockcm" in conf["TLS"]
-                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
@@ -81,11 +77,7 @@ def _test_initialize_ucx_nvlink():
                 assert "cuda_ipc" in conf["TLS"]
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                if _ucx_110:
-                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
-                else:
-                    assert "sockcm" in conf["TLS"]
-                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
+                assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
@@ -101,8 +93,6 @@ def test_initialize_ucx_nvlink():
 
 def _test_initialize_ucx_infiniband():
     kwargs = {"enable_infiniband": True}
-    if not _ucx_110:
-        kwargs["net_devices"] = "ib0"
     initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
@@ -123,12 +113,7 @@ def _test_initialize_ucx_infiniband():
                 assert "rc" in conf["TLS"]
                 assert "tcp" in conf["TLS"]
                 assert "cuda_copy" in conf["TLS"]
-                if _ucx_110:
-                    assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
-                else:
-                    assert "sockcm" in conf["TLS"]
-                    assert "sockcm" in conf["SOCKADDR_TLS_PRIORITY"]
-                    assert conf["NET_DEVICES"] == "ib0"
+                assert "tcp" in conf["SOCKADDR_TLS_PRIORITY"]
                 return True
 
             assert client.run_on_scheduler(check_ucx_options) is True
@@ -176,9 +161,6 @@ def _test_initialize_ucx_all():
             assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.skipif(
-    not _ucx_111, reason="Automatic configuration not supported in UCX < 1.11",
-)
 def test_initialize_ucx_all():
     p = mp.Process(target=_test_initialize_ucx_all)
     p.start()

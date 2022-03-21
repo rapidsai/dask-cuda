@@ -158,7 +158,7 @@ async def local_shuffle(
             if len(args) < 2:
                 return args[0]
 
-            return manager.proxify(dd_concat(args, ignore_index=ignore_index))
+            return manager.proxify(dd_concat(args, ignore_index=ignore_index))[0]
 
     else:
         concat = dd_concat
