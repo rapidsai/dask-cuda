@@ -17,7 +17,7 @@ from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
-from distributed.worker import parse_memory_limit
+from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize

@@ -5,7 +5,7 @@ import warnings
 import dask
 from dask.utils import parse_bytes
 from distributed import LocalCluster, Nanny, Worker
-from distributed.worker import parse_memory_limit
+from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize

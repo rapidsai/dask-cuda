@@ -40,7 +40,9 @@ async def test_local_cuda_cluster():
                 )
 
             # Use full memory, checked with some buffer to ignore rounding difference
-            full_mem = sum(w.memory_limit for w in cluster.workers.values())
+            full_mem = sum(
+                w.memory_manager.memory_limit for w in cluster.workers.values()
+            )
             assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
 
             for w, devices in result.items():
