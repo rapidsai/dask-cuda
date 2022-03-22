@@ -27,11 +27,11 @@ requirements:
     - setuptools
   run:
     - python
-    - dask>=2022.03.0
-    - distributed>=2022.03.0
-    - pynvml >=8.0.3
-    - numpy >=1.16.0
-    - numba >=0.53.1
+    - dask==2022.03.0
+    - distributed==2022.03.0
+    - pynvml>=8.0.3
+    - numpy>=1.16.0
+    - numba>=0.53.1
 
 test:
   imports:
