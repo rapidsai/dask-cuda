@@ -5,7 +5,7 @@ import logging
 import click
 from tornado.ioloop import IOLoop, TimeoutError
 
-from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.cli.utils import install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
@@ -384,7 +384,6 @@ def main(
 
 
 def go():
-    check_python_3()
     main()
 
 
