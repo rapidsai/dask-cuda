@@ -40,7 +40,11 @@ from dask_cuda import LocalCUDACluster
     "an integer (bytes) or string (like 5GB or 5000M).",
 )
 def main(
-    enable_nvlink, enable_infiniband, enable_rdmacm, interface, rmm_pool_size,
+    enable_nvlink,
+    enable_infiniband,
+    enable_rdmacm,
+    interface,
+    rmm_pool_size,
 ):
 
     if (enable_infiniband or enable_nvlink) and not interface:

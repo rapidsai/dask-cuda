@@ -9,7 +9,9 @@ from dask_cuda.initialize import initialize
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
 @click.argument(
-    "address", required=True, type=str,
+    "address",
+    required=True,
+    type=str,
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
@@ -27,7 +29,10 @@ from dask_cuda.initialize import initialize
     help="Enable RDMA connection manager, requires --enable-infiniband",
 )
 def main(
-    address, enable_nvlink, enable_infiniband, enable_rdmacm,
+    address,
+    enable_nvlink,
+    enable_infiniband,
+    enable_rdmacm,
 ):
 
     # set up environment

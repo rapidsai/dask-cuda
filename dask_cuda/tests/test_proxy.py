@@ -29,7 +29,9 @@ from dask_cuda.proxify_host_file import ProxifyHostFile
 if ProxifyHostFile._spill_to_disk is None:
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(
-        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+        local_directory=tmpdir.name,
+        device_memory_limit=1024,
+        memory_limit=1024,
     )
 
 
@@ -312,7 +314,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10 ** 6)])
+@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10**6)])
 def test_serializing_to_disk(obj):
     """Check serializing to disk"""
 
@@ -356,7 +358,7 @@ def test_multiple_deserializations(serializer):
         assert not os.path.exists(file_path)
 
 
-@pytest.mark.parametrize("size", [10, 10 ** 4])
+@pytest.mark.parametrize("size", [10, 10**4])
 @pytest.mark.parametrize(
     "serializers", [None, ["dask"], ["cuda", "dask"], ["pickle"], ["disk"]]
 )

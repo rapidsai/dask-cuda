@@ -20,7 +20,7 @@ def worker_spec(
     enable_nvlink=False,
     **kwargs
 ):
-    """ Create a Spec for a CUDA worker.
+    """Create a Spec for a CUDA worker.
 
     The Spec created by this function can be used as a recipe for CUDA workers
     that can be passed to a SpecCluster.

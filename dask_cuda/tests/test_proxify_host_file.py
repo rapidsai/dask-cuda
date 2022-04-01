@@ -37,7 +37,9 @@ if ProxifyHostFile._spill_to_disk is None:
     # Hold on to `tmpdir` to keep dir alive until exit
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(
-        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+        local_directory=tmpdir.name,
+        device_memory_limit=1024,
+        memory_limit=1024,
     )
 assert ProxifyHostFile._spill_to_disk is not None
 
@@ -401,7 +403,7 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
 
 @gen_test(timeout=30)
 async def test_worker_force_spill_to_disk():
-    """Test Dask triggering CPU-to-Disk spilling """
+    """Test Dask triggering CPU-to-Disk spilling"""
     cudf = pytest.importorskip("cudf")
 
     with dask.config.set({"distributed.worker.memory.terminate": None}):
@@ -410,7 +412,7 @@ async def test_worker_force_spill_to_disk():
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 # Create a df that are spilled to host memory immediately
-                df = cudf.DataFrame({"key": np.arange(10 ** 8)})
+                df = cudf.DataFrame({"key": np.arange(10**8)})
                 ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 await ddf
 
@@ -420,12 +422,12 @@ async def test_worker_force_spill_to_disk():
                     # Set a host memory limit that triggers spilling to disk
                     w.memory_manager.memory_pause_fraction = False
                     memory = w.monitor.proc.memory_info().rss
-                    w.memory_manager.memory_limit = memory - 10 ** 8
+                    w.memory_manager.memory_limit = memory - 10**8
                     w.memory_manager.memory_target_fraction = 1
                     print(w.memory_manager.data)
                     await w.memory_manager.memory_monitor(w)
                     # Check that host memory are freed
-                    assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
+                    assert w.monitor.proc.memory_info().rss < memory - 10**7
                     w.memory_manager.memory_limit = memory * 10  # Un-limit
 
                 await client.submit(f)

@@ -229,9 +229,10 @@ async def run(args):
                 for (w1, w2), v in bandwidths.items()
             }
             total_nbytes = {
-                (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(
-                    sum(nb)
-                )
+                (
+                    scheduler_workers[w1].name,
+                    scheduler_workers[w2].name,
+                ): format_bytes(sum(nb))
                 for (w1, w2), nb in total_nbytes.items()
             }
 
@@ -318,7 +319,10 @@ async def run(args):
 def parse_args():
     special_args = [
         {
-            "name": ["-s", "--size",],
+            "name": [
+                "-s",
+                "--size",
+            ],
             "default": "10000",
             "metavar": "n",
             "type": int,
@@ -326,27 +330,39 @@ def parse_args():
             "the second dimension is given by --second-size.",
         },
         {
-            "name": ["-2", "--second-size",],
+            "name": [
+                "-2",
+                "--second-size",
+            ],
             "default": "1000",
             "type": int,
             "help": "The second dimension size for 'svd' operation (default 1000).",
         },
         {
-            "name": ["-t", "--type",],
+            "name": [
+                "-t",
+                "--type",
+            ],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Do merge with GPU or CPU dataframes.",
         },
         {
-            "name": ["-o", "--operation",],
+            "name": [
+                "-o",
+                "--operation",
+            ],
             "default": "transpose_sum",
             "type": str,
             "help": "The operation to run, valid options are: "
             "'transpose_sum' (default), 'dot', 'fft', 'svd', 'sum', 'mean', 'slice'.",
         },
         {
-            "name": ["-c", "--chunk-size",],
+            "name": [
+                "-c",
+                "--chunk-size",
+            ],
             "default": "2500",
             "type": int,
             "help": "Chunk size (default 2500).",

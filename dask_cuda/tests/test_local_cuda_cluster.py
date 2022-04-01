@@ -147,7 +147,10 @@ async def test_all_to_all():
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True,) as cluster:
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB",
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -167,7 +170,10 @@ async def test_rmm_maximum_poolsize_without_poolsize_error():
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True,) as cluster:
+    async with LocalCUDACluster(
+        rmm_managed_memory=True,
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -184,7 +190,10 @@ async def test_rmm_managed():
 async def test_rmm_async():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_async=True, asynchronous=True,) as cluster:
+    async with LocalCUDACluster(
+        rmm_async=True,
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -198,7 +207,9 @@ async def test_rmm_logging():
     rmm = pytest.importorskip("rmm")
 
     async with LocalCUDACluster(
-        rmm_pool_size="2GB", rmm_log_directory=".", asynchronous=True,
+        rmm_pool_size="2GB",
+        rmm_log_directory=".",
+        asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
@@ -222,7 +233,9 @@ async def test_pre_import():
         pytest.skip("No module found that isn't already loaded")
 
     async with LocalCUDACluster(
-        n_workers=1, pre_import=module, asynchronous=True,
+        n_workers=1,
+        pre_import=module,
+        asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             imported = await client.run(lambda: module in sys.modules)
@@ -234,14 +247,19 @@ async def test_pre_import():
 async def test_pre_import_not_found():
     with pytest.raises(ModuleNotFoundError):
         await LocalCUDACluster(
-            n_workers=1, pre_import="my_module", asynchronous=True,
+            n_workers=1,
+            pre_import="my_module",
+            asynchronous=True,
         )
 
 
 @gen_test(timeout=20)
 async def test_cluster_worker():
     async with LocalCUDACluster(
-        scheduler_port=0, asynchronous=True, device_memory_limit=1, n_workers=1,
+        scheduler_port=0,
+        asynchronous=True,
+        device_memory_limit=1,
+        n_workers=1,
     ) as cluster:
         assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:
@@ -283,7 +301,9 @@ async def test_gpu_uuid():
     gpu_uuid = get_gpu_uuid_from_index(0)
 
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES=gpu_uuid, scheduler_port=0, asynchronous=True,
+        CUDA_VISIBLE_DEVICES=gpu_uuid,
+        scheduler_port=0,
+        asynchronous=True,
     ) as cluster:
         assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:

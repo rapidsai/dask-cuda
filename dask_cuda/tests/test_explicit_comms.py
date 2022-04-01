@@ -32,7 +32,9 @@ async def my_rank(state, arg):
 def _test_local_cluster(protocol):
     dask.config.update(
         dask.config.global_config,
-        {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
+        {
+            "distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),
+        },
         priority="new",
     )
 
@@ -102,7 +104,9 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
     else:
         dask.config.update(
             dask.config.global_config,
-            {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
+            {
+                "distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),
+            },
             priority="new",
         )
 
@@ -202,7 +206,9 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
 
         dask.config.update(
             dask.config.global_config,
-            {"distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),},
+            {
+                "distributed.comm.ucx": get_ucx_config(enable_tcp_over_ucx=True),
+            },
             priority="new",
         )
 
