@@ -123,7 +123,7 @@ async def _create_listeners(session_state, nworkers, rank):
 
 
 async def _create_endpoints(session_state, peers):
-    """ Each worker creates a UCX endpoint to all workers with greater rank"""
+    """Each worker creates a UCX endpoint to all workers with greater rank"""
     assert session_state["loop"] is asyncio.get_event_loop()
 
     myrank = session_state["rank"]

@@ -118,9 +118,10 @@ async def run(args):
                 for (w1, w2), v in bandwidths.items()
             }
             total_nbytes = {
-                (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(
-                    sum(nb)
-                )
+                (
+                    scheduler_workers[w1].name,
+                    scheduler_workers[w2].name,
+                ): format_bytes(sum(nb))
                 for (w1, w2), nb in total_nbytes.items()
             }
 
@@ -198,28 +199,40 @@ async def run(args):
 def parse_args():
     special_args = [
         {
-            "name": ["-s", "--size",],
+            "name": [
+                "-s",
+                "--size",
+            ],
             "default": "10000",
             "metavar": "n",
             "type": int,
             "help": "The size n in n^2 (default 10000)",
         },
         {
-            "name": ["-t", "--type",],
+            "name": [
+                "-t",
+                "--type",
+            ],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
             "help": "Use GPU or CPU arrays",
         },
         {
-            "name": ["-c", "--chunk-size",],
+            "name": [
+                "-c",
+                "--chunk-size",
+            ],
             "default": "128 MiB",
             "metavar": "nbytes",
             "type": str,
             "help": "Chunk size (default '128 MiB')",
         },
         {
-            "name": ["-k", "--kernel-size",],
+            "name": [
+                "-k",
+                "--kernel-size",
+            ],
             "default": "1",
             "metavar": "k",
             "type": int,
@@ -232,7 +245,12 @@ def parse_args():
             "type": parse_bytes,
             "help": "Ignore messages smaller than this (default '1 MB')",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
+        {
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs",
+        },
     ]
 
     return parse_benchmark_args(

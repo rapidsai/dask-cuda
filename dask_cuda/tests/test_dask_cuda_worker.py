@@ -206,7 +206,12 @@ def test_pre_import(loop):  # noqa: F811
 
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
-            ["dask-cuda-worker", "127.0.0.1:9369", "--pre-import", module,]
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--pre-import",
+                module,
+            ]
         ):
             with Client("127.0.0.1:9369", loop=loop) as client:
                 assert wait_workers(client, n_gpus=get_n_gpus())

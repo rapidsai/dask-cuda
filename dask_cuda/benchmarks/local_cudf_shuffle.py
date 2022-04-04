@@ -138,7 +138,10 @@ def main(args):
         for (w1, w2), v in bandwidths.items()
     }
     total_nbytes = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name,): format_bytes(sum(nb))
+        (
+            scheduler_workers[w1].name,
+            scheduler_workers[w2].name,
+        ): format_bytes(sum(nb))
         for (w1, w2), nb in total_nbytes.items()
     }
 
@@ -251,14 +254,20 @@ def parse_args():
             "help": "Number of input partitions (default '100')",
         },
         {
-            "name": ["-b", "--backend",],
+            "name": [
+                "-b",
+                "--backend",
+            ],
             "choices": ["dask", "explicit-comms"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
         },
         {
-            "name": ["-t", "--type",],
+            "name": [
+                "-t",
+                "--type",
+            ],
             "choices": ["cpu", "gpu"],
             "default": "gpu",
             "type": str,
@@ -276,7 +285,12 @@ def parse_args():
             "action": "store_true",
             "help": "Write output as markdown",
         },
-        {"name": "--runs", "default": 3, "type": int, "help": "Number of runs",},
+        {
+            "name": "--runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of runs",
+        },
     ]
 
     return parse_benchmark_args(

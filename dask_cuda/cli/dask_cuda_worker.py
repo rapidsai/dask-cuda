@@ -126,7 +126,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     allows querying the amount of memory allocated by RMM.""",
 )
 @click.option(
-    "--pid-file", type=str, default="", help="File to write the process PID.",
+    "--pid-file",
+    type=str,
+    default="",
+    help="File to write the process PID.",
 )
 @click.option(
     "--resources",
@@ -314,7 +317,9 @@ def main(
 ):
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
-            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key,
+            tls_ca_file=tls_ca_file,
+            tls_worker_cert=tls_cert,
+            tls_worker_key=tls_key,
         )
     else:
         security = None

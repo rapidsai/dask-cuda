@@ -378,7 +378,9 @@ class ProxyObject:
         pxy.manager.remove(self)
 
     def _pxy_serialize(
-        self, serializers: Iterable[str], proxy_detail: ProxyDetail = None,
+        self,
+        serializers: Iterable[str],
+        proxy_detail: ProxyDetail = None,
     ) -> None:
         """Inplace serialization of the proxied object using the `serializers`
 
