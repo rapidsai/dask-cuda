@@ -43,9 +43,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=str,
     default=None,
     help="""A unique name for the worker. Can be a string (like ``"worker-1"``) or
-    ``None`` for a nameless worker. If used with ``--nprocs``, then the process number
-    will be appended to the worker name, e.g. ``"worker-1-0"``, ``"worker-1-1"``,
-    ``"worker-1-2"``.""",
+    ``None`` for a nameless worker.""",
 )
 @click.option(
     "--memory-limit",
@@ -120,15 +118,21 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
         are specified.""",
 )
 @click.option(
+    "--rmm-track-allocations/--no-rmm-track-allocations",
+    default=False,
+    show_default=True,
+    help="""Track memory allocations made by RMM. If ``True``, wraps the memory
+    resource of each worker with a ``rmm.mr.TrackingResourceAdaptor`` that
+    allows querying the amount of memory allocated by RMM.""",
+)
+@click.option(
     "--pid-file", type=str, default="", help="File to write the process PID.",
 )
 @click.option(
     "--resources",
     type=str,
     default="",
-    help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``. Resources are
-    applied separately to each worker process (only relevant when starting multiple
-    worker processes with ``--nprocs``).""",
+    help="""Resources for task constraints like ``"GPU=2 MEM=10e9"``.""",
 )
 @click.option(
     "--dashboard/--no-dashboard",
@@ -249,21 +253,6 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     requires ``--enable-infiniband``.""",
 )
 @click.option(
-    "--net-devices",
-    type=str,
-    default=None,
-    help="""Interface(s) used by workers for UCX communication. Can be a string (like
-    ``"eth0"`` for NVLink or ``"mlx5_0:1"``/``"ib0"`` for InfiniBand), ``"auto"``
-    (requires ``--enable-infiniband``) to pick the optimal interface per-worker based on
-    the system's topology, or ``None`` to stay with the default value of ``"all"`` (use
-    all available interfaces).
-
-    .. warning::
-        ``"auto"`` requires UCX-Py to be installed and compiled with hwloc support.
-        Unexpected errors can occur when using ``"auto"`` if any interfaces are
-        disconnected or improperly configured.""",
-)
-@click.option(
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
     help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
@@ -281,6 +270,13 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     help="""Use a different class than Distributed's default (``distributed.Worker``)
     to spawn ``distributed.Nanny``.""",
 )
+@click.option(
+    "--pre-import",
+    default=None,
+    help="""Pre-import libraries as a Worker plugin to prevent long import times
+    bleeding through later Dask operations. Should be a list of comma-separated names,
+    such as "cudf,rmm".""",
+)
 def main(
     scheduler,
     host,
@@ -293,6 +289,7 @@ def main(
     rmm_managed_memory,
     rmm_async,
     rmm_log_directory,
+    rmm_track_allocations,
     pid_file,
     resources,
     dashboard,
@@ -310,9 +307,9 @@ def main(
     enable_infiniband,
     enable_nvlink,
     enable_rdmacm,
-    net_devices,
     enable_jit_unspill,
     worker_class,
+    pre_import,
     **kwargs,
 ):
     if tls_ca_file and tls_cert and tls_key:
@@ -344,6 +341,7 @@ def main(
         rmm_managed_memory,
         rmm_async,
         rmm_log_directory,
+        rmm_track_allocations,
         pid_file,
         resources,
         dashboard,
@@ -359,9 +357,9 @@ def main(
         enable_infiniband,
         enable_nvlink,
         enable_rdmacm,
-        net_devices,
         enable_jit_unspill,
         worker_class,
+        pre_import,
         **kwargs,
     )
 

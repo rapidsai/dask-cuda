@@ -1,5 +1,7 @@
 import re
+import tempfile
 from typing import Iterable
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -25,17 +27,31 @@ cupy.cuda.set_allocator(None)
 one_item_array = lambda: cupy.arange(1)
 one_item_nbytes = one_item_array().nbytes
 
-# While testing we want to proxify `cupy.ndarray` even though
-# it is on the ignore_type list by default.
+# While testing we don't want to unproxify `cupy.ndarray` even though
+# it is on the incompatible_types list by default.
 dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
-dask_cuda.proxify_device_objects.ignore_types = ()
+dask_cuda.proxify_device_objects.incompatible_types = ()  # type: ignore
+
+# Make the "disk" serializer available and use a tmp directory
+if ProxifyHostFile._spill_to_disk is None:
+    # Hold on to `tmpdir` to keep dir alive until exit
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+    )
+assert ProxifyHostFile._spill_to_disk is not None
+
+# In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
+# Notice, we use `../..` to remove the `dask-worker-space/jit-unspill-disk-storage` part
+# added by the ProxifyHostFile implicitly.
+root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
 
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     """Check that two collections of proxies contains the same proxies (unordered)
 
     In order to avoid deserializing proxy objects when comparing them,
-    this funcntion compares object IDs.
+    this function compares object IDs.
     """
 
     ids1 = sorted([id(p) for p in p1])
@@ -44,7 +60,9 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
 
 
 def test_one_dev_item_limit():
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+    )
 
     a1 = one_item_array() + 42
     a2 = one_item_array()
@@ -133,7 +151,9 @@ def test_one_dev_item_limit():
 def test_one_item_host_limit(capsys):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        device_memory_limit=one_item_nbytes, memory_limit=memory_limit
+        local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=memory_limit,
     )
 
     a1 = one_item_array() + 1
@@ -203,6 +223,7 @@ def test_spill_on_demand():
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
+        local_directory=root_dir,
         device_memory_limit=2 * total_mem,
         memory_limit=2 * total_mem,
         spill_on_demand=True,
@@ -252,7 +273,9 @@ def test_dataframes_share_dev_mem():
     # They still share the same underlying device memory
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
-    dhf = ProxifyHostFile(device_memory_limit=160, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=160, memory_limit=1000
+    )
     dhf["v1"] = view1
     dhf["v2"] = view2
     v1 = dhf["v1"]
@@ -291,10 +314,13 @@ def test_externals():
     the device_memory_limit while freeing them ASAP without explicit calls to
     __delitem__.
     """
-    dhf = ProxifyHostFile(device_memory_limit=one_item_nbytes, memory_limit=1000)
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+    )
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
-    k2 = dhf.manager.proxify(one_item_array())
+    k2, incompatible_type_found = dhf.manager.proxify(one_item_array())
+    assert not incompatible_type_found
     # `k2` isn't part of the store but still triggers spilling of `k1`
     assert len(dhf) == 1
     assert k1._pxy_get().is_serialized()
@@ -324,29 +350,25 @@ def test_externals():
     assert dhf.manager._dev._mem_usage == 0
 
 
-def test_proxify_device_objects_of_cupy_array():
-    """Check that a proxied array behaves as a regular cupy array
+@patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
+def test_incompatible_types():
+    """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
 
-    Notice, in this test we add `cupy.ndarray` to the ignore_types temporarily.
+    Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
     """
     cupy = pytest.importorskip("cupy")
-    dask_cuda.proxify_device_objects.ignore_types = (cupy.ndarray,)
-    try:
-        # Make sure that equality works, which we use to test the other operators
-        org = cupy.arange(9).reshape((3, 3)) + 1
-        pxy = dask_cuda.proxify_device_objects.proxify_device_objects(
-            org.copy(), {}, []
-        )
-        assert (org == pxy).all()
-        assert (org + 1 != pxy).all()
+    cudf = pytest.importorskip("cudf")
+    dhf = ProxifyHostFile(
+        local_directory=root_dir, device_memory_limit=100, memory_limit=100
+    )
 
-        for op in [cupy.dot]:
-            res = op(org, org)
-            assert (op(pxy, pxy) == res).all()
-            assert (op(org, pxy) == res).all()
-            assert (op(pxy, org) == res).all()
-    finally:
-        dask_cuda.proxify_device_objects.ignore_types = ()
+    # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval
+    a1, a2 = (cupy.arange(9), cudf.Series([1, 2, 3]))
+    dhf["a"] = (a1, a2)
+    b1, b2 = dhf["a"]
+    assert a1 is b1
+    assert isinstance(b2, ProxyObject)
+    assert a2 is unproxy(b2)
 
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
@@ -377,12 +399,12 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
                     assert all(res)  # Only proxy objects
 
 
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling """
     cudf = pytest.importorskip("cudf")
 
-    with dask.config.set({"distributed.worker.memory.terminate": 0}):
+    with dask.config.set({"distributed.worker.memory.terminate": None}):
         async with dask_cuda.LocalCUDACluster(
             n_workers=1, device_memory_limit="1MB", jit_unspill=True, asynchronous=True
         ) as cluster:
@@ -396,14 +418,15 @@ async def test_worker_force_spill_to_disk():
                     """Trigger a memory_monitor() and reset memory_limit"""
                     w = get_worker()
                     # Set a host memory limit that triggers spilling to disk
-                    w.memory_pause_fraction = False
+                    w.memory_manager.memory_pause_fraction = False
                     memory = w.monitor.proc.memory_info().rss
-                    w.memory_limit = memory - 10 ** 8
-                    w.memory_target_fraction = 1
-                    await w.memory_monitor()
+                    w.memory_manager.memory_limit = memory - 10 ** 8
+                    w.memory_manager.memory_target_fraction = 1
+                    print(w.memory_manager.data)
+                    await w.memory_manager.memory_monitor(w)
                     # Check that host memory are freed
                     assert w.monitor.proc.memory_info().rss < memory - 10 ** 7
-                    w.memory_limit = memory * 10  # Un-limit
+                    w.memory_manager.memory_limit = memory * 10  # Un-limit
 
                 await client.submit(f)
                 log = str(await client.get_worker_logs())

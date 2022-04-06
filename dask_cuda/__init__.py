@@ -1,3 +1,9 @@
+import sys
+
+if sys.platform != "linux":
+    raise ImportError("Only Linux is supported by Dask-CUDA at this time")
+
+
 import dask
 import dask.dataframe.core
 import dask.dataframe.shuffle
