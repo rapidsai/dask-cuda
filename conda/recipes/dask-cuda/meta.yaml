@@ -2,6 +2,8 @@
 
 # Usage:
 #   conda build -c conda-forge .
+{% set data = load_setup_py_data() %}
+
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
 {% set py_version=environ.get('CONDA_PY', 36) %}
@@ -27,12 +29,9 @@ requirements:
     - setuptools
   run:
     - python
-    - dask>=2022.03.0
-    - distributed>=2022.03.0
-    - pynvml>=11.0.0
-    - numpy>=1.16.0
-    - numba>=0.53.1
-    - click==8.0.4
+    {% for r in data.get("install_requires", []) %}
+    - {{ r }}
+    {% endfor %}
 
 test:
   imports:
