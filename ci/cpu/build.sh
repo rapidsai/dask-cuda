@@ -68,7 +68,7 @@ pip install git+https://github.com/dask/distributed.git@main
 # BUILD - Package builds
 ################################################################################
 
-gpuci_logger "Build conda pkg for libcudf"
+gpuci_logger "Build conda pkg for dask-cuda"
 gpuci_conda_retry build conda/recipes/dask-cuda --python=${PYTHON}
 
 rm -rf dist/
