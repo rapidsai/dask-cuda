@@ -1,6 +1,5 @@
 import logging
 import os
-import warnings
 
 import click
 import numba.cuda
@@ -41,28 +40,17 @@ def _create_cuda_context():
         )
         ctx = has_cuda_context()
         if ctx is not False and distributed.comm.ucx.cuda_context_created is False:
-            warnings.warn(
-                f"A CUDA context for device {ctx} already exists on process ID "
-                f"{os.getpid()}. This is often the result of a CUDA-enabled library "
-                "calling a CUDA runtime function before Dask-CUDA can spawn worker "
-                "processes. Please make sure any such function calls don't happen at "
-                "import time or in the global scope of a program."
-            )
+            distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
 
         _create_cuda_context_handler()
 
         if distributed.comm.ucx.cuda_context_created is False:
             ctx = has_cuda_context()
             if ctx is not False and ctx != cuda_visible_device:
-                warnings.warn(
-                    f"Worker with process ID {os.getpid()} should have a CUDA context "
-                    f"assigned to device {cuda_visible_device}, but instead the CUDA "
-                    f"context is on device {ctx}. This is often the result of a "
-                    "CUDA-enabled library calling a CUDA runtime function before "
-                    "Dask-CUDA can spawn worker processes. Please make sure any such "
-                    "function calls don't happen at import time or in the global scope "
-                    "of a program."
+                distributed.comm.ucx._warn_cuda_context_wrong_device(
+                    cuda_visible_device, ctx, os.getpid()
                 )
+
     except Exception:
         logger.error("Unable to start CUDA Context", exc_info=True)
 
