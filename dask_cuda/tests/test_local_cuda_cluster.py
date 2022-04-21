@@ -123,9 +123,11 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
-async def test_threads_per_worker():
+async def test_threads_per_worker_and_memory_limit():
     async with LocalCUDACluster(threads_per_worker=4, asynchronous=True) as cluster:
         assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
+        full_mem = sum(w.memory_manager.memory_limit for w in cluster.workers.values())
+        assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
 
 
 @gen_test(timeout=20)
