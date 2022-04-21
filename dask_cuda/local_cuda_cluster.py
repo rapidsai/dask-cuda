@@ -230,7 +230,7 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
-        # Set nthreads to 1 during mem limit calculation since the host memory limit should be dictated by n_workers
+        # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
         self.memory_limit = parse_memory_limit(
             memory_limit=memory_limit, nthreads=1, total_cores=n_workers
         )

@@ -85,7 +85,7 @@ class CUDAWorker(Server):
         if nthreads < 1:
             raise ValueError("nthreads must be higher than 0.")
 
-        # Set nthreads to 1 during mem limit calculation since the host memory limit should be dictated by nprocs
+        # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
         memory_limit = parse_memory_limit(
             memory_limit=memory_limit, nthreads=1, total_cores=nprocs
         )
