@@ -20,6 +20,14 @@ When using UCX, each NVLink and InfiniBand memory buffer must create a mapping b
 For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
 A memory pool also prevents the Dask scheduler from deserializing CUDA data, which will cause a crash.
 
+.. warning::
+    When using UCX integration, Dask-CUDA must create a CUDA context on the process initializating the cluster.
+    If a CUDA context already exists for this process at the time of cluster initialization, unexpected behavior can occur.
+    To avoid this, it is advised to initialize any UCX-enabled clusters before doing operations that would result in a CUDA context being created.
+
+    For some RAPIDS libraries, setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters.
+
+
 Configuration
 -------------
 
