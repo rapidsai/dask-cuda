@@ -21,11 +21,12 @@ For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) 
 A memory pool also prevents the Dask scheduler from deserializing CUDA data, which will cause a crash.
 
 .. warning::
-    When using UCX integration, Dask-CUDA must create a CUDA context on the process initializating the cluster.
+    Dask-CUDA must create worker CUDA contexts during cluster initialization, and properly ordering that task is critical for correct UCX configuration.
     If a CUDA context already exists for this process at the time of cluster initialization, unexpected behavior can occur.
     To avoid this, it is advised to initialize any UCX-enabled clusters before doing operations that would result in a CUDA context being created.
+    Depending on the library, even an import can force CUDA context creation.
 
-    For some RAPIDS libraries, setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters.
+    For some RAPIDS libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
 
 
 Configuration
