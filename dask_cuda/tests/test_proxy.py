@@ -16,8 +16,6 @@ from dask.sizeof import sizeof
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
-import dask_cudf
-
 import dask_cuda
 from dask_cuda import proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
@@ -286,6 +284,7 @@ def test_fixed_attribute_name():
 def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
@@ -511,6 +510,7 @@ def test_pandas():
 def test_from_cudf_of_proxy_object():
     """Check from_cudf() of a proxy object"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
     assert has_parallel_type(df)
