@@ -406,7 +406,7 @@ async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
     cudf = pytest.importorskip("cudf")
 
-    with dask.config.set({"distributed.worker.memory.terminate": None}):
+    with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with dask_cuda.LocalCUDACluster(
             n_workers=1, device_memory_limit="1MB", jit_unspill=True, asynchronous=True
         ) as cluster:
