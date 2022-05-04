@@ -576,15 +576,6 @@ def test_einsum_of_proxied_cupy_arrays():
     assert all(res1.flatten() == res2.flatten())
 
 
-def test_merge_sorted_of_proxied_cudf_dataframes():
-    cudf = pytest.importorskip("cudf")
-
-    dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
-    got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
-    expected = cudf.merge_sorted(dfs)
-    assert_frame_equal(got.to_pandas(), expected.to_pandas())
-
-
 @pytest.mark.parametrize(
     "np_func", [np.less, np.less_equal, np.greater, np.greater_equal, np.equal]
 )
