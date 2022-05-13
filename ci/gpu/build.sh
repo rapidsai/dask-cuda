@@ -27,14 +27,15 @@ export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
 export UCXPY_VERSION=0.26.*
+unset GIT_DESCRIBE_TAG
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
 # will possibly be enabled by default starting on 1.17)
 export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
-# Install dask and distributed from master branch. Usually needed during
+# Install dask and distributed from main branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MASTER=1
+export INSTALL_DASK_MAIN=1
 
 ################################################################################
 # SETUP - Check environment
@@ -49,43 +50,34 @@ nvidia-smi
 gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate rapids
+
 conda info
 conda config --show-sources
 conda list --show-channel-urls
 
-# Fixing Numpy version to avoid RuntimeWarning: numpy.ufunc size changed, may
-# indicate binary incompatibility. Expected 192 from C header, got 216 from PyObject.
-# Also installing cucim in order to test GDS spilling
-gpuci_mamba_retry install "cudatoolkit=$CUDA_REL" \
-              "cudf=${MINOR_VERSION}" "dask-cudf=${MINOR_VERSION}" \
-              "ucx-py=${UCXPY_VERSION}" "ucx-proc=*=gpu" \
-              "rapids-build-env=$MINOR_VERSION.*" \
-              "cucim"
-
+# Installing cucim in order to test GDS spilling
 # Pin pytest-asyncio because latest versions modify the default asyncio
 # `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
-gpuci_mamba_retry install "pytest-asyncio=<0.14.0"
+gpuci_mamba_retry install "cudf=${MINOR_VERSION}" \
+              "dask-cudf=${MINOR_VERSION}" \
+              "ucx-py=${UCXPY_VERSION}" \
+              "ucx-proc=*=gpu" \
+              "cucim" \
+              "pytest-asyncio=<0.14.0"
 
-# https://docs.rapids.ai/maintainers/depmgmt/
-# gpuci_mamba_retry remove -f rapids-build-env
-# gpuci_mamba_retry install "your-pkg=1.0.0"
-
-conda info
-conda config --show-sources
-conda list --show-channel-urls
-
-# Install the main version of dask and distributed
-if [[ "${INSTALL_DASK_MASTER}" == 1 ]]; then
-    gpuci_logger "pip install git+https://github.com/dask/distributed.git@main --upgrade"
-    pip install "git+https://github.com/dask/distributed.git@main" --upgrade
-    gpuci_logger "pip install git+https://github.com/dask/dask.git@main --upgrade"
-    pip install "git+https://github.com/dask/dask.git@main" --upgrade
+# Install latest nightly version for dask and distributed if needed
+if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
+  gpuci_logger "Installing dask and distributed from dask nightly channel"
+  gpuci_mamba_retry install -c dask/label/dev \
+    "dask/label/dev::dask" \
+    "dask/label/dev::distributed"
 fi
 
 gpuci_logger "Check versions"
 python --version
 $CC --version
 $CXX --version
+
 conda info
 conda config --show-sources
 conda list --show-channel-urls
@@ -94,9 +86,11 @@ conda list --show-channel-urls
 # BUILD - Build dask-cuda
 ################################################################################
 
-gpuci_logger "Build dask-cuda"
-cd "$WORKSPACE"
-python -m pip install -e .
+gpuci_logger "Build and install dask-cuda"
+cd "${WORKSPACE}"
+CONDA_BLD_DIR="${WORKSPACE}/.conda-bld"
+gpuci_conda_retry build --croot "${CONDA_BLD_DIR}" conda/recipes/dask-cuda --python="${PYTHON}"
+gpuci_mamba_retry install -c "${CONDA_BLD_DIR}" dask-cuda
 
 ################################################################################
 # TEST - Run pytests for ucx-py
@@ -118,4 +112,3 @@ fi
 if [ -n "${CODECOV_TOKEN}" ]; then
     codecov -t $CODECOV_TOKEN
 fi
-
