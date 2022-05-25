@@ -7,7 +7,7 @@ import pytest
 
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
-from distributed.utils_test import gen_test
+from distributed.utils_test import gen_test, raises_with_cause
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
@@ -243,7 +243,7 @@ async def test_pre_import():
 
 # Intentionally not using @gen_test to skip cleanup checks
 async def test_pre_import_not_found():
-    with pytest.raises(ModuleNotFoundError):
+    with raises_with_cause(RuntimeError, None, ImportError, None):
         await LocalCUDACluster(
             n_workers=1,
             pre_import="my_module",
