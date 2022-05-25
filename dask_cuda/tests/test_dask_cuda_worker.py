@@ -217,7 +217,6 @@ def test_pre_import(loop):  # noqa: F811
                 assert all(imported)
 
 
-@pytest.mark.xfail(reason="https://github.com/dask/distributed/issues/6320")
 @pytest.mark.timeout(20)
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_pre_import_not_found():
