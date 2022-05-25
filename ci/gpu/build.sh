@@ -71,7 +71,11 @@ if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
   gpuci_mamba_retry install -c dask/label/dev \
     "dask/label/dev::dask" \
     "dask/label/dev::distributed"
+else
+  gpuci_logger "gpuci_mamba_retry install conda-forge::dask==2022.05.1 conda-forge::distributed==2022.05.1 conda-forge::dask-core==2022.05.1 --force-reinstall"
+  gpuci_mamba_retry install conda-forge::dask==2022.05.1 conda-forge::distributed==2022.05.1 conda-forge::dask-core==2022.05.1 --force-reinstall
 fi
+
 
 gpuci_logger "Check versions"
 python --version
