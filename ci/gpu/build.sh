@@ -75,8 +75,8 @@ if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
     "dask/label/dev::dask" \
     "dask/label/dev::distributed"
 else
-  gpuci_logger "gpuci_mamba_retry install conda-forge::dask>=${DASK_STABLE_VERSION} conda-forge::distributed>=${DASK_STABLE_VERSION} conda-forge::dask-core>=${DASK_STABLE_VERSION} --force-reinstall"
-  gpuci_mamba_retry install conda-forge::dask>=${DASK_STABLE_VERSION} conda-forge::distributed>=${DASK_STABLE_VERSION} conda-forge::dask-core>=${DASK_STABLE_VERSION} --force-reinstall
+  gpuci_logger "gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall"
+  gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall
 fi
 
 
