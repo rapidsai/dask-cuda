@@ -35,7 +35,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
 # Install dask and distributed from main branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MAIN=0
+export INSTALL_DASK_MAIN=1
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
 export DASK_STABLE_VERSION="2022.05.2"
@@ -75,8 +75,8 @@ if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
     "dask/label/dev::dask" \
     "dask/label/dev::distributed"
 else
-  gpuci_logger "gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall"
-  gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall
+  gpuci_logger "gpuci_mamba_retry install conda-forge::dask>=${DASK_STABLE_VERSION} conda-forge::distributed>=${DASK_STABLE_VERSION} conda-forge::dask-core>=${DASK_STABLE_VERSION} --force-reinstall"
+  gpuci_mamba_retry install conda-forge::dask>=${DASK_STABLE_VERSION} conda-forge::distributed>=${DASK_STABLE_VERSION} conda-forge::dask-core>=${DASK_STABLE_VERSION} --force-reinstall
 fi
 
 
