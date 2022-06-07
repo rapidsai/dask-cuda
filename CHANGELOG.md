@@ -1,6 +1,38 @@
-# dask-cuda 22.06.00 (Date TBD)
+# dask-cuda 22.06.00 (7 Jun 2022)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.06.00a for the latest changes to this development branch.
+## 🚨 Breaking Changes
+
+- Upgrade `numba` pinning to be in-line with rest of rapids ([#912](https://github.com/rapidsai/dask-cuda/pull/912)) [@galipremsagar](https://github.com/galipremsagar)
+
+## 🐛 Bug Fixes
+
+- Reduce `test_cudf_cluster_device_spill` test and speed it up ([#918](https://github.com/rapidsai/dask-cuda/pull/918)) [@pentschev](https://github.com/pentschev)
+- Update ImportError tests with --pre-import ([#914](https://github.com/rapidsai/dask-cuda/pull/914)) [@pentschev](https://github.com/pentschev)
+- Add xfail mark to `test_pre_import_not_found` ([#908](https://github.com/rapidsai/dask-cuda/pull/908)) [@pentschev](https://github.com/pentschev)
+- Increase spill tests timeout to 30 seconds ([#901](https://github.com/rapidsai/dask-cuda/pull/901)) [@pentschev](https://github.com/pentschev)
+- Fix errors related with `distributed.worker.memory.terminate` ([#900](https://github.com/rapidsai/dask-cuda/pull/900)) [@pentschev](https://github.com/pentschev)
+- Skip tests on import error for some optional packages ([#899](https://github.com/rapidsai/dask-cuda/pull/899)) [@pentschev](https://github.com/pentschev)
+- Update auto host_memory computation when threads per worker &gt; 1 ([#896](https://github.com/rapidsai/dask-cuda/pull/896)) [@ayushdg](https://github.com/ayushdg)
+- Update black to 22.3.0 ([#889](https://github.com/rapidsai/dask-cuda/pull/889)) [@charlesbluca](https://github.com/charlesbluca)
+- Remove legacy `check_python_3` ([#886](https://github.com/rapidsai/dask-cuda/pull/886)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Add documentation for `RAPIDS_NO_INITIALIZE` ([#898](https://github.com/rapidsai/dask-cuda/pull/898)) [@charlesbluca](https://github.com/charlesbluca)
+- Use upstream warning functions for CUDA initialization ([#894](https://github.com/rapidsai/dask-cuda/pull/894)) [@charlesbluca](https://github.com/charlesbluca)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for release ([#922](https://github.com/rapidsai/dask-cuda/pull/922)) [@galipremsagar](https://github.com/galipremsagar)
+- Pin `dask` &amp; `distributed` for release ([#916](https://github.com/rapidsai/dask-cuda/pull/916)) [@galipremsagar](https://github.com/galipremsagar)
+- Upgrade `numba` pinning to be in-line with rest of rapids ([#912](https://github.com/rapidsai/dask-cuda/pull/912)) [@galipremsagar](https://github.com/galipremsagar)
+- Removing test of `cudf.merge_sorted()` ([#905](https://github.com/rapidsai/dask-cuda/pull/905)) [@madsbk](https://github.com/madsbk)
+- Disable `include-ignored` coverage warnings ([#903](https://github.com/rapidsai/dask-cuda/pull/903)) [@pentschev](https://github.com/pentschev)
+- Fix ci/local script ([#902](https://github.com/rapidsai/dask-cuda/pull/902)) [@Ethyling](https://github.com/Ethyling)
+- Use conda to build python packages during GPU tests ([#897](https://github.com/rapidsai/dask-cuda/pull/897)) [@Ethyling](https://github.com/Ethyling)
+- Pull `requirements.txt` into Conda recipe ([#893](https://github.com/rapidsai/dask-cuda/pull/893)) [@jakirkham](https://github.com/jakirkham)
+- Unpin `dask` &amp; `distributed` for development ([#892](https://github.com/rapidsai/dask-cuda/pull/892)) [@galipremsagar](https://github.com/galipremsagar)
+- Build packages using mambabuild ([#846](https://github.com/rapidsai/dask-cuda/pull/846)) [@Ethyling](https://github.com/Ethyling)
 
 # dask-cuda 22.04.00 (6 Apr 2022)
 
