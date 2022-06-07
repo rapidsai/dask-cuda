@@ -41,7 +41,9 @@ def test_device_host_file_short(
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
+        device_memory_limit=1024 * 16,
+        memory_limit=1024 * 16,
+        local_directory=tmpdir,
     )
 
     host = [
@@ -77,7 +79,9 @@ def test_device_host_file_step_by_step(tmp_path):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     dhf = DeviceHostFile(
-        device_memory_limit=1024 * 16, memory_limit=1024 * 16, local_directory=tmpdir,
+        device_memory_limit=1024 * 16,
+        memory_limit=1024 * 16,
+        local_directory=tmpdir,
     )
 
     a = np.random.random(1000)

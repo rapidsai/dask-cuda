@@ -236,7 +236,8 @@ def get_cpu_affinity(device_index=None):
             handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
         affinity = pynvml.nvmlDeviceGetCpuAffinity(
-            handle, math.ceil(get_cpu_count() / 64),
+            handle,
+            math.ceil(get_cpu_count() / 64),
         )
         return unpack_bitmask(affinity)
     except pynvml.NVMLError:

@@ -62,7 +62,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Logging is only enabled if RMM memory pool is enabled.",
     )
     parser.add_argument(
-        "--all-to-all", action="store_true", help="Run all-to-all before computation",
+        "--all-to-all",
+        action="store_true",
+        help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -241,7 +243,10 @@ def get_scheduler_workers(dask_scheduler=None):
 
 
 def setup_memory_pool(
-    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+    dask_worker=None,
+    pool_size=None,
+    disable_pool=False,
+    log_directory=None,
 ):
     import cupy
 

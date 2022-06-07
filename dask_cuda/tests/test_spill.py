@@ -118,7 +118,7 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         },
     ],
 )
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
@@ -168,16 +168,16 @@ async def test_cupy_cluster_device_spill(params):
     "params",
     [
         {
-            "device_memory_limit": int(200e6),
-            "memory_limit": int(4000e6),
+            "device_memory_limit": int(50e6),
+            "memory_limit": int(1000e6),
             "host_target": False,
             "host_spill": False,
             "host_pause": False,
             "spills_to_disk": False,
         },
         {
-            "device_memory_limit": int(200e6),
-            "memory_limit": int(200e6),
+            "device_memory_limit": int(50e6),
+            "memory_limit": int(50e6),
             "host_target": False,
             "host_spill": False,
             "host_pause": False,
@@ -186,15 +186,15 @@ async def test_cupy_cluster_device_spill(params):
         {
             # This test setup differs from the one above as Distributed worker
             # pausing is enabled and thus triggers `DeviceHostFile.evict()`
-            "device_memory_limit": int(200e6),
-            "memory_limit": int(200e6),
+            "device_memory_limit": int(50e6),
+            "memory_limit": int(50e6),
             "host_target": None,
             "host_spill": None,
             "host_pause": False,
             "spills_to_disk": True,
         },
         {
-            "device_memory_limit": int(200e6),
+            "device_memory_limit": int(50e6),
             "memory_limit": None,
             "host_target": False,
             "host_spill": False,
@@ -203,7 +203,7 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
@@ -228,7 +228,7 @@ async def test_cudf_cluster_device_spill(params):
                     # The same error above happens when spilling datetime64 to disk
                     cdf = (
                         dask.datasets.timeseries(
-                            dtypes={"x": int, "y": float}, freq="100ms"
+                            dtypes={"x": int, "y": float}, freq="400ms"
                         )
                         .reset_index(drop=True)
                         .map_partitions(cudf.from_pandas)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2019, NVIDIA CORPORATION.
+# Copyright (c) 2019-2022, NVIDIA CORPORATION.
 ################################################################################
 # dask-cuda cpu build
 ################################################################################
@@ -68,8 +68,11 @@ pip install git+https://github.com/dask/distributed.git@main
 # BUILD - Package builds
 ################################################################################
 
-gpuci_logger "Build conda pkg for libcudf"
-gpuci_conda_retry build conda/recipes/dask-cuda --python=${PYTHON}
+# FIXME: Move boa install to gpuci/rapidsai
+gpuci_mamba_retry install -c conda-forge boa
+
+gpuci_logger "Build conda pkg for dask-cuda"
+gpuci_conda_retry mambabuild conda/recipes/dask-cuda --python=${PYTHON}
 
 rm -rf dist/
 python setup.py sdist bdist_wheel

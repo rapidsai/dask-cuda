@@ -1,6 +1,6 @@
-dask==2022.03.0
-distributed==2022.03.0
+dask==2022.05.2
+distributed==2022.05.2
 pynvml>=11.0.0
 numpy>=1.16.0
-numba>=0.53.1
+numba>=0.54
 click==8.0.4

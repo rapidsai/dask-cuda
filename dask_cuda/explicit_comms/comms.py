@@ -123,7 +123,7 @@ async def _create_listeners(session_state, nworkers, rank):
 
 
 async def _create_endpoints(session_state, peers):
-    """ Each worker creates a UCX endpoint to all workers with greater rank"""
+    """Each worker creates a UCX endpoint to all workers with greater rank"""
     assert session_state["loop"] is asyncio.get_event_loop()
 
     myrank = session_state["rank"]
@@ -191,16 +191,16 @@ class CommsContext:
         """Run a coroutine on a single worker
 
         The coroutine is given the worker's state dict as the first argument
-        and *args as the following arguments.
+        and ``*args`` as the following arguments.
 
         Parameters
         ----------
         worker: str
-            Worker to run the `coroutine`
+            Worker to run the ``coroutine``
         coroutine: coroutine
             The function to run on the worker
         *args:
-            Arguments for `coroutine`
+            Arguments for ``coroutine``
         wait: boolean, optional
             If True, waits for the coroutine to finished before returning.
 
@@ -224,14 +224,14 @@ class CommsContext:
         """Run a coroutine on multiple workers
 
         The coroutine is given the worker's state dict as the first argument
-        and *args as the following arguments.
+        and ``*args`` as the following arguments.
 
         Parameters
         ----------
         coroutine: coroutine
             The function to run on each worker
         *args:
-            Arguments for `coroutine`
+            Arguments for ``coroutine``
         workers: list, optional
             List of workers. Default is all workers
         lock_workers: bool, optional

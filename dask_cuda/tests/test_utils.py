@@ -82,7 +82,10 @@ def test_get_device_total_memory():
 def test_get_preload_options_default():
     pytest.importorskip("ucp")
 
-    opts = get_preload_options(protocol="ucx", create_cuda_context=True,)
+    opts = get_preload_options(
+        protocol="ucx",
+        create_cuda_context=True,
+    )
 
     assert "preload" in opts
     assert opts["preload"] == ["dask_cuda.initialize"]

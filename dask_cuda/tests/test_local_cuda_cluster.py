@@ -7,16 +7,11 @@ import pytest
 
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
-from distributed.utils_test import gen_test
-
-import rmm
+from distributed.utils_test import gen_test, raises_with_cause
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import MockWorker, get_gpu_count_mig, get_gpu_uuid_from_index
-
-_driver_version = rmm._cuda.gpu.driverGetVersion()
-_runtime_version = rmm._cuda.gpu.runtimeGetVersion()
 
 
 @gen_test(timeout=20)
@@ -123,9 +118,11 @@ async def test_n_workers():
 
 
 @gen_test(timeout=20)
-async def test_threads_per_worker():
+async def test_threads_per_worker_and_memory_limit():
     async with LocalCUDACluster(threads_per_worker=4, asynchronous=True) as cluster:
         assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
+        full_mem = sum(w.memory_manager.memory_limit for w in cluster.workers.values())
+        assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
 
 
 @gen_test(timeout=20)
@@ -147,7 +144,10 @@ async def test_all_to_all():
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_pool_size="2GB", asynchronous=True,) as cluster:
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB",
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -167,7 +167,10 @@ async def test_rmm_maximum_poolsize_without_poolsize_error():
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_managed_memory=True, asynchronous=True,) as cluster:
+    async with LocalCUDACluster(
+        rmm_managed_memory=True,
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -176,15 +179,19 @@ async def test_rmm_managed():
                 assert v is rmm.mr.ManagedMemoryResource
 
 
-@pytest.mark.skipif(
-    _driver_version < 11020 or _runtime_version < 11020,
-    reason="cudaMallocAsync not supported",
-)
 @gen_test(timeout=20)
 async def test_rmm_async():
     rmm = pytest.importorskip("rmm")
 
-    async with LocalCUDACluster(rmm_async=True, asynchronous=True,) as cluster:
+    driver_version = rmm._cuda.gpu.driverGetVersion()
+    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
+    if driver_version < 11020 or runtime_version < 11020:
+        pytest.skip("cudaMallocAsync not supported")
+
+    async with LocalCUDACluster(
+        rmm_async=True,
+        asynchronous=True,
+    ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
                 rmm.mr.get_current_device_resource_type
@@ -198,7 +205,9 @@ async def test_rmm_logging():
     rmm = pytest.importorskip("rmm")
 
     async with LocalCUDACluster(
-        rmm_pool_size="2GB", rmm_log_directory=".", asynchronous=True,
+        rmm_pool_size="2GB",
+        rmm_log_directory=".",
+        asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
@@ -222,7 +231,9 @@ async def test_pre_import():
         pytest.skip("No module found that isn't already loaded")
 
     async with LocalCUDACluster(
-        n_workers=1, pre_import=module, asynchronous=True,
+        n_workers=1,
+        pre_import=module,
+        asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             imported = await client.run(lambda: module in sys.modules)
@@ -232,16 +243,21 @@ async def test_pre_import():
 
 # Intentionally not using @gen_test to skip cleanup checks
 async def test_pre_import_not_found():
-    with pytest.raises(ModuleNotFoundError):
+    with raises_with_cause(RuntimeError, None, ImportError, None):
         await LocalCUDACluster(
-            n_workers=1, pre_import="my_module", asynchronous=True,
+            n_workers=1,
+            pre_import="my_module",
+            asynchronous=True,
         )
 
 
 @gen_test(timeout=20)
 async def test_cluster_worker():
     async with LocalCUDACluster(
-        scheduler_port=0, asynchronous=True, device_memory_limit=1, n_workers=1,
+        scheduler_port=0,
+        asynchronous=True,
+        device_memory_limit=1,
+        n_workers=1,
     ) as cluster:
         assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:
@@ -283,7 +299,9 @@ async def test_gpu_uuid():
     gpu_uuid = get_gpu_uuid_from_index(0)
 
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES=gpu_uuid, scheduler_port=0, asynchronous=True,
+        CUDA_VISIBLE_DEVICES=gpu_uuid,
+        scheduler_port=0,
+        asynchronous=True,
     ) as cluster:
         assert len(cluster.workers) == 1
         async with Client(cluster, asynchronous=True) as client:

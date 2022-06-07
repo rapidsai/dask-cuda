@@ -16,8 +16,6 @@ from dask.sizeof import sizeof
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
-import dask_cudf
-
 import dask_cuda
 from dask_cuda import proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
@@ -29,7 +27,9 @@ from dask_cuda.proxify_host_file import ProxifyHostFile
 if ProxifyHostFile._spill_to_disk is None:
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(
-        local_directory=tmpdir.name, device_memory_limit=1024, memory_limit=1024,
+        local_directory=tmpdir.name,
+        device_memory_limit=1024,
+        memory_limit=1024,
     )
 
 
@@ -284,6 +284,7 @@ def test_fixed_attribute_name():
 def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
@@ -312,7 +313,7 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10 ** 6)])
+@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10**6)])
 def test_serializing_to_disk(obj):
     """Check serializing to disk"""
 
@@ -356,7 +357,7 @@ def test_multiple_deserializations(serializer):
         assert not os.path.exists(file_path)
 
 
-@pytest.mark.parametrize("size", [10, 10 ** 4])
+@pytest.mark.parametrize("size", [10, 10**4])
 @pytest.mark.parametrize(
     "serializers", [None, ["dask"], ["cuda", "dask"], ["pickle"], ["disk"]]
 )
@@ -509,6 +510,7 @@ def test_pandas():
 def test_from_cudf_of_proxy_object():
     """Check from_cudf() of a proxy object"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
     assert has_parallel_type(df)
@@ -572,15 +574,6 @@ def test_einsum_of_proxied_cupy_arrays():
     a = proxy_object.asproxy(org.copy())
     res2 = dask.array.einsum("ii", a)
     assert all(res1.flatten() == res2.flatten())
-
-
-def test_merge_sorted_of_proxied_cudf_dataframes():
-    cudf = pytest.importorskip("cudf")
-
-    dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
-    got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
-    expected = cudf.merge_sorted(dfs)
-    assert_frame_equal(got.to_pandas(), expected.to_pandas())
 
 
 @pytest.mark.parametrize(

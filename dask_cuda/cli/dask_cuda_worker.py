@@ -5,7 +5,7 @@ import logging
 import click
 from tornado.ioloop import IOLoop, TimeoutError
 
-from distributed.cli.utils import check_python_3, install_signal_handlers
+from distributed.cli.utils import install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
@@ -126,7 +126,10 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     allows querying the amount of memory allocated by RMM.""",
 )
 @click.option(
-    "--pid-file", type=str, default="", help="File to write the process PID.",
+    "--pid-file",
+    type=str,
+    default="",
+    help="File to write the process PID.",
 )
 @click.option(
     "--resources",
@@ -314,7 +317,9 @@ def main(
 ):
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
-            tls_ca_file=tls_ca_file, tls_worker_cert=tls_cert, tls_worker_key=tls_key,
+            tls_ca_file=tls_ca_file,
+            tls_worker_cert=tls_cert,
+            tls_worker_key=tls_key,
         )
     else:
         security = None
@@ -384,7 +389,6 @@ def main(
 
 
 def go():
-    check_python_3()
     main()
 
 
