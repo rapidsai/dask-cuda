@@ -1,6 +1,5 @@
 import logging
 import os
-import warnings
 
 import click
 import numba.cuda
@@ -41,28 +40,17 @@ def _create_cuda_context():
         )
         ctx = has_cuda_context()
         if ctx is not False and distributed.comm.ucx.cuda_context_created is False:
-            warnings.warn(
-                f"A CUDA context for device {ctx} already exists on process ID "
-                f"{os.getpid()}. This is often the result of a CUDA-enabled library "
-                "calling a CUDA runtime function before Dask-CUDA can spawn worker "
-                "processes. Please make sure any such function calls don't happen at "
-                "import time or in the global scope of a program."
-            )
+            distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
 
         _create_cuda_context_handler()
 
         if distributed.comm.ucx.cuda_context_created is False:
             ctx = has_cuda_context()
             if ctx is not False and ctx != cuda_visible_device:
-                warnings.warn(
-                    f"Worker with process ID {os.getpid()} should have a CUDA context "
-                    f"assigned to device {cuda_visible_device}, but instead the CUDA "
-                    f"context is on device {ctx}. This is often the result of a "
-                    "CUDA-enabled library calling a CUDA runtime function before "
-                    "Dask-CUDA can spawn worker processes. Please make sure any such "
-                    "function calls don't happen at import time or in the global scope "
-                    "of a program."
+                distributed.comm.ucx._warn_cuda_context_wrong_device(
+                    cuda_visible_device, ctx, os.getpid()
                 )
+
     except Exception:
         logger.error("Unable to start CUDA Context", exc_info=True)
 
@@ -73,8 +61,6 @@ def initialize(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
-    net_devices="",
-    cuda_device_index=None,
 ):
     """Create CUDA context and initialize UCX-Py, depending on user parameters.
 
@@ -119,28 +105,12 @@ def initialize(
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``enable_infiniband=True``.
-    net_devices : str or callable, default ""
-        Interface(s) used by workers for UCX communication. Can be a string (like
-        ``"eth0"`` for NVLink, ``"mlx5_0:1"``/``"ib0"`` for InfiniBand, or ``""`` to use
-        all available devices), or a callable function that takes the index of the
-        current GPU to return an interface name (like
-        ``lambda dev: "mlx5_%d:1" % (dev // 2)``).
-
-        .. note::
-            If ``net_devices`` is callable, a GPU index must be supplied through
-            ``cuda_device_index``.
-    cuda_device_index : int or None, default None
-        Index of the current GPU, which must be specified for ``net_devices`` if
-        it is callable. Can be an integer or ``None`` if ``net_devices`` is not
-        callable.
     """
     ucx_config = get_ucx_config(
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
-        net_devices=net_devices,
-        cuda_device_index=cuda_device_index,
     )
     dask.config.set({"distributed.comm.ucx": ucx_config})
 
@@ -174,13 +144,6 @@ def initialize(
     default=False,
     help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
 )
-@click.option(
-    "--net-devices",
-    type=str,
-    default=None,
-    help="Network interface to establish UCX connection, "
-    "usually the Ethernet interface, like 'eth0' or 'enp1s0f0'",
-)
 def dask_setup(
     service,
     create_cuda_context,
@@ -188,7 +151,6 @@ def dask_setup(
     enable_infiniband,
     enable_nvlink,
     enable_rdmacm,
-    net_devices,
 ):
     if create_cuda_context:
         _create_cuda_context()

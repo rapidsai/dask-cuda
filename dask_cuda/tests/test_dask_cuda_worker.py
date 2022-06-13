@@ -2,16 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
+import sys
 from unittest.mock import patch
 
+import pkg_resources
 import pytest
 
 from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
-from distributed.utils_test import loop  # noqa: F401
-from distributed.utils_test import popen
-
-import rmm
+from distributed.utils_test import cleanup, loop, popen  # noqa: F401
 
 from dask_cuda.utils import (
     get_gpu_count_mig,
@@ -19,9 +18,6 @@ from dask_cuda.utils import (
     get_n_gpus,
     wait_workers,
 )
-
-_driver_version = rmm._cuda.gpu.driverGetVersion()
-_runtime_version = rmm._cuda.gpu.runtimeGetVersion()
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,3,7,8"})
@@ -57,7 +53,7 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
 
                 workers = client.scheduler_info()["workers"]
                 for w in workers.values():
-                    assert w["memory_limit"] == MEMORY_LIMIT // len(workers) * nthreads
+                    assert w["memory_limit"] == MEMORY_LIMIT // len(workers)
 
                 assert len(expected) == 0
 
@@ -109,12 +105,14 @@ def test_rmm_managed(loop):  # noqa: F811
                     assert v is rmm.mr.ManagedMemoryResource
 
 
-@pytest.mark.skipif(
-    _driver_version < 11020 or _runtime_version < 11020,
-    reason="cudaMallocAsync not supported",
-)
 def test_rmm_async(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
+
+    driver_version = rmm._cuda.gpu.driverGetVersion()
+    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
+    if driver_version < 11020 or runtime_version < 11020:
+        pytest.skip("cudaMallocAsync not supported")
+
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -162,8 +160,8 @@ def test_rmm_logging(loop):  # noqa: F811
                     assert v is rmm.mr.LoggingResourceAdaptor
 
 
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_dashboard_address(loop):  # noqa: F811
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -187,6 +185,47 @@ def test_unknown_argument():
     ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
     assert ret.returncode != 0
     assert b"Scheduler address: --my-argument" in ret.stderr
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_pre_import(loop):  # noqa: F811
+    module = None
+
+    # Pick a module that isn't currently loaded
+    for m in pkg_resources.working_set:
+        if m.key not in sys.modules.keys():
+            module = m.key
+            break
+
+    if module is None:
+        pytest.skip("No module found that isn't already loaded")
+
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--pre-import",
+                module,
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                imported = client.run(lambda: module in sys.modules)
+                assert all(imported)
+
+
+@pytest.mark.timeout(20)
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_pre_import_not_found():
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        ret = subprocess.run(
+            ["dask-cuda-worker", "127.0.0.1:9369", "--pre-import", "my_module"],
+            capture_output=True,
+        )
+        assert ret.returncode != 0
+        assert b"ModuleNotFoundError: No module named 'my_module'" in ret.stderr
 
 
 @patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})
@@ -274,3 +313,34 @@ def test_no_nanny(loop):  # noqa: F811
                     b"distributed.nanny" not in worker.stderr.readline()
                     for i in range(5)
                 )
+
+
+def test_rmm_track_allocations(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--rmm-pool-size",
+                "2 GB",
+                "--no-dashboard",
+                "--rmm-track-allocations",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                memory_resource_type = client.run(
+                    rmm.mr.get_current_device_resource_type
+                )
+                for v in memory_resource_type.values():
+                    assert v is rmm.mr.TrackingResourceAdaptor
+
+                memory_resource_upstream_type = client.run(
+                    lambda: type(rmm.mr.get_current_device_resource().upstream_mr)
+                )
+                for v in memory_resource_upstream_type.values():
+                    assert v is rmm.mr.PoolMemoryResource

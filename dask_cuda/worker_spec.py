@@ -17,11 +17,10 @@ def worker_spec(
     CUDA_VISIBLE_DEVICES=None,
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
-    ucx_net_devices="",
     enable_nvlink=False,
     **kwargs
 ):
-    """ Create a Spec for a CUDA worker.
+    """Create a Spec for a CUDA worker.
 
     The Spec created by this function can be used as a recipe for CUDA workers
     that can be passed to a SpecCluster.
@@ -47,10 +46,6 @@ def worker_spec(
     enable_infiniband: bool
         Set environment variables to enable UCX InfiniBand support. Implies
         enable_tcp_over_ucx=True.
-    ucx_net_device: str or callable
-        A string with the interface name to be used for all devices (empty
-        string means use default), or a callable function taking an integer
-        identifying the GPU index.
     enable_nvlink: bool
         Set environment variables to enable UCX NVLink support. Implies
         enable_tcp_over_ucx=True.
@@ -58,8 +53,7 @@ def worker_spec(
     Examples
     --------
     >>> from dask_cuda.worker_spec import worker_spec
-    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2],
-                    ucx_net_devices=lambda i: "mlx5_%d:1" % (i //2))
+    >>> worker_spec(interface="enp1s0f0", CUDA_VISIBLE_DEVICES=[0, 2])
     {0: {'cls': distributed.nanny.Nanny,
       'options': {'env': {'CUDA_VISIBLE_DEVICES': '0,2'},
        'interface': 'enp1s0f0',
@@ -128,9 +122,4 @@ def worker_spec(
                 "preload_argv": "--create-cuda-context",
             },
         }
-        if ucx_net_devices is not None or ucx_net_devices != "":
-            if callable(ucx_net_devices):
-                spec[dev]["options"]["env"]["UCX_NET_DEVICES"] = ucx_net_devices(dev)
-            else:
-                spec[dev]["options"]["env"]["UCX_NET_DEVICES"] = ucx_net_devices
     return spec

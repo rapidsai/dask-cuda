@@ -62,7 +62,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Logging is only enabled if RMM memory pool is enabled.",
     )
     parser.add_argument(
-        "--all-to-all", action="store_true", help="Run all-to-all before computation",
+        "--all-to-all",
+        action="store_true",
+        help="Run all-to-all before computation",
     )
     parser.add_argument(
         "--enable-tcp-over-ucx",
@@ -115,13 +117,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         action="store_false",
         dest="enable_rdmacm",
         help="Disable RDMACM with UCX.",
-    )
-    parser.add_argument(
-        "--ucx-net-devices",
-        default=None,
-        type=str,
-        help="The device to be used for UCX communication, or 'auto'. "
-        "Ignored if protocol is 'tcp'",
     )
     parser.add_argument(
         "--interface",
@@ -195,7 +190,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
 
 def get_cluster_options(args):
     ucx_options = {
-        "ucx_net_devices": args.ucx_net_devices,
         "enable_tcp_over_ucx": args.enable_tcp_over_ucx,
         "enable_infiniband": args.enable_infiniband,
         "enable_nvlink": args.enable_nvlink,
@@ -249,7 +243,10 @@ def get_scheduler_workers(dask_scheduler=None):
 
 
 def setup_memory_pool(
-    dask_worker=None, pool_size=None, disable_pool=False, log_directory=None,
+    dask_worker=None,
+    pool_size=None,
+    disable_pool=False,
+    log_directory=None,
 ):
     import cupy
 

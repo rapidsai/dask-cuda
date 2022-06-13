@@ -20,6 +20,15 @@ When using UCX, each NVLink and InfiniBand memory buffer must create a mapping b
 For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
 A memory pool also prevents the Dask scheduler from deserializing CUDA data, which will cause a crash.
 
+.. warning::
+    Dask-CUDA must create worker CUDA contexts during cluster initialization, and properly ordering that task is critical for correct UCX configuration.
+    If a CUDA context already exists for this process at the time of cluster initialization, unexpected behavior can occur.
+    To avoid this, it is advised to initialize any UCX-enabled clusters before doing operations that would result in a CUDA context being created.
+    Depending on the library, even an import can force CUDA context creation.
+
+    For some RAPIDS libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
+
+
 Configuration
 -------------
 
@@ -61,21 +70,6 @@ However, some will affect related libraries, such as RMM:
 
   Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
   This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
-
-- ``distributed.comm.ucx.net-devices: <str>`` -- **recommended for UCX 1.9 and older.**
-
-  Explicitly sets ``UCX_NET_DEVICES`` instead of defaulting to ``"all"``, which can result in suboptimal performance.
-  If using InfiniBand, set to ``"auto"`` to automatically detect the InfiniBand interface closest to each GPU on UCX 1.9 and below.
-  If InfiniBand is disabled, set to a UCX-compatible ethernet interface, e.g. ``"enp1s0f0"`` on a DGX-1.
-  All available UCX-compatible interfaces can be listed by running ``ucx_info -d``.
-
-  UCX 1.11 and above is capable of identifying closest interfaces without setting ``"auto"`` (**deprecated for UCX 1.11 and above**), it is recommended not to set ``ucx.net-devices`` in most cases. However, some recommendations for optimal performance apply, see the documentation on ``ucx.infiniband`` above fore details.
-
-  .. warning::
-      Setting ``ucx.net-devices: "auto"`` assumes that all InfiniBand interfaces on the system are connected and properly configured; undefined behavior may occur otherwise.
-      **``ucx.net-devices: "auto"`` is *DEPRECATED* for UCX 1.11 and above.**
-
-
 
 - ``distributed.rmm.pool-size: <str|int>`` -- **recommended.**
 

@@ -1,4 +1,5 @@
 # Configuration file for Python coverage tests
 [run]
+disable_warnings = include-ignored
 include = dask_cuda/*
 omit = dask_cuda/tests/*

@@ -1,5 +1,7 @@
 import operator
+import os
 import pickle
+import tempfile
 from types import SimpleNamespace
 
 import numpy as np
@@ -14,14 +16,21 @@ from dask.sizeof import sizeof
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
 
-import dask_cudf
-
 import dask_cuda
 from dask_cuda import proxy_object
+from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
-ProxifyHostFile.register_disk_spilling()  # Make the "disk" serializer available
+# Make the "disk" serializer available and use a directory that are
+# remove on exit.
+if ProxifyHostFile._spill_to_disk is None:
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name,
+        device_memory_limit=1024,
+        memory_limit=1024,
+    )
 
 
 @pytest.mark.parametrize("serializers", [None, ("dask", "pickle"), ("disk",)])
@@ -275,6 +284,7 @@ def test_fixed_attribute_name():
 def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
@@ -303,13 +313,9 @@ def test_spilling_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10 ** 6)])
+@pytest.mark.parametrize("obj", [bytearray(10), bytearray(10**6)])
 def test_serializing_to_disk(obj):
     """Check serializing to disk"""
-
-    if isinstance(obj, str):
-        backend = pytest.importorskip(obj)
-        obj = backend.arange(100)
 
     # Serialize from device to disk
     pxy = proxy_object.asproxy(obj)
@@ -324,7 +330,34 @@ def test_serializing_to_disk(obj):
     assert obj == proxy_object.unproxy(pxy)
 
 
-@pytest.mark.parametrize("size", [10, 10 ** 4])
+@pytest.mark.parametrize("serializer", ["dask", "pickle", "disk"])
+def test_multiple_deserializations(serializer):
+    """Check for race conditions when accessing the ProxyDetail"""
+    data1 = bytearray(10)
+    proxy = proxy_object.asproxy(data1, serializers=(serializer,))
+    pxy = proxy._pxy_get()
+    data2 = proxy._pxy_deserialize()
+    assert data1 == data2
+
+    # Check that the spilled file still exist.
+    if serializer == "disk":
+        file_path = pxy.obj[0]["disk-io-header"]["path"]
+        assert isinstance(file_path, SpillToDiskFile)
+        assert file_path.exists()
+        file_path = str(file_path)
+
+    # Check that the spilled data within `pxy` is still available even
+    # though `proxy` has been deserialized.
+    data3 = pxy.deserialize()
+    assert data1 == data3
+
+    # Check that the spilled file has been removed now that all reference
+    # to is has been deleted.
+    if serializer == "disk":
+        assert not os.path.exists(file_path)
+
+
+@pytest.mark.parametrize("size", [10, 10**4])
 @pytest.mark.parametrize(
     "serializers", [None, ["dask"], ["cuda", "dask"], ["pickle"], ["disk"]]
 )
@@ -405,7 +438,7 @@ def test_communicating_proxy_objects(protocol, send_serializers):
 def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
-    ProxifyHostFile._spill_shared_filesystem = shared_fs
+    ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 
     def task(x):
         # Check that the subclass survives the trip from client to worker
@@ -477,6 +510,7 @@ def test_pandas():
 def test_from_cudf_of_proxy_object():
     """Check from_cudf() of a proxy object"""
     cudf = pytest.importorskip("cudf")
+    dask_cudf = pytest.importorskip("dask_cudf")
 
     df = proxy_object.asproxy(cudf.DataFrame({"a": range(10)}))
     assert has_parallel_type(df)
@@ -542,15 +576,6 @@ def test_einsum_of_proxied_cupy_arrays():
     assert all(res1.flatten() == res2.flatten())
 
 
-def test_merge_sorted_of_proxied_cudf_dataframes():
-    cudf = pytest.importorskip("cudf")
-
-    dfs = [cudf.DataFrame({"a": range(10)}), cudf.DataFrame({"b": range(10)})]
-    got = cudf.merge_sorted(proxify_device_objects(dfs, {}, []))
-    expected = cudf.merge_sorted(dfs)
-    assert_frame_equal(got.to_pandas(), expected.to_pandas())
-
-
 @pytest.mark.parametrize(
     "np_func", [np.less, np.less_equal, np.greater, np.greater_equal, np.equal]
 )
@@ -610,3 +635,37 @@ def test_sizeof_cudf():
     pxy._pxy_cache = {}
     assert a_size == pytest.approx(sizeof(pxy), rel=1e-2)
     assert pxy._pxy_get().is_serialized()
+
+
+def test_cupy_broadcast_to():
+    cupy = pytest.importorskip("cupy")
+    a = cupy.arange(10)
+    a_b = np.broadcast_to(a, (10, 10))
+    p_b = np.broadcast_to(proxy_object.asproxy(a), (10, 10))
+
+    assert a_b.shape == p_b.shape
+    assert (a_b == p_b).all()
+
+
+def test_cupy_matmul():
+    cupy = pytest.importorskip("cupy")
+    a, b = cupy.arange(10), cupy.arange(10)
+    c = a @ b
+    assert c == proxy_object.asproxy(a) @ b
+    assert c == a @ proxy_object.asproxy(b)
+    assert c == proxy_object.asproxy(a) @ proxy_object.asproxy(b)
+
+
+def test_cupy_imatmul():
+    cupy = pytest.importorskip("cupy")
+    a = cupy.arange(9).reshape(3, 3)
+    c = a.copy()
+    c @= a
+
+    a1 = a.copy()
+    a1 @= proxy_object.asproxy(a)
+    assert (a1 == c).all()
+
+    a2 = proxy_object.asproxy(a.copy())
+    a2 @= a
+    assert (a2 == c).all()

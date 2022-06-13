@@ -1,10 +1,80 @@
-# dask-cuda 22.04.00 (Date TBD)
+# dask-cuda 22.08.00 (Date TBD)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.04.00a for the latest changes to this development branch.
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.08.00a for the latest changes to this development branch.
 
-# dask-cuda 22.02.00 (Date TBD)
+# dask-cuda 22.06.00 (Date TBD)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.02.00a for the latest changes to this development branch.
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.06.00a for the latest changes to this development branch.
+
+# dask-cuda 22.04.00 (6 Apr 2022)
+
+## 🚨 Breaking Changes
+
+- Introduce incompatible-types and enables spilling of CuPy arrays ([#856](https://github.com/rapidsai/dask-cuda/pull/856)) [@madsbk](https://github.com/madsbk)
+
+## 🐛 Bug Fixes
+
+- Resolve build issues / consistency with conda-forge packages ([#883](https://github.com/rapidsai/dask-cuda/pull/883)) [@charlesbluca](https://github.com/charlesbluca)
+- Increase test_worker_force_spill_to_disk timeout ([#857](https://github.com/rapidsai/dask-cuda/pull/857)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Remove description from non-existing `--nprocs` CLI argument ([#852](https://github.com/rapidsai/dask-cuda/pull/852)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Add --pre-import/pre_import argument ([#854](https://github.com/rapidsai/dask-cuda/pull/854)) [@pentschev](https://github.com/pentschev)
+- Remove support for UCX &lt; 1.11.1 ([#830](https://github.com/rapidsai/dask-cuda/pull/830)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Raise `ImportError` when platform is not Linux ([#885](https://github.com/rapidsai/dask-cuda/pull/885)) [@pentschev](https://github.com/pentschev)
+- Temporarily disable new `ops-bot` functionality ([#880](https://github.com/rapidsai/dask-cuda/pull/880)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Pin `dask` &amp; `distributed` ([#878](https://github.com/rapidsai/dask-cuda/pull/878)) [@galipremsagar](https://github.com/galipremsagar)
+- Upgrade min `dask` &amp; `distributed` versions ([#872](https://github.com/rapidsai/dask-cuda/pull/872)) [@galipremsagar](https://github.com/galipremsagar)
+- Add `.github/ops-bot.yaml` config file ([#871](https://github.com/rapidsai/dask-cuda/pull/871)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Make Dask CUDA work with the new WorkerMemoryManager abstraction ([#870](https://github.com/rapidsai/dask-cuda/pull/870)) [@shwina](https://github.com/shwina)
+- Implement ProxifyHostFile.evict() ([#862](https://github.com/rapidsai/dask-cuda/pull/862)) [@madsbk](https://github.com/madsbk)
+- Introduce incompatible-types and enables spilling of CuPy arrays ([#856](https://github.com/rapidsai/dask-cuda/pull/856)) [@madsbk](https://github.com/madsbk)
+- Spill to disk clean up ([#853](https://github.com/rapidsai/dask-cuda/pull/853)) [@madsbk](https://github.com/madsbk)
+- ProxyObject to support matrix multiplication ([#849](https://github.com/rapidsai/dask-cuda/pull/849)) [@madsbk](https://github.com/madsbk)
+- Unpin max dask and distributed ([#847](https://github.com/rapidsai/dask-cuda/pull/847)) [@galipremsagar](https://github.com/galipremsagar)
+- test_gds: skip if GDS is not available ([#845](https://github.com/rapidsai/dask-cuda/pull/845)) [@madsbk](https://github.com/madsbk)
+- ProxyObject implement __array_function__ ([#843](https://github.com/rapidsai/dask-cuda/pull/843)) [@madsbk](https://github.com/madsbk)
+- Add option to track RMM allocations ([#842](https://github.com/rapidsai/dask-cuda/pull/842)) [@shwina](https://github.com/shwina)
+
+# dask-cuda 22.02.00 (2 Feb 2022)
+
+## 🐛 Bug Fixes
+
+- Ignore `DeprecationWarning` from `distutils.Version` classes ([#823](https://github.com/rapidsai/dask-cuda/pull/823)) [@pentschev](https://github.com/pentschev)
+- Handle explicitly disabled UCX transports ([#820](https://github.com/rapidsai/dask-cuda/pull/820)) [@pentschev](https://github.com/pentschev)
+- Fix regex pattern to match to in test_on_demand_debug_info ([#819](https://github.com/rapidsai/dask-cuda/pull/819)) [@pentschev](https://github.com/pentschev)
+- Fix skipping GDS test if cucim is not installed ([#813](https://github.com/rapidsai/dask-cuda/pull/813)) [@pentschev](https://github.com/pentschev)
+- Unpin Dask and Distributed versions ([#810](https://github.com/rapidsai/dask-cuda/pull/810)) [@pentschev](https://github.com/pentschev)
+- Update to UCX-Py 0.24 ([#805](https://github.com/rapidsai/dask-cuda/pull/805)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Fix Dask-CUDA version to 22.02 ([#835](https://github.com/rapidsai/dask-cuda/pull/835)) [@jakirkham](https://github.com/jakirkham)
+- Merge branch-21.12 into branch-22.02 ([#829](https://github.com/rapidsai/dask-cuda/pull/829)) [@pentschev](https://github.com/pentschev)
+- Clarify `LocalCUDACluster`&#39;s `n_workers` docstrings ([#812](https://github.com/rapidsai/dask-cuda/pull/812)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Pin `dask` &amp; `distributed` versions ([#832](https://github.com/rapidsai/dask-cuda/pull/832)) [@galipremsagar](https://github.com/galipremsagar)
+- Expose rmm-maximum_pool_size argument ([#827](https://github.com/rapidsai/dask-cuda/pull/827)) [@VibhuJawa](https://github.com/VibhuJawa)
+- Simplify UCX configs, permitting UCX_TLS=all ([#792](https://github.com/rapidsai/dask-cuda/pull/792)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Add avg and std calculation for time and throughput ([#828](https://github.com/rapidsai/dask-cuda/pull/828)) [@quasiben](https://github.com/quasiben)
+- sizeof test: increase tolerance ([#825](https://github.com/rapidsai/dask-cuda/pull/825)) [@madsbk](https://github.com/madsbk)
+- Query UCX-Py from gpuCI versioning service ([#818](https://github.com/rapidsai/dask-cuda/pull/818)) [@pentschev](https://github.com/pentschev)
+- Standardize Distributed config separator in get_ucx_config ([#806](https://github.com/rapidsai/dask-cuda/pull/806)) [@pentschev](https://github.com/pentschev)
+- Fixed `ProxyObject.__del__` to use the new Disk IO API from #791 ([#802](https://github.com/rapidsai/dask-cuda/pull/802)) [@madsbk](https://github.com/madsbk)
+- GPUDirect Storage (GDS) support for spilling ([#793](https://github.com/rapidsai/dask-cuda/pull/793)) [@madsbk](https://github.com/madsbk)
+- Disk IO interface ([#791](https://github.com/rapidsai/dask-cuda/pull/791)) [@madsbk](https://github.com/madsbk)
 
 # dask-cuda 21.12.00 (9 Dec 2021)
 

@@ -1,8 +1,20 @@
+import tempfile
+
 import pytest
 
 from distributed.protocol.serialize import deserialize, serialize
 
 from dask_cuda.proxify_host_file import ProxifyHostFile
+
+# Make the "disk" serializer available and use a directory that is
+# removed on exit.
+if ProxifyHostFile._spill_to_disk is None:
+    tmpdir = tempfile.TemporaryDirectory()
+    ProxifyHostFile(
+        local_directory=tmpdir.name,
+        device_memory_limit=1024,
+        memory_limit=1024,
+    )
 
 
 @pytest.mark.parametrize("cuda_lib", ["cupy", "cudf", "numba.cuda"])
@@ -20,12 +32,8 @@ def test_gds(gds_enabled, cuda_lib):
         data_compare = lambda x, y: all(x.copy_to_host() == y.copy_to_host())
 
     try:
-        ProxifyHostFile.register_disk_spilling()
-        if gds_enabled and not ProxifyHostFile._gds_enabled:
-            pytest.importorskip("cucim.clara.filesystem")
-            # In this case, we know that cucim is available and for testing
-            # we enable cucim explicitly even if GDS is unavailable.
-            ProxifyHostFile._gds_enabled = True
+        if gds_enabled and not ProxifyHostFile._spill_to_disk.gds_enabled:
+            pytest.skip("GDS not available")
 
         a = data_create()
         header, frames = serialize(a, serializers=("disk",))

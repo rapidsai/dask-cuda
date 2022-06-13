@@ -20,6 +20,11 @@ from dask_cuda import LocalCUDACluster
     help="Enable InfiniBand communication with RDMA",
 )
 @click.option(
+    "--enable-rdmacm/--disable-rdmacm",
+    default=False,
+    help="Enable RDMA connection manager, requires --enable-infiniband",
+)
+@click.option(
     "--interface",
     default=None,
     type=str,
@@ -35,15 +40,12 @@ from dask_cuda import LocalCUDACluster
     "an integer (bytes) or string (like 5GB or 5000M).",
 )
 def main(
-    enable_nvlink, enable_infiniband, interface, rmm_pool_size,
+    enable_nvlink,
+    enable_infiniband,
+    enable_rdmacm,
+    interface,
+    rmm_pool_size,
 ):
-
-    enable_rdmacm = False
-    ucx_net_devices = None
-
-    if enable_infiniband:
-        # enable_rdmacm = True  # RDMACM not working right now
-        ucx_net_devices = "auto"
 
     if (enable_infiniband or enable_nvlink) and not interface:
         raise ValueError(
@@ -56,7 +58,6 @@ def main(
         enable_nvlink=enable_nvlink,
         enable_infiniband=enable_infiniband,
         enable_rdmacm=enable_rdmacm,
-        ucx_net_devices=ucx_net_devices,
         interface=interface,
         rmm_pool_size=rmm_pool_size,
     )
