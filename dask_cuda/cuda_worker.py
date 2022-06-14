@@ -214,7 +214,7 @@ class CUDAWorker(Server):
                     loop=loop,
                     resources=resources,
                     memory_limit=memory_limit,
-                    interface=_get_interface(interface, host, i, net_devices),
+                    interface=interface,
                     host=host,
                     preload=(list(preload) or []) + ["dask_cuda.initialize"],
                     preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
@@ -232,7 +232,9 @@ class CUDAWorker(Server):
                             rmm_managed_memory,
                             rmm_async,
                             rmm_log_directory,
+                            rmm_track_allocations,
                         ),
+                        PreImport(pre_import),
                     },
                     name=name
                     if nprocs == 1 or name is None
@@ -244,8 +246,6 @@ class CUDAWorker(Server):
                             enable_infiniband=enable_infiniband,
                             enable_nvlink=enable_nvlink,
                             enable_rdmacm=enable_rdmacm,
-                            net_devices=net_devices,
-                            cuda_device_index=i,
                         )
                     },
                     data=data(nvml_device_index(i, cuda_visible_devices(i))),
@@ -268,7 +268,7 @@ class CUDAWorker(Server):
                     loop=loop,
                     resources=resources,
                     memory_limit=memory_limit,
-                    interface=_get_interface(interface, host, i, net_devices),
+                    interface=interface,
                     host=host,
                     preload=(list(preload) or []) + ["dask_cuda.initialize"],
                     preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
@@ -285,7 +285,9 @@ class CUDAWorker(Server):
                             rmm_managed_memory,
                             rmm_async,
                             rmm_log_directory,
+                            rmm_track_allocations,
                         ),
+                        PreImport(pre_import),
                     },
                     name=name
                     if nprocs == 1 or name is None
@@ -296,53 +298,6 @@ class CUDAWorker(Server):
                 )
                 for i in range(nprocs)
             ]
-        self.nannies = [
-            Nanny(
-                scheduler,
-                scheduler_file=scheduler_file,
-                nthreads=nthreads,
-                dashboard=dashboard,
-                dashboard_address=dashboard_address,
-                http_prefix=dashboard_prefix,
-                loop=loop,
-                resources=resources,
-                memory_limit=memory_limit,
-                interface=interface,
-                host=host,
-                preload=(list(preload) or []) + ["dask_cuda.initialize"],
-                preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
-                security=security,
-                env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
-                    ),
-                    RMMSetup(
-                        rmm_pool_size,
-                        rmm_maximum_pool_size,
-                        rmm_managed_memory,
-                        rmm_async,
-                        rmm_log_directory,
-                        rmm_track_allocations,
-                    ),
-                    PreImport(pre_import),
-                },
-                name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
-                local_directory=local_directory,
-                config={
-                    "distributed.comm.ucx": get_ucx_config(
-                        enable_tcp_over_ucx=enable_tcp_over_ucx,
-                        enable_infiniband=enable_infiniband,
-                        enable_nvlink=enable_nvlink,
-                        enable_rdmacm=enable_rdmacm,
-                    )
-                },
-                data=data(nvml_device_index(i, cuda_visible_devices(i))),
-                worker_class=worker_class,
-                **kwargs,
-            )
-            for i in range(nprocs)
-        ]
 
     def __await__(self):
         return self._wait().__await__()

@@ -305,12 +305,13 @@ def test_no_nanny(loop):  # noqa: F811
                 "127.0.0.1",
                 "--no-dashboard",
                 "--no-nanny",
-            ]
+            ],
+            flush_output=False,
         ) as worker:
             with Client("127.0.0.1:9069", loop=loop) as client:
                 assert wait_workers(client, n_gpus=1)
                 assert any(
-                    b"distributed.nanny" not in worker.stderr.readline()
+                    b"distributed.nanny" not in worker.stdout.readline()
                     for i in range(5)
                 )
 
