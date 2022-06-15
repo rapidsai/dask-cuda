@@ -488,4 +488,12 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    args = parse_args()
+    if args.multiprocessing_method == "forkserver":
+        import multiprocessing.forkserver as f
+
+        f.ensure_running()
+    with dask.config.set(
+        {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
+    ):
+        main(args)

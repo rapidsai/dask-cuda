@@ -7,6 +7,7 @@ from warnings import filterwarnings
 import numpy as np
 from nvtx import end_range, start_range
 
+import dask
 from dask import array as da
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, format_time, parse_bytes
@@ -400,10 +401,17 @@ def parse_args():
     )
 
 
-def main():
-    args = parse_args()
+def main(args):
     asyncio.get_event_loop().run_until_complete(run(args))
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    if args.multiprocessing_method == "forkserver":
+        import multiprocessing.forkserver as f
+
+        f.ensure_running()
+    with dask.config.set(
+        {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
+    ):
+        main(args)
