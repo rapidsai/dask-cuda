@@ -6,7 +6,6 @@ import os
 import warnings
 
 from toolz import valmap
-from tornado.ioloop import IOLoop
 
 import dask
 from dask.utils import parse_bytes
@@ -107,8 +106,6 @@ class CUDAWorker(Server):
         else:
             resources = None
 
-        loop = IOLoop.current()
-
         preload_argv = kwargs.pop("preload_argv", [])
         kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
@@ -208,7 +205,6 @@ class CUDAWorker(Server):
                 dashboard=dashboard,
                 dashboard_address=dashboard_address,
                 http_prefix=dashboard_prefix,
-                loop=loop,
                 resources=resources,
                 memory_limit=memory_limit,
                 interface=interface,
