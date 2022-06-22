@@ -1,6 +1,11 @@
 import argparse
+import itertools
 import os
+import time
+from collections import defaultdict
 from datetime import datetime
+
+import pandas as pd
 
 from dask.distributed import SSHCluster
 from dask.utils import parse_bytes
@@ -172,7 +177,8 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--benchmark-json",
         default=None,
         type=str,
-        help="Dump a line-delimited JSON report of benchmarks to this file (optional). "
+        help="Dump a pandas-compatible JSON report of benchmarks "
+        "to this file (optional). "
         "Creates file if it does not exist, appends otherwise.",
     )
 
@@ -267,6 +273,113 @@ def setup_memory_pool(
             log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+
+
+def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
+    if not is_gpu:
+        return
+    client.run(
+        setup_memory_pool,
+        pool_size=pool_size,
+        disable_pool=disable_pool,
+        log_directory=log_directory,
+    )
+    # Create an RMM pool on the scheduler due to occasional deserialization
+    # of CUDA objects. May cause issues with InfiniBand otherwise.
+    client.run_on_scheduler(
+        setup_memory_pool,
+        pool_size=1e9,
+        disable_pool=disable_pool,
+        log_directory=log_directory,
+    )
+
+
+def write_benchmark_data_as_json(filename, df):
+    """Write pandas-compatible json-formatted benchmark data
+
+    Parameters
+    ----------
+    filename: str
+        Output file name, if it exists, new data are concatenated,
+        otherwise the file is created.
+    df: pandas.DataFrame
+        New data to add
+    """
+    if os.path.exists(filename):
+        existing = pd.read_json(filename)
+        df = pd.concat([existing, df], ignore_index=True)
+    df.to_json(filename)
+
+
+def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
+    """Wait for the cluster to come up.
+
+    Parameters
+    ----------
+    client
+        The distributed Client object
+    timeout: int (optional)
+        Timeout in seconds before we give up
+    shutdown_on_failure: bool (optional)
+        Should we call ``client.shutdown()`` if not all workers are
+        found after the timeout is reached?
+
+    Raises
+    ------
+    RuntimeError:
+        If the timeout finishes and not all expected workers have
+        appeared.
+    """
+    expected = os.environ.get("EXPECTED_NUM_WORKERS")
+    if expected is None:
+        return
+    expected = int(expected)
+    nworkers = 0
+    for _ in range(timeout // 5):
+        print(
+            "Waiting for workers to come up, "
+            f"have {len(client.scheduler_info().get('workers', []))}, "
+            f"want {expected}"
+        )
+        time.sleep(5)
+        nworkers = len(client.scheduler_info().get("workers", []))
+        if nworkers == expected:
+            return
+    else:
+        if shutdown_on_failure:
+            client.shutdown()
+        raise RuntimeError(
+            f"Not all workers up after {timeout}s; "
+            f"got {nworkers}, wanted {expected}"
+        )
+
+
+def worker_renamer(workers, multinode):
+    """Produce a function that maps worker names to ``(nodeid,
+    deviceid)`` pairs
+
+    Parameters
+    ----------
+    workers: iterable of ``WorkerState`` objects
+        workers to rename (assumed sorted in some sense)
+    multinode: bool
+        is this a multinode run?
+
+    Returns
+    -------
+    callable mapping a worker name to structured data
+    """
+    if not multinode:
+        return lambda name: (0, name)
+    deviceids = defaultdict(itertools.count)
+    hostids = {}
+    mapping = {}
+    for worker in workers:
+        _, host, _ = worker.name.split(":")
+        hostid = hostids.setdefault(host, len(hostids))
+        deviceid = next(deviceids[host])
+        mapping[worker.name] = (hostid, deviceid)
+    return lambda name: mapping[name]
 
 
 def plot_benchmark(t_runs, path, historical=False):
