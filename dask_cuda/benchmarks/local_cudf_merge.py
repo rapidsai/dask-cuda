@@ -15,6 +15,8 @@ from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
+    hmean,
+    hstd,
     parse_benchmark_args,
     peer_to_peer_bandwidths,
     plot_benchmark,
@@ -297,14 +299,25 @@ def main(args):
     times = np.asarray(times)
     bandwidths_all = np.asarray(bandwidths_all)
     print_separator(separator="=")
+
     print_key_value(
         key="Throughput",
         value=f"{format_bytes(t_p.mean())}/s +/- {format_bytes(t_p.std())}/s",
     )
     print_key_value(
+        key="ThroughputH",
+        value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+    )
+    print_key_value(
         key="Bandwidth",
         value=f"{format_bytes(bandwidths_all.mean())}/s +/- "
         f"{format_bytes(bandwidths_all.std())}/s",
+    )
+
+    print_key_value(
+        key="BandwidthH",
+        value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
+        f"{format_bytes(hstd(bandwidths_all))}/s",
     )
     print_key_value(
         key="Wall clock",
