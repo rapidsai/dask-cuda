@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from json import dumps
 from time import perf_counter as clock
 from warnings import filterwarnings
@@ -17,6 +16,7 @@ from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
+    peer_to_peer_bandwidths,
     print_key_value,
     print_separator,
     setup_memory_pool,
@@ -101,31 +101,15 @@ async def run(args):
             for i in range(args.runs):
                 took_list.append(await _run(client, args))
 
-            # Collect, aggregate, and print peer-to-peer bandwidths
             incoming_logs = await client.run(
                 lambda dask_worker: dask_worker.incoming_transfer_log
             )
-            bandwidths = defaultdict(list)
-            total_nbytes = defaultdict(list)
-            for k, L in incoming_logs.items():
-                for d in L:
-                    if d["total"] >= args.ignore_size:
-                        bandwidths[k, d["who"]].append(d["bandwidth"])
-                        total_nbytes[k, d["who"]].append(d["total"])
-
-            bandwidths = {
-                (scheduler_workers[w1].name, scheduler_workers[w2].name,): [
-                    "%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])
-                ]
-                for (w1, w2), v in bandwidths.items()
-            }
-            total_nbytes = {
-                (
-                    scheduler_workers[w1].name,
-                    scheduler_workers[w2].name,
-                ): format_bytes(sum(nb))
-                for (w1, w2), nb in total_nbytes.items()
-            }
+            p2p_bw_dict = peer_to_peer_bandwidths(
+                incoming_logs, scheduler_workers, args.ignore_size
+            )
+            bandwidths = p2p_bw_dict["bandwidths"]
+            bandwidths_all = p2p_bw_dict["bandwidths_all"]
+            total_nbytes = p2p_bw_dict["total_nbytes"]
 
             print("Roundtrip benchmark")
             print_separator(separator="-")
@@ -148,11 +132,25 @@ async def run(args):
                 print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
             print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
             print_separator(separator="=")
-            print_key_value(key="Wall clock", value="npartitions")
+            print_key_value(key="Wall clock", value="Partitions")
             print_separator(separator="-")
-            for (took, npartitions) in took_list:
-                t = format_time(took)
-                print_key_value(key=f"{t}", value=f"{npartitions}")
+            times = []
+            for idx, (took, npartitions) in enumerate(took_list):
+                m = format_time(took)
+                times.append(took)
+                print_key_value(key=f"{m}", value=npartitions)
+            times = np.asarray(times)
+            bandwidths_all = np.asarray(bandwidths_all)
+            print_separator(separator="=")
+            print_key_value(
+                key="Throughput (Comms only)",
+                value=f"{format_bytes(bandwidths_all.mean())} +/- "
+                f"{format_bytes(bandwidths_all.std())}",
+            )
+            print_key_value(
+                key="Wall clock",
+                value=f"{format_time(times.mean())} +/- {format_time(times.std()) }",
+            )
             print_separator(separator="=")
             print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
             print_separator(separator="-")
