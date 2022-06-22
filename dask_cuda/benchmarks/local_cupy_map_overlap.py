@@ -143,7 +143,7 @@ async def run(args):
             bandwidths_all = np.asarray(bandwidths_all)
             print_separator(separator="=")
             print_key_value(
-                key="Throughput (Comms only)",
+                key="Bandwidth",
                 value=f"{format_bytes(bandwidths_all.mean())} +/- "
                 f"{format_bytes(bandwidths_all.std())}",
             )
