@@ -171,12 +171,12 @@ def main(args):
     print_separator(separator="=")
     print_key_value(
         key="Throughput",
-        value=f"{format_bytes(t_p.mean())} +/- {format_bytes(t_p.std())}",
+        value=f"{format_bytes(t_p.mean())}/s +/- {format_bytes(t_p.std())}/s",
     )
     print_key_value(
         key="Bandwidth",
-        value=f"{format_bytes(bandwidths_all.mean())} +/- "
-        f"{format_bytes(bandwidths_all.std())}",
+        value=f"{format_bytes(bandwidths_all.mean())}/s +/- "
+        f"{format_bytes(bandwidths_all.std())}/s",
     )
     print_key_value(
         key="Wall clock",

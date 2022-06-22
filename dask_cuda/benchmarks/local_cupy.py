@@ -259,8 +259,8 @@ async def run(args):
             print_separator(separator="=")
             print_key_value(
                 key="Bandwidth",
-                value=f"{format_bytes(bandwidths_all.mean())} +/- "
-                f"{format_bytes(bandwidths_all.std())}",
+                value=f"{format_bytes(bandwidths_all.mean())}/s +/- "
+                f"{format_bytes(bandwidths_all.std())}/s",
             )
             print_key_value(
                 key="Wall clock",
