@@ -21,6 +21,7 @@ from dask_cuda.benchmarks.utils import (
     worker_renamer,
     write_benchmark_data_as_json,
 )
+from dask_cuda.utils import all_to_all
 
 
 def bench_once(client, args):
@@ -322,6 +323,8 @@ def run_benchmark(client, args):
 
 def gather_bench_results(client, args):
     scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
+    if args.all_to_all:
+        all_to_all(client)
     results = run_benchmark(client, args)
     # Collect, aggregate, and print peer-to-peer bandwidths
     incoming_logs = client.run(lambda dask_worker: dask_worker.incoming_transfer_log)
