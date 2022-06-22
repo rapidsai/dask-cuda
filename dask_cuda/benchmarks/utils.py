@@ -156,6 +156,16 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
     )
+    cluster_args.add_argument(
+        "--scheduler-file",
+        default=None,
+        type=str,
+        dest="scheduler_file",
+        help="Read cluster configuration from specified file. "
+        "If provided, worker configuration options provided to this script are ignored "
+        "since the workers are assumed to be started separately. Similarly the other "
+        "cluster configuration options are ignored.",
+    )
     parser.add_argument(
         "--all-to-all",
         action="store_true",
