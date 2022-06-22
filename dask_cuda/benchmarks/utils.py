@@ -10,16 +10,17 @@ from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]):
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument(
+    worker_args = parser.add_argument_group(description="Worker configuration")
+    worker_args.add_argument(
         "-d", "--devs", default="0", type=str, help='GPU devices to use (default "0").'
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--threads-per-worker",
         default=1,
         type=int,
         help="Number of Dask threads per worker (i.e., GPU).",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "-p",
         "--protocol",
         choices=["tcp", "ucx"],
@@ -34,7 +35,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         type=str,
         help="Write dask profile report (E.g. dask-report.html)",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--device-memory-limit",
         default=None,
         type=parse_bytes,
@@ -44,107 +45,98 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "``'auto'``, 0, or ``None`` to disable spilling to host (i.e. allow full "
         "device memory usage).",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--rmm-pool-size",
         default=None,
         type=parse_bytes,
         help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
         "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--rmm-log-directory",
         default=None,
         type=str,
         help="Directory to write worker and scheduler RMM log files to. "
         "Logging is only enabled if RMM memory pool is enabled.",
     )
-    parser.add_argument(
-        "--all-to-all",
-        action="store_true",
-        help="Run all-to-all before computation",
-    )
-    parser.add_argument(
+    worker_args.add_argument(
         "--enable-tcp-over-ucx",
         default=None,
         action="store_true",
         dest="enable_tcp_over_ucx",
         help="Enable TCP over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--enable-infiniband",
         default=None,
         action="store_true",
         dest="enable_infiniband",
         help="Enable InfiniBand over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--enable-nvlink",
         default=None,
         action="store_true",
         dest="enable_nvlink",
         help="Enable NVLink over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--enable-rdmacm",
         default=None,
         action="store_true",
         dest="enable_rdmacm",
         help="Enable RDMACM with UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--disable-tcp-over-ucx",
         action="store_false",
         dest="enable_tcp_over_ucx",
         help="Disable TCP over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--disable-infiniband",
         action="store_false",
         dest="enable_infiniband",
         help="Disable InfiniBand over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--disable-nvlink",
         action="store_false",
         dest="enable_nvlink",
         help="Disable NVLink over UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--disable-rdmacm",
         action="store_false",
         dest="enable_rdmacm",
         help="Disable RDMACM with UCX.",
     )
-    parser.add_argument(
+    worker_args.add_argument(
         "--interface",
         default=None,
         type=str,
         dest="interface",
         help="Network interface Dask processes will use to listen for connections.",
     )
-    parser.add_argument(
-        "--no-silence-logs",
-        action="store_true",
-        help="By default Dask logs are silenced, this argument unsilence them.",
-    )
-    parser.add_argument(
+    cluster_args = parser.add_argument_group(description="Cluster configuration")
+    cluster_args.add_argument(
         "--multi-node",
         action="store_true",
         dest="multi_node",
         help="Runs a multi-node cluster on the hosts specified by --hosts."
         "Requires the ``asyncssh`` module to be installed.",
     )
-    parser.add_argument(
+    cluster_args.add_argument(
         "--scheduler-address",
         default=None,
         type=str,
         dest="sched_addr",
         help="Scheduler Address -- assumes cluster is created outside of benchmark.",
     )
-    parser.add_argument(
+    cluster_args.add_argument(
         "--hosts",
         default=None,
         type=str,
@@ -158,6 +150,16 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "'10.10.10.10', and 'dgx13'. "
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
+    )
+    parser.add_argument(
+        "--all-to-all",
+        action="store_true",
+        help="Run all-to-all before computation",
+    )
+    parser.add_argument(
+        "--no-silence-logs",
+        action="store_true",
+        help="By default Dask logs are silenced, this argument unsilence them.",
     )
     parser.add_argument(
         "--plot",
