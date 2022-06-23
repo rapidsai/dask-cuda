@@ -368,10 +368,11 @@ def peer_to_peer_bandwidths(incoming_logs, scheduler_workers, ignore_size):
 
 def hmean(a):
     """Harmonic mean"""
-    return len(a) / np.sum((1 / a))
+    return 1 / np.mean(1 / a)
 
 
 def hstd(a):
     """Harmonic standard deviation"""
-    x = np.abs(a - hmean(a)) ** 2
-    return np.sqrt(hmean(x))
+    rmean = np.mean(1 / a)
+    rvar = np.var(1 / a)
+    return np.sqrt(rvar / (len(a) * rmean**4))
