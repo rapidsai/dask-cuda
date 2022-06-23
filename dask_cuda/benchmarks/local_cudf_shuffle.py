@@ -18,6 +18,8 @@ from dask_cuda.benchmarks.utils import (
     get_scheduler_workers,
     parse_benchmark_args,
     plot_benchmark,
+    print_key_value,
+    print_separator,
     setup_memory_pool,
 )
 from dask_cuda.utils import all_to_all
@@ -149,30 +151,32 @@ def main(args):
     if args.markdown:
         print("```")
     print("Shuffle benchmark")
-    print("-------------------------------")
-    print(f"backend        | {args.backend}")
-    print(f"partition-size | {format_bytes(args.partition_size)}")
-    print(f"in-parts       | {args.in_parts}")
-    print(f"protocol       | {args.protocol}")
-    print(f"device(s)      | {args.devs}")
+    print_separator(separator="-")
+    print_key_value(key="Backend", value=f"{args.backend}")
+    print_key_value(key="Partition size", value=f"{format_bytes(args.partition_size)}")
+    print_key_value(key="Input partitions", value=f"{args.in_parts}")
+    print_key_value(key="Protocol", value=f"{args.protocol}")
+    print_key_value(key="Device(s)", value=f"{args.devs}")
     if args.device_memory_limit:
-        print(f"memory-limit   | {format_bytes(args.device_memory_limit)}")
-    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
+        print_key_value(
+            key="Device memory limit", value=f"{format_bytes(args.device_memory_limit)}"
+        )
+    print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
     if args.protocol == "ucx":
-        print(f"tcp            | {args.enable_tcp_over_ucx}")
-        print(f"ib             | {args.enable_infiniband}")
-        print(f"nvlink         | {args.enable_nvlink}")
-    print(f"data-processed | {format_bytes(took_list[0][0])}")
-    print("===============================")
-    print("Wall-clock     | Throughput")
-    print("-------------------------------")
+        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
+        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
+        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+    print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
+    print_key_value(key="Data processed", value=f"{format_bytes(took_list[0][0])}")
+    print_separator(separator="=")
+    print_key_value(key="Wall clock", value="Throughput")
+    print_separator(separator="-")
     for idx, (data_processed, took) in enumerate(took_list):
         throughput = int(data_processed / took)
         m = format_time(took)
-        m += " " * (15 - len(m))
-        print(f"{m}| {format_bytes(throughput)}/s")
+        print_key_value(key=f"{m}", value=f"{format_bytes(throughput)}/s")
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
-    print("===============================")
+    print_separator(separator="=")
     if args.markdown:
         print("\n```")
 
@@ -182,15 +186,17 @@ def main(args):
     if args.backend == "dask":
         if args.markdown:
             print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
-        print("(w1,w2)        | 25% 50% 75% (total nbytes)")
-        print("-------------------------------")
+        print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
+        print_separator(separator="-")
         for (d1, d2), bw in sorted(bandwidths.items()):
-            fmt = (
-                "(%s,%s)        | %s %s %s (%s)"
+            key = (
+                f"({d1},{d2})"
                 if args.multi_node or args.sched_addr
-                else "(%02d,%02d)        | %s %s %s (%s)"
+                else f"({d1:02d},{d2:02d})"
             )
-            print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+            print_key_value(
+                key=key, value=f"{bw[0]} {bw[1]} {bw[2]} ({total_nbytes[(d1, d2)]})"
+            )
         if args.markdown:
             print("```\n</details>\n")
 

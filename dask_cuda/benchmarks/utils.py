@@ -321,3 +321,11 @@ def plot_benchmark(t_runs, path, historical=False):
         fname_hist = today + "-benchmark-history.png"
         hist_path = os.path.join(d, fname_hist)
         fig.savefig(hist_path)
+
+
+def print_separator(separator="-", length=80):
+    print(separator * length)
+
+
+def print_key_value(key, value, key_length=25):
+    print(f"{key: <{key_length}} | {value}")
