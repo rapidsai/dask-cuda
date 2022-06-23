@@ -43,6 +43,8 @@ async def _run(client, args):
     ks = 2 * (2 * args.kernel_size + 1,)
     await wait(x)
 
+    data_processed = x.nbytes
+
     # Execute the operations to benchmark
     if args.profile is not None:
         async with performance_report(filename=args.profile):
@@ -58,7 +60,7 @@ async def _run(client, args):
         )
         took = clock() - t1
 
-    return (took, x.npartitions)
+    return (took, data_processed)
 
 
 async def run(args):
@@ -136,14 +138,22 @@ async def run(args):
             print_separator(separator="=")
             print_key_value(key="Wall clock", value="Partitions")
             print_separator(separator="-")
+            t_p = []
             times = []
-            for idx, (took, npartitions) in enumerate(took_list):
+            for (took, data_processed) in took_list:
+                throughput = int(data_processed / took)
                 m = format_time(took)
                 times.append(took)
-                print_key_value(key=f"{m}", value=npartitions)
+                t_p.append(throughput)
+                print_key_value(key=f"{m}", value=f"{format_bytes(throughput)}/s")
+            t_p = np.asarray(t_p)
             times = np.asarray(times)
             bandwidths_all = np.asarray(bandwidths_all)
             print_separator(separator="=")
+            print_key_value(
+                key="Throughput",
+                value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+            )
             print_key_value(
                 key="Bandwidth",
                 value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
@@ -179,7 +189,7 @@ async def run(args):
                 }
 
                 with open(args.benchmark_json, "a") as fp:
-                    for took, npartitions in took_list:
+                    for took, data_processed in took_list:
                         fp.write(
                             dumps(
                                 dict(
@@ -196,7 +206,7 @@ async def run(args):
                                         "ib": args.enable_infiniband,
                                         "nvlink": args.enable_nvlink,
                                         "wall_clock": took,
-                                        "npartitions": npartitions,
+                                        "npartitions": data_processed / took,
                                     },
                                     **bandwidths_json,
                                 )

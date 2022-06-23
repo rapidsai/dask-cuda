@@ -140,6 +140,7 @@ async def _run(client, args):
 
     shape = x.shape
     chunksize = x.chunksize
+    data_processed = sum(arg.nbytes for arg in func_args)
 
     # Execute the operations to benchmark
     if args.profile is not None:
@@ -162,7 +163,7 @@ async def _run(client, args):
 
     return {
         "took": took,
-        "npartitions": x.npartitions,
+        "data_processed": data_processed,
         "shape": shape,
         "chunksize": chunksize,
     }
@@ -210,7 +211,7 @@ async def run(args):
             took_list = []
             for i in range(args.runs):
                 res = await _run(client, args)
-                took_list.append((res["took"], res["npartitions"]))
+                took_list.append((res["took"], res["data_processed"]))
                 size = res["shape"]
                 chunksize = res["chunksize"]
 
@@ -249,16 +250,24 @@ async def run(args):
                 print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
             print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
             print_separator(separator="=")
-            print_key_value(key="Wall clock", value="Partitions")
+            print_key_value(key="Wall clock", value="Throughput")
             print_separator(separator="-")
+            t_p = []
             times = []
-            for idx, (took, npartitions) in enumerate(took_list):
+            for (took, data_processed) in took_list:
+                throughput = int(data_processed / took)
                 m = format_time(took)
                 times.append(took)
-                print_key_value(key=f"{m}", value=npartitions)
+                t_p.append(throughput)
+                print_key_value(key=f"{m}", value=f"{format_bytes(throughput)}/s")
+            t_p = np.asarray(t_p)
             times = np.asarray(times)
             bandwidths_all = np.asarray(bandwidths_all)
             print_separator(separator="=")
+            print_key_value(
+                key="Throughput",
+                value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+            )
             print_key_value(
                 key="Bandwidth",
                 value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
@@ -294,7 +303,7 @@ async def run(args):
                 }
 
                 with open(args.benchmark_json, "a") as fp:
-                    for took, npartitions in took_list:
+                    for took, data_processed in took_list:
                         fp.write(
                             dumps(
                                 dict(
@@ -315,7 +324,7 @@ async def run(args):
                                         "ib": args.enable_infiniband,
                                         "nvlink": args.enable_nvlink,
                                         "wall_clock": took,
-                                        "npartitions": npartitions,
+                                        "throughput": data_processed / took,
                                     },
                                     **bandwidths_json,
                                 )
