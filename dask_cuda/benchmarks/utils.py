@@ -1,9 +1,12 @@
 import argparse
 import os
+from collections import defaultdict
 from datetime import datetime
 
+import numpy as np
+
 from dask.distributed import SSHCluster
-from dask.utils import parse_bytes
+from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -329,3 +332,47 @@ def print_separator(separator="-", length=80):
 
 def print_key_value(key, value, key_length=25):
     print(f"{key: <{key_length}} | {value}")
+
+
+def peer_to_peer_bandwidths(incoming_logs, scheduler_workers, ignore_size):
+    """Collect and aggregate peer-to-peer bandwidths"""
+    bandwidths = defaultdict(list)
+    total_nbytes = defaultdict(list)
+    bandwidths_all = []
+    for k, L in incoming_logs.items():
+        for d in L:
+            if d["total"] >= ignore_size:
+                bandwidths[k, d["who"]].append(d["bandwidth"])
+                total_nbytes[k, d["who"]].append(d["total"])
+                bandwidths_all.append(d["bandwidth"])
+    bandwidths = {
+        (scheduler_workers[w1].name, scheduler_workers[w2].name): [
+            "%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])
+        ]
+        for (w1, w2), v in bandwidths.items()
+    }
+    total_nbytes = {
+        (
+            scheduler_workers[w1].name,
+            scheduler_workers[w2].name,
+        ): format_bytes(sum(nb))
+        for (w1, w2), nb in total_nbytes.items()
+    }
+
+    return {
+        "bandwidths": bandwidths,
+        "bandwidths_all": bandwidths_all,
+        "total_nbytes": total_nbytes,
+    }
+
+
+def hmean(a):
+    """Harmonic mean"""
+    return 1 / np.mean(1 / a)
+
+
+def hstd(a):
+    """Harmonic standard deviation"""
+    rmean = np.mean(1 / a)
+    rvar = np.var(1 / a)
+    return np.sqrt(rvar / (len(a) * rmean**4))

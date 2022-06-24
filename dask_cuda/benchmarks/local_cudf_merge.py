@@ -1,11 +1,10 @@
 import contextlib
 import math
-from collections import defaultdict
 from json import dumps
 from time import perf_counter
 from warnings import filterwarnings
 
-import numpy
+import numpy as np
 
 import dask
 from dask.base import tokenize
@@ -16,7 +15,10 @@ from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
+    hmean,
+    hstd,
     parse_benchmark_args,
+    peer_to_peer_bandwidths,
     plot_benchmark,
     print_key_value,
     print_separator,
@@ -243,35 +245,20 @@ def main(args):
     took_list.append(
         run(client, args, n_workers, write_profile=args.profile)
     )  # Only profiling the last run
+    t_runs = np.empty(len(took_list))
 
-    # Collect, aggregate, and print peer-to-peer bandwidths
     incoming_logs = client.run(lambda dask_worker: dask_worker.incoming_transfer_log)
-    bandwidths = defaultdict(list)
-    total_nbytes = defaultdict(list)
-    for k, L in incoming_logs.items():
-        for d in L:
-            if d["total"] >= args.ignore_size:
-                bandwidths[k, d["who"]].append(d["bandwidth"])
-                total_nbytes[k, d["who"]].append(d["total"])
-    bandwidths = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name): [
-            "%s/s" % format_bytes(x) for x in numpy.quantile(v, [0.25, 0.50, 0.75])
-        ]
-        for (w1, w2), v in bandwidths.items()
-    }
-    total_nbytes = {
-        (
-            scheduler_workers[w1].name,
-            scheduler_workers[w2].name,
-        ): format_bytes(sum(nb))
-        for (w1, w2), nb in total_nbytes.items()
-    }
+    p2p_bw_dict = peer_to_peer_bandwidths(
+        incoming_logs, scheduler_workers, args.ignore_size
+    )
+    bandwidths = p2p_bw_dict["bandwidths"]
+    bandwidths_all = p2p_bw_dict["bandwidths_all"]
+    total_nbytes = p2p_bw_dict["total_nbytes"]
 
     broadcast = (
         False if args.shuffle_join else (True if args.broadcast_join else "default")
     )
 
-    t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
     print("Merge benchmark")
@@ -308,12 +295,18 @@ def main(args):
         t_p.append(throughput)
         print_key_value(key=f"{m}", value=f"{format_bytes(throughput)}/s")
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
-    t_p = numpy.asarray(t_p)
-    times = numpy.asarray(times)
+    t_p = np.asarray(t_p)
+    times = np.asarray(times)
+    bandwidths_all = np.asarray(bandwidths_all)
     print_separator(separator="=")
     print_key_value(
         key="Throughput",
-        value=f"{format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }",
+        value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+    )
+    print_key_value(
+        key="Bandwidth",
+        value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
+        f"{format_bytes(hstd(bandwidths_all))}/s",
     )
     print_key_value(
         key="Wall clock",
