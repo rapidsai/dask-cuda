@@ -284,9 +284,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--multiprocessing-method",
     default="spawn",
-    show_default=True,
-    choices=["spawn", "fork", "forkserver"],
-    show_choices=True,
+    type=click.Choice(["spawn", "fork", "forkserver"]),
     help="""Method used to start new processes with multiprocessing""",
 )
 def main(
