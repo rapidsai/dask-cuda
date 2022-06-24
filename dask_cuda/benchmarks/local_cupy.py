@@ -16,6 +16,8 @@ from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
     parse_benchmark_args,
+    print_key_value,
+    print_separator,
     setup_memory_pools,
     wait_for_cluster,
     worker_renamer,
@@ -200,36 +202,45 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
     result, *_ = results
 
     print("Roundtrip benchmark")
-    print("--------------------------")
-    print(f"Operation          | {args.operation}")
-    print(f"Array type         | {'cupy' if args.type == 'gpu' else 'numpy'}")
-    print(f"User size          | {args.size}")
-    print(f"User second size   | {args.second_size}")
-    print(f"User chunk-size    | {args.chunk_size}")
-    print(f"Compute shape      | {result['shape']}")
-    print(f"Compute chunk-size | {result['chunksize']}")
-    print(f"Ignore-size        | {format_bytes(args.ignore_size)}")
-    print(f"Protocol           | {args.protocol}")
-    print(f"Device(s)          | {args.devs}")
+    print_separator(separator="-")
+    print_key_value(key="Operation", value=f"{args.operation}")
+    print_key_value(key="Array type", value="cupy" if args.type == "gpu" else "numpy")
+    print_key_value(key="User size", value=f"{args.size}")
+    print_key_value(key="User second size", value=f"{args.second_size}")
+    print_key_value(key="User chunk size", value=f"{args.size}")
+    print_key_value(key="Compute shape", value=f"{result['shape']}")
+    print_key_value(key="Compute chunk size", value=f"{result['chunksize']}")
+    print_key_value(key="Ignore size", value=f"{format_bytes(args.ignore_size)}")
+    print_key_value(key="Device(s)", value=f"{args.devs}")
     if args.device_memory_limit:
-        print(f"Memory limit       | {format_bytes(args.device_memory_limit)}")
-    print(f"Worker Thread(s)   | {args.threads_per_worker}")
-    print("==========================")
-    print("Wall-clock         | npartitions")
-    print("--------------------------")
+        print_key_value(
+            key="Device memory limit",
+            value=f"{format_bytes(args.device_memory_limit)}",
+        )
+    print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
+    print_key_value(key="Protocol", value=f"{args.protocol}")
+    if args.protocol == "ucx":
+        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
+        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
+        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+    print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
+    print_separator(separator="=")
+    print_key_value(key="Wall clock", value="npartitions")
+    print_separator(separator="-")
     for result in results:
         t = format_time(result["took"])
-        t += " " * (11 - len(t))
-        print(f"{t}        | {result['npartitions']}")
-    print("==========================")
-    print("(w1,w2)            | 25% 50% 75% (total nbytes)")
-    print("--------------------------")
-    fmt = "(%s,%s)            | %s %s %s (%s)"
+        print_key_value(key=f"{t}", value=f"{result['npartitions']}")
+    print_separator(separator="=")
+    print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
+    print_separator(separator="-")
     for (d1, d2), bw in sorted(bandwidths.items()):
         # hostid-deviceid
         n1 = f"{d1[0]}-{d1[1]}"
         n2 = f"{d2[0]}-{d2[1]}"
-        print(fmt % (n1, n2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+        print_key_value(
+            key=f"({n1},{n2})",
+            value=f"{bw[0]} {bw[1]} {bw[2]} ({total_nbytes[(d1, d2)]})",
+        )
 
 
 def create_tidy_results(args, incoming_logs, scheduler_workers, results):

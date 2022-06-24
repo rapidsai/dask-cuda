@@ -20,6 +20,8 @@ from dask_cuda.benchmarks.utils import (
     get_scheduler_workers,
     parse_benchmark_args,
     plot_benchmark,
+    print_key_value,
+    print_separator,
     setup_memory_pools,
     wait_for_cluster,
     worker_renamer,
@@ -222,27 +224,30 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
     if args.markdown:
         print("```")
     print("Merge benchmark")
-    print("-------------------------------")
-    print(f"backend        | {args.backend}")
-    print(f"merge type     | {args.type}")
-    print(f"rows-per-chunk | {args.chunk_size}")
-    print(f"base-chunks    | {args.base_chunks}")
-    print(f"other-chunks   | {args.other_chunks}")
-    print(f"broadcast      | {broadcast}")
-    print(f"protocol       | {args.protocol}")
-    print(f"device(s)      | {args.devs}")
+    print_separator(separator="-")
+    print_key_value(key="Backend", value=f"{args.backend}")
+    print_key_value(key="Merge type", value=f"{args.type}")
+    print_key_value(key="Rows-per-chunk", value=f"{args.chunk_size}")
+    print_key_value(key="Base-chunks", value=f"{args.base_chunks}")
+    print_key_value(key="Other-chunks", value=f"{args.other_chunks}")
+    print_key_value(key="Broadcast", value=f"{broadcast}")
+    print_key_value(key="Protocol", value=f"{args.protocol}")
+    print_key_value(key="Device(s)", value=f"{args.devs}")
     if args.device_memory_limit:
-        print(f"memory-limit   | {format_bytes(args.device_memory_limit)}")
-    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
-    print(f"frac-match     | {args.frac_match}")
+        print_key_value(
+            key="Device memory limit", value=f"{format_bytes(args.device_memory_limit)}"
+        )
+    print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
+    print_key_value(key="Frac-match", value=f"{args.frac_match}")
     if args.protocol == "ucx":
-        print(f"tcp            | {args.enable_tcp_over_ucx}")
-        print(f"ib             | {args.enable_infiniband}")
-        print(f"nvlink         | {args.enable_nvlink}")
-    print(f"data-processed | {format_bytes(results[0][0])}")
-    print("=" * 80)
-    print("Wall-clock     | Throughput")
-    print("-" * 80)
+        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
+        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
+        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+    print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
+    print_key_value(key="Data processed", value=f"{format_bytes(results[0][0])}")
+    print_separator(separator="=")
+    print_key_value(key="Wall clock", value="Throughput")
+    print_separator(separator="-")
     t_p = []
     times = []
     for idx, (data_processed, took) in enumerate(results):
@@ -250,17 +255,20 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
         m = format_time(took)
         times.append(took)
         t_p.append(throughput)
-        m += " " * (15 - len(m))
-        print(f"{m}| {format_bytes(throughput)}/s")
+        print_key_value(key=f"{m}", value=f"{format_bytes(throughput)}/s")
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     t_p = np.asarray(t_p)
     times = np.asarray(times)
-    print("=" * 80)
-    print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
-    print(
-        f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }"
+    print_separator(separator="=")
+    print_key_value(
+        key="Throughput",
+        value=f"{format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }",
     )
-    print("=" * 80)
+    print_key_value(
+        key="Wall clock",
+        value=f"{format_time(times.mean())} +/- {format_time(times.std()) }",
+    )
+    print_separator(separator="=")
     if args.markdown:
         print("\n```")
 
@@ -270,13 +278,15 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
     if args.backend == "dask":
         if args.markdown:
             print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
-        print("(w1,w2)        | 25% 50% 75% (total nbytes)")
-        print("-------------------------------")
+        print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
+        print_separator(separator="-")
         for (d1, d2), bw in sorted(bandwidths.items()):
             n1 = f"{d1[0]}-{d1[1]}"
             n2 = f"{d2[0]}-{d2[1]}"
-            fmt = "(%s,%s)        | %s %s %s (%s)"
-            print(fmt % (n1, n2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
+            key = f"({n1},{n2})"
+            print_key_value(
+                key=key, value=f"{bw[0]} {bw[1]} {bw[2]} ({total_nbytes[(d1, d2)]})"
+            )
         if args.markdown:
             print("```\n</details>\n")
 
