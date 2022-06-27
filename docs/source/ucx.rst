@@ -85,3 +85,50 @@ Usage
 -----
 
 See `Enabling UCX communication <examples/ucx.html>`_ for examples of UCX usage with different supported transports.
+
+Running in a fork-starved environment
+-------------------------------------
+
+Many high-performance networking stacks do not support the user
+application calling ``fork()`` after the network substrate is
+initialized. Symptoms include jobs randomly hanging, or crashing,
+especially when using a large number of workers. To mitigate against
+this when using Dask-CUDA's UCX integration, processes launched via
+multiprocessing should use the start processes using the
+```"forkserver"``
+<https://docs.python.org/dev/library/multiprocessing.html#contexts-and-start-methods>`_
+method. When launching workers using ```dask-cuda-worker`` <quickstart.html#dask-cuda-worker>`_, this can be
+achieved by passing ``--multiprocessing-method forkserver`` as an
+argument. In user code, the method can be controlled with the
+``distributed.worker.multiprocessing-method`` configuration key in
+``dask``. One must take care to, in addition, manually ensure that the
+forkserver is running before launching any jobs. A run script should
+therefore do something like the following:
+
+.. code-block::
+
+   import dask
+
+   if __name__ == "__main__":
+       import multiprocessing.forkserver as f
+       f.ensure_running()
+       with dask.config.set(
+           {"distributed.worker.multiprocessing-method": "forkserver"}
+       ):
+           run_analysis(...)
+
+
+.. note::
+
+   In addition to this, at present one must also set
+   ``PTXCOMPILER_CHECK_NUMBA_CODEGEN_PATCH_NEEDED=0`` in the
+   environment to avoid a subprocess call from ```ptxcompiler``
+   <https://github.com/rapidsai/ptxcompiler>`_
+
+.. note::
+
+   To confirm that no bad fork calls are occuring, start jobs with
+   ``UCX_IB_FORK_INIT=n``. UCX will produce a warning ``UCX  WARN  IB:
+   ibv_fork_init() was disabled or failed, yet a fork() has been
+   issued.`` if the application calls ``fork()``.
+
