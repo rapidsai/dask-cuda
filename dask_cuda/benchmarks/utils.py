@@ -1,15 +1,19 @@
 import argparse
 import itertools
+import json
 import os
 import time
 from collections import defaultdict
 from datetime import datetime
+from operator import itemgetter
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from dask.distributed import SSHCluster
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes, format_time, parse_bytes
+from distributed.comm.addressing import get_address_host_port
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -185,12 +189,22 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Generate plot output written to defined directory",
     )
     parser.add_argument(
-        "--benchmark-json",
+        "--markdown",
+        default=False,
+        action="store_true",
+        help="Write output as markdown",
+    )
+    # See save_benchmark_data for more information
+    parser.add_argument(
+        "--output-basename",
         default=None,
         type=str,
-        help="Dump a pandas-compatible JSON report of benchmarks "
-        "to this file (optional). "
-        "Creates file if it does not exist, appends otherwise.",
+        help="Dump a benchmark data to files using this basename. "
+        "Produces three files, BASENAME.json (containing timing data); "
+        "BASENAME.npy (point to point bandwidth statistics); "
+        "BASENAME.address_map.json (mapping from worker addresses to indices). "
+        "If the files already exist, new files are created with a uniquified "
+        "BASENAME.",
     )
 
     for args in args_list:
@@ -257,8 +271,8 @@ def get_cluster_options(args):
     }
 
 
-def get_scheduler_workers(dask_scheduler=None):
-    return dask_scheduler.workers
+def get_worker_addresses(dask_scheduler=None):
+    return list(dask_scheduler.workers.keys())
 
 
 def setup_memory_pool(
@@ -305,21 +319,47 @@ def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
     )
 
 
-def write_benchmark_data_as_json(filename, df):
-    """Write pandas-compatible json-formatted benchmark data
+def save_benchmark_data(
+    basename,
+    address_to_index: Mapping[str, int],
+    timing_data: pd.DataFrame,
+    p2p_data: np.ndarray,
+):
+    """Save benchmark data to files
 
     Parameters
     ----------
-    filename: str
-        Output file name, if it exists, new data are concatenated,
-        otherwise the file is created.
-    df: pandas.DataFrame
-        New data to add
+    basename: str
+        Output file basename
+    address_to_index
+        Mapping from worker addresses to indices (in the p2p_data array)
+    timing_data
+        DataFrame containing timing and configuration data
+    p2p_data
+        numpy array of point to point bandwidth statistics
+
+    Notes
+    -----
+    Produces ``BASENAME.json``, ``BASENAME.npy``, ``BASENAME.address_map.json``.
+    If any of these files exist then ``basename`` is uniquified by
+    appending the ISO date and a sequence number.
     """
-    if os.path.exists(filename):
-        existing = pd.read_json(filename)
-        df = pd.concat([existing, df], ignore_index=True)
-    df.to_json(filename)
+
+    def exists(basename):
+        return any(
+            os.path.exists(f"{basename}{ext}")
+            for ext in [".json", ".npy", ".address_map.json"]
+        )
+
+    new_basename = basename
+    sequence = itertools.count()
+    while exists(new_basename):
+        now = datetime.now().strftime("%Y%m%d")
+        new_basename = f"{basename}-{now}.{next(sequence)}"
+    timing_data.to_json(f"{new_basename}.json")
+    np.save(f"{new_basename}.npy", p2p_data)
+    with open(f"{new_basename}.address_map.json", "w") as f:
+        f.write(json.dumps(address_to_index))
 
 
 def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
@@ -365,32 +405,21 @@ def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
         )
 
 
-def worker_renamer(workers, multinode):
-    """Produce a function that maps worker names to ``(nodeid,
-    deviceid)`` pairs
+def address_to_index(addresses) -> Mapping[str, int]:
+    """Produce a mapping from worker addresses to unique indices
 
     Parameters
     ----------
-    workers: iterable of ``WorkerState`` objects
-        workers to rename (assumed sorted in some sense)
-    multinode: bool
-        is this a multinode run?
+    addresses: iterable
+        worker addresses to map to indices
 
     Returns
     -------
-    callable mapping a worker name to structured data
+    Mapping from worker addresses to int, with workers on the same
+    host numbered contiguously
     """
-    if not multinode:
-        return lambda name: (0, name)
-    deviceids = defaultdict(itertools.count)
-    hostids = {}
-    mapping = {}
-    for worker in workers:
-        _, host, _ = worker.name.split(":")
-        hostid = hostids.setdefault(host, len(hostids))
-        deviceid = next(deviceids[host])
-        mapping[worker.name] = (hostid, deviceid)
-    return lambda name: mapping[name]
+    # Group workers on the same host together
+    return dict(zip(sorted(addresses, key=get_address_host_port), itertools.count()))
 
 
 def plot_benchmark(t_runs, path, historical=False):
@@ -457,45 +486,180 @@ def print_key_value(key, value, key_length=25):
     print(f"{key: <{key_length}} | {value}")
 
 
-def peer_to_peer_bandwidths(incoming_logs, scheduler_workers, ignore_size):
-    """Collect and aggregate peer-to-peer bandwidths"""
-    bandwidths = defaultdict(list)
-    total_nbytes = defaultdict(list)
-    bandwidths_all = []
-    for k, L in incoming_logs.items():
-        for d in L:
-            if d["total"] >= ignore_size:
-                bandwidths[k, d["who"]].append(d["bandwidth"])
-                total_nbytes[k, d["who"]].append(d["total"])
-                bandwidths_all.append(d["bandwidth"])
-    bandwidths = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name): [
-            "%s/s" % format_bytes(x) for x in np.quantile(v, [0.25, 0.50, 0.75])
-        ]
-        for (w1, w2), v in bandwidths.items()
-    }
-    total_nbytes = {
-        (
-            scheduler_workers[w1].name,
-            scheduler_workers[w2].name,
-        ): format_bytes(sum(nb))
-        for (w1, w2), nb in total_nbytes.items()
-    }
+def print_throughput_bandwidth(
+    args, durations, data_processed, p2p_bw, address_to_index
+):
+    print_separator(separator="=")
+    print_key_value(key="Wall clock", value="Throughput")
+    print_separator(separator="-")
+    durations = np.asarray(durations)
+    data_processed = np.asarray(data_processed)
+    throughputs = data_processed / durations
+    for duration, throughput in zip(durations, throughputs):
+        print_key_value(
+            key=f"{format_time(duration)}", value=f"{format_bytes(throughput)}/s"
+        )
+    print_separator(separator="=")
+    print_key_value(
+        key="Throughput",
+        value=f"{format_bytes(hmean(throughputs))}/s "
+        f"+/- {format_bytes(hstd(throughputs))}/s",
+    )
+    # Hack
+    bandwidth_hmean = p2p_bw[..., BandwidthStats._fields.index("hmean")].reshape(-1)
+    bandwidths_all = bandwidth_hmean[bandwidth_hmean > 0]
+    print_key_value(
+        key="Bandwidth",
+        value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
+        f"{format_bytes(hstd(bandwidths_all))}/s",
+    )
+    print_key_value(
+        key="Wall clock",
+        value=f"{format_time(durations.mean())} +/- {format_time(durations.std()) }",
+    )
+    print_separator(separator="=")
+    if args.markdown:
+        print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
 
-    return {
-        "bandwidths": bandwidths,
-        "bandwidths_all": bandwidths_all,
-        "total_nbytes": total_nbytes,
-    }
+    print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
+    print_separator(separator="-")
+    for (source, dest) in np.ndindex(p2p_bw.shape[:2]):
+        bw = BandwidthStats(*p2p_bw[source, dest, ...])
+        if bw.total_bytes > 0:
+            print_key_value(
+                key=f"({source},{dest})",
+                value=f"{format_bytes(bw.q25)}/s {format_bytes(bw.q50)}/s "
+                f"{format_bytes(bw.q75)}/s ({format_bytes(bw.total_bytes)})",
+            )
+    print_separator(separator="=")
+    print_key_value(key="Worker index", value="Worker address")
+    print_separator(separator="-")
+    for address, index in sorted(address_to_index.items(), key=itemgetter(1)):
+        print_key_value(key=index, value=address)
+    print_separator(separator="=")
+    if args.markdown:
+        print("```\n</details>\n")
+    if args.plot:
+        plot_benchmark(throughputs, args.plot, historical=True)
+
+
+class BandwidthStats(NamedTuple):
+    hmean: float
+    hstd: float
+    q25: float
+    q50: float
+    q75: float
+    min: float
+    max: float
+    median: float
+    total_bytes: int
+
+
+def bandwidth_statistics(
+    logs, ignore_size: Optional[int] = None
+) -> Mapping[str, BandwidthStats]:
+    """Return bandwidth statistics from logs on a single worker.
+
+    Parameters
+    ----------
+    logs:
+        the ``dask_worker.incoming_transfer_log`` object
+    ignore_size: int (optional)
+        ignore messsages whose total byte count is smaller than this
+        value (if provided)
+
+    Returns
+    -------
+    dict
+
+        mapping worker names to a :class:`BandwidthStats`
+        object summarising incoming messages (bandwidth and total bytes)
+
+    """
+    bandwidth = defaultdict(list)
+    total_nbytes = defaultdict(int)
+    for data in logs:
+        if ignore_size is None or data["total"] >= ignore_size:
+            bandwidth[data["who"]].append(data["bandwidth"])
+            total_nbytes[data["who"]] += data["total"]
+    aggregate = {}
+    for address, data in bandwidth.items():
+        data = np.asarray(data)
+        q25, q50, q75 = np.quantile(data, [0.25, 0.50, 0.75])
+        aggregate[address] = BandwidthStats(
+            hmean=hmean(data),
+            hstd=hstd(data),
+            q25=q25,
+            q50=q50,
+            q75=q75,
+            min=np.min(data),
+            max=np.max(data),
+            median=np.median(data),
+            total_bytes=total_nbytes[address],
+        )
+    return aggregate
+
+
+def aggregate_transfer_log_data(
+    aggregator: Callable[[Any, Optional[int]], Any], ignore_size=None, dask_worker=None
+) -> Tuple[Mapping[str, Any], Mapping[str, Any]]:
+    """Aggregate ``dask_worker.incoming_transfer_log`` on a single worker
+
+    Parameters
+    ----------
+    aggregator: callable
+        Function to massage raw data into aggregate form
+    ignore_size: int, optional
+        ignore contributions of a log entry to the aggregate data if
+        the message was less than this many bytes in size (if not
+        provided, then keep all messages).
+    dask_worker:
+        The dask ``Worker`` object.
+    """
+    return aggregator(dask_worker.incoming_transfer_log, ignore_size=ignore_size)
+
+
+def peer_to_peer_bandwidths(
+    aggregate_bandwidth_data: Mapping[str, Mapping[str, BandwidthStats]],
+    address_to_index: Mapping[str, int],
+) -> np.ndarray:
+    """Flatten collective aggregated bandwidth data
+
+    Parameters
+    ----------
+    aggregate_bandwidth_data
+        Dict mapping worker addresses to per-worker bandwidth data
+
+    name_worker
+        Function mapping worker addresses to useful names
+
+    Returns
+    -------
+    dict
+        Flattened dict (keyed on pairs of massaged worker names)
+        mapping to bandwidth data between that pair of workers.
+    """
+    nworker = len(aggregate_bandwidth_data)
+    data = np.zeros((nworker, nworker, len(BandwidthStats._fields)), dtype=np.float32)
+    for w1, per_worker in aggregate_bandwidth_data.items():
+        for w2, stats in per_worker.items():
+            data[address_to_index[w1], address_to_index[w2], :] = stats
+    return data
 
 
 def hmean(a):
     """Harmonic mean"""
-    return 1 / np.mean(1 / a)
+    if len(a):
+        return 1 / np.mean(1 / a)
+    else:
+        return 0
 
 
 def hstd(a):
     """Harmonic standard deviation"""
-    rmean = np.mean(1 / a)
-    rvar = np.var(1 / a)
-    return np.sqrt(rvar / (len(a) * rmean**4))
+    if len(a):
+        rmean = np.mean(1 / a)
+        rvar = np.var(1 / a)
+        return np.sqrt(rvar / (len(a) * rmean**4))
+    else:
+        return 0
