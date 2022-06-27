@@ -95,9 +95,9 @@ initialized. Symptoms include jobs randomly hanging, or crashing,
 especially when using a large number of workers. To mitigate against
 this when using Dask-CUDA's UCX integration, processes launched via
 multiprocessing should use the start processes using the
-```"forkserver"``
+`"forkserver"
 <https://docs.python.org/dev/library/multiprocessing.html#contexts-and-start-methods>`_
-method. When launching workers using ```dask-cuda-worker`` <quickstart.html#dask-cuda-worker>`_, this can be
+method. When launching workers using `dask-cuda-worker <quickstart.html#dask-cuda-worker>`_, this can be
 achieved by passing ``--multiprocessing-method forkserver`` as an
 argument. In user code, the method can be controlled with the
 ``distributed.worker.multiprocessing-method`` configuration key in
@@ -122,7 +122,7 @@ therefore do something like the following:
 
    In addition to this, at present one must also set
    ``PTXCOMPILER_CHECK_NUMBA_CODEGEN_PATCH_NEEDED=0`` in the
-   environment to avoid a subprocess call from ```ptxcompiler``
+   environment to avoid a subprocess call from `ptxcompiler
    <https://github.com/rapidsai/ptxcompiler>`_
 
 .. note::
