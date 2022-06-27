@@ -23,6 +23,16 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Number of Dask threads per worker (i.e., GPU).",
     )
     parser.add_argument(
+        "--multiprocessing-method",
+        default="spawn",
+        choices=["spawn", "fork", "forkserver"],
+        type=str,
+        help="Which method should multiprocessing use to start child processes? "
+        "On supercomputing systems with a high-performance interconnect, "
+        "'forkserver' can be used to avoid issues with fork not being allowed "
+        "after the networking stack has been initialised.",
+    )
+    parser.add_argument(
         "-p",
         "--protocol",
         choices=["tcp", "ucx"],
