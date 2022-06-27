@@ -15,7 +15,10 @@ from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
+    hmean,
+    hstd,
     parse_benchmark_args,
+    peer_to_peer_bandwidths,
     print_key_value,
     print_separator,
     setup_memory_pools,
@@ -143,6 +146,10 @@ def bench_once(client, args):
     else:
         raise ValueError(f"Unknown operation type {args.operation}")
 
+    shape = x.shape
+    chunksize = x.chunksize
+    data_processed = sum(arg.nbytes for arg in func_args)
+
     # Execute the operations to benchmark
     if args.profile is not None:
         with performance_report(filename=args.profile):
@@ -164,21 +171,19 @@ def bench_once(client, args):
 
     return {
         "took": took,
-        "npartitions": x.npartitions,
-        "shape": x.shape,
-        "chunksize": x.chunksize,
+        "data_processed": data_processed,
+        "shape": shape,
+        "chunksize": chunksize,
     }
 
 
 def pretty_print_results(args, incoming_logs, scheduler_workers, results):
-    bandwidths = defaultdict(list)
-    total_nbytes = defaultdict(list)
-    for k, L in incoming_logs.items():
-        for d in L:
-            if d["total"] >= args.ignore_size:
-                bandwidths[k, d["who"]].append(d["bandwidth"])
-                total_nbytes[k, d["who"]].append(d["total"])
-
+    p2p_bw_dict = peer_to_peer_bandwidths(
+        incoming_logs, scheduler_workers, args.ignore_size
+    )
+    bandwidths = p2p_bw_dict["bandwidths"]
+    bandwidths_all = p2p_bw_dict["bandwidths_all"]
+    total_nbytes = p2p_bw_dict["total_nbytes"]
     renamer = worker_renamer(
         scheduler_workers.values(),
         args.multi_node or args.sched_addr or args.scheduler_file,
@@ -225,11 +230,36 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
         print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
     print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
     print_separator(separator="=")
-    print_key_value(key="Wall clock", value="npartitions")
+    print_key_value(key="Wall clock", value="Throughput")
     print_separator(separator="-")
+    t_p = []
+    times = []
     for result in results:
-        t = format_time(result["took"])
-        print_key_value(key=f"{t}", value=f"{result['npartitions']}")
+        took = result["took"]
+        data_processed = result["data_processed"]
+        throughput = data_processed / took
+        times.append(took)
+        t_p.append(throughput)
+        print_key_value(
+            key=f"{format_time(took)}", value=f"{format_bytes(throughput)}/s"
+        )
+    t_p = np.asarray(t_p)
+    times = np.asarray(times)
+    bandwidths_all = np.asarray(bandwidths_all)
+    print_separator(separator="=")
+    print_key_value(
+        key="Throughput",
+        value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+    )
+    print_key_value(
+        key="Bandwidth",
+        value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
+        f"{format_bytes(hstd(bandwidths_all))}/s",
+    )
+    print_key_value(
+        key="Wall clock",
+        value=f"{format_time(times.mean())} +/- {format_time(times.std()) }",
+    )
     print_separator(separator="=")
     print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
     print_separator(separator="-")

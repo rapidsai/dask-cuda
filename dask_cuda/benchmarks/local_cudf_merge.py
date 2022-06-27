@@ -18,7 +18,10 @@ from dask.utils import format_bytes, format_time, parse_bytes
 from dask_cuda.benchmarks.utils import (
     get_cluster_options,
     get_scheduler_workers,
+    hmean,
+    hstd,
     parse_benchmark_args,
+    peer_to_peer_bandwidths,
     plot_benchmark,
     print_key_value,
     print_separator,
@@ -191,13 +194,12 @@ def bench_once(client, args, write_profile=None):
 
 
 def pretty_print_results(args, incoming_logs, scheduler_workers, results):
-    bandwidths = defaultdict(list)
-    total_nbytes = defaultdict(list)
-    for k, L in incoming_logs.items():
-        for d in L:
-            if d["total"] >= args.ignore_size:
-                bandwidths[k, d["who"]].append(d["bandwidth"])
-                total_nbytes[k, d["who"]].append(d["total"])
+    p2p_bw_dict = peer_to_peer_bandwidths(
+        incoming_logs, scheduler_workers, args.ignore_size
+    )
+    bandwidths = p2p_bw_dict["bandwidths"]
+    bandwidths_all = p2p_bw_dict["bandwidths_all"]
+    total_nbytes = p2p_bw_dict["total_nbytes"]
     renamer = worker_renamer(
         scheduler_workers.values(),
         args.multi_node or args.sched_addr or args.scheduler_file,
@@ -259,10 +261,16 @@ def pretty_print_results(args, incoming_logs, scheduler_workers, results):
         t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
     t_p = np.asarray(t_p)
     times = np.asarray(times)
+    bandwidths_all = np.asarray(bandwidths_all)
     print_separator(separator="=")
     print_key_value(
         key="Throughput",
-        value=f"{format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }",
+        value=f"{format_bytes(hmean(t_p))}/s +/- {format_bytes(hstd(t_p))}/s",
+    )
+    print_key_value(
+        key="Bandwidth",
+        value=f"{format_bytes(hmean(bandwidths_all))}/s +/- "
+        f"{format_bytes(hstd(bandwidths_all))}/s",
     )
     print_key_value(
         key="Wall clock",
