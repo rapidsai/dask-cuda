@@ -31,21 +31,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Number of Dask threads per worker (i.e., GPU).",
     )
     worker_args.add_argument(
-        "-p",
-        "--protocol",
-        choices=["tcp", "ucx"],
-        default="tcp",
-        type=str,
-        help="The communication protocol to use.",
-    )
-    parser.add_argument(
-        "--profile",
-        metavar="PATH",
-        default=None,
-        type=str,
-        help="Write dask profile report (E.g. dask-report.html)",
-    )
-    worker_args.add_argument(
         "--device-memory-limit",
         default=None,
         type=parse_bytes,
@@ -55,83 +40,91 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "``'auto'``, 0, or ``None`` to disable spilling to host (i.e. allow full "
         "device memory usage).",
     )
-    worker_args.add_argument(
+    cluster_args = parser.add_argument_group(description="Cluster configuration")
+    cluster_args.add_argument(
+        "-p",
+        "--protocol",
+        choices=["tcp", "ucx"],
+        default="tcp",
+        type=str,
+        help="The communication protocol to use.",
+    )
+    cluster_args.add_argument(
         "--rmm-pool-size",
         default=None,
         type=parse_bytes,
         help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
         "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--rmm-log-directory",
         default=None,
         type=str,
         help="Directory to write worker and scheduler RMM log files to. "
         "Logging is only enabled if RMM memory pool is enabled.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--enable-tcp-over-ucx",
         default=None,
         action="store_true",
         dest="enable_tcp_over_ucx",
         help="Enable TCP over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--enable-infiniband",
         default=None,
         action="store_true",
         dest="enable_infiniband",
         help="Enable InfiniBand over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--enable-nvlink",
         default=None,
         action="store_true",
         dest="enable_nvlink",
         help="Enable NVLink over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--enable-rdmacm",
         default=None,
         action="store_true",
         dest="enable_rdmacm",
         help="Enable RDMACM with UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--disable-tcp-over-ucx",
         action="store_false",
         dest="enable_tcp_over_ucx",
         help="Disable TCP over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--disable-infiniband",
         action="store_false",
         dest="enable_infiniband",
         help="Disable InfiniBand over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--disable-nvlink",
         action="store_false",
         dest="enable_nvlink",
         help="Disable NVLink over UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--disable-rdmacm",
         action="store_false",
         dest="enable_rdmacm",
         help="Disable RDMACM with UCX.",
     )
-    worker_args.add_argument(
+    cluster_args.add_argument(
         "--interface",
         default=None,
         type=str,
         dest="interface",
         help="Network interface Dask processes will use to listen for connections.",
     )
-    cluster_args = parser.add_argument_group(description="Cluster configuration")
     cluster_args.add_argument(
         "--multi-node",
         action="store_true",
@@ -193,6 +186,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         default=False,
         action="store_true",
         help="Write output as markdown",
+    )
+    parser.add_argument(
+        "--profile",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Write dask profile report (E.g. dask-report.html)",
     )
     # See save_benchmark_data for more information
     parser.add_argument(
