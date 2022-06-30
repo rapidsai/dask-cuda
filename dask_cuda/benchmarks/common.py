@@ -21,7 +21,7 @@ from dask_cuda.benchmarks.utils import (
 )
 from dask_cuda.utils import all_to_all
 
-__all__ = ("run_client_from_file", "run_create_client")
+__all__ = ("run_client_from_file", "run_create_client", "Config")
 
 
 class Config(NamedTuple):
