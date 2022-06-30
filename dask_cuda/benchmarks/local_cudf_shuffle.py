@@ -180,12 +180,19 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    config = Config(
-        bench_once=bench_once,
-        create_tidy_results=create_tidy_results,
-        pretty_print_results=pretty_print_results,
-    )
-    if args.scheduler_file is not None:
-        run_client_from_file(args, config)
-    else:
-        run_create_client(args, config)
+    if args.multiprocessing_method == "forkserver":
+        import multiprocessing.forkserver as f
+
+        f.ensure_running()
+    with dask.config.set(
+        {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
+    ):
+        config = Config(
+            bench_once=bench_once,
+            create_tidy_results=create_tidy_results,
+            pretty_print_results=pretty_print_results,
+        )
+        if args.scheduler_file is not None:
+            run_client_from_file(args, config)
+        else:
+            run_create_client(args, config)
