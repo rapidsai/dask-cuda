@@ -6,6 +6,7 @@ from warnings import filterwarnings
 import numpy as np
 import pandas as pd
 
+import dask
 from distributed import Client
 
 from dask_cuda.benchmarks.utils import (
@@ -21,12 +22,14 @@ from dask_cuda.benchmarks.utils import (
 )
 from dask_cuda.utils import all_to_all
 
-__all__ = ("run_client_from_file", "run_create_client", "Config")
+__all__ = ("execute_benchmark", "Config")
 
 
 class Config(NamedTuple):
     """Benchmark configuration"""
 
+    args: Namespace
+    """Parsed benchmark arguments"""
     bench_once: Callable[[Client, Namespace, Optional[str]], Any]
     """Callable to run a single benchmark iteration
 
@@ -162,3 +165,19 @@ def run_create_client(args, config):
             # ensure it does.
             if args.multi_node:
                 client.shutdown()
+
+
+def execute_benchmark(config: Config):
+    """Run complete benchmark given"""
+    args = config.args
+    if args.multiprocessing_method == "forkserver":
+        import multiprocessing.forkserver as f
+
+        f.ensure_running()
+    with dask.config.set(
+        {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
+    ):
+        if args.scheduler_file is not None:
+            run_client_from_file(args, config)
+        else:
+            run_create_client(args, config)

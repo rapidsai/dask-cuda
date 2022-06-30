@@ -8,12 +8,11 @@ import pandas as pd
 from cupyx.scipy.ndimage.filters import convolve as cp_convolve
 from scipy.ndimage import convolve as sp_convolve
 
-import dask
 from dask import array as da
 from dask.distributed import performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
-from dask_cuda.benchmarks.common import Config, run_client_from_file, run_create_client
+from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
     parse_benchmark_args,
     print_key_value,
@@ -184,20 +183,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    if args.multiprocessing_method == "forkserver":
-        import multiprocessing.forkserver as f
-
-        f.ensure_running()
-    with dask.config.set(
-        {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
-    ):
-        config = Config(
+    execute_benchmark(
+        Config(
+            args=parse_args(),
             bench_once=bench_once,
             create_tidy_results=create_tidy_results,
             pretty_print_results=pretty_print_results,
         )
-        if args.scheduler_file is not None:
-            run_client_from_file(args, config)
-        else:
-            run_create_client(args, config)
+    )
