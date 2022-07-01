@@ -131,17 +131,24 @@ def run(client: Client, args: Namespace, config: Config):
         )
 
 
-def run_client_from_file(args: Namespace, config: Config):
-    """Set up a client by connecting to a scheduler and run
+def run_client_from_existing_scheduler(args: Namespace, config: Config):
+    """Set up a client by connecting to a scheduler
 
-    Shuts down the cluster at the end of the benchmark
+    Shuts down the cluster at the end of the benchmark conditional on
+    ``args.shutdown_cluster``.
     """
-    scheduler_file = args.scheduler_file
-    if scheduler_file is None:
-        raise RuntimeError("Need scheduler file to be provided")
-    with Client(scheduler_file=scheduler_file) as client:
+    if args.scheduler_address is not None:
+        kwargs = {"address": args.scheduler_address}
+    elif args.scheduler_file is not None:
+        kwargs = {"scheduler_file": args.scheduler_file}
+    else:
+        raise RuntimeError(
+            "Need to specify either --scheduler-file " "or --scheduler-address"
+        )
+    with Client(**kwargs) as client:
         run(client, args, config)
-        client.shutdown()
+        if args.shutdown_cluster:
+            client.shutdown()
 
 
 def run_create_client(args, config):
@@ -168,7 +175,7 @@ def run_create_client(args, config):
 
 
 def execute_benchmark(config: Config):
-    """Run complete benchmark given"""
+    """Run complete benchmark given a configuration"""
     args = config.args
     if args.multiprocessing_method == "forkserver":
         import multiprocessing.forkserver as f
@@ -177,7 +184,7 @@ def execute_benchmark(config: Config):
     with dask.config.set(
         {"distributed.worker.multiprocessing-method": args.multiprocessing_method}
     ):
-        if args.scheduler_file is not None:
-            run_client_from_file(args, config)
+        if args.scheduler_file is not None or args.scheduler_address is not None:
+            run_client_from_existing_scheduler(args, config)
         else:
             run_create_client(args, config)

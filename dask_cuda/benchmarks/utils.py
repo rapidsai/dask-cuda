@@ -135,19 +135,41 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         dest="interface",
         help="Network interface Dask processes will use to listen for connections.",
     )
+    group = cluster_args.add_mutually_exclusive_group()
+    group.add_argument(
+        "--scheduler-address",
+        default=None,
+        type=str,
+        dest="sched_addr",
+        help="Scheduler Address -- assumes cluster is created outside of benchmark. "
+        "If provided, worker configuration options provided to this script are ignored "
+        "since the workers are assumed to be started separately. Similarly the other "
+        "cluster configuration options have no effect.",
+    )
+    group.add_argument(
+        "--scheduler-file",
+        default=None,
+        type=str,
+        dest="scheduler_file",
+        help="Read cluster configuration from specified file. "
+        "If provided, worker configuration options provided to this script are ignored "
+        "since the workers are assumed to be started separately. Similarly the other "
+        "cluster configuration options have no effect.",
+    )
+    cluster_args.add_argument(
+        "--shutdown-external-cluster-on-exit",
+        default=False,
+        action="store_true",
+        dest="shutdown_cluster",
+        help="If connecting to an external cluster, should we shut down the cluster "
+        "when the benchmark exits?",
+    )
     cluster_args.add_argument(
         "--multi-node",
         action="store_true",
         dest="multi_node",
         help="Runs a multi-node cluster on the hosts specified by --hosts."
         "Requires the ``asyncssh`` module to be installed.",
-    )
-    cluster_args.add_argument(
-        "--scheduler-address",
-        default=None,
-        type=str,
-        dest="sched_addr",
-        help="Scheduler Address -- assumes cluster is created outside of benchmark.",
     )
     cluster_args.add_argument(
         "--hosts",
@@ -163,16 +185,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "'10.10.10.10', and 'dgx13'. "
         "Note: --devs is currently ignored in multi-node mode and for each host "
         "one worker per GPU will be launched.",
-    )
-    cluster_args.add_argument(
-        "--scheduler-file",
-        default=None,
-        type=str,
-        dest="scheduler_file",
-        help="Read cluster configuration from specified file. "
-        "If provided, worker configuration options provided to this script are ignored "
-        "since the workers are assumed to be started separately. Similarly the other "
-        "cluster configuration options are ignored.",
     )
     parser.add_argument(
         "--all-to-all",
