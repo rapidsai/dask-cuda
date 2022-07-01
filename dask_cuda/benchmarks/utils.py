@@ -140,7 +140,6 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--scheduler-address",
         default=None,
         type=str,
-        dest="sched_addr",
         help="Scheduler Address -- assumes cluster is created outside of benchmark. "
         "If provided, worker configuration options provided to this script are ignored "
         "since the workers are assumed to be started separately. Similarly the other "
