@@ -11,9 +11,9 @@ from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from dask.distributed import SSHCluster
+from dask.distributed import Client, SSHCluster
 from dask.utils import format_bytes, format_time, parse_bytes
-from distributed.comm.addressing import get_address_host_port
+from distributed.comm.addressing import get_address_host
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
@@ -293,8 +293,13 @@ def get_cluster_options(args):
     }
 
 
-def get_worker_addresses(dask_scheduler=None):
-    return list(dask_scheduler.workers.keys())
+def get_worker_device():
+    try:
+        device, *_ = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+        return int(device)
+    except (KeyError, ValueError):
+        # No CUDA_VISIBILE_DEVICES in environment, or else no appropriate value
+        return -1
 
 
 def setup_memory_pool(
@@ -427,21 +432,27 @@ def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
         )
 
 
-def address_to_index(addresses) -> Mapping[str, int]:
+def address_to_index(client: Client) -> Mapping[str, int]:
     """Produce a mapping from worker addresses to unique indices
 
     Parameters
     ----------
-    addresses: iterable
-        worker addresses to map to indices
+    client: Client
+        distributed client
 
     Returns
     -------
     Mapping from worker addresses to int, with workers on the same
-    host numbered contiguously
+    host numbered contiguously, and sorted by device index on each host.
     """
-    # Group workers on the same host together
-    return dict(zip(sorted(addresses, key=get_address_host_port), itertools.count()))
+    # Group workers by hostname and then device index
+    addresses = client.run(get_worker_device)
+    return dict(
+        zip(
+            sorted(addresses, key=lambda k: (get_address_host(k), addresses[k])),
+            itertools.count(),
+        )
+    )
 
 
 def plot_benchmark(t_runs, path, historical=False):

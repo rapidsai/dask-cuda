@@ -14,7 +14,6 @@ from dask_cuda.benchmarks.utils import (
     aggregate_transfer_log_data,
     bandwidth_statistics,
     get_cluster_options,
-    get_worker_addresses,
     peer_to_peer_bandwidths,
     save_benchmark_data,
     setup_memory_pools,
@@ -97,7 +96,7 @@ def run_benchmark(client: Client, args: Namespace, config: Config):
 
 def gather_bench_results(client: Client, args: Namespace, config: Config):
     """Collect benchmark results from the workers"""
-    address2index = address_to_index(client.run_on_scheduler(get_worker_addresses))
+    address2index = address_to_index(client)
     if args.all_to_all:
         all_to_all(client)
     results = run_benchmark(client, args, config)
