@@ -178,6 +178,9 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_key_value(key="Compute chunk size", value=f"{result['chunksize']}")
     print_key_value(key="Ignore size", value=f"{format_bytes(args.ignore_size)}")
     print_key_value(key="Device(s)", value=f"{args.devs}")
+    print_key_value(
+        key="Data processed", value=f"{format_bytes(result['data_processed'])}"
+    )
     if args.device_memory_limit:
         print_key_value(
             key="Device memory limit",
