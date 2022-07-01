@@ -538,7 +538,6 @@ def print_throughput_bandwidth(
         value=f"{format_bytes(hmean(throughputs))}/s "
         f"+/- {format_bytes(hstd(throughputs))}/s",
     )
-    # Hack
     bandwidth_hmean = p2p_bw[..., BandwidthStats._fields.index("hmean")].reshape(-1)
     bandwidths_all = bandwidth_hmean[bandwidth_hmean > 0]
     print_key_value(
@@ -676,6 +675,9 @@ def peer_to_peer_bandwidths(
     data = np.zeros((nworker, nworker, len(BandwidthStats._fields)), dtype=np.float32)
     for w1, per_worker in aggregate_bandwidth_data.items():
         for w2, stats in per_worker.items():
+            # This loses type information on each entry, but we just
+            # need indexing information which we can obtain from the
+            # BandwidthStats._fields slot.
             data[address_to_index[w1], address_to_index[w2], :] = stats
     return data
 
