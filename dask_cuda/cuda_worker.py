@@ -173,7 +173,9 @@ class CUDAWorker(Server):
         else:
             self.jit_unspill = jit_unspill
 
-        if self.jit_unspill:
+        if device_memory_limit is None and memory_limit is None:
+            data = {}
+        elif self.jit_unspill:
             data = lambda i: (
                 ProxifyHostFile,
                 {

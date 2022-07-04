@@ -8,6 +8,7 @@ import pytest
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test, raises_with_cause
+from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
@@ -123,6 +124,18 @@ async def test_threads_per_worker_and_memory_limit():
         assert all(ws.nthreads == 4 for ws in cluster.scheduler.workers.values())
         full_mem = sum(w.memory_manager.memory_limit for w in cluster.workers.values())
         assert full_mem >= MEMORY_LIMIT - 1024 and full_mem < MEMORY_LIMIT + 1024
+
+
+@gen_test(timeout=20)
+async def test_no_memory_limits():
+
+    async with LocalCUDACluster(
+        asynchronous=True, memory_limit=None, device_memory_limit=None
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            # Check that all workers use a regular dict as their "data store".
+            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            assert all(res.values())
 
 
 @gen_test(timeout=20)
