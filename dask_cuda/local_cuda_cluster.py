@@ -288,7 +288,9 @@ class LocalCUDACluster(LocalCluster):
 
         data = kwargs.pop("data", None)
         if data is None:
-            if self.jit_unspill:
+            if device_memory_limit is None and memory_limit is None:
+                data = {}
+            elif self.jit_unspill:
                 data = (
                     ProxifyHostFile,
                     {
