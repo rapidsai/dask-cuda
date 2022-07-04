@@ -123,10 +123,13 @@ def run(client: Client, args: Namespace, config: Config):
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)
     config.pretty_print_results(args, address_to_index, p2p_bw, results)
     if args.output_basename:
+        df, p2p_bw = config.create_tidy_results(args, p2p_bw, results)
+        df["num_workers"] = len(address_to_index)
         save_benchmark_data(
             args.output_basename,
             address_to_index,
-            *config.create_tidy_results(args, p2p_bw, results),
+            df,
+            p2p_bw,
         )
 
 
