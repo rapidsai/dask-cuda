@@ -521,6 +521,7 @@ def print_key_value(key, value, key_length=25):
 def print_throughput_bandwidth(
     args, durations, data_processed, p2p_bw, address_to_index
 ):
+    print_key_value(key="Number of workers", value=f"{len(address_to_index)}")
     print_separator(separator="=")
     print_key_value(key="Wall clock", value="Throughput")
     print_separator(separator="-")
