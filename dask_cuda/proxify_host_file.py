@@ -415,6 +415,7 @@ class ProxyManager:
         Adds `extra_host_mem` to the current total memory usage when comparing
         against device-memory-limit.
         """
+        assert self._host_memory_limit is not None
         mem_over_usage = (
             self._host.mem_usage() + extra_host_mem - self._host_memory_limit
         )
@@ -427,7 +428,8 @@ class ProxyManager:
 
     def maybe_evict(self, extra_dev_mem=0) -> None:
         self.maybe_evict_from_device(extra_dev_mem)
-        self.maybe_evict_from_host()
+        if self._host_memory_limit:
+            self.maybe_evict_from_host()
 
 
 class ProxifyHostFile(MutableMapping):
@@ -611,7 +613,7 @@ class ProxifyHostFile(MutableMapping):
         nbytes: int
             Number of bytes spilled or -1 if nothing to spill.
         """
-
+        assert self.manager._host_memory_limit is not None
         ret = self.manager.evict(
             nbytes=int(self.manager._host_memory_limit * 0.01),
             proxies_access=self.manager._host.buffer_info,
