@@ -171,7 +171,7 @@ class CUDAWorker(Server):
         if jit_unspill is None:
             jit_unspill = dask.config.get("jit-unspill", default=False)
         if device_memory_limit is None and memory_limit is None:
-            data = {}
+            data = lambda _: {}
         elif jit_unspill:
             data = lambda i: (
                 ProxifyHostFile,
