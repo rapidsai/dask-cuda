@@ -127,7 +127,7 @@ async def test_threads_per_worker_and_memory_limit():
 
 
 @gen_test(timeout=20)
-async def test_no_memory_limits():
+async def test_no_memory_limits_cluster():
 
     async with LocalCUDACluster(
         asynchronous=True, memory_limit=None, device_memory_limit=None
@@ -136,6 +136,28 @@ async def test_no_memory_limits():
             # Check that all workers use a regular dict as their "data store".
             res = await client.run(lambda: isinstance(get_worker().data, dict))
             assert all(res.values())
+
+
+@gen_test(timeout=20)
+async def test_no_memory_limits_cudaworker():
+
+    async with LocalCUDACluster(
+        asynchronous=True,
+        memory_limit=None,
+        device_memory_limit=None,
+        n_workers=1,
+    ) as cluster:
+        assert len(cluster.workers) == 1
+        async with Client(cluster, asynchronous=True) as client:
+            new_worker = CUDAWorker(
+                cluster, memory_limit=None, device_memory_limit=None
+            )
+            await new_worker
+            await client.wait_for_workers(2)
+            # Check that all workers use a regular dict as their "data store".
+            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            assert all(res.values())
+            await new_worker.close()
 
 
 @gen_test(timeout=20)
