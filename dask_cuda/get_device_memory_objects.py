@@ -95,7 +95,14 @@ def get_device_memory_objects_register_cudf():
 
     @dispatch.register(cudf.core.frame.Frame)
     def get_device_memory_objects_cudf_frame(obj):
-        return [dispatch(col) for col in obj._data.columns]
+        ret = []
+        for col in obj._data.columns:
+            ret += dispatch(col)
+        return ret
+
+    @dispatch.register(cudf.core.indexed_frame.IndexedFrame)
+    def get_device_memory_objects_cudf_indexed_frame(obj):
+        return dispatch(obj._index) + get_device_memory_objects_cudf_frame(obj)
 
     @dispatch.register(cudf.core.series.Series)
     def get_device_memory_objects_cudf_series(obj):
