@@ -300,7 +300,7 @@ def test_cudf_get_device_memory_objects():
         ),
     ]
     res = get_device_memory_ids(objects)
-    assert len(res) == 3, "We expect three buffer objects"
+    assert len(res) == 4, "We expect four buffer objects"
 
 
 def test_externals():
