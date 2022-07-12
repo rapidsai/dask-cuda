@@ -266,9 +266,9 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
                     wait(result)
                     assert all(len(v.split(",")) == len(uuids) for v in result.values())
                     for i in range(len(uuids)):
-                        assert set(v.split(",")[i] for v in result.values()) == set(
-                            uuids
-                        )
+                        assert set(
+                            bytes(v.split(",")[i], "utf-8") for v in result.values()
+                        ) == set(uuids)
 
 
 def test_cuda_visible_devices_uuid(loop):  # noqa: F811
