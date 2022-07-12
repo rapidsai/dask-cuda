@@ -475,7 +475,7 @@ def parse_cuda_visible_device(dev):
 
     A device identifier must either be an integer, a string containing an
     integer or a string containing the device's UUID, beginning with prefix
-    'GPU-' or 'MIG-GPU'.
+    'GPU-' or 'MIG-'.
 
     >>> parse_cuda_visible_device(2)
     2
@@ -487,18 +487,23 @@ def parse_cuda_visible_device(dev):
     Traceback (most recent call last):
     ...
     ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
-    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    strings beginning with 'GPU-' or 'MIG-' prefixes.
     """
     try:
         return int(dev)
     except ValueError:
-        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", "MIG-"]):
+        if any(
+            dev.startswith(prefix)
+            for prefix in [
+                "GPU-",
+                "MIG-",
+            ]
+        ):
             return dev
         else:
             raise ValueError(
                 "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
-                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes"
-                " or 'MIG-<UUID>'."
+                "or strings beginning with 'GPU-' or 'MIG-' prefixes."
             )
 
 
