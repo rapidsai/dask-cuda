@@ -10,8 +10,9 @@ from toolz import first
 import dask
 import dask.dataframe
 import distributed
-from dask.base import compute_as_if_collection, tokenize
+from dask.base import tokenize
 from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
+from dask.dataframe.optimize import optimize
 from dask.dataframe.shuffle import shuffle_group
 from dask.dataframe.utils import make_meta
 from dask.delayed import delayed
@@ -258,27 +259,37 @@ def shuffle(
         "explicit-comms-shuffle-group-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
     )
-    df = df.persist()  # Making sure optimizations are apply on the existing graph
-    dsk = dict(df.__dask_graph__())
-    output_keys = []
-    for input_key in df.__dask_keys__():
-        output_key = (name, input_key[1])
-        dsk[output_key] = (
-            shuffle_group,
-            input_key,
-            column_names,
-            0,
-            npartitions,
-            npartitions,
-            ignore_index,
-            npartitions,
+    # Convert to bag and use map_partitions so we can enable
+    # blockwise task fusion (if df is not alrady persisted)
+    if hasattr(df._meta, "partition_by_hash"):
+        # Use partition_by_hash for cudf-backed data
+        # (may be faster with an rmm pool)
+        def _shuffle_group(x, **kwargs):
+            return {i: part for i, part in enumerate(x.partition_by_hash(**kwargs))}
+
+        df_groups = df.to_bag(format="frame").map_partitions(
+            _shuffle_group,
+            columns=column_names,
+            nparts=npartitions,
+            keep_index=not ignore_index,
         )
-        output_keys.append(output_key)
+    else:
+        df_groups = df.to_bag(format="frame").map_partitions(
+            shuffle_group,
+            cols=column_names,
+            stage=0,
+            k=npartitions,
+            npartitions=npartitions,
+            ignore_index=ignore_index,
+            nfinal=npartitions,
+        )
+    # Use explicit dask.dataframe HLG optimization pass
+    df_groups.dask = optimize(df_groups.dask, df_groups.__dask_keys__())
 
     # Compute `df_groups`, which is a list of futures, one future per partition in `df`.
     # Each future points to a dict of length `df.npartitions` that maps each
     # partition-id to a DataFrame.
-    df_groups = compute_as_if_collection(type(df), dsk, output_keys, sync=False)
+    df_groups = df_groups.compute(sync=False, optimize=False)
     wait(df_groups)
     for f in df_groups:  # Check for errors
         if f.status == "error":
