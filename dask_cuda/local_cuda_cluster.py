@@ -219,15 +219,16 @@ class LocalCUDACluster(LocalCluster):
         if threads_per_worker < 1:
             raise ValueError("threads_per_worker must be higher than 0.")
 
-        if CUDA_VISIBLE_DEVICES is None:
-            CUDA_VISIBLE_DEVICES = cuda_visible_devices(0)
-        if isinstance(CUDA_VISIBLE_DEVICES, str):
-            CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES.split(",")
-        CUDA_VISIBLE_DEVICES = list(
-            map(parse_cuda_visible_device, CUDA_VISIBLE_DEVICES)
+        self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
+        if self.cuda_visible_devices is None:
+            self.cuda_visible_devices = cuda_visible_devices(0)
+        if isinstance(self.cuda_visible_devices, str):
+            self.cuda_visible_devices = self.cuda_visible_devices.split(",")
+        self.cuda_visible_devices = list(
+            map(parse_cuda_visible_device, self.cuda_visible_devices)
         )
         if n_workers is None:
-            n_workers = len(CUDA_VISIBLE_DEVICES)
+            n_workers = len(self.cuda_visible_devices)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
@@ -235,7 +236,8 @@ class LocalCUDACluster(LocalCluster):
             memory_limit=memory_limit, nthreads=1, total_cores=n_workers
         )
         self.device_memory_limit = parse_device_memory_limit(
-            device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
+            device_memory_limit,
+            device_index=nvml_device_index(0, self.cuda_visible_devices),
         )
 
         self.rmm_pool_size = rmm_pool_size
@@ -361,9 +363,17 @@ class LocalCUDACluster(LocalCluster):
             "preload_argv", []
         ) + ["--create-cuda-context"]
 
-        self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
+        # If the user set `CUDA_VISIBLE_DEVICES` prior to launching `LocalCUDACluster`,
+        # make a copy to restore after launching the workers.
+        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+
         self.scale(n_workers)
         self.sync(self._correct_state)
+
+        # Overwrite any leakage from `Nanny` environment variables.
+        os.environ[
+            "CUDA_VISIBLE_DEVICES"
+        ] = CUDA_VISIBLE_DEVICES or cuda_visible_devices(0, self.cuda_visible_devices)
 
     def new_worker_spec(self):
         try:
