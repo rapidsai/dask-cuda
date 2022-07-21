@@ -31,3 +31,7 @@ dask.dataframe.shuffle.shuffle_group = proxify_decorator(
     dask.dataframe.shuffle.shuffle_group
 )
 dask.dataframe.core._concat = unproxify_decorator(dask.dataframe.core._concat)
+
+# Until GPU-based compression is hooked up, turn off compression
+# in communication protocols (see https://github.com/rapidsai/dask-cuda/issues/935)
+dask.config.config["distributed"]["comm"]["compression"] = None
