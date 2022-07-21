@@ -212,6 +212,8 @@ class LocalCUDACluster(LocalCluster):
         pre_import=None,
         **kwargs,
     ):
+        self.store_cuda_visible_devices()
+
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
@@ -363,17 +365,62 @@ class LocalCUDACluster(LocalCluster):
             "preload_argv", []
         ) + ["--create-cuda-context"]
 
-        # If the user set `CUDA_VISIBLE_DEVICES` prior to launching `LocalCUDACluster`,
-        # make a copy to restore after launching the workers.
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-
         self.scale(n_workers)
         self.sync(self._correct_state)
 
         # Overwrite any leakage from `Nanny` environment variables.
         os.environ[
             "CUDA_VISIBLE_DEVICES"
-        ] = CUDA_VISIBLE_DEVICES or cuda_visible_devices(0, self.cuda_visible_devices)
+        ] = self.environ_cuda_visible_devices or cuda_visible_devices(
+            0, self.cuda_visible_devices
+        )
+        self.restore_cuda_visible_devices(environ_only=False)
+
+    def scale(self, *args, **kwargs):
+        self.store_cuda_visible_devices()
+        super().scale(*args, **kwargs)
+
+    async def _correct_state(self, *args, **kwargs):
+        await super()._correct_state(*args, **kwargs)
+        self.restore_cuda_visible_devices(environ_only=True)
+        # Overwrite any leakage from `Nanny` environment variables.
+        if self.environ_cuda_visible_devices is not None:
+            os.environ["CUDA_VISIBLE_DEVICES"] = self.environ_cuda_visible_devices
+
+    def store_cuda_visible_devices(self):
+        """Store current `CUDA_VISIBLE_DEVICES` environment variable.
+
+        If the user sets the `CUDA_VISIBLE_DEVICES` environment variable prior to
+        launching `LocalCUDACluster`, make a copy to restore after launching the
+        workers, which may be overwritten by `Nanny`.
+        """
+        self.environ_cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+
+    def restore_cuda_visible_devices(self, environ_only):
+        """Restore previous `CUDA_VISIBLE_DEVICES` environment variable.
+
+        If the user sets the `CUDA_VISIBLE_DEVICES` environment variable prior to
+        launching `LocalCUDACluster`, a copy should be made before any time a
+        `Nanny` spawns the `WorkerProcess`, such as before `SpecCluster.__init__()`
+        and `SpecCluster.scale()`. This method will restore the environment variable
+        to whatever was previously defined by the user, as `WorkerProcess` may
+        overwrite `CUDA_VISIBLE_DEVICES` as well as other environment variables.
+
+        Parameters
+        ----------
+        environ_only: bool
+            If `True`, only restores what was previously defined by the
+            `CUDA_VISIBLE_DEVICES`, otherwise also restore what has been parsed
+            as initial `CUDA_VISIBLE_DEVICES` during `LocalCUDACluster.__init__()`
+            (only to be used by the constructor itself).
+        """
+        # Overwrite any leakage from `Nanny` environment variables.
+        if self.environ_cuda_visible_devices is not None:
+            os.environ[
+                "CUDA_VISIBLE_DEVICES"
+            ] = self.environ_cuda_visible_devices or cuda_visible_devices(
+                0, self.cuda_visible_devices
+            )
 
     def new_worker_spec(self):
         try:
