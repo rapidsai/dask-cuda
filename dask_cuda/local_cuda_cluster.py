@@ -384,7 +384,12 @@ class LocalCUDACluster(LocalCluster):
         await super()._correct_state(*args, **kwargs)
         self.restore_cuda_visible_devices(environ_only=True)
         # Overwrite any leakage from `Nanny` environment variables.
-        if self.environ_cuda_visible_devices is not None:
+        if (
+            self.environ_cuda_visible_devices is None
+            and "CUDA_VISIBLE_DEVICES" in os.environ
+        ):
+            del os.environ["CUDA_VISIBLE_DEVICES"]
+        elif self.environ_cuda_visible_devices is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = self.environ_cuda_visible_devices
 
     def store_cuda_visible_devices(self):
