@@ -1,3 +1,7 @@
+# dask-cuda 22.10.00 (Date TBD)
+
+Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.10.00a for the latest changes to this development branch.
+
 # dask-cuda 22.08.00 (Date TBD)
 
 Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.08.00a for the latest changes to this development branch.
