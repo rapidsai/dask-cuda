@@ -5,7 +5,6 @@
 {% set data = load_setup_py_data() %}
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
-{% set git_revision_count=environ.get('GIT_DESCRIBE_NUMBER', 0) %}
 {% set py_version=environ.get('CONDA_PY', 36) %}
 package:
   name: dask-cuda
@@ -15,10 +14,8 @@ source:
   git_url: ../../..
 
 build:
-  number: {{ git_revision_count }}
-  string: py{{ py_version }}_{{ git_revision_count }}
-  script_env:
-    - VERSION_SUFFIX
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
 
 requirements:
   host:
