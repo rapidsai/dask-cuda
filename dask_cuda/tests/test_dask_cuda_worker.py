@@ -10,7 +10,7 @@ import pytest
 
 from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
-from distributed.utils_test import cleanup, loop, popen  # noqa: F401
+from distributed.utils_test import cleanup, loop, popen, loop_in_thread  # noqa: F401
 
 from dask_cuda.utils import (
     get_gpu_count_mig,
