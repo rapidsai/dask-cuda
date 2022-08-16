@@ -3,6 +3,7 @@ import logging
 import os
 import time
 
+import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 
@@ -115,7 +116,7 @@ class DeviceSerialized:
 
     def __reduce_ex__(self, protocol):
         header, frames = device_serialize(self)
-        frames = [f.obj for f in frames]
+        frames = [numpy.asarray(f) for f in frames]
         return device_deserialize, (header, frames)
 
 
