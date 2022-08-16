@@ -45,6 +45,7 @@ hundreds of thousand or even millions of allocations in trivial workflows causin
 
 We also recommend allocating most, though not all, of the GPU memory space. We do this because the `CUDA Context <https://stackoverflow.com/questions/43244645/what-is-a-cuda-context#:~:text=The%20context%20holds%20all%20the,memory%20for%20zero%20copy%2C%20etc.>`_ takes a non-zero amount (typically 200-500 MBs) of GPU RAM on the device.
 
+Additionally, when using `Accelerated Networking`_ , we only need to register a single IPC handle for the whole pool (which is expensive, but only done once) since from the IPC point of viewer there's only a single allocation. As opposed to just using RMM without a pool where each new allocation must be registered with IPC.
 
 Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
