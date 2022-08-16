@@ -11,7 +11,7 @@ two reasons:
 
 - 1. Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
 - 2. Mutli-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
-networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and H-to-D/D-to-H transfers.  See `
+networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See `
 Accelerated Networking`_ for more discussion
 
 .. code-block:: python
@@ -45,7 +45,7 @@ Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
 
 As discussed in `Multi-GPUs`_, accelerated networking has better bandwidth/throughput compared with traditional networking hardware and does
-not force any costly H-to-D/D-to-H transfers.  Dask-CUDA can leverage accelerated networking hardware with `UCX-Py <https://ucx-py.readthedocs.io/en/latest/>`_.
+not force any costly Host-to-Device/Device-to-Host transfers.  Dask-CUDA can leverage accelerated networking hardware with `UCX-Py <https://ucx-py.readthedocs.io/en/latest/>`_.
 
 As an example, let's compare a merge benchmark when using 2 GPUs connected with NVLink.  First we'll run with standard TCP comms:
 
@@ -82,7 +82,7 @@ when Dask needed to move data back-and-forth between workers results in an avera
 
 To compare, we'll now change the ``procotol`` from ``tcp`` to ``ucx``:
 
-    python local_cudf_merge.py -d 0,1 -p ucx -c 50_000_000 --rmm-pool-size 28GB
+    python local_cudf_merge.py -d 0,1 -p ucx -c 50_000_000 --rmm-pool-size 30GB
 
 
 
