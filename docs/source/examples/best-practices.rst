@@ -10,7 +10,7 @@ DGX, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a hi
 two reasons:
 
 - 1. Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
-- 2. Mutli-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
+- 2. Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
 networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and H-to-D/D-to-H transfers.  See `
 Accelerated Networking`_ for more discussion
 
