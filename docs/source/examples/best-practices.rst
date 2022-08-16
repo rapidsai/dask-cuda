@@ -54,7 +54,7 @@ As an example, let's compare a merge benchmark when using 2 GPUs connected with 
     python local_cudf_merge.py -d 0,1 -p tcp -c 50_000_000 --rmm-pool-size 30GB
 
 
-In the above, we used 2 GPUs (2 dask-cuda-workers), pre-allocated 30GB of GPU ram (to make gpu memory allocations faster), and used TCP comms
+In the above, we used 2 GPUs (2 dask-cuda-workers), pre-allocated 30GB of GPU RAM (to make gpu memory allocations faster), and used TCP comms
 when Dask needed to move data back-and-forth between workers results in an average wall clock time of: ``19.72 s +/- 694.36 ms``::
 
     ================================================================================
