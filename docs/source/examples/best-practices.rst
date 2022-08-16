@@ -2,11 +2,11 @@ Best Practices
 ==============
 
 
-Multi-GPUs
-~~~~~~~~~~
+Multi-GPU Machines
+~~~~~~~~~~~~~~~~~~
 
 When using multiple GPUs, if possible, it's best to co-locate as many GPUs on the same physical node.  This could be a
-DGX, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for
+`DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for
 two reasons:
 
 - 1. Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
@@ -18,16 +18,21 @@ Accelerated Networking`_ for more discussion
 
     from dask_cuda import LocalCUDACluster
 
-    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES="0,1",
-                               protocol="ucx")
+    cluster = LocalCUDACluster(n_workers=2)                                # will use GPUs 0,1
+    cluster = LocalCUDACluster(CUDA_VISIBLE_DEVICES="3,4")                 # will use GPUs 3,4
+
+For more discussion on controlling number of workers/using multiple GPUs see :ref:`controlling-number-of-workers` .
 
 GPU Memory Management
 ~~~~~~~~~~~~~~~~~~~~~
 
-When using Dask-CUDA, especially with RAPIDS, it's best to use an `RMM pool <https://docs.rapids.ai/api/rmm/stable/>`_ (RAPIDS Memory Manager)
-to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
-hundreds of thousand or even millions of allocations in trivial workflows causing significant performance degradations.  With an RMM pool, allocations are sub-sampled from a larger
-pool and greatly reduces the allocation time and thereby increases performance:
+When using Dask-CUDA, especially with RAPIDS, it's best to use an |rmm-pool|__ to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
+hundreds of thousand or even millions of allocations in trivial workflows causing significant performance degradations.  With an RMM pool, allocations are sub-sampled from a larger pool and this greatly reduces the allocation time and thereby increases performance:
+
+
+  .. |rmm-pool| replace:: :abbr:`RMM (RAPIDS Memory Manager)` pool
+  __ https://docs.rapids.ai/api/rmm/stable/
+
 
 .. code-block:: python
 
@@ -38,13 +43,13 @@ pool and greatly reduces the allocation time and thereby increases performance:
                                rmm_pool_size="30GB")
 
 
-We also recommend allocating most, though not all, of the GPU memory space.  We do this so that temporary allocations, like those made deep inside CUDA libraries (libcudf, cupy, xgboost, etc) have room and the job is not halted due to an Out-Of-Memory (``OOM``) error.
+We also recommend allocating most, though not all, of the GPU memory space. We do this because the `CUDA Context <https://stackoverflow.com/questions/43244645/what-is-a-cuda-context#:~:text=The%20context%20holds%20all%20the,memory%20for%20zero%20copy%2C%20etc.>`_ takes a non-zero amount (typically 200-500 MBs) of GPU RAM on the device.
 
 
 Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
 
-As discussed in `Multi-GPUs`_, accelerated networking has better bandwidth/throughput compared with traditional networking hardware and does
+As discussed in `Multi-GPU Machines`_, accelerated networking has better bandwidth/throughput compared with traditional networking hardware and does
 not force any costly Host-to-Device/Device-to-Host transfers.  Dask-CUDA can leverage accelerated networking hardware with `UCX-Py <https://ucx-py.readthedocs.io/en/latest/>`_.
 
 As an example, let's compare a merge benchmark when using 2 GPUs connected with NVLink.  First we'll run with standard TCP comms:
