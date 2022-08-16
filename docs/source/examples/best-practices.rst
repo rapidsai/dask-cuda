@@ -5,12 +5,11 @@ Best Practices
 Multi-GPU Machines
 ~~~~~~~~~~~~~~~~~~
 
-When using multiple GPUs, if possible, it's best to co-locate as many GPUs on the same physical node.  This could be a
-`DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for
-two reasons:
+When choosing between two multi-GPU setups, it is best to pick the one where most GPUs are co-located with one-another.  This could be a
+`DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for two reasons:
 
-- 1. Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
-- 2. Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
+- Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
+- Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
 networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See `
 Accelerated Networking`_ for more discussion
 
