@@ -1,6 +1,41 @@
-# dask-cuda 22.08.00 (Date TBD)
+# dask-cuda 22.08.00 (17 Aug 2022)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.08.00a for the latest changes to this development branch.
+## 🚨 Breaking Changes
+
+- Fix useless property ([#944](https://github.com/rapidsai/dask-cuda/pull/944)) [@wence-](https://github.com/wence-)
+
+## 🐛 Bug Fixes
+
+- Fix `distributed` error related to `loop_in_thread` ([#963](https://github.com/rapidsai/dask-cuda/pull/963)) [@galipremsagar](https://github.com/galipremsagar)
+- Add `__rmatmul__` to `ProxyObject` ([#960](https://github.com/rapidsai/dask-cuda/pull/960)) [@jakirkham](https://github.com/jakirkham)
+- Always use versioneer command classes in setup.py ([#948](https://github.com/rapidsai/dask-cuda/pull/948)) [@wence-](https://github.com/wence-)
+- Do not dispatch removed `cudf.Frame._index` object ([#947](https://github.com/rapidsai/dask-cuda/pull/947)) [@pentschev](https://github.com/pentschev)
+- Fix useless property ([#944](https://github.com/rapidsai/dask-cuda/pull/944)) [@wence-](https://github.com/wence-)
+- LocalCUDACluster&#39;s memory limit: `None` means no limit ([#943](https://github.com/rapidsai/dask-cuda/pull/943)) [@madsbk](https://github.com/madsbk)
+- ProxyManager: support `memory_limit=None` ([#941](https://github.com/rapidsai/dask-cuda/pull/941)) [@madsbk](https://github.com/madsbk)
+- Remove deprecated `loop` kwarg to `Nanny` in `CUDAWorker` ([#934](https://github.com/rapidsai/dask-cuda/pull/934)) [@pentschev](https://github.com/pentschev)
+- Import `cleanup` fixture in `test_dask_cuda_worker.py` ([#924](https://github.com/rapidsai/dask-cuda/pull/924)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Switch docs to use common `js` &amp; `css` code ([#967](https://github.com/rapidsai/dask-cuda/pull/967)) [@galipremsagar](https://github.com/galipremsagar)
+- Switch `language` from `None` to `&quot;en&quot;` in docs build ([#939](https://github.com/rapidsai/dask-cuda/pull/939)) [@galipremsagar](https://github.com/galipremsagar)
+
+## 🚀 New Features
+
+- Add communications bandwidth to benchmarks ([#938](https://github.com/rapidsai/dask-cuda/pull/938)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Pin `dask` &amp; `distributed` for release ([#965](https://github.com/rapidsai/dask-cuda/pull/965)) [@galipremsagar](https://github.com/galipremsagar)
+- Test memory_limit=None for CUDAWorker ([#946](https://github.com/rapidsai/dask-cuda/pull/946)) [@wence-](https://github.com/wence-)
+- benchmarks: Record total number of workers in dataframe ([#945](https://github.com/rapidsai/dask-cuda/pull/945)) [@wence-](https://github.com/wence-)
+- Benchmark refactoring: tidy data and multi-node capability via `--scheduler-file` ([#940](https://github.com/rapidsai/dask-cuda/pull/940)) [@wence-](https://github.com/wence-)
+- Add util functions to simplify printing benchmarks results ([#937](https://github.com/rapidsai/dask-cuda/pull/937)) [@pentschev](https://github.com/pentschev)
+- Add --multiprocessing-method option to benchmarks ([#933](https://github.com/rapidsai/dask-cuda/pull/933)) [@wence-](https://github.com/wence-)
+- Remove click pinning ([#932](https://github.com/rapidsai/dask-cuda/pull/932)) [@charlesbluca](https://github.com/charlesbluca)
+- Remove compiler variables ([#929](https://github.com/rapidsai/dask-cuda/pull/929)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Unpin `dask` &amp; `distributed` for development ([#927](https://github.com/rapidsai/dask-cuda/pull/927)) [@galipremsagar](https://github.com/galipremsagar)
 
 # dask-cuda 22.06.00 (7 Jun 2022)
 
