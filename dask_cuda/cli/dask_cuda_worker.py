@@ -5,6 +5,7 @@ import logging
 import click
 from tornado.ioloop import IOLoop, TimeoutError
 
+from dask import config
 from distributed.cli.utils import install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
@@ -280,6 +281,12 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     bleeding through later Dask operations. Should be a list of comma-separated names,
     such as "cudf,rmm".""",
 )
+@click.option(
+    "--multiprocessing-method",
+    default="spawn",
+    type=click.Choice(["spawn", "fork", "forkserver"]),
+    help="""Method used to start new processes with multiprocessing""",
+)
 def main(
     scheduler,
     host,
@@ -313,8 +320,13 @@ def main(
     enable_jit_unspill,
     worker_class,
     pre_import,
+    multiprocessing_method,
     **kwargs,
 ):
+    if multiprocessing_method == "forkserver":
+        import multiprocessing.forkserver as f
+
+        f.ensure_running()
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
             tls_ca_file=tls_ca_file,
@@ -334,58 +346,61 @@ def main(
     if worker_class is not None:
         worker_class = import_term(worker_class)
 
-    worker = CUDAWorker(
-        scheduler,
-        host,
-        nthreads,
-        name,
-        memory_limit,
-        device_memory_limit,
-        rmm_pool_size,
-        rmm_maximum_pool_size,
-        rmm_managed_memory,
-        rmm_async,
-        rmm_log_directory,
-        rmm_track_allocations,
-        pid_file,
-        resources,
-        dashboard,
-        dashboard_address,
-        local_directory,
-        shared_filesystem,
-        scheduler_file,
-        interface,
-        preload,
-        dashboard_prefix,
-        security,
-        enable_tcp_over_ucx,
-        enable_infiniband,
-        enable_nvlink,
-        enable_rdmacm,
-        enable_jit_unspill,
-        worker_class,
-        pre_import,
-        **kwargs,
-    )
+    with config.set(
+        {"distributed.worker.multiprocessing-method": multiprocessing_method}
+    ):
+        worker = CUDAWorker(
+            scheduler,
+            host,
+            nthreads,
+            name,
+            memory_limit,
+            device_memory_limit,
+            rmm_pool_size,
+            rmm_maximum_pool_size,
+            rmm_managed_memory,
+            rmm_async,
+            rmm_log_directory,
+            rmm_track_allocations,
+            pid_file,
+            resources,
+            dashboard,
+            dashboard_address,
+            local_directory,
+            shared_filesystem,
+            scheduler_file,
+            interface,
+            preload,
+            dashboard_prefix,
+            security,
+            enable_tcp_over_ucx,
+            enable_infiniband,
+            enable_nvlink,
+            enable_rdmacm,
+            enable_jit_unspill,
+            worker_class,
+            pre_import,
+            **kwargs,
+        )
 
-    async def on_signal(signum):
-        logger.info("Exiting on signal %d", signum)
-        await worker.close()
+        async def on_signal(signum):
+            logger.info("Exiting on signal %d", signum)
+            await worker.close()
 
-    async def run():
-        await worker
-        await worker.finished()
+        async def run():
+            await worker
+            await worker.finished()
 
-    loop = IOLoop.current()
+        loop = IOLoop.current()
 
-    install_signal_handlers(loop, cleanup=on_signal)
+        install_signal_handlers(loop, cleanup=on_signal)
 
-    try:
-        loop.run_sync(run)
-    except (KeyboardInterrupt, TimeoutError):
-        pass
-    finally:
-        logger.info("End worker")
+        try:
+            loop.run_sync(run)
+        except (KeyboardInterrupt, TimeoutError):
+            pass
+        finally:
+            logger.info("End worker")
 
 
 def go():

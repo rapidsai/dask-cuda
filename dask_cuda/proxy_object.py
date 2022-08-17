@@ -660,6 +660,9 @@ class ProxyObject:
     def __ror__(self, other):
         return other | self._pxy_deserialize()
 
+    def __rmatmul__(self, other):
+        return self._pxy_deserialize().__rmatmul__(unproxy(other))
+
     def __iadd__(self, other):
         pxy = self._pxy_get(copy=True)
         proxied = pxy.deserialize(nbytes=self.__sizeof__())

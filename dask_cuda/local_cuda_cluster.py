@@ -277,18 +277,17 @@ class LocalCUDACluster(LocalCluster):
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
-        if jit_unspill is None:
-            self.jit_unspill = dask.config.get("jit-unspill", default=False)
-        else:
-            self.jit_unspill = jit_unspill
-
         if shared_filesystem is None:
             # Notice, we assume a shared filesystem
             shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
 
+        if jit_unspill is None:
+            jit_unspill = dask.config.get("jit-unspill", default=False)
         data = kwargs.pop("data", None)
         if data is None:
-            if self.jit_unspill:
+            if device_memory_limit is None and memory_limit is None:
+                data = {}
+            elif jit_unspill:
                 data = (
                     ProxifyHostFile,
                     {

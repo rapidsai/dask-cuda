@@ -1,26 +1,24 @@
 import contextlib
 import math
-from collections import defaultdict
-from json import dumps
+from collections import ChainMap
 from time import perf_counter
-from warnings import filterwarnings
 
-import numpy
+import numpy as np
+import pandas as pd
 
 import dask
 from dask.base import tokenize
 from dask.dataframe.core import new_dd_object
-from dask.distributed import Client, performance_report, wait
-from dask.utils import format_bytes, format_time, parse_bytes
+from dask.distributed import performance_report, wait
+from dask.utils import format_bytes, parse_bytes
 
+from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
-    get_cluster_options,
-    get_scheduler_workers,
     parse_benchmark_args,
-    plot_benchmark,
-    setup_memory_pool,
+    print_key_value,
+    print_separator,
+    print_throughput_bandwidth,
 )
-from dask_cuda.utils import all_to_all
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
@@ -104,7 +102,7 @@ def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu)
 
 def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
-    parts = [chunk_size for i in range(num_chunks)]
+    parts = [chunk_size for _ in range(num_chunks)]
     device_type = True if args.type == "gpu" else False
     meta = generate_chunk(0, 4, 1, chunk_type, None, device_type)
     divisions = [None] * (len(parts) + 1)
@@ -151,8 +149,13 @@ def merge(args, ddf1, ddf2):
     wait(ddf_join.persist())
 
 
-def run(client, args, n_workers, write_profile=None):
+def bench_once(client, args, write_profile=None):
     # Generate random Dask dataframes
+    n_workers = len(client.scheduler_info()["workers"])
+    # Allow the number of chunks to vary between
+    # the "base" and "other" DataFrames
+    args.base_chunks = args.base_chunks or n_workers
+    args.other_chunks = args.other_chunks or n_workers
     ddf_base = get_random_ddf(
         args.chunk_size, args.base_chunks, args.frac_match, "build", args
     ).persist()
@@ -183,200 +186,84 @@ def run(client, args, n_workers, write_profile=None):
     return (data_processed, t2 - t1)
 
 
-def main(args):
-    cluster_options = get_cluster_options(args)
-    Cluster = cluster_options["class"]
-    cluster_args = cluster_options["args"]
-    cluster_kwargs = cluster_options["kwargs"]
-    scheduler_addr = cluster_options["scheduler_addr"]
-
-    if args.sched_addr:
-        client = Client(args.sched_addr)
-    else:
-        filterwarnings(
-            "ignore", message=".*NVLink.*rmm_pool_size.*", category=UserWarning
-        )
-
-        cluster = Cluster(*cluster_args, **cluster_kwargs)
-        if args.multi_node:
-            import time
-
-            # Allow some time for workers to start and connect to scheduler
-            # TODO: make this a command-line argument?
-            time.sleep(15)
-
-        client = Client(scheduler_addr if args.multi_node else cluster)
-
-    if args.type == "gpu":
-        client.run(
-            setup_memory_pool,
-            pool_size=args.rmm_pool_size,
-            disable_pool=args.disable_rmm_pool,
-            log_directory=args.rmm_log_directory,
-        )
-        # Create an RMM pool on the scheduler due to occasional deserialization
-        # of CUDA objects. May cause issues with InfiniBand otherwise.
-        client.run_on_scheduler(
-            setup_memory_pool,
-            pool_size=1e9,
-            disable_pool=args.disable_rmm_pool,
-            log_directory=args.rmm_log_directory,
-        )
-
-    scheduler_workers = client.run_on_scheduler(get_scheduler_workers)
-    n_workers = len(scheduler_workers)
-    client.wait_for_workers(n_workers)
-
-    # Allow the number of chunks to vary between
-    # the "base" and "other" DataFrames
-    args.base_chunks = args.base_chunks or n_workers
-    args.other_chunks = args.other_chunks or n_workers
-
-    if args.all_to_all:
-        all_to_all(client)
-
-    took_list = []
-    for _ in range(args.runs - 1):
-        took_list.append(run(client, args, n_workers, write_profile=None))
-    took_list.append(
-        run(client, args, n_workers, write_profile=args.profile)
-    )  # Only profiling the last run
-
-    # Collect, aggregate, and print peer-to-peer bandwidths
-    incoming_logs = client.run(lambda dask_worker: dask_worker.incoming_transfer_log)
-    bandwidths = defaultdict(list)
-    total_nbytes = defaultdict(list)
-    for k, L in incoming_logs.items():
-        for d in L:
-            if d["total"] >= args.ignore_size:
-                bandwidths[k, d["who"]].append(d["bandwidth"])
-                total_nbytes[k, d["who"]].append(d["total"])
-    bandwidths = {
-        (scheduler_workers[w1].name, scheduler_workers[w2].name): [
-            "%s/s" % format_bytes(x) for x in numpy.quantile(v, [0.25, 0.50, 0.75])
-        ]
-        for (w1, w2), v in bandwidths.items()
-    }
-    total_nbytes = {
-        (
-            scheduler_workers[w1].name,
-            scheduler_workers[w2].name,
-        ): format_bytes(sum(nb))
-        for (w1, w2), nb in total_nbytes.items()
-    }
-
+def pretty_print_results(args, address_to_index, p2p_bw, results):
     broadcast = (
         False if args.shuffle_join else (True if args.broadcast_join else "default")
     )
 
-    t_runs = numpy.empty(len(took_list))
     if args.markdown:
         print("```")
     print("Merge benchmark")
-    print("-------------------------------")
-    print(f"backend        | {args.backend}")
-    print(f"merge type     | {args.type}")
-    print(f"rows-per-chunk | {args.chunk_size}")
-    print(f"base-chunks    | {args.base_chunks}")
-    print(f"other-chunks   | {args.other_chunks}")
-    print(f"broadcast      | {broadcast}")
-    print(f"protocol       | {args.protocol}")
-    print(f"device(s)      | {args.devs}")
+    print_separator(separator="-")
+    print_key_value(key="Backend", value=f"{args.backend}")
+    print_key_value(key="Merge type", value=f"{args.type}")
+    print_key_value(key="Rows-per-chunk", value=f"{args.chunk_size}")
+    print_key_value(key="Base-chunks", value=f"{args.base_chunks}")
+    print_key_value(key="Other-chunks", value=f"{args.other_chunks}")
+    print_key_value(key="Broadcast", value=f"{broadcast}")
+    print_key_value(key="Protocol", value=f"{args.protocol}")
+    print_key_value(key="Device(s)", value=f"{args.devs}")
     if args.device_memory_limit:
-        print(f"memory-limit   | {format_bytes(args.device_memory_limit)}")
-    print(f"rmm-pool       | {(not args.disable_rmm_pool)}")
-    print(f"frac-match     | {args.frac_match}")
+        print_key_value(
+            key="Device memory limit", value=f"{format_bytes(args.device_memory_limit)}"
+        )
+    print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
+    print_key_value(key="Frac-match", value=f"{args.frac_match}")
     if args.protocol == "ucx":
-        print(f"tcp            | {args.enable_tcp_over_ucx}")
-        print(f"ib             | {args.enable_infiniband}")
-        print(f"nvlink         | {args.enable_nvlink}")
-    print(f"data-processed | {format_bytes(took_list[0][0])}")
-    print("=" * 80)
-    print("Wall-clock     | Throughput")
-    print("-" * 80)
-    t_p = []
-    times = []
-    for idx, (data_processed, took) in enumerate(took_list):
-        throughput = int(data_processed / took)
-        m = format_time(took)
-        times.append(took)
-        t_p.append(throughput)
-        m += " " * (15 - len(m))
-        print(f"{m}| {format_bytes(throughput)}/s")
-        t_runs[idx] = float(format_bytes(throughput).split(" ")[0])
-    t_p = numpy.asarray(t_p)
-    times = numpy.asarray(times)
-    print("=" * 80)
-    print(f"Throughput     | {format_bytes(t_p.mean())} +/- {format_bytes(t_p.std()) }")
-    print(
-        f"Wall-Clock     | {format_time(times.mean())} +/- {format_time(times.std()) }"
-    )
-    print("=" * 80)
+        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
+        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
+        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+    print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
+    print_key_value(key="Data processed", value=f"{format_bytes(results[0][0])}")
     if args.markdown:
         print("\n```")
 
-    if args.plot is not None:
-        plot_benchmark(t_runs, args.plot, historical=True)
+    data_processed, durations = zip(*results)
+    print_throughput_bandwidth(
+        args, durations, data_processed, p2p_bw, address_to_index
+    )
 
-    if args.backend == "dask":
-        if args.markdown:
-            print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
-        print("(w1,w2)        | 25% 50% 75% (total nbytes)")
-        print("-------------------------------")
-        for (d1, d2), bw in sorted(bandwidths.items()):
-            fmt = (
-                "(%s,%s)        | %s %s %s (%s)"
-                if args.multi_node or args.sched_addr
-                else "(%02d,%02d)        | %s %s %s (%s)"
-            )
-            print(fmt % (d1, d2, bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]))
-        if args.markdown:
-            print("```\n</details>\n")
 
-    if args.benchmark_json:
-        bandwidths_json = {
-            "bandwidth_({d1},{d2})_{i}"
-            if args.multi_node or args.sched_addr
-            else "(%02d,%02d)_%s" % (d1, d2, i): parse_bytes(v.rstrip("/s"))
-            for (d1, d2), bw in sorted(bandwidths.items())
-            for i, v in zip(
-                ["25%", "50%", "75%", "total_nbytes"],
-                [bw[0], bw[1], bw[2], total_nbytes[(d1, d2)]],
-            )
-        }
-
-        with open(args.benchmark_json, "a") as fp:
-            for data_processed, took in took_list:
-                fp.write(
-                    dumps(
-                        dict(
-                            {
-                                "backend": args.backend,
-                                "merge_type": args.type,
-                                "rows_per_chunk": args.chunk_size,
-                                "base_chunks": args.base_chunks,
-                                "other_chunks": args.other_chunks,
-                                "broadcast": broadcast,
-                                "protocol": args.protocol,
-                                "devs": args.devs,
-                                "device_memory_limit": args.device_memory_limit,
-                                "rmm_pool": not args.disable_rmm_pool,
-                                "tcp": args.enable_tcp_over_ucx,
-                                "ib": args.enable_infiniband,
-                                "nvlink": args.enable_nvlink,
-                                "data_processed": data_processed,
-                                "wall_clock": took,
-                                "throughput": data_processed / took,
-                            },
-                            **bandwidths_json,
-                        )
-                    )
-                    + "\n"
+def create_tidy_results(
+    args,
+    p2p_bw: np.ndarray,
+    results,
+):
+    broadcast = (
+        False if args.shuffle_join else (True if args.broadcast_join else "default")
+    )
+    configuration = {
+        "dataframe_type": "cudf" if args.type == "gpu" else "pandas",
+        "backend": args.backend,
+        "merge_type": args.type,
+        "base_chunks": args.base_chunks,
+        "other_chunks": args.other_chunks,
+        "broadcast": broadcast,
+        "rows_per_chunk": args.chunk_size,
+        "ignore_size": args.ignore_size,
+        "frac_match": args.frac_match,
+        "devices": args.devs,
+        "device_memory_limit": args.device_memory_limit,
+        "worker_threads": args.threads_per_worker,
+        "rmm_pool": not args.disable_rmm_pool,
+        "protocol": args.protocol,
+        "tcp": args.enable_tcp_over_ucx,
+        "ib": args.enable_infiniband,
+        "nvlink": args.enable_nvlink,
+        "nreps": args.runs,
+    }
+    timing_data = pd.DataFrame(
+        [
+            pd.Series(
+                data=ChainMap(
+                    configuration,
+                    {"wallclock": duration, "data_processed": data_processed},
                 )
-
-    if args.multi_node:
-        client.shutdown()
-        client.close()
+            )
+            for data_processed, duration in results
+        ]
+    )
+    return timing_data, p2p_bw
 
 
 def parse_args():
@@ -452,11 +339,6 @@ def parse_args():
             "help": "Don't shuffle the keys of the left (base) dataframe.",
         },
         {
-            "name": "--markdown",
-            "action": "store_true",
-            "help": "Write output as markdown",
-        },
-        {
             "name": "--runs",
             "default": 3,
             "type": int,
@@ -478,4 +360,11 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    execute_benchmark(
+        Config(
+            args=parse_args(),
+            bench_once=bench_once,
+            create_tidy_results=create_tidy_results,
+            pretty_print_results=pretty_print_results,
+        )
+    )

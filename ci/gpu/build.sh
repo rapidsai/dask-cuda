@@ -26,7 +26,7 @@ cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
-export UCXPY_VERSION=0.26.*
+export UCXPY_VERSION=0.27.*
 unset GIT_DESCRIBE_TAG
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
@@ -38,7 +38,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.05.2"
+export DASK_STABLE_VERSION="2022.7.1"
 
 ################################################################################
 # SETUP - Check environment
