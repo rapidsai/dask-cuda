@@ -105,7 +105,6 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_separator(separator="-")
     print_key_value(key="Use shuffle", value=f"{args.shuffle}")
     print_key_value(key="Output partitions", value=f"{args.split_out}")
-    print_key_value(key="Partition size", value=f"{format_bytes(args.partition_size)}")
     print_key_value(key="Input partitions", value=f"{args.in_parts}")
     print_key_value(key="Rows-per-chunk", value=f"{args.chunk_size}")
     print_key_value(key="Unique-group ratio", value=f"{args.unique_ratio}")
@@ -137,7 +136,6 @@ def create_tidy_results(args, p2p_bw, results):
         "shuffle": args.shuffle,
         "split_out": args.split_out,
         "split_every": args.split_every,
-        "partition_size": args.partition_size,
         "in_parts": args.in_parts,
         "rows_per_chunk": args.chunk_size,
         "unique_ratio": args.unique_ratio,
@@ -165,13 +163,6 @@ def create_tidy_results(args, p2p_bw, results):
 
 def parse_args():
     special_args = [
-        {
-            "name": "--partition-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Size of each partition (default '1 MB')",
-        },
         {
             "name": "--in-parts",
             "default": 100,
