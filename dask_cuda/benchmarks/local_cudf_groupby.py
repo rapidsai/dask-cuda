@@ -18,18 +18,14 @@ from dask_cuda.benchmarks.utils import (
 
 
 def apply_groupby(df, split_out=1, split_every=8, shuffle=None):
-    # TODO: Add support for shuffle
-    if shuffle:
-        raise NotImplementedError(
-            "shuffle-based groupby benchmark not fully implemented yet."
-        )
+    # TODO: Add support for sort
     wait(
         df.groupby("key", sort=False)
         .agg(
             {"int64": ["max", "count"], "float64": "mean"},
             split_out=split_out,
             split_every=split_every,
-            # shuffle=shuffle,
+            **(dict(shuffle=shuffle) if shuffle else {}),
         )
         .persist()
     )
