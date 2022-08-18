@@ -31,7 +31,7 @@ def apply_groupby(df, split_out=1, split_every=8, shuffle=None):
     )
 
 
-def generate_chunk(chunk_info, unique_ratio=0.01, gpu=True):
+def generate_chunk(chunk_info, unique_size=1, gpu=True):
     # Setting a seed that triggers max amount of comm in the two-GPU case.
     if gpu:
         import cupy as xp
@@ -43,10 +43,9 @@ def generate_chunk(chunk_info, unique_ratio=0.01, gpu=True):
 
     i_chunk, local_size = chunk_info
     xp.random.seed(i_chunk * 1_000)
-    low, high = 0, max(int(unique_ratio * local_size), 1)
     return xdf.DataFrame(
         {
-            "key": xp.random.randint(low, high, size=local_size, dtype="int64"),
+            "key": xp.random.randint(0, unique_size, size=local_size, dtype="int64"),
             "int64": xp.random.permutation(xp.arange(local_size, dtype="int64")),
             "float64": xp.random.permutation(xp.arange(local_size, dtype="float64")),
         }
@@ -55,15 +54,17 @@ def generate_chunk(chunk_info, unique_ratio=0.01, gpu=True):
 
 def get_random_ddf(args):
 
+    total_size = args.chunk_size * args.in_parts
     chunk_kwargs = {
-        "unique_ratio": args.unique_ratio,
+        "unique_size": max(int(args.unique_ratio * total_size), 1),
         "gpu": True if args.type == "gpu" else False,
     }
 
     return dd.from_map(
         generate_chunk,
         [(i, args.chunk_size) for i in range(args.in_parts)],
-        meta=generate_chunk((0, 0), **chunk_kwargs),
+        meta=generate_chunk((0, 1), **chunk_kwargs),
+        enforce_metadata=False,
         **chunk_kwargs,
     )
 
