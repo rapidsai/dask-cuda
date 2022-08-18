@@ -76,6 +76,10 @@ def bench_once(client, args, write_profile=None):
     wait(df)
 
     data_processed = len(df) * sum([t.itemsize for t in df.dtypes])
+    shuffle = {
+        "True": "tasks",
+        "False": False,
+    }.get(args.shuffle, args.shuffle)
 
     if write_profile is None:
         ctx = contextlib.nullcontext()
@@ -88,7 +92,7 @@ def bench_once(client, args, write_profile=None):
             df,
             split_out=args.split_out,
             split_every=args.split_every,
-            shuffle=args.shuffle,
+            shuffle=shuffle,
         )
         t2 = clock()
 
@@ -197,9 +201,9 @@ def parse_args():
         },
         {
             "name": "--shuffle",
-            "choices": [True, False],
-            "default": False,
-            "type": bool,
+            "choices": ["False", "True", "tasks"],
+            "default": "False",
+            "type": str,
             "help": "Whether to use shuffle-based groupby.",
         },
         {
