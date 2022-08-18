@@ -279,6 +279,7 @@ def get_cluster_options(args):
             "CUDA_VISIBLE_DEVICES": args.devs,
             "interface": args.interface,
             "device_memory_limit": args.device_memory_limit,
+            "local_directory": "/raid/dask-space/rzamora/scratch",
             **ucx_options,
         }
         if args.no_silence_logs:

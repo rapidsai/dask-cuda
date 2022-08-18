@@ -17,14 +17,18 @@ from dask_cuda.benchmarks.utils import (
 )
 
 
-def apply_groupby(df, shuffle=None):
+def apply_groupby(df, split_out=1, split_every=8, shuffle=None):
+    # TODO: Add support for shuffle
+    if shuffle:
+        raise NotImplementedError(
+            "shuffle-based groupby benchmark not fully implemented yet."
+        )
     wait(
-        # TODO: Add params for split_out and sort
         df.groupby("key", sort=False)
         .agg(
-            {"mean": ["x", "y"], "count": "x"},
-            split_out=1,
-            split_every=8,
+            {"int64": ["max", "count"], "float64": "mean"},
+            split_out=split_out,
+            split_every=split_every,
             # shuffle=shuffle,
         )
         .persist()
@@ -63,7 +67,7 @@ def get_random_ddf(args):
     return dd.from_map(
         generate_chunk,
         [(i, args.chunk_size) for i in range(args.in_parts)],
-        meta=generate_chunk(0, **chunk_kwargs),
+        meta=generate_chunk((0, 0), **chunk_kwargs),
         **chunk_kwargs,
     )
 
@@ -83,7 +87,12 @@ def bench_once(client, args, write_profile=None):
 
     with ctx:
         t1 = clock()
-        apply_groupby(df, shuffle=args.shuffle)
+        apply_groupby(
+            df,
+            split_out=args.split_out,
+            split_every=args.split_every,
+            shuffle=args.shuffle,
+        )
         t2 = clock()
 
     return (data_processed, t2 - t1)
@@ -95,11 +104,14 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print("Groupby benchmark")
     print_separator(separator="-")
     print_key_value(key="Use shuffle", value=f"{args.shuffle}")
+    print_key_value(key="Output partitions", value=f"{args.split_out}")
     print_key_value(key="Partition size", value=f"{format_bytes(args.partition_size)}")
     print_key_value(key="Input partitions", value=f"{args.in_parts}")
+    print_key_value(key="Rows-per-chunk", value=f"{args.chunk_size}")
     print_key_value(key="Unique-group ratio", value=f"{args.unique_ratio}")
     print_key_value(key="Protocol", value=f"{args.protocol}")
     print_key_value(key="Device(s)", value=f"{args.devs}")
+    print_key_value(key="Tree-reduction width", value=f"{args.split_every}")
     if args.device_memory_limit:
         print_key_value(
             key="Device memory limit", value=f"{format_bytes(args.device_memory_limit)}"
@@ -123,8 +135,11 @@ def create_tidy_results(args, p2p_bw, results):
     configuration = {
         "dataframe_type": "cudf" if args.type == "gpu" else "pandas",
         "shuffle": args.shuffle,
+        "split_out": args.split_out,
+        "split_every": args.split_every,
         "partition_size": args.partition_size,
         "in_parts": args.in_parts,
+        "rows_per_chunk": args.chunk_size,
         "unique_ratio": args.unique_ratio,
         "protocol": args.protocol,
         "devs": args.devs,
@@ -165,10 +180,32 @@ def parse_args():
             "help": "Number of input partitions (default '100')",
         },
         {
+            "name": [
+                "-c",
+                "--chunk-size",
+            ],
+            "default": 1_000_000,
+            "metavar": "n",
+            "type": int,
+            "help": "Chunk size (default 1_000_000)",
+        },
+        {
             "name": "--unique-ratio",
             "default": 0.01,
             "type": float,
             "help": "Fraction of rows that are unique groups",
+        },
+        {
+            "name": "--split_out",
+            "default": 1,
+            "type": int,
+            "help": "How many partitions to return.",
+        },
+        {
+            "name": "--split_every",
+            "default": 8,
+            "type": int,
+            "help": "Tree-reduction width.",
         },
         {
             "name": "--shuffle",
