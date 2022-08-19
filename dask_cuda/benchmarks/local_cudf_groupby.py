@@ -17,18 +17,21 @@ from dask_cuda.benchmarks.utils import (
 )
 
 
-def apply_groupby(df, split_out=1, split_every=8, shuffle=None):
-    # TODO: Add support for sort
-    wait(
-        df.groupby("key", sort=False)
-        .agg(
-            {"int64": ["max", "count"], "float64": "mean"},
-            split_out=split_out,
-            split_every=split_every,
-            **(dict(shuffle=shuffle) if shuffle else {}),
-        )
-        .persist()
+def apply_groupby(
+    df,
+    sort=False,
+    split_out=1,
+    split_every=8,
+    shuffle=None,
+):
+    agg = df.groupby("key", sort=sort).agg(
+        {"int64": ["max", "count"], "float64": "mean"},
+        split_out=split_out,
+        split_every=split_every,
+        **(dict(shuffle=shuffle) if shuffle else {}),
     )
+    wait(agg.persist())
+    return agg
 
 
 def generate_chunk(chunk_info, unique_size=1, gpu=True):
@@ -72,8 +75,7 @@ def get_random_ddf(args):
 def bench_once(client, args, write_profile=None):
 
     # Generate random Dask dataframe
-    df = get_random_ddf(args).persist()
-    wait(df)
+    df = get_random_ddf(args)
 
     data_processed = len(df) * sum([t.itemsize for t in df.dtypes])
     shuffle = {
@@ -88,15 +90,17 @@ def bench_once(client, args, write_profile=None):
 
     with ctx:
         t1 = clock()
-        apply_groupby(
+        agg = apply_groupby(
             df,
+            sort=args.sort,
             split_out=args.split_out,
             split_every=args.split_every,
             shuffle=shuffle,
         )
         t2 = clock()
 
-    return (data_processed, t2 - t1)
+    output_size = agg.memory_usage(index=True, deep=True).compute().sum()
+    return (data_processed, output_size, t2 - t1)
 
 
 def pretty_print_results(args, address_to_index, p2p_bw, results):
@@ -107,6 +111,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_key_value(key="Use shuffle", value=f"{args.shuffle}")
     print_key_value(key="Output partitions", value=f"{args.split_out}")
     print_key_value(key="Input partitions", value=f"{args.in_parts}")
+    print_key_value(key="Sort Groups", value=f"{args.sort}")
     print_key_value(key="Rows-per-chunk", value=f"{args.chunk_size}")
     print_key_value(key="Unique-group ratio", value=f"{args.unique_ratio}")
     print_key_value(key="Protocol", value=f"{args.protocol}")
@@ -123,9 +128,10 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
         print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
     print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
     print_key_value(key="Data processed", value=f"{format_bytes(results[0][0])}")
+    print_key_value(key="Output size", value=f"{format_bytes(results[0][1])}")
     if args.markdown:
         print("\n```")
-    data_processed, durations = zip(*results)
+    data_processed, output_size, durations = zip(*results)
     print_throughput_bandwidth(
         args, durations, data_processed, p2p_bw, address_to_index
     )
@@ -135,6 +141,7 @@ def create_tidy_results(args, p2p_bw, results):
     configuration = {
         "dataframe_type": "cudf" if args.type == "gpu" else "pandas",
         "shuffle": args.shuffle,
+        "sort": args.sort,
         "split_out": args.split_out,
         "split_every": args.split_every,
         "in_parts": args.in_parts,
@@ -153,10 +160,14 @@ def create_tidy_results(args, p2p_bw, results):
             pd.Series(
                 data=ChainMap(
                     configuration,
-                    {"wallclock": duration, "data_processed": data_processed},
+                    {
+                        "wallclock": duration,
+                        "data_processed": data_processed,
+                        "output_size": output_size,
+                    },
                 )
             )
-            for data_processed, duration in results
+            for data_processed, output_size, duration in results
         ]
     )
     return timing_data, p2p_bw
@@ -188,6 +199,12 @@ def parse_args():
             "help": "Fraction of rows that are unique groups",
         },
         {
+            "name": "--sort",
+            "default": False,
+            "action": "store_true",
+            "help": "Whether to sort the output group order.",
+        },
+        {
             "name": "--split_out",
             "default": 1,
             "type": int,
@@ -201,7 +218,7 @@ def parse_args():
         },
         {
             "name": "--shuffle",
-            "choices": ["False", "True", "tasks"],
+            "choices": ["False", "True", "tasks", "explicit-comms"],
             "default": "False",
             "type": str,
             "help": "Whether to use shuffle-based groupby.",
