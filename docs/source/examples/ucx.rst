@@ -1,7 +1,7 @@
 Enabling UCX communication
 ==========================
 
-A CUDA cluster using UCX communication can be started automatically with LocalCUDACluster or manually with the ``dask-cuda-worker`` CLI tool.
+A CUDA cluster using UCX communication can be started automatically with LocalCUDACluster or manually with the ``dask cuda worker`` CLI tool.
 In either case, a ``dask.distributed.Client`` must be made for the worker cluster using the same Dask UCX configuration; see `UCX Integration -- Configuration <../ucx.html#configuration>`_ for details on all available options.
 
 LocalCUDACluster with Automatic Configuration
@@ -48,10 +48,10 @@ To connect a client to a cluster with all supported transports and an RMM pool:
     )
     client = Client(cluster)
 
-dask-cuda-worker with Automatic Configuration
+dask cuda worker with Automatic Configuration
 ---------------------------------------------
 
-When using ``dask-cuda-worker`` with UCX communication and automatic configuration, the scheduler, workers, and client must all be started manually, but without specifying any UCX transports explicitly. This is only supported in Dask-CUDA 22.02 and newer and requires UCX >= 1.11.1.
+When using ``dask cuda worker`` with UCX communication and automatic configuration, the scheduler, workers, and client must all be started manually, but without specifying any UCX transports explicitly. This is only supported in Dask-CUDA 22.02 and newer and requires UCX >= 1.11.1.
 
 Scheduler
 ^^^^^^^^^
@@ -79,7 +79,7 @@ To start workers with automatic UCX configuration and an RMM pool of 14GB per GP
 .. code-block:: bash
 
     $ UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda
-    > dask-cuda-worker ucx://<scheduler_address>:8786 \
+    > dask cuda worker ucx://<scheduler_address>:8786 \
     > --rmm-pool-size="14GB" \
     > --interface="ib0"
 
@@ -124,7 +124,7 @@ Alternatively, the ``with dask.config.set`` statement from the example above may
 dask-cuda-worker with Manual Configuration
 ------------------------------------------
 
-When using ``dask-cuda-worker`` with UCX communication and manual configuration, the scheduler, workers, and client must all be started manually, each using the same UCX configuration.
+When using ``dask cuda worker`` with UCX communication and manual configuration, the scheduler, workers, and client must all be started manually, each using the same UCX configuration.
 
 Scheduler
 ^^^^^^^^^
@@ -148,12 +148,12 @@ We communicate to the scheduler that we will be using UCX with the ``--protocol`
 Workers
 ^^^^^^^
 
-All UCX configuration options have analogous options in ``dask-cuda-worker``; see `API -- Worker <../api.html#worker>`_ for a complete list of these options.
+All UCX configuration options have analogous options in ``dask cuda worker``; see `API -- Worker <../api.html#worker>`_ for a complete list of these options.
 To start a cluster with all supported transports and an RMM pool:
 
 .. code-block:: bash
 
-    $ dask-cuda-worker ucx://<scheduler_address>:8786 \
+    $ dask cuda worker ucx://<scheduler_address>:8786 \
     > --enable-tcp-over-ucx \
     > --enable-nvlink \
     > --enable-infiniband \

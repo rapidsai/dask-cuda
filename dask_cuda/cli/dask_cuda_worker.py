@@ -19,7 +19,12 @@ logger = logging.getLogger(__name__)
 pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
 
-@click.command(context_settings=dict(ignore_unknown_options=True))
+@click.group
+def cuda():
+    """GPU specific subcommands."""
+
+
+@cuda.command(name="worker", context_settings=dict(ignore_unknown_options=True))
 @click.argument("scheduler", type=str, required=False)
 @click.argument(
     "preload_argv", nargs=-1, type=click.UNPROCESSED, callback=validate_preload_argv
@@ -323,6 +328,12 @@ def main(
     multiprocessing_method,
     **kwargs,
 ):
+    """Launch a distributed worker with GPUs attached to an existing SCHEDULER.
+
+    See
+    https://docs.rapids.ai/api/dask-cuda/stable/quickstart.html#dask-cuda-worker
+    for info.
+    """
     if multiprocessing_method == "forkserver":
         import multiprocessing.forkserver as f
 

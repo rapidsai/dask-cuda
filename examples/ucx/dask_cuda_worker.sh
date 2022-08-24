@@ -3,7 +3,7 @@
 usage() {
     echo "usage: $0 [-a <scheduler_address>] [-i <interface>] [-r <rmm_pool_size>] [-t <transports>]" >&2
     exit 1
-    } 
+    }
 
 # parse arguments
 rmm_pool_size=1GB
@@ -49,4 +49,4 @@ fi
 dask-scheduler $scheduler_flags &
 
 # initialize workers
-dask-cuda-worker $worker_flags
+dask cuda worker $worker_flags

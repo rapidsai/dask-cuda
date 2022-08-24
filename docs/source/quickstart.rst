@@ -1,7 +1,7 @@
 Quickstart
 ==========
 
-A Dask-CUDA cluster can be created using either LocalCUDACluster or ``dask-cuda-worker`` from the command line.
+A Dask-CUDA cluster can be created using either LocalCUDACluster or ``dask cuda worker`` from the command line.
 
 LocalCUDACluster
 ----------------
@@ -16,7 +16,7 @@ To create a Dask-CUDA cluster using all available GPUs and connect a Dask.distri
     cluster = LocalCUDACluster()
     client = Client(cluster)
 
-dask-cuda-worker
+dask cuda worker
 ----------------
 
 To create an equivalent cluster from the command line, Dask-CUDA workers must be connected to a scheduler started with ``dask-scheduler``:
@@ -26,7 +26,7 @@ To create an equivalent cluster from the command line, Dask-CUDA workers must be
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
-    $ dask-cuda-worker 127.0.0.1:8786
+    $ dask cuda worker 127.0.0.1:8786
 
 To connect a client to this cluster:
 

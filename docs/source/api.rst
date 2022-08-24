@@ -9,8 +9,8 @@ Cluster
 
 Worker
 ------
-.. click:: dask_cuda.cli.dask_cuda_worker:main
-   :prog: dask-cuda-worker
+.. click:: dask_cuda.cli.dask_cuda_worker:cuda
+   :prog: dask cuda
    :nested: none
 
 Client initialization

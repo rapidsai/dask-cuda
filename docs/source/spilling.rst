@@ -19,17 +19,17 @@ Memory spilling can be disabled by setting ``device_memory_limit`` to 0:
 
     cluster = LocalCUDACluster(device_memory_limit=0)  # spilling disabled
 
-The same applies for ``dask-cuda-worker``, and spilling can be controlled by setting ``--device-memory-limit``:
+The same applies for ``dask cuda worker``, and spilling can be controlled by setting ``--device-memory-limit``:
 
 .. code-block::
 
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
-    $ dask-cuda-worker --device-memory-limit 50000
-    $ dask-cuda-worker --device-memory-limit 5GB
-    $ dask-cuda-worker --device-memory-limit 0.3
-    $ dask-cuda-worker --device-memory-limit 0
+    $ dask cuda worker --device-memory-limit 50000
+    $ dask cuda worker --device-memory-limit 5GB
+    $ dask cuda worker --device-memory-limit 0.3
+    $ dask cuda worker --device-memory-limit 0
 
 
 JIT-Unspill
@@ -68,7 +68,7 @@ Or set the worker argument ``--enable-jit-unspill​``
     $ dask-scheduler
     distributed.scheduler - INFO - Scheduler at:  tcp://127.0.0.1:8786
 
-    $ dask-cuda-worker --enable-jit-unspill​
+    $ dask cuda worker --enable-jit-unspill​
 
 Or environment variable ``DASK_JIT_UNSPILL=True``
 
@@ -77,7 +77,7 @@ Or environment variable ``DASK_JIT_UNSPILL=True``
     $ dask-scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
-    $ DASK_JIT_UNSPILL=True dask-cuda-worker​
+    $ DASK_JIT_UNSPILL=True dask cuda worker​
 
 
 Limitations
