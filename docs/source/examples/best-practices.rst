@@ -10,8 +10,8 @@ When choosing between two multi-GPU setups, it is best to pick the one where mos
 
 - Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
 - Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
-networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See `
-Accelerated Networking`_ for more discussion
+networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See
+`Accelerated Networking`_ for more discussion
 
 .. code-block:: python
 
