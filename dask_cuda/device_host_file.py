@@ -1,4 +1,5 @@
 import functools
+import itertools
 import logging
 import os
 import sys
@@ -20,6 +21,7 @@ from distributed.sizeof import safe_sizeof
 from distributed.utils import nbytes
 
 from .is_device_object import is_device_object
+from .is_spillable_object import is_spillable_object
 from .utils import nvtx_annotate
 
 
@@ -235,6 +237,9 @@ class DeviceHostFile(ZictBase):
         # For Worker compatibility only, where `fast` is host memory buffer
         self.fast = self.host_buffer if memory_limit is None else self.host_buffer.fast
 
+        # Dict of objects that will not be spilled by DeviceHostFile.
+        self.others = {}
+
     if sys.version_info < (3, 9):
 
         def __new__(
@@ -268,29 +273,35 @@ class DeviceHostFile(ZictBase):
             # Make sure we register the removal of an existing key
             del self[key]
 
-        if is_device_object(value):
+        if is_spillable_object(value):
+            self.others[key] = value
+        elif is_device_object(value):
             self.device_keys.add(key)
             self.device_buffer[key] = value
         else:
             self.host_buffer[key] = value
 
     def __getitem__(self, key):
+        if key in self.others:
+            return self.others[key]
         if key in self.device_keys:
             return self.device_buffer[key]
-        elif key in self.host_buffer:
+        if key in self.host_buffer:
             return self.host_buffer[key]
-        else:
-            raise KeyError(key)
+        raise KeyError(key)
 
     def __len__(self):
-        return len(self.device_buffer)
+        return len(self.device_buffer) + len(self.others)
 
     def __iter__(self):
-        return iter(self.device_buffer)
+        return itertools.chain(self.device_buffer, self.others)
 
     def __delitem__(self, key):
         self.device_keys.discard(key)
-        del self.device_buffer[key]
+        if key in self.others:
+            del self.others[key]
+        else:
+            del self.device_buffer[key]
 
     def evict(self):
         """Evicts least recently used host buffer (aka, CPU or system memory)

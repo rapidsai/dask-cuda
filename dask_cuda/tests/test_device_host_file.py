@@ -79,13 +79,11 @@ def test_device_host_file_step_by_step(tmp_path):
     b = cupy.random.random(1000)
 
     dhf["a1"] = a
-
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
 
     dhf["b1"] = b
-
     assert set(dhf.device.keys()) == set(["b1"])
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
