@@ -186,15 +186,8 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "one worker per GPU will be launched.",
     )
     parser.add_argument(
-        "--show-p2p-bandwidth",
-        action="store_true",
-        help="Produce detailed point to point bandwidth stats in output",
-        default=True,
-    )
-    parser.add_argument(
         "--no-show-p2p-bandwidth",
-        action="store_false",
-        dest="show_p2p_bandwidth",
+        action="store_true",
         help="Do not produce detailed point to point bandwidth stats in output",
     )
     parser.add_argument(
@@ -561,7 +554,7 @@ def print_throughput_bandwidth(
         key="Wall clock",
         value=f"{format_time(durations.mean())} +/- {format_time(durations.std()) }",
     )
-    if args.show_p2p_bandwidth:
+    if not args.no_show_p2p_bandwidth:
         print_separator(separator="=")
         if args.markdown:
             print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
