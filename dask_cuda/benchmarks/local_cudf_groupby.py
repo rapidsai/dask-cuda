@@ -28,7 +28,7 @@ def apply_groupby(
         {"int64": ["max", "count"], "float64": "mean"},
         split_out=split_out,
         split_every=split_every,
-        **(dict(shuffle=shuffle) if shuffle else {}),
+        shuffle=shuffle,
     )
     wait(agg.persist())
     return agg
