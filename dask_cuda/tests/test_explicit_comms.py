@@ -178,6 +178,13 @@ def _test_dask_use_explicit_comms():
             else:  # If not in cluster, we cannot use explicit comms
                 assert all(name not in str(key) for key in res.dask)
 
+        # Passing explicit `shuffle="explicit-comms"` argument
+        res = ddf.shuffle(on="key", npartitions=4, shuffle="explicit-comms")
+        if in_cluster:
+            assert any(name in str(key) for key in res.dask)
+        else:  # If not in cluster, we cannot use explicit comms
+            assert all(name not in str(key) for key in res.dask)
+
     with LocalCluster(
         protocol="tcp",
         dashboard_address=None,

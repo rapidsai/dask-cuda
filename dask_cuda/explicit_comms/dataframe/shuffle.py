@@ -344,7 +344,7 @@ def shuffle(
     return new_dd_object(dsk, name, meta, divs).persist()
 
 
-def get_rearrange_by_column_tasks_wrapper(func):
+def get_rearrange_by_column_wrapper(func):
     """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
     Notice, this is monkey patched into Dask at dask_cuda import
@@ -354,23 +354,29 @@ def get_rearrange_by_column_tasks_wrapper(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if dask.config.get("explicit-comms", False):
+        # Use explicit-comms shuffle if the shuffle kwarg is
+        # set to "explicit-comms", or if it is set to "tasks"
+        # and the `dask.config` specifies "explicit-comms"
+        shuffle_arg = kwargs.pop("shuffle", None) or dask.config.get("shuffle", "disk")
+        if shuffle_arg == "explicit-comms" or (
+            dask.config.get("explicit-comms", False) and shuffle_arg == "tasks"
+        ):
             try:
                 import distributed.worker
 
                 # Make sure we have an activate client.
                 distributed.worker.get_client()
             except (ImportError, ValueError):
-                pass
+                shuffle_arg = "tasks"  # Fall back to task-based shuffle
             else:
                 # Convert `*args, **kwargs` to a dict of `keyword -> values`
                 kw = func_sig.bind(*args, **kwargs)
                 kw.apply_defaults()
                 kw = kw.arguments
-                column = kw["column"]
+                column = kw["col"]
                 if isinstance(column, str):
                     column = [column]
                 return shuffle(kw["df"], column, kw["npartitions"], kw["ignore_index"])
-        return func(*args, **kwargs)
+        return func(*args, shuffle=shuffle_arg, **kwargs)
 
     return wrapper
