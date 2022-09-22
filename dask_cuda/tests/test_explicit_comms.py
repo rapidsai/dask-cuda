@@ -19,7 +19,7 @@ from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
 
 mp = mp.get_context("spawn")  # type: ignore
-# ucp = pytest.importorskip("ucp")
+ucp = pytest.importorskip("ucp")
 
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
@@ -177,6 +177,13 @@ def _test_dask_use_explicit_comms():
                 assert any(name in str(key) for key in res.dask)
             else:  # If not in cluster, we cannot use explicit comms
                 assert all(name not in str(key) for key in res.dask)
+
+        # Passing explicit `shuffle="explicit-comms"` argument
+        res = dd.shuffle.shuffle(ddf, "key", npartitions=4, shuffle="explicit-comms")
+        if in_cluster:
+            assert any(name in str(key) for key in res.dask)
+        else:  # If not in cluster, we cannot use explicit comms
+            assert all(name not in str(key) for key in res.dask)
 
     with LocalCluster(
         protocol="tcp",
