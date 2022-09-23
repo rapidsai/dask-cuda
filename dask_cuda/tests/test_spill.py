@@ -206,9 +206,6 @@ async def test_cupy_cluster_device_spill(params):
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
-    # Disabling compression via environment variable seems to be the only way
-    # respected here. It is necessary to ensure spilled size matches the actual
-    # data size.
     with dask.config.set(
         {
             "distributed.comm.compression": False,
