@@ -334,19 +334,6 @@ class LocalCUDACluster(LocalCluster):
 
         self.pre_import = pre_import
 
-        # Update config settings
-        config = dask.config.config.copy()
-        config.update(
-            {
-                "distributed.comm.ucx": get_ucx_config(
-                    enable_tcp_over_ucx=enable_tcp_over_ucx,
-                    enable_nvlink=enable_nvlink,
-                    enable_infiniband=enable_infiniband,
-                    enable_rdmacm=enable_rdmacm,
-                )
-            }
-        )
-
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -356,7 +343,14 @@ class LocalCUDACluster(LocalCluster):
             local_directory=local_directory,
             protocol=protocol,
             worker_class=worker_class,
-            config=config,
+            config={
+                "distributed.comm.ucx": get_ucx_config(
+                    enable_tcp_over_ucx=enable_tcp_over_ucx,
+                    enable_nvlink=enable_nvlink,
+                    enable_infiniband=enable_infiniband,
+                    enable_rdmacm=enable_rdmacm,
+                )
+            },
             **kwargs,
         )
 
