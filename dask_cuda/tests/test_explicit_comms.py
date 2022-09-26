@@ -168,11 +168,14 @@ def _test_dask_use_explicit_comms():
         """
         name = "explicit-comms-shuffle"
         ddf = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
+        # TODO: Update when "explicit-comms" config is deprecated
+        # See: https://github.com/rapidsai/dask-cuda/pull/992
         with dask.config.set(explicit_comms=False):
             res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
             assert all(name not in str(key) for key in res.dask)
         with dask.config.set(explicit_comms=True):
-            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            with pytest.warns(FutureWarning):
+                res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
             if in_cluster:
                 assert any(name in str(key) for key in res.dask)
             else:  # If not in cluster, we cannot use explicit comms
@@ -184,6 +187,10 @@ def _test_dask_use_explicit_comms():
             assert any(name in str(key) for key in res.dask)
         else:  # If not in cluster, we cannot use explicit comms
             assert all(name not in str(key) for key in res.dask)
+
+        # Passing explicit `shuffle="tasks"` argument
+        res = dd.shuffle.shuffle(ddf, "key", npartitions=4, shuffle="tasks")
+        assert all(name not in str(key) for key in res.dask)
 
     with LocalCluster(
         protocol="tcp",
