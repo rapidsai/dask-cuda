@@ -48,8 +48,17 @@ def bench_once(client, args, write_profile=None):
         ctx = contextlib.nullcontext()
 
     with ctx:
+        result = x.map_overlap(mean_filter, args.kernel_size, shape=ks)
+        if args.backend == "dask-noop":
+            try:
+                from dask_noop import as_noop
+            except ImportError:
+                raise RuntimeError(
+                    "Requested noop computation but dask-noop not installed."
+                )
+            result = as_noop(result)
         t1 = clock()
-        wait(client.persist(x.map_overlap(mean_filter, args.kernel_size, shape=ks)))
+        wait(client.persist(result))
         took = clock() - t1
 
     return (data_processed, took)
@@ -60,6 +69,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
         print("```")
     print("Cupy map overlap benchmark")
     print_separator(separator="-")
+    print_key_value(key="Backend", value=f"{args.backend}")
     print_key_value(key="Array type", value="cupy" if args.type == "gpu" else "numpy")
     print_key_value(key="Size", value=f"{args.size}*{args.size}")
     print_key_value(key="Chunk size", value=f"{args.chunk_size}")
@@ -89,6 +99,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
 def create_tidy_results(args, p2p_bw, results):
     configuration = {
         "array_type": "cupy" if args.type == "gpu" else "numpy",
+        "backend": args.backend,
         "user_size": args.size,
         "chunk_size": args.chunk_size,
         "ignore_size": args.ignore_size,
@@ -174,6 +185,16 @@ def parse_args():
             "default": 3,
             "type": int,
             "help": "Number of runs",
+        },
+        {
+            "name": [
+                "-b",
+                "--backend",
+            ],
+            "choices": ["dask", "dask-noop"],
+            "default": "dask",
+            "type": str,
+            "help": "Compute backend to use.",
         },
     ]
 

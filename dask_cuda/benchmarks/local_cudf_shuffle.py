@@ -1,6 +1,6 @@
 import contextlib
 from collections import ChainMap
-from time import perf_counter as clock
+from time import perf_counter
 
 import pandas as pd
 
@@ -20,16 +20,29 @@ from dask_cuda.benchmarks.utils import (
 )
 
 
-def shuffle_dask(df):
-    wait(shuffle(df, index="data", shuffle="tasks").persist())
+def shuffle_dask(df, *, noop=False):
+    result = shuffle(df, index="data", shuffle="tasks")
+    if noop:
+        try:
+            from dask_noop import as_noop
+        except ImportError:
+            raise RuntimeError(
+                "Requested noop computation but dask-noop not installed."
+            )
+        result = as_noop(result)
+    t1 = perf_counter()
+    wait(result.persist())
+    return perf_counter() - t1
 
 
 def shuffle_explicit_comms(df):
+    t1 = perf_counter()
     wait(
         dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
             df, column_names="data"
         ).persist()
     )
+    return perf_counter() - t1
 
 
 def bench_once(client, args, write_profile=None):
@@ -55,14 +68,12 @@ def bench_once(client, args, write_profile=None):
         ctx = performance_report(filename=args.profile)
 
     with ctx:
-        t1 = clock()
-        if args.backend == "dask":
-            shuffle_dask(df)
+        if args.backend in {"dask", "dask-noop"}:
+            duration = shuffle_dask(df, noop=args.backend == "dask-noop")
         else:
-            shuffle_explicit_comms(df)
-        t2 = clock()
+            duration = shuffle_explicit_comms(df)
 
-    return (data_processed, t2 - t1)
+    return (data_processed, duration)
 
 
 def pretty_print_results(args, address_to_index, p2p_bw, results):
@@ -143,7 +154,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms"],
+            "choices": ["dask", "explicit-comms", "dask-noop"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
