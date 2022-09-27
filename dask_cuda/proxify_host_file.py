@@ -42,6 +42,7 @@ from .disk_io import SpillToDiskProperties, disk_read, disk_write
 from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
+from .rmm_vmm_pool import set_vmm_pool
 
 T = TypeVar("T")
 
@@ -596,6 +597,8 @@ class ProxifyHostFile(MutableMapping):
                         )
                         # Since we didn't find anything to spill, we give up.
                         return False
+
+                set_vmm_pool()
 
                 current_mr = rmm.mr.get_current_device_resource()
                 mr = rmm.mr.FailureCallbackResourceAdaptor(current_mr, oom)
