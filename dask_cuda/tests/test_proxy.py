@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pandas
 import pytest
+from packaging import version
 from pandas.testing import assert_frame_equal, assert_series_equal
 
 import dask
@@ -649,6 +650,8 @@ def test_cupy_broadcast_to():
 
 def test_cupy_matmul():
     cupy = pytest.importorskip("cupy")
+    if version.parse(cupy.__version__) >= version.parse("11.0"):
+        pytest.xfail("See: https://github.com/rapidsai/dask-cuda/issues/995")
     a, b = cupy.arange(10), cupy.arange(10)
     c = a @ b
     assert c == proxy_object.asproxy(a) @ b
@@ -658,6 +661,8 @@ def test_cupy_matmul():
 
 def test_cupy_imatmul():
     cupy = pytest.importorskip("cupy")
+    if version.parse(cupy.__version__) >= version.parse("11.0"):
+        pytest.xfail("See: https://github.com/rapidsai/dask-cuda/issues/995")
     a = cupy.arange(9).reshape(3, 3)
     c = a.copy()
     c @= a
