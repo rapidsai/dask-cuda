@@ -14,6 +14,7 @@ from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -50,12 +51,6 @@ def bench_once(client, args, write_profile=None):
     with ctx:
         result = x.map_overlap(mean_filter, args.kernel_size, shape=ks)
         if args.backend == "dask-noop":
-            try:
-                from dask_noop import as_noop
-            except ImportError:
-                raise RuntimeError(
-                    "Requested noop computation but dask-noop not installed."
-                )
             result = as_noop(result)
         t1 = clock()
         wait(client.persist(result))

@@ -13,6 +13,7 @@ from dask.utils import format_bytes, parse_bytes
 import dask_cuda.explicit_comms.dataframe.shuffle
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -23,12 +24,6 @@ from dask_cuda.benchmarks.utils import (
 def shuffle_dask(df, *, noop=False):
     result = shuffle(df, index="data", shuffle="tasks")
     if noop:
-        try:
-            from dask_noop import as_noop
-        except ImportError:
-            raise RuntimeError(
-                "Requested noop computation but dask-noop not installed."
-            )
         result = as_noop(result)
     t1 = perf_counter()
     wait(result.persist())

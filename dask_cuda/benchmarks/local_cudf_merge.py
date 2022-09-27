@@ -14,6 +14,7 @@ from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -147,12 +148,6 @@ def merge(args, ddf1, ddf2):
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
     if args.backend == "dask-noop":
-        try:
-            from dask_noop import as_noop
-        except ImportError:
-            raise RuntimeError(
-                "Requested noop computation but dask-noop not installed."
-            )
         ddf_join = as_noop(ddf_join)
     t1 = perf_counter()
     wait(ddf_join.persist())
