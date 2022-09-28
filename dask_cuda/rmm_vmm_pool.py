@@ -46,14 +46,27 @@ def checkCudaErrors(result):
         return result[1:]
 
 
-def check_vmm_support(dev: cuda.CUdevice) -> None:
+def _check_support(dev: cuda.CUdevice, attr: cuda.CUdevice_attribute, msg: str) -> None:
     if not checkCudaErrors(
         cuda.cuDeviceGetAttribute(
-            CU_VMM_SUPPORTED,
+            attr,
             dev,
         )
     ):
-        raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        raise ValueError(msg)
+
+
+def check_vmm_support(dev: cuda.CUdevice) -> None:
+    return _check_support(
+        CU_VMM_SUPPORTED, f"Device {dev} doesn't support VIRTUAL ADDRESS MANAGEMENT"
+    )
+
+
+def check_vmm_gdr_support(dev: cuda.CUdevice) -> None:
+    return _check_support(
+        CU_VMM_GDR_SUPPORTED,
+        f"Device {dev} doesn't support GPUDirectRDMA for VIRTUAL ADDRESS MANAGEMENT",
+    )
 
 
 def get_granularity(dev: cuda.CUdevice):
@@ -77,13 +90,7 @@ class RegularMemAlloc:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         device = checkCudaErrors(cuda.cuCtxGetDevice())
         # Check that the selected device supports virtual address management
-        if not checkCudaErrors(
-            cuda.cuDeviceGetAttribute(
-                CU_VMM_SUPPORTED,
-                device,
-            )
-        ):
-            raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        check_vmm_support()
 
         alloc_size = to_aligned_size(size, get_granularity(device))
         return int(checkCudaErrors(cuda.cuMemAlloc(alloc_size)))
@@ -101,13 +108,7 @@ class VmmAlloc:
         device = checkCudaErrors(cuda.cuCtxGetDevice())
 
         # Check that the selected device supports virtual address management
-        if not checkCudaErrors(
-            cuda.cuDeviceGetAttribute(
-                CU_VMM_SUPPORTED,
-                device,
-            )
-        ):
-            raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        check_vmm_support()
 
         alloc_size = to_aligned_size(size, get_granularity(device))
 
@@ -117,12 +118,11 @@ class VmmAlloc:
         prop.location.id = device
 
         # Enable IB/GDRCopy support if available
-        if checkCudaErrors(
-            cuda.cuDeviceGetAttribute(
-                CU_VMM_GDR_SUPPORTED,
-                device,
-            )
-        ):
+        try:
+            check_vmm_gdr_support()
+        except ValueError:
+            pass
+        else:
             prop.allocFlags.gpuDirectRDMACapable = 1
 
         mem_handle = checkCudaErrors(cuda.cuMemCreate(alloc_size, prop, 0))
