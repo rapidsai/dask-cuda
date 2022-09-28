@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import inspect
-import warnings
 from collections import defaultdict
 from operator import getitem
 from typing import Dict, List, Optional
@@ -345,7 +344,7 @@ def shuffle(
     return new_dd_object(dsk, name, meta, divs).persist()
 
 
-def get_rearrange_by_column_wrapper(func):
+def get_rearrange_by_column_tasks_wrapper(func):
     """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
     Notice, this is monkey patched into Dask at dask_cuda import
@@ -355,40 +354,23 @@ def get_rearrange_by_column_wrapper(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # Use explicit-comms shuffle if the shuffle kwarg is
-        # set to "explicit-comms". For now, we also use
-        # explicit-comms if the shuffle kwarg is set to "tasks"
-        # and the `dask.config` specifies "explicit-comms".
-        # However, this behavior should be deprecated in the
-        # next dask-cuda release (after 22.10)
-        shuffle_arg = kwargs.pop("shuffle", None) or dask.config.get("shuffle", "disk")
-        if shuffle_arg == "tasks" and dask.config.get("explicit-comms", False):
-            shuffle_arg = "explicit-comms"
-            warnings.warn(
-                "The 'explicit-comms' config field is now deprecated and "
-                "will be removed in a future dask-cuda version. Please set "
-                "the 'shuffle' config to 'explicit-comms' instead, or pass "
-                "`shuffle='explicit-comms'` to the collection API.",
-                FutureWarning,
-            )
-
-        if shuffle_arg == "explicit-comms":
+        if dask.config.get("explicit-comms", False):
             try:
                 import distributed.worker
 
                 # Make sure we have an activate client.
                 distributed.worker.get_client()
             except (ImportError, ValueError):
-                shuffle_arg = "tasks"  # Fall back to task-based shuffle
+                pass
             else:
                 # Convert `*args, **kwargs` to a dict of `keyword -> values`
                 kw = func_sig.bind(*args, **kwargs)
                 kw.apply_defaults()
                 kw = kw.arguments
-                column = kw["col"]
+                column = kw["column"]
                 if isinstance(column, str):
                     column = [column]
                 return shuffle(kw["df"], column, kw["npartitions"], kw["ignore_index"])
-        return func(*args, shuffle=shuffle_arg, **kwargs)
+        return func(*args, **kwargs)
 
     return wrapper
