@@ -92,8 +92,9 @@ class RegularMemAlloc:
     def allocate(self, size: int) -> int:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         device = checkCudaErrors(cuda.cuCtxGetDevice())
+
         # Check that the selected device supports virtual address management
-        check_vmm_support()
+        check_vmm_support(device)
 
         alloc_size = to_aligned_size(size, get_granularity(device))
         return int(checkCudaErrors(cuda.cuMemAlloc(alloc_size)))
@@ -111,7 +112,7 @@ class VmmAlloc:
         device = checkCudaErrors(cuda.cuCtxGetDevice())
 
         # Check that the selected device supports virtual address management
-        check_vmm_support()
+        check_vmm_support(device)
 
         alloc_size = to_aligned_size(size, get_granularity(device))
 
@@ -122,7 +123,7 @@ class VmmAlloc:
 
         # Enable IB/GDRCopy support if available
         try:
-            check_vmm_gdr_support()
+            check_vmm_gdr_support(device)
         except ValueError:
             pass
         else:
