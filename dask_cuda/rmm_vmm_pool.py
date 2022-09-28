@@ -162,9 +162,9 @@ class VmmAlloc:
 
     def deallocate(self, ptr: int, size: int) -> None:
         alloc_size = self._store.pop(ptr)
-        checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream_flags.CU_STREAM_DEFAULT))
-        checkCudaErrors(cuda.cuMemUnmap(ptr, alloc_size))
-        checkCudaErrors(cuda.cuMemAddressFree(ptr, alloc_size))
+        checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream(0)))
+        checkCudaErrors(cuda.cuMemUnmap(cuda.CUdeviceptr(ptr), alloc_size))
+        checkCudaErrors(cuda.cuMemAddressFree(cuda.CUdeviceptr(ptr), alloc_size))
 
 
 class VmmHeap:
@@ -267,8 +267,8 @@ class VmmAllocPool:
     def deallocate(self, ptr: int, size: int) -> None:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         alloc_size = self._store.pop(ptr)
-        checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream_flags.CU_STREAM_DEFAULT))
-        checkCudaErrors(cuda.cuMemUnmap(ptr, alloc_size))
+        checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream(0)))
+        checkCudaErrors(cuda.cuMemUnmap(cuda.CUdeviceptr(ptr), alloc_size))
         # print(f"deloc({int(ptr)}) - size: {size}, alloc_size: {alloc_size}")
 
 
