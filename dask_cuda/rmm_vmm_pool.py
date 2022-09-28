@@ -8,6 +8,9 @@ import rmm.mr
 CU_VMM_SUPPORTED = (
     cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED
 )
+CU_VMM_GDR_SUPPORTED = (
+    cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_GPU_DIRECT_RDMA_WITH_CUDA_VMM_SUPPORTED
+)
 CU_VMM_GRANULARITY = (
     cuda.CUmemAllocationGranularity_flags.CU_MEM_ALLOC_GRANULARITY_MINIMUM
 )
@@ -26,8 +29,8 @@ def _cudaGetErrorEnum(error):
 
 
 def checkCudaErrors(result):
-    err = result[0]
-    if err != cuda.CUresult.CUDA_SUCCESS:
+    if not result[0]:
+        err = result[0]
         msg = "CUDA error code={}({})".format(err.value, _cudaGetErrorEnum(err))
         if err == cuda.CUresult.CUDA_ERROR_OUT_OF_MEMORY:
             raise MemoryError(msg)
@@ -43,14 +46,30 @@ def checkCudaErrors(result):
         return result[1:]
 
 
-def check_vmm_support(dev: cuda.CUdevice) -> None:
+def _check_support(dev: cuda.CUdevice, attr: cuda.CUdevice_attribute, msg: str) -> None:
     if not checkCudaErrors(
         cuda.cuDeviceGetAttribute(
-            CU_VMM_SUPPORTED,
+            attr,
             dev,
         )
     ):
-        raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        raise ValueError(msg)
+
+
+def check_vmm_support(dev: cuda.CUdevice) -> None:
+    return _check_support(
+        dev,
+        CU_VMM_SUPPORTED,
+        f"Device {dev} doesn't support VIRTUAL ADDRESS MANAGEMENT",
+    )
+
+
+def check_vmm_gdr_support(dev: cuda.CUdevice) -> None:
+    return _check_support(
+        dev,
+        CU_VMM_GDR_SUPPORTED,
+        f"Device {dev} doesn't support GPUDirectRDMA for VIRTUAL ADDRESS MANAGEMENT",
+    )
 
 
 def get_granularity(dev: cuda.CUdevice):
@@ -74,13 +93,7 @@ class RegularMemAlloc:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         device = checkCudaErrors(cuda.cuCtxGetDevice())
         # Check that the selected device supports virtual address management
-        if not checkCudaErrors(
-            cuda.cuDeviceGetAttribute(
-                CU_VMM_SUPPORTED,
-                device,
-            )
-        ):
-            raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        check_vmm_support()
 
         alloc_size = to_aligned_size(size, get_granularity(device))
         return int(checkCudaErrors(cuda.cuMemAlloc(alloc_size)))
@@ -98,13 +111,7 @@ class VmmAlloc:
         device = checkCudaErrors(cuda.cuCtxGetDevice())
 
         # Check that the selected device supports virtual address management
-        if not checkCudaErrors(
-            cuda.cuDeviceGetAttribute(
-                CU_VMM_SUPPORTED,
-                device,
-            )
-        ):
-            raise ValueError("Device doesn't support VIRTUAL ADDRESS MANAGEMENT")
+        check_vmm_support()
 
         alloc_size = to_aligned_size(size, get_granularity(device))
 
@@ -112,6 +119,15 @@ class VmmAlloc:
         prop.type = cuda.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
         prop.location.type = cuda.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
         prop.location.id = device
+
+        # Enable IB/GDRCopy support if available
+        try:
+            check_vmm_gdr_support()
+        except ValueError:
+            pass
+        else:
+            prop.allocFlags.gpuDirectRDMACapable = 1
+
         mem_handle = checkCudaErrors(cuda.cuMemCreate(alloc_size, prop, 0))
 
         reserve_ptr = checkCudaErrors(
