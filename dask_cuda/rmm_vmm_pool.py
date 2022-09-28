@@ -200,9 +200,12 @@ class VmmAllocPool:
         self._store: Dict[int, int] = {}
         self._heaps: Dict[cuda.CUdevice, VmmHeap] = {}
 
-    def get_heap(self) -> VmmHeap:
+    def get_device(self) -> cuda.CUdevice:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
-        device = checkCudaErrors(cuda.cuCtxGetDevice())
+        return checkCudaErrors(cuda.cuCtxGetDevice())
+
+    def get_heap(self) -> VmmHeap:
+        device = self.get_device()
 
         # Notice, `hash(cuda.CUdevice(0)) != hash(cuda.CUdevice(0))` thus the
         # explicit convertion to integer.
@@ -220,6 +223,15 @@ class VmmAllocPool:
         prop.type = cuda.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
         prop.location.type = cuda.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
         prop.location.id = heap.device
+
+        # Enable IB/GDRCopy support if available
+        try:
+            check_vmm_gdr_support(self.get_device())
+        except ValueError:
+            pass
+        else:
+            prop.allocFlags.gpuDirectRDMACapable = 1
+
         mem_handle = checkCudaErrors(cuda.cuMemCreate(alloc_size, prop, 0))
 
         # Map physical memory to the heap
