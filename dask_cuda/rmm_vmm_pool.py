@@ -8,6 +8,9 @@ import rmm.mr
 CU_VMM_SUPPORTED = (
     cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED
 )
+CU_VMM_GDR_SUPPORTED = (
+    cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_GPU_DIRECT_RDMA_WITH_CUDA_VMM_SUPPORTED
+)
 CU_VMM_GRANULARITY = (
     cuda.CUmemAllocationGranularity_flags.CU_MEM_ALLOC_GRANULARITY_MINIMUM
 )
@@ -112,6 +115,16 @@ class VmmAlloc:
         prop.type = cuda.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
         prop.location.type = cuda.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
         prop.location.id = device
+
+        # Enable IB/GDRCopy support if available
+        if checkCudaErrors(
+            cuda.cuDeviceGetAttribute(
+                CU_VMM_GDR_SUPPORTED,
+                device,
+            )
+        ):
+            prop.allocFlags.gpuDirectRDMACapable = 1
+
         mem_handle = checkCudaErrors(cuda.cuMemCreate(alloc_size, prop, 0))
 
         reserve_ptr = checkCudaErrors(
