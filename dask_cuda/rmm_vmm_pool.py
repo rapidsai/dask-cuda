@@ -29,8 +29,8 @@ def _cudaGetErrorEnum(error):
 
 
 def checkCudaErrors(result):
-    err = result[0]
-    if err != cuda.CUresult.CUDA_SUCCESS:
+    if not result[0]:
+        err = result[0]
         msg = "CUDA error code={}({})".format(err.value, _cudaGetErrorEnum(err))
         if err == cuda.CUresult.CUDA_ERROR_OUT_OF_MEMORY:
             raise MemoryError(msg)
@@ -58,12 +58,15 @@ def _check_support(dev: cuda.CUdevice, attr: cuda.CUdevice_attribute, msg: str) 
 
 def check_vmm_support(dev: cuda.CUdevice) -> None:
     return _check_support(
-        CU_VMM_SUPPORTED, f"Device {dev} doesn't support VIRTUAL ADDRESS MANAGEMENT"
+        dev,
+        CU_VMM_SUPPORTED,
+        f"Device {dev} doesn't support VIRTUAL ADDRESS MANAGEMENT",
     )
 
 
 def check_vmm_gdr_support(dev: cuda.CUdevice) -> None:
     return _check_support(
+        dev,
         CU_VMM_GDR_SUPPORTED,
         f"Device {dev} doesn't support GPUDirectRDMA for VIRTUAL ADDRESS MANAGEMENT",
     )
