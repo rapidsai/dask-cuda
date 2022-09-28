@@ -157,18 +157,23 @@ class VmmHeap:
         self.granularity = granularity
         self.device = device
         self._offset = 0
-        self._heap = int(
-            checkCudaErrors(
-                cuda.cuMemAddressReserve(
-                    size=size, alignment=0, addr=cuda.CUdeviceptr(0), flags=0
-                )
-            )
+        self._size = size
+
+        # Make a virtual memory reservation.
+        result = cuda.cuMemAddressReserve(
+            size=size, alignment=0, addr=cuda.CUdeviceptr(0), flags=0
         )
+        # We check the result manually to avoid raise MemoryError, which would
+        # trigger out-of-memory handling.
+        if result[0] == cuda.CUresult.CUDA_ERROR_OUT_OF_MEMORY:
+            raise RuntimeError("cuda.cuMemAddressReserve() - CUDA_ERROR_OUT_OF_MEMORY")
+        self._heap = int(checkCudaErrors(result))
 
     def allocate(self, size: int) -> cuda.CUdeviceptr:
         assert size % self.granularity == 0
         ret = self._heap + self._offset
         self._offset += to_aligned_size(size, self.granularity)
+        assert self._offset <= self._size
         assert ret % self.granularity == 0
         return cuda.CUdeviceptr(ret)
 
@@ -181,10 +186,13 @@ class VmmAllocPool:
     def get_heap(self) -> VmmHeap:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         device = checkCudaErrors(cuda.cuCtxGetDevice())
-        if device not in self._heaps:
+
+        # Notice, `hash(cuda.CUdevice(0)) != hash(cuda.CUdevice(0))` thus the
+        # explicit convertion to integer.
+        if int(device) not in self._heaps:
             check_vmm_support(device)
-            self._heaps[device] = VmmHeap(device, get_granularity(device))
-        return self._heaps[device]
+            self._heaps[int(device)] = VmmHeap(device, get_granularity(device))
+        return self._heaps[int(device)]
 
     def allocate(self, size: int) -> int:
         heap = self.get_heap()
@@ -224,6 +232,7 @@ class VmmAllocPool:
         )
 
         self._store[int(reserve_ptr)] = alloc_size
+        # print(f"alloc({int(reserve_ptr)}) - size: {size}, alloc_size: {alloc_size}")
         return int(reserve_ptr)
 
     def deallocate(self, ptr: int, size: int) -> None:
@@ -231,6 +240,7 @@ class VmmAllocPool:
         alloc_size = self._store.pop(ptr)
         checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream_flags.CU_STREAM_DEFAULT))
         checkCudaErrors(cuda.cuMemUnmap(ptr, alloc_size))
+        # print(f"deloc({int(ptr)}) - size: {size}, alloc_size: {alloc_size}")
 
 
 def set_vmm_pool():
