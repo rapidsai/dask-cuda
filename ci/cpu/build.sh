@@ -43,9 +43,10 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate rapids
 
-# Remove rapidsai-nightly channel if we are building main branch
+# Remove `rapidsai-nightly` & `dask/label/dev` channel if we are building main branch
 if [ "$SOURCE_BRANCH" = "main" ]; then
   conda config --system --remove channels rapidsai-nightly
+  conda config --system --remove channels dask/label/dev
 fi
 
 gpuci_logger "Check compiler versions"
@@ -61,8 +62,8 @@ conda list --show-channel-urls
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
-pip install git+https://github.com/dask/dask.git@main
-pip install git+https://github.com/dask/distributed.git@main
+pip install git+https://github.com/dask/dask.git@2022.9.1
+pip install git+https://github.com/dask/distributed.git@2022.9.1
 
 ################################################################################
 # BUILD - Package builds
