@@ -19,7 +19,7 @@ export CUDA_REL=${CUDA_VERSION%.*}
 export GPUCI_CONDA_RETRY_MAX=1
 export GPUCI_CONDA_RETRY_SLEEP=30
 
-# Whethere to keep `dask/label/dev` channel in the env. If INSTALL_DASK_MAIN=0,
+# Whether to keep `dask/label/dev` channel in the env. If INSTALL_DASK_MAIN=0,
 # `dask/label/dev` channel is removed.
 export INSTALL_DASK_MAIN=0
 
