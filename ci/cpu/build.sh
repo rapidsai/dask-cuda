@@ -53,6 +53,11 @@ if [ "$SOURCE_BRANCH" = "main" ]; then
   conda config --system --remove channels dask/label/dev
 fi
 
+# Remove `dask/label/dev` channel if INSTALL_DASK_MAIN=0
+if [[ "${INSTALL_DASK_MAIN}" == 0 ]]; then
+  conda config --system --remove channels dask/label/dev
+fi
+
 gpuci_logger "Check compiler versions"
 python --version
 $CC --version
