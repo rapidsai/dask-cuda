@@ -4,6 +4,7 @@ from time import perf_counter as clock
 
 import pandas as pd
 
+import dask
 import dask.dataframe as dd
 from dask.distributed import performance_report, wait
 from dask.utils import format_bytes, parse_bytes
@@ -24,12 +25,20 @@ def apply_groupby(
     split_every=8,
     shuffle=None,
 ):
-    agg = df.groupby("key", sort=sort).agg(
-        {"int64": ["max", "count"], "float64": "mean"},
-        split_out=split_out,
-        split_every=split_every,
-        shuffle=shuffle,
-    )
+    # Handle special "explicit-comms" case
+    config = {}
+    if shuffle == "explicit-comms":
+        shuffle = "tasks"
+        config = {"explicit-comms": True}
+
+    with dask.config.set(config):
+        agg = df.groupby("key", sort=sort).agg(
+            {"int64": ["max", "count"], "float64": "mean"},
+            split_out=split_out,
+            split_every=split_every,
+            shuffle=shuffle,
+        )
+
     wait(agg.persist())
     return agg
 
