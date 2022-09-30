@@ -38,7 +38,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.9.1"
+export DASK_STABLE_VERSION="2022.9.2"
 
 ################################################################################
 # SETUP - Check environment
