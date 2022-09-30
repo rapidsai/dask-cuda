@@ -1,3 +1,4 @@
+import gc
 import re
 import tempfile
 from typing import Iterable
@@ -21,6 +22,7 @@ from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
 from dask_cuda.utils import get_device_total_memory
+from dask_cuda.vmm_pool import rmm_get_current_vmm_pool
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -219,9 +221,12 @@ def test_spill_on_demand():
     and allocating two large buffers that will otherwise fail because
     of spilling on demand.
     """
+    print()
     rmm = pytest.importorskip("rmm")
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
+
+    rmm.reinitialize()
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
@@ -230,13 +235,22 @@ def test_spill_on_demand():
         memory_limit=2 * total_mem,
         spill_on_demand=True,
     )
-    for i in range(2):
-        dhf[i] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
+    dhf.initialize_spill_on_demand_once()
+    rmm_get_current_vmm_pool()
+    dhf["a"] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
+    dhf["b"] = rmm.DeviceBuffer(size=total_mem // 2 + 1)
+    del dhf
+    gc.collect()
+    vmm_pool = rmm_get_current_vmm_pool()
+    print("vmm_pool", vmm_pool._allocs)
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
 def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
+    vmm_pool = rmm_get_current_vmm_pool()
+    vmm_pool.clear()
+
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
 
@@ -273,7 +287,7 @@ def test_dataframes_share_dev_mem():
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
     assert view1["a"].data is not view2["a"].data
     # They still share the same underlying device memory
-    assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
+    assert view1["a"].data._owner.owner is view2["a"].data._owner.owner
 
     dhf = ProxifyHostFile(
         local_directory=root_dir, device_memory_limit=160, memory_limit=1000
