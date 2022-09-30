@@ -118,7 +118,7 @@ class VmmBlockPool:
                     flags=0,
                 )
             )
-            print(f"block_reserve_ptr: {hex(int(block_reserve_ptr))}")
+            # print(f"block_reserve_ptr: {hex(int(block_reserve_ptr))}")
 
             # Specify both read and write access.
             access_desc = cuda.CUmemAccessDesc()
@@ -145,6 +145,10 @@ class VmmBlockPool:
         self._used_blocks.add(block)
         return block
 
+    def _release_block(self, ptr: int) -> None:
+        self._used_blocks.remove(ptr)
+        self._free_blocks.add(ptr)
+
     def _get_block_mem_handle(
         self, block_ptr: int
     ) -> cuda.CUmemGenericAllocationHandle:
@@ -156,22 +160,22 @@ class VmmBlockPool:
 
         # Map physical memory to the heap
         reserve_ptr = heap.allocate(alloc_size)
-        print(f"user reserve_ptr: {hex(int(reserve_ptr))}")
+        # print(f"user reserve_ptr: {hex(int(reserve_ptr))}")
 
         used_blocks: List[Tuple[int, int]] = []
 
         total_allocated_size = 0
         while total_allocated_size < alloc_size:
             offset = total_allocated_size
-            total_allocated_size += self._block_size
-
-            # TODO: use only the necessary part of the block
-            # block_size = min(alloc_size, alloc_size - total_allocated_size)
 
             block = self._take_block()
             block_size = self._store_block[block]
+            block_size = min(block_size, alloc_size - total_allocated_size)
             used_blocks.append((block, block_size))
             mem_handle = self._get_block_mem_handle(block)
+
+            total_allocated_size += block_size
+            # print(total_allocated_size, alloc_size, block_size)
 
             checkCudaErrors(
                 cuda.cuMemMap(
@@ -198,15 +202,24 @@ class VmmBlockPool:
         return int(reserve_ptr)
 
     def get_allocation_blocks(self, ptr: int) -> List[Tuple[int, int]]:
-        return self._store_user_blocks[int]
+        return self._store_user_blocks[ptr]
 
     def deallocate(self, ptr: int, size: int) -> None:
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         alloc_size = self._store_user.pop(ptr)
         used_blocks = self._store_user_blocks.pop(ptr)
+        # print(
+        #     f"deallocating {len(used_blocks)} blocks from user allocation "
+        #     f"{hex(int(ptr))}"
+        # )
 
         checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream(0)))
         for block in used_blocks:
-            ptr, alloc_size = block
+            block_ptr, block_size = block
+            # print(f"deallocating: {hex(int(ptr))}, {block_size}")
+
             checkCudaErrors(cuda.cuMemUnmap(cuda.CUdeviceptr(ptr), alloc_size))
+
+            self._release_block(block_ptr)
+
             # print(f"deloc({int(ptr)}) - size: {size}, alloc_size: {alloc_size}")
