@@ -42,9 +42,9 @@ class VmmBlockPool:
 
     def __del__(self) -> None:
         if len(self._store_user) > 0:
-            print("WARN: {len(self._store_user)} user pointers still allocated")
+            print(f"WARN: {len(self._store_user)} user pointers still allocated")
         if len(self._used_blocks) > 0:
-            print("WARN: {len(self._used_blocks)} blocks still in use")
+            print(f"WARN: {len(self._used_blocks)} blocks still in use")
 
         checkCudaErrors(cudart.cudaGetDevice())  # TODO: avoid use of the Runtime API
         checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream(0)))
