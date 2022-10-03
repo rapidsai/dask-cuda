@@ -35,7 +35,7 @@ def _cudaGetErrorEnum(error):
 
 
 def checkCudaErrors(result):
-    if result[0]:
+    if not result[0]:
         err = result[0]
         msg = "CUDA error code={}({})".format(err.value, _cudaGetErrorEnum(err))
         if err == cuda.CUresult.CUDA_ERROR_OUT_OF_MEMORY:
@@ -111,7 +111,9 @@ def virtual_memory_set_access(ptr: int, size: int, device: cuda.CUdevice):
     prop.location.type = cuda.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
     prop.location.id = device
     prop.flags = cuda.CUmemAccess_flags.CU_MEM_ACCESS_FLAGS_PROT_READWRITE
-    checkCudaErrors(cuda.cuMemSetAccess(ptr=ptr, size=size, desc=[prop], count=1))
+    checkCudaErrors(
+        cuda.cuMemSetAccess(ptr=cuda.CUdeviceptr(ptr), size=size, desc=[prop], count=1)
+    )
 
 
 class VmmBlock:
@@ -134,7 +136,7 @@ class VmmBlock:
         # Map physical memory to the virtual memory
         checkCudaErrors(
             cuda.cuMemMap(
-                ptr=self._ptr,
+                ptr=cuda.CUdeviceptr(self._ptr),
                 size=size,
                 offset=0,
                 handle=self.mem_handle,
@@ -174,7 +176,9 @@ class VmmPool:
             # Free all blocks in the pool
             for blocks in self._pool.values():
                 for block in blocks:
-                    checkCudaErrors(cuda.cuMemUnmap(block._ptr, block.size))
+                    checkCudaErrors(
+                        cuda.cuMemUnmap(cuda.CUdeviceptr(block._ptr), block.size)
+                    )
                     # checkCudaErrors(cuda.cuMemAddressFree(alloc.ptr, alloc.size))
 
     def __del__(self):
@@ -216,7 +220,8 @@ class VmmPool:
             blocks = self.get_blocks(min_size=alloc_size, dev_info=dev_info)
             ptr = virtual_memory_reserve(alloc_size)
             print(
-                f"allocate({hex(ptr)}) - size: {size}, alloc_size: {alloc_size}, blocks: {blocks}"
+                f"allocate({hex(ptr)}) - size: {size}, alloc_size: {alloc_size}, "
+                f"blocks: {blocks}"
             )
 
             # Map the physical memory of each block to the virtual memory
@@ -224,7 +229,7 @@ class VmmPool:
             for block in blocks:
                 checkCudaErrors(
                     cuda.cuMemMap(
-                        ptr=cur_ptr,
+                        ptr=cuda.CUdeviceptr(cur_ptr),
                         size=block.size,
                         offset=0,
                         handle=block.mem_handle,
@@ -242,20 +247,21 @@ class VmmPool:
     def deallocate(self, ptr: int, size: int) -> None:
         with self._lock:
             checkCudaErrors(cudart.cudaGetDevice())
-            checkCudaErrors(
-                cuda.cuStreamSynchronize(cuda.CUstream_flags.CU_STREAM_DEFAULT)
-            )
+            checkCudaErrors(cuda.cuStreamSynchronize(cuda.CUstream(0)))
             alloc = self._allocs.pop(ptr)
             assert alloc.ptr == ptr
 
             print(
-                f"delocate({hex(ptr)}) - size: {size}, alloc_size: {alloc.size}, blocks: {alloc.blocks}"
+                f"delocate({hex(ptr)}) - size: {size}, alloc_size: {alloc.size}, "
+                f"blocks: {alloc.blocks}"
             )
 
             # Move all blocks of the allocation to the pool
             for block in alloc.blocks:
                 self._pool[block.size].append(block)
-                checkCudaErrors(cuda.cuMemUnmap(block._ptr, block.size))
+                checkCudaErrors(
+                    cuda.cuMemUnmap(cuda.CUdeviceptr(block._ptr), block.size)
+                )
 
             # # Free up the previously reserved virtual memory
             # checkCudaErrors(cuda.cuMemAddressFree(alloc.ptr, alloc.size))
