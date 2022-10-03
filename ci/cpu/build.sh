@@ -51,10 +51,8 @@ conda activate rapids
 if [ "$SOURCE_BRANCH" = "main" ]; then
   conda config --system --remove channels rapidsai-nightly
   conda config --system --remove channels dask/label/dev
-fi
-
+elif [[ "${INSTALL_DASK_MAIN}" == 0 ]]; then
 # Remove `dask/label/dev` channel if INSTALL_DASK_MAIN=0
-if [[ "${INSTALL_DASK_MAIN}" == 0 ]]; then
   conda config --system --remove channels dask/label/dev
 fi
 
