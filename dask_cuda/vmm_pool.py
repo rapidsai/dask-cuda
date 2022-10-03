@@ -128,6 +128,15 @@ class VmmBlock:
         prop.type = cuda.CUmemAllocationType.CU_MEM_ALLOCATION_TYPE_PINNED
         prop.location.type = cuda.CUmemLocationType.CU_MEM_LOCATION_TYPE_DEVICE
         prop.location.id = device
+
+        # Enable IB/GDRCopy support if available
+        try:
+            check_vmm_gdr_support(self._device)
+        except ValueError:
+            pass
+        else:
+            prop.allocFlags.gpuDirectRDMACapable = 1
+
         self.mem_handle = checkCudaErrors(cuda.cuMemCreate(size, prop, 0))
 
         # Make a virtual memory reservation.
