@@ -266,11 +266,11 @@ class VmmPool:
             )
 
             # Move all blocks of the allocation to the pool
+            cur_ptr = ptr
             for block in alloc.blocks:
                 self._pool[block.size].append(block)
-                checkCudaErrors(
-                    cuda.cuMemUnmap(cuda.CUdeviceptr(block._ptr), block.size)
-                )
+                checkCudaErrors(cuda.cuMemUnmap(cuda.CUdeviceptr(cur_ptr), block.size))
+                ptr += block.size
 
             # # Free up the previously reserved virtual memory
             # checkCudaErrors(cuda.cuMemAddressFree(alloc.ptr, alloc.size))
