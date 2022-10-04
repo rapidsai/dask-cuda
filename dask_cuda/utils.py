@@ -649,3 +649,101 @@ def get_gpu_uuid_from_index(device_index=0):
     pynvml.nvmlInit()
     handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
     return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+
+
+def get_worker_config(dask_worker):
+    import dask
+    from distributed.comm import parse_address
+
+    # assume homogenous cluster
+    plugin_vals = dask_worker.plugins.values()
+    ret = {}
+
+    # device and host memory configuration
+    for p in plugin_vals:
+        for v in dir(p):
+            # ignore hidden attrs as well as setup and CPUAffinity
+            if v.startswith("_") or v == "setup" or v == "cores":
+                pass
+            else:
+                ret[v] = getattr(p, v)
+    for mem in [
+        "memory_limit",
+        "memory_pause_fraction",
+        "memory_spill_fraction",
+        "memory_target_fraction",
+    ]:
+        ret[mem] = getattr(dask_worker.memory_manager, mem)
+
+    # jit unspilling set
+    ret["jit-unspill"] = hasattr(dask_worker.data, "spill_on_demand_initialized")
+
+    # get optional device-memory-limit
+    if ret["jit-unspill"]:
+        ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
+    else:
+        device_memory_limit = getattr(dask_worker.data, "device_memory_limit", False)
+        if device_memory_limit:
+            ret["device-memory-limit"] = device_memory_limit
+
+    # using ucx ?
+    scheme, loc = parse_address(dask_worker.scheduler.address)
+    ret["protocol"] = scheme
+    if scheme == "ucx":
+        import ucp
+
+        ret["ucx-transports"] = ucp.get_active_transports()
+
+    # comm timeouts
+    ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
+
+    return ret
+
+
+async def _get_sched_config(client):
+    worker_ttl = await client.run_on_scheduler(
+        lambda dask_scheduler: dask_scheduler.worker_ttl
+    )
+    extensions = list(
+        await client.run_on_scheduler(
+            lambda dask_scheduler: dask_scheduler.extensions.keys()
+        )
+    )
+    ret = {}
+    ret["distributed.scheduler.worker-ttl"] = worker_ttl
+    ret["active-extensions"] = extensions
+
+    return ret
+
+
+async def _get_cluster_configuration(client):
+    worker_config = await client.run(get_worker_config)
+    ret = await _get_sched_config(client)
+
+    # does the cluster have any workers ?
+    if worker_config:
+        w = list(worker_config.values())[0]
+        ret.update(w)
+
+    return ret
+
+
+def get_cluster_configuration(client, table=False):
+    ret = client.sync(
+        _get_cluster_configuration, client=client, asynchronous=client.asynchronous
+    )
+    if not table:
+        return ret
+    else:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="Dask Cluster Configuration")
+        table.add_column("Parameter", justify="left", style="red")
+        table.add_column("Value", justify="left", style="green")
+
+        params = sorted(ret.keys())
+        for p in params:
+            table.add_row(p, str(ret[p]))
+        console = Console()
+        console.print(table)

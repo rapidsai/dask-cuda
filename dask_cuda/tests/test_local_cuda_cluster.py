@@ -12,7 +12,12 @@ from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import MockWorker, get_gpu_count_mig, get_gpu_uuid_from_index
+from dask_cuda.utils import (
+    MockWorker,
+    get_cluster_configuration,
+    get_gpu_count_mig,
+    get_gpu_uuid_from_index,
+)
 
 
 @gen_test(timeout=20)
@@ -364,3 +369,27 @@ async def test_rmm_track_allocations():
             )
             for v in memory_resource_upstream_type.values():
                 assert v is rmm.mr.PoolMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_get_cluster_configuration():
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB",
+        CUDA_VISIBLE_DEVICES="0",
+        scheduler_port=0,
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            ret = await get_cluster_configuration(client)
+            assert ret["initial_pool_size"] == 2000000000
+
+
+def test_get_cluster_config_sync(capsys):
+    with LocalCUDACluster(
+        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
+    ) as cluster:
+        with Client(cluster) as client:
+            get_cluster_configuration(client, table=True)
+            captured = capsys.readouterr()
+            assert "Dask Cluster Configuration" in captured.out
+            assert "ucx" in captured.out
