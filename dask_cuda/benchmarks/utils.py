@@ -70,6 +70,11 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     cluster_args.add_argument(
+        "--enable-vmm-pool",
+        action="store_true",
+        help="Replace default RMM pool by a VMM memory pool",
+    )
+    cluster_args.add_argument(
         "--rmm-log-directory",
         default=None,
         type=str,
@@ -311,6 +316,7 @@ def setup_memory_pool(
     pool_size=None,
     disable_pool=False,
     log_directory=None,
+    enable_vmm_pool=False,
 ):
     import cupy
 
@@ -320,7 +326,14 @@ def setup_memory_pool(
 
     logging = log_directory is not None
 
-    if not disable_pool:
+    if enable_vmm_pool:
+        print("Enable RMM VMM pool")
+        from dask_cuda.vmm_pool import rmm_set_current_vmm_pool
+
+        rmm_set_current_vmm_pool()
+        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    elif not disable_pool:
+        print("Enable RMM default pool")
         rmm.reinitialize(
             pool_allocator=True,
             devices=0,
@@ -331,7 +344,9 @@ def setup_memory_pool(
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
 
 
-def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
+def setup_memory_pools(
+    client, is_gpu, pool_size, disable_pool, log_directory, enable_vmm_pool
+):
     if not is_gpu:
         return
     client.run(
@@ -339,6 +354,7 @@ def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
         pool_size=pool_size,
         disable_pool=disable_pool,
         log_directory=log_directory,
+        enable_vmm_pool=enable_vmm_pool,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
@@ -347,6 +363,7 @@ def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
         pool_size=1e9,
         disable_pool=disable_pool,
         log_directory=log_directory,
+        enable_vmm_pool=enable_vmm_pool,
     )
 
 
