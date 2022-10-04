@@ -312,7 +312,12 @@ def rmm_set_current_vmm_pool(skip_if_exist=True) -> None:
         return vmm_pool.allocate(size)
 
     def deallocate(ptr: int, size: int):
-        vmm_pool.deallocate(ptr, size)
+        try:
+            # TODO: fix `StopIteration` exceptions that are sometimes raised
+            vmm_pool.deallocate(ptr, size)
+        except StopIteration as e:
+            print(f"Exception: {type(e)}")
+            pass
 
     mr = rmm.mr.CallbackMemoryResource(allocate, deallocate)
     _vmm_pools[id(mr)] = vmm_pool
