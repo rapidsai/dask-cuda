@@ -1,17 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+import sys
 
 import click
 from tornado.ioloop import IOLoop, TimeoutError
 
 from dask import config
+from distributed import Client
 from distributed.cli.utils import install_signal_handlers
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
 
 from ..cuda_worker import CUDAWorker
+from ..utils import get_cluster_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +290,15 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     type=click.Choice(["spawn", "fork", "forkserver"]),
     help="""Method used to start new processes with multiprocessing""",
 )
+@click.option(
+    "--get-cluster-configuration",
+    "get_cluster_conf",
+    default=False,
+    is_flag=True,
+    required=False,
+    show_default=True,
+    help="""Print a table of the current cluster configuration""",
+)
 def main(
     scheduler,
     host,
@@ -321,8 +333,14 @@ def main(
     worker_class,
     pre_import,
     multiprocessing_method,
+    get_cluster_conf,
     **kwargs,
 ):
+    if get_cluster_conf:
+        client = Client(scheduler)
+        get_cluster_configuration(client, table=True)
+        sys.exit(0)
+
     if multiprocessing_method == "forkserver":
         import multiprocessing.forkserver as f
 

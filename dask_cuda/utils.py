@@ -1,6 +1,7 @@
 import importlib
 import math
 import os
+import sys
 import time
 import warnings
 from contextlib import suppress
@@ -735,8 +736,15 @@ def get_cluster_configuration(client, table=False):
     if not table:
         return ret
     else:
-        from rich.console import Console
-        from rich.table import Table
+        try:
+            from rich.console import Console
+            from rich.table import Table
+        except ImportError:
+            print(
+                "Please install rich `python -m pip install rich`"
+                / "to print a table of the current Dask Cluster Configuration"
+            )
+            sys.exit(1)
 
         table = Table(title="Dask Cluster Configuration")
         table.add_column("Parameter", justify="left", style="red")
