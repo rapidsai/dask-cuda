@@ -180,8 +180,6 @@ class DeviceHostFile(ZictBase):
         local_directory=None,
         log_spilling=False,
     ):
-        # can now access value within dask-worker / client.run
-        self.device_memory_limit = device_memory_limit
         self.disk_func_path = os.path.join(
             local_directory or dask.config.get("temporary-directory") or os.getcwd(),
             "dask-worker-space",

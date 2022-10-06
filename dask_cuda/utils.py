@@ -15,6 +15,9 @@ import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
 from dask.utils import parse_bytes
 from distributed import Worker, wait
+from distributed.comm import parse_address
+
+from .proxify_host_file import ProxifyHostFile
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -652,9 +655,6 @@ def get_gpu_uuid_from_index(device_index=0):
 
 
 def get_worker_config(dask_worker):
-    import dask
-    from distributed.comm import parse_address
-
     # assume homogenous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
@@ -676,15 +676,15 @@ def get_worker_config(dask_worker):
         ret[mem] = getattr(dask_worker.memory_manager, mem)
 
     # jit unspilling set
-    ret["jit-unspill"] = hasattr(dask_worker.data, "spill_on_demand_initialized")
+    ret["jit-unspill"] = isinstance(dask_worker.data, ProxifyHostFile)
 
     # get optional device-memory-limit
     if ret["jit-unspill"]:
         ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
     else:
-        device_memory_limit = getattr(dask_worker.data, "device_memory_limit", False)
-        if device_memory_limit:
-            ret["device-memory-limit"] = device_memory_limit
+        has_device = hasattr(dask_worker.data, "device_buffer")
+        if has_device:
+            ret["device-memory-limit"] = dask_worker.data.device_buffer.n
 
     # using ucx ?
     scheme, loc = parse_address(dask_worker.scheduler.address)
