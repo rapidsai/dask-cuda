@@ -753,5 +753,4 @@ def get_cluster_configuration(client, table=False):
         params = sorted(ret.keys())
         for p in params:
             table.add_row(p, str(ret[p]))
-        console = Console()
-        console.print(table)
+        Console().print(table)
