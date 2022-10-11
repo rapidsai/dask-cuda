@@ -14,7 +14,7 @@ jobs:
 
       test-before: "" # pip install rmm-cu11 cudf-cu11 --index-url https://pypi.k8s.rapids.ai/simple"
       test-extras:  "test"
-      test-requires:  "pytest"
+      test-requires:  "pytest dask[dataframe] pandas"
       test-unittest: "pytest -v ./dask_cuda/tests"
       test-smoketest: "import dask_cuda; print(dask_cuda)"
     secrets: inherit
