@@ -33,7 +33,7 @@ if "GIT_DESCRIBE_TAG" in os.environ:
 
 setup(
     name="dask-cuda",
-    version=versioneer.get_version(),
+    version=os.getenv("RAPIDS_PY_WHEEL_VERSIONEER_OVERRIDE", default=versioneer.get_version()),
     cmdclass=versioneer.get_cmdclass(),
     description="Utilities for Dask and CUDA interactions",
     long_description=long_description,

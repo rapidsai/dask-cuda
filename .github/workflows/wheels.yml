@@ -1,0 +1,19 @@
+name: dask-cuda wheels
+
+on: pull_request
+
+jobs:
+  dask_cuda-wheels:
+    uses: rapidsai/shared-action-workflows/.github/workflows/wheels-pure.yml@feat/wheel-ci-actions-2
+    with:
+      package-name: dask_cuda
+      package-dir: .
+      python-package-cuda-suffix: ""
+      python-package-versioneer-override: "22.10.0"
+      python-package-build-tag: ""
+
+      test-before: "" # pip install rmm-cu11 cudf-cu11 --index-url https://pypi.k8s.rapids.ai/simple"
+      test-extras:  "test"
+      test-unittest: "pytest -v ./python/dask_cudf/dask_cudf/tests"
+      test-smoketest: "import dask_cudf; print(dask_cudf)"
+    secrets: inherit
