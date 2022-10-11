@@ -117,6 +117,8 @@ def run(client: Client, args: Namespace, config: Config):
         args.type == "gpu",
         args.rmm_pool_size,
         args.disable_rmm_pool,
+        args.enable_rmm_async,
+        args.enable_rmm_managed,
         args.rmm_log_directory,
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
