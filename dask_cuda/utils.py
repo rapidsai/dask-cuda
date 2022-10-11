@@ -1,7 +1,7 @@
 import importlib
 import math
+import operator
 import os
-import sys
 import time
 import warnings
 from contextlib import suppress
@@ -14,7 +14,7 @@ import toolz
 import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
-from dask.utils import parse_bytes
+from dask.utils import format_bytes, parse_bytes
 from distributed import Worker, wait
 from distributed.comm import parse_address
 
@@ -663,11 +663,11 @@ def get_worker_config(dask_worker):
     # device and host memory configuration
     for p in plugin_vals:
         for v in dir(p):
-            # ignore hidden attrs as well as setup and CPUAffinity
-            if v.startswith("_") or v == "setup" or v == "cores":
-                pass
-            else:
-                ret[v] = getattr(p, v)
+            if not (v.startswith("_") or v in {"setup", "cores"}):
+                # flatten plugin name + attr in returned dictionary
+                key = type(p).__name__ + "." + v
+                ret[key] = getattr(p, v)
+
     for mem in [
         "memory_limit",
         "memory_pause_fraction",
@@ -697,6 +697,7 @@ def get_worker_config(dask_worker):
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
+    # ret.update(plugin_config)
 
     return ret
 
@@ -729,28 +730,39 @@ async def _get_cluster_configuration(client):
     return ret
 
 
-def get_cluster_configuration(client, table=False):
-    ret = client.sync(
+def print_cluster_config(client):
+    """print current Dask cluster configuration"""
+    data = get_cluster_configuration(client)
+    formatted_byte_keys = [
+        "memory_limit",
+        "device-memory-limit",
+        "initial_pool_size",
+        "maximum_pool_size",
+    ]
+
+    try:
+        from rich.console import Console
+        from rich.table import Table
+    except ModuleNotFoundError as e:
+        error_msg = (
+            "Please install rich `python -m pip install rich` "
+            "to print a table of the current Dask Cluster Configuration"
+        )
+        raise ModuleNotFoundError(error_msg) from e
+
+    table = Table(title="Dask Cluster Configuration")
+    table.add_column("Parameter", justify="left", style="bold bright_green")
+    table.add_column("Value", justify="left", style="bold bright_green")
+
+    for key, value in sorted(data.items(), key=operator.itemgetter(0)):
+        if any([k in key for k in formatted_byte_keys]) and value is not None:
+            value = format_bytes(value)
+        table.add_row(key, str(value))
+    Console().print(table)
+
+
+def get_cluster_configuration(client):
+    data = client.sync(
         _get_cluster_configuration, client=client, asynchronous=client.asynchronous
     )
-    if not table:
-        return ret
-    else:
-        try:
-            from rich.console import Console
-            from rich.table import Table
-        except ImportError:
-            print(
-                "Please install rich `python -m pip install rich`"
-                / "to print a table of the current Dask Cluster Configuration"
-            )
-            sys.exit(1)
-
-        table = Table(title="Dask Cluster Configuration")
-        table.add_column("Parameter", justify="left", style="red")
-        table.add_column("Value", justify="left", style="green")
-
-        params = sorted(ret.keys())
-        for p in params:
-            table.add_row(p, str(ret[p]))
-        Console().print(table)
+    return data

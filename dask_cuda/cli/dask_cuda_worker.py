@@ -14,7 +14,7 @@ from distributed.security import Security
 from distributed.utils import import_term
 
 from ..cuda_worker import CUDAWorker
-from ..utils import get_cluster_configuration
+from ..utils import print_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +338,7 @@ def main(
 ):
     if get_cluster_conf:
         client = Client(scheduler)
-        get_cluster_configuration(client, table=True)
+        print_cluster_config(client)
         sys.exit(0)
 
     if multiprocessing_method == "forkserver":

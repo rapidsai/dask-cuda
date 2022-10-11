@@ -17,6 +17,7 @@ from dask_cuda.utils import (
     get_cluster_configuration,
     get_gpu_count_mig,
     get_gpu_uuid_from_index,
+    print_cluster_config,
 )
 
 
@@ -358,7 +359,6 @@ async def test_rmm_track_allocations():
         rmm_pool_size="2GB",
         asynchronous=True,
         rmm_track_allocations=True,
-        device_memory_limit="30B",
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
@@ -385,17 +385,18 @@ async def test_get_cluster_configuration():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             ret = await get_cluster_configuration(client)
-            assert ret["initial_pool_size"] == 2000000000
+            assert ret["RMMSetup.initial_pool_size"] == 2000000000
             assert ret["jit-unspill"] is False
             assert ret["device-memory-limit"] == 30
 
 
-def test_get_cluster_config_sync(capsys):
+def test_print_cluster_config(capsys):
     with LocalCUDACluster(
         n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
     ) as cluster:
         with Client(cluster) as client:
-            get_cluster_configuration(client, table=True)
-            # captured = capsys.readouterr()
-            # assert "Dask Cluster Configuration" in captured.out
-            # assert "ucx" in captured.out
+            print_cluster_config(client)
+            captured = capsys.readouterr()
+            assert "Dask Cluster Configuration" in captured.out
+            assert "ucx" in captured.out
+            assert "1 B" in captured.out
