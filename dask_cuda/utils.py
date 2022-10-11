@@ -5,6 +5,7 @@ import os
 import time
 import warnings
 from contextlib import suppress
+from functools import singledispatch
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -662,11 +663,11 @@ def get_worker_config(dask_worker):
 
     # device and host memory configuration
     for p in plugin_vals:
-        for v in dir(p):
-            if not (v.startswith("_") or v in {"setup", "cores"}):
-                # flatten plugin name + attr in returned dictionary
-                key = type(p).__name__ + "." + v
-                ret[key] = getattr(p, v)
+        ret[type(p).__name__] = {
+            v: getattr(p, v)
+            for v in dir(p)
+            if not (v.startswith("_") or v in {"setup", "cores"})
+        }
 
     for mem in [
         "memory_limit",
@@ -730,19 +731,47 @@ async def _get_cluster_configuration(client):
     return ret
 
 
-def print_cluster_config(client):
-    """print current Dask cluster configuration"""
-    data = get_cluster_configuration(client)
-    formatted_byte_keys = [
+@singledispatch
+def pretty_print(obj, toplevel):
+    from rich.pretty import Pretty
+
+    return Pretty(obj)
+
+
+@pretty_print.register(str)
+def pretty_print_str(obj, toplevel):
+    return obj
+
+
+@pretty_print.register(dict)
+def pretty_print_dict(obj, toplevel):
+    from rich.table import Table
+
+    if not obj:
+        return "No known settings"
+    formatted_byte_keys = {
         "memory_limit",
         "device-memory-limit",
         "initial_pool_size",
         "maximum_pool_size",
-    ]
+    }
+    t = Table(
+        show_header=toplevel, title="Dask Cluster Configuration" if toplevel else None
+    )
+    t.add_column("Parameter", justify="left", style="bold bright_green")
+    t.add_column("Value", justify="left", style="bold bright_green")
+    for k, v in sorted(obj.items(), key=operator.itemgetter(0)):
+        if k in formatted_byte_keys and v is not None:
+            v = format_bytes(v)
+        t.add_row(pretty_print(k, False), pretty_print(v, False))
+    return t
 
+
+def print_cluster_config(client):
+    """print current Dask cluster configuration"""
+    data = get_cluster_configuration(client)
     try:
         from rich.console import Console
-        from rich.table import Table
     except ModuleNotFoundError as e:
         error_msg = (
             "Please install rich `python -m pip install rich` "
@@ -750,15 +779,8 @@ def print_cluster_config(client):
         )
         raise ModuleNotFoundError(error_msg) from e
 
-    table = Table(title="Dask Cluster Configuration")
-    table.add_column("Parameter", justify="left", style="bold bright_green")
-    table.add_column("Value", justify="left", style="bold bright_green")
-
-    for key, value in sorted(data.items(), key=operator.itemgetter(0)):
-        if any([k in key for k in formatted_byte_keys]) and value is not None:
-            value = format_bytes(value)
-        table.add_row(key, str(value))
-    Console().print(table)
+    formatted = pretty_print(data, True)
+    Console().print(formatted)
 
 
 def get_cluster_configuration(client):

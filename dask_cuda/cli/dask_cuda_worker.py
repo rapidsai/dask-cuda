@@ -179,7 +179,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--scheduler-file",
     type=str,
-    default="",
+    default=None,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
     with the equivalent ``dask-scheduler`` option.""",
 )
@@ -336,11 +336,6 @@ def main(
     get_cluster_conf,
     **kwargs,
 ):
-    if get_cluster_conf:
-        client = Client(scheduler)
-        print_cluster_config(client)
-        sys.exit(0)
-
     if multiprocessing_method == "forkserver":
         import multiprocessing.forkserver as f
 
@@ -360,6 +355,14 @@ def main(
             "your command line arguments, you probably attempted to use "
             "unsupported one. Scheduler address: %s" % scheduler
         )
+
+    if get_cluster_conf:
+        if scheduler_file is not None:
+            client = Client(scheduler_file=scheduler_file, security=security)
+        else:
+            client = Client(scheduler, security=security)
+        print_cluster_config(client)
+        sys.exit(0)
 
     if worker_class is not None:
         worker_class = import_term(worker_class)

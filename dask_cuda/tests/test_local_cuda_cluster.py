@@ -385,7 +385,7 @@ async def test_get_cluster_configuration():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             ret = await get_cluster_configuration(client)
-            assert ret["RMMSetup.initial_pool_size"] == 2000000000
+            assert ret["RMMSetup"]["initial_pool_size"] == 2000000000
             assert ret["jit-unspill"] is False
             assert ret["device-memory-limit"] == 30
 
