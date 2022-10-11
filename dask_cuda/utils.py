@@ -703,7 +703,7 @@ def get_worker_config(dask_worker):
     return ret
 
 
-async def _get_sched_config(client):
+async def get_scheduler_configuration(client):
     worker_ttl = await client.run_on_scheduler(
         lambda dask_scheduler: dask_scheduler.worker_ttl
     )
@@ -721,12 +721,16 @@ async def _get_sched_config(client):
 
 async def _get_cluster_configuration(client):
     worker_config = await client.run(get_worker_config)
-    ret = await _get_sched_config(client)
+    ret = await get_scheduler_configuration(client)
 
     # does the cluster have any workers ?
     if worker_config:
         w = list(worker_config.values())[0]
         ret.update(w)
+        info = client.scheduler_info()
+        workers = info.get("workers", {})
+        ret["nworkers"] = len(workers)
+        ret["nthreads"] = sum(w["nthreads"] for w in workers.values())
 
     return ret
 
@@ -769,6 +773,9 @@ def pretty_print_dict(obj, toplevel):
 
 def print_cluster_config(client):
     """print current Dask cluster configuration"""
+    if client.asynchronous:
+        print("Printing cluster configuration works only with synchronous Dask clients")
+
     data = get_cluster_configuration(client)
     try:
         from rich.console import Console
