@@ -1,6 +1,26 @@
-# dask-cuda 22.10.00 (Date TBD)
+# dask-cuda 22.10.00 (12 Oct 2022)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v22.10.00a for the latest changes to this development branch.
+## 🐛 Bug Fixes
+
+- Revert &quot;Update rearrange_by_column patch for explicit comms&quot; ([#1001](https://github.com/rapidsai/dask-cuda/pull/1001)) [@rjzamora](https://github.com/rjzamora)
+- Address CI failures caused by upstream distributed and cupy changes ([#993](https://github.com/rapidsai/dask-cuda/pull/993)) [@rjzamora](https://github.com/rjzamora)
+- DeviceSerialized.__reduce_ex__: convert frame to numpy arrays ([#977](https://github.com/rapidsai/dask-cuda/pull/977)) [@madsbk](https://github.com/madsbk)
+
+## 📖 Documentation
+
+- Remove line-break that&#39;s breaking link ([#982](https://github.com/rapidsai/dask-cuda/pull/982)) [@ntabris](https://github.com/ntabris)
+- Dask-cuda best practices ([#976](https://github.com/rapidsai/dask-cuda/pull/976)) [@quasiben](https://github.com/quasiben)
+
+## 🚀 New Features
+
+- Add Groupby benchmark ([#979](https://github.com/rapidsai/dask-cuda/pull/979)) [@rjzamora](https://github.com/rjzamora)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for release ([#1003](https://github.com/rapidsai/dask-cuda/pull/1003)) [@galipremsagar](https://github.com/galipremsagar)
+- Update rearrange_by_column patch for explicit comms ([#992](https://github.com/rapidsai/dask-cuda/pull/992)) [@rjzamora](https://github.com/rjzamora)
+- benchmarks: Add option to suppress output of point to point data ([#985](https://github.com/rapidsai/dask-cuda/pull/985)) [@wence-](https://github.com/wence-)
+- Unpin `dask` and `distributed` for development ([#971](https://github.com/rapidsai/dask-cuda/pull/971)) [@galipremsagar](https://github.com/galipremsagar)
 
 # dask-cuda 22.08.00 (Date TBD)
 
