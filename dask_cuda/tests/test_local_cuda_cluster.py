@@ -385,7 +385,7 @@ async def test_get_cluster_configuration():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             ret = await get_cluster_configuration(client)
-            assert ret["RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
             assert ret["jit-unspill"] is False
             assert ret["device-memory-limit"] == 30
 
@@ -400,3 +400,4 @@ def test_print_cluster_config(capsys):
             assert "Dask Cluster Configuration" in captured.out
             assert "ucx" in captured.out
             assert "1 B" in captured.out
+            assert "[plugin]" in captured.out

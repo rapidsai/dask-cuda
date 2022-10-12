@@ -663,7 +663,7 @@ def get_worker_config(dask_worker):
 
     # device and host memory configuration
     for p in plugin_vals:
-        ret[type(p).__name__] = {
+        ret[f"[plugin] {type(p).__name__}"] = {
             v: getattr(p, v)
             for v in dir(p)
             if not (v.startswith("_") or v in {"setup", "cores"})
@@ -749,6 +749,7 @@ def pretty_print_str(obj, toplevel):
 
 @pretty_print.register(dict)
 def pretty_print_dict(obj, toplevel):
+    from rich.markup import escape
     from rich.table import Table
 
     if not obj:
@@ -767,7 +768,9 @@ def pretty_print_dict(obj, toplevel):
     for k, v in sorted(obj.items(), key=operator.itemgetter(0)):
         if k in formatted_byte_keys and v is not None:
             v = format_bytes(v)
-        t.add_row(pretty_print(k, False), pretty_print(v, False))
+        # need to escape tags: []
+        # https://rich.readthedocs.io/en/stable/markup.html?highlight=escape#escaping
+        t.add_row(escape(pretty_print(k, False)), pretty_print(v, False))
     return t
 
 
