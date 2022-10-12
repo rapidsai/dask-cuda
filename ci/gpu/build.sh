@@ -26,7 +26,7 @@ cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
-export UCXPY_VERSION=0.27.*
+export UCXPY_VERSION=0.28.*
 unset GIT_DESCRIBE_TAG
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
@@ -38,7 +38,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.7.1"
+export DASK_STABLE_VERSION="2022.9.2"
 
 ################################################################################
 # SETUP - Check environment
@@ -77,6 +77,7 @@ if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
 else
   gpuci_logger "gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall"
   gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall
+  conda config --system --remove channels dask/label/dev
 fi
 
 

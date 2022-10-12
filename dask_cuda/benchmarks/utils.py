@@ -186,6 +186,11 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "one worker per GPU will be launched.",
     )
     parser.add_argument(
+        "--no-show-p2p-bandwidth",
+        action="store_true",
+        help="Do not produce detailed point to point bandwidth stats in output",
+    )
+    parser.add_argument(
         "--all-to-all",
         action="store_true",
         help="Run all-to-all before computation",
@@ -549,28 +554,29 @@ def print_throughput_bandwidth(
         key="Wall clock",
         value=f"{format_time(durations.mean())} +/- {format_time(durations.std()) }",
     )
-    print_separator(separator="=")
-    if args.markdown:
-        print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
+    if not args.no_show_p2p_bandwidth:
+        print_separator(separator="=")
+        if args.markdown:
+            print("<details>\n<summary>Worker-Worker Transfer Rates</summary>\n\n```")
 
-    print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
-    print_separator(separator="-")
-    for (source, dest) in np.ndindex(p2p_bw.shape[:2]):
-        bw = BandwidthStats(*p2p_bw[source, dest, ...])
-        if bw.total_bytes > 0:
-            print_key_value(
-                key=f"({source},{dest})",
-                value=f"{format_bytes(bw.q25)}/s {format_bytes(bw.q50)}/s "
-                f"{format_bytes(bw.q75)}/s ({format_bytes(bw.total_bytes)})",
-            )
-    print_separator(separator="=")
-    print_key_value(key="Worker index", value="Worker address")
-    print_separator(separator="-")
-    for address, index in sorted(address_to_index.items(), key=itemgetter(1)):
-        print_key_value(key=index, value=address)
-    print_separator(separator="=")
-    if args.markdown:
-        print("```\n</details>\n")
+        print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
+        print_separator(separator="-")
+        for (source, dest) in np.ndindex(p2p_bw.shape[:2]):
+            bw = BandwidthStats(*p2p_bw[source, dest, ...])
+            if bw.total_bytes > 0:
+                print_key_value(
+                    key=f"({source},{dest})",
+                    value=f"{format_bytes(bw.q25)}/s {format_bytes(bw.q50)}/s "
+                    f"{format_bytes(bw.q75)}/s ({format_bytes(bw.total_bytes)})",
+                )
+        print_separator(separator="=")
+        print_key_value(key="Worker index", value="Worker address")
+        print_separator(separator="-")
+        for address, index in sorted(address_to_index.items(), key=itemgetter(1)):
+            print_key_value(key=index, value=address)
+        print_separator(separator="=")
+        if args.markdown:
+            print("```\n</details>\n")
     if args.plot:
         plot_benchmark(throughputs, args.plot, historical=True)
 

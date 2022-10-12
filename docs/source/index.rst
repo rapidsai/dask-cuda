@@ -39,5 +39,6 @@ Contents
    :maxdepth: 1
    :caption: Examples
 
+   examples/best-practices
    examples/worker_count
    examples/ucx

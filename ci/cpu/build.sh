@@ -19,6 +19,10 @@ export CUDA_REL=${CUDA_VERSION%.*}
 export GPUCI_CONDA_RETRY_MAX=1
 export GPUCI_CONDA_RETRY_SLEEP=30
 
+# Whether to keep `dask/label/dev` channel in the env. If INSTALL_DASK_MAIN=0,
+# `dask/label/dev` channel is removed.
+export INSTALL_DASK_MAIN=0
+
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"
 
@@ -43,9 +47,13 @@ gpuci_logger "Activate conda env"
 . /opt/conda/etc/profile.d/conda.sh
 conda activate rapids
 
-# Remove rapidsai-nightly channel if we are building main branch
+# Remove `rapidsai-nightly` & `dask/label/dev` channel if we are building main branch
 if [ "$SOURCE_BRANCH" = "main" ]; then
   conda config --system --remove channels rapidsai-nightly
+  conda config --system --remove channels dask/label/dev
+elif [[ "${INSTALL_DASK_MAIN}" == 0 ]]; then
+# Remove `dask/label/dev` channel if INSTALL_DASK_MAIN=0
+  conda config --system --remove channels dask/label/dev
 fi
 
 gpuci_logger "Check compiler versions"
@@ -61,8 +69,8 @@ conda list --show-channel-urls
 # FIX Added to deal with Anancoda SSL verification issues during conda builds
 conda config --set ssl_verify False
 
-pip install git+https://github.com/dask/dask.git@main
-pip install git+https://github.com/dask/distributed.git@main
+pip install git+https://github.com/dask/dask.git@2022.9.2
+pip install git+https://github.com/dask/distributed.git@2022.9.2
 
 ################################################################################
 # BUILD - Package builds
