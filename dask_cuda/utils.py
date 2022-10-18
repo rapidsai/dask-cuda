@@ -749,7 +749,6 @@ def pretty_print_str(obj, toplevel):
 
 @pretty_print.register(dict)
 def pretty_print_dict(obj, toplevel):
-    from rich.markup import escape
     from rich.table import Table
 
     if not obj:
