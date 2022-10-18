@@ -744,6 +744,7 @@ def pretty_print(obj, toplevel):
 @pretty_print.register(str)
 def pretty_print_str(obj, toplevel):
     from rich.markup import escape
+
     return escape(obj)
 
 
