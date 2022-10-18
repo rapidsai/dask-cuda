@@ -769,7 +769,7 @@ def pretty_print_dict(obj, toplevel):
             v = format_bytes(v)
         # need to escape tags: []
         # https://rich.readthedocs.io/en/stable/markup.html?highlight=escape#escaping
-        t.add_row(escape(pretty_print(k, False)), pretty_print(v, False))
+        t.add_row(pretty_print(k, False), pretty_print(v, False))
     return t
 
 
