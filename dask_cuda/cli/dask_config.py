@@ -90,7 +90,6 @@ def main(
         else:
             client = Client(scheduler, security=security)
         print_cluster_config(client)
-        sys.exit(0)
 
 
 if __name__ == "__main__":
