@@ -93,9 +93,5 @@ def main(
         sys.exit(0)
 
 
-def go():
-    main()
-
-
 if __name__ == "__main__":
-    go()
+    main()
