@@ -1,9 +1,11 @@
 import importlib
 import math
+import operator
 import os
 import time
 import warnings
 from contextlib import suppress
+from functools import singledispatch
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -13,8 +15,11 @@ import toolz
 import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
-from dask.utils import parse_bytes
+from dask.utils import format_bytes, parse_bytes
 from distributed import Worker, wait
+from distributed.comm import parse_address
+
+from .proxify_host_file import ProxifyHostFile
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -649,3 +654,147 @@ def get_gpu_uuid_from_index(device_index=0):
     pynvml.nvmlInit()
     handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
     return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+
+
+def get_worker_config(dask_worker):
+    # assume homogenous cluster
+    plugin_vals = dask_worker.plugins.values()
+    ret = {}
+
+    # device and host memory configuration
+    for p in plugin_vals:
+        ret[f"[plugin] {type(p).__name__}"] = {
+            v: getattr(p, v)
+            for v in dir(p)
+            if not (v.startswith("_") or v in {"setup", "cores"})
+        }
+
+    for mem in [
+        "memory_limit",
+        "memory_pause_fraction",
+        "memory_spill_fraction",
+        "memory_target_fraction",
+    ]:
+        ret[mem] = getattr(dask_worker.memory_manager, mem)
+
+    # jit unspilling set
+    ret["jit-unspill"] = isinstance(dask_worker.data, ProxifyHostFile)
+
+    # get optional device-memory-limit
+    if ret["jit-unspill"]:
+        ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
+    else:
+        has_device = hasattr(dask_worker.data, "device_buffer")
+        if has_device:
+            ret["device-memory-limit"] = dask_worker.data.device_buffer.n
+
+    # using ucx ?
+    scheme, loc = parse_address(dask_worker.scheduler.address)
+    ret["protocol"] = scheme
+    if scheme == "ucx":
+        import ucp
+
+        ret["ucx-transports"] = ucp.get_active_transports()
+
+    # comm timeouts
+    ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
+
+    return ret
+
+
+async def get_scheduler_configuration(client):
+    worker_ttl = await client.run_on_scheduler(
+        lambda dask_scheduler: dask_scheduler.worker_ttl
+    )
+    extensions = list(
+        await client.run_on_scheduler(
+            lambda dask_scheduler: dask_scheduler.extensions.keys()
+        )
+    )
+    ret = {}
+    ret["distributed.scheduler.worker-ttl"] = worker_ttl
+    ret["active-extensions"] = extensions
+
+    return ret
+
+
+async def _get_cluster_configuration(client):
+    worker_config = await client.run(get_worker_config)
+    ret = await get_scheduler_configuration(client)
+
+    # does the cluster have any workers ?
+    if worker_config:
+        w = list(worker_config.values())[0]
+        ret.update(w)
+        info = client.scheduler_info()
+        workers = info.get("workers", {})
+        ret["nworkers"] = len(workers)
+        ret["nthreads"] = sum(w["nthreads"] for w in workers.values())
+
+    return ret
+
+
+@singledispatch
+def pretty_print(obj, toplevel):
+    from rich.pretty import Pretty
+
+    return Pretty(obj)
+
+
+@pretty_print.register(str)
+def pretty_print_str(obj, toplevel):
+    from rich.markup import escape
+
+    return escape(obj)
+
+
+@pretty_print.register(dict)
+def pretty_print_dict(obj, toplevel):
+    from rich.table import Table
+
+    if not obj:
+        return "No known settings"
+    formatted_byte_keys = {
+        "memory_limit",
+        "device-memory-limit",
+        "initial_pool_size",
+        "maximum_pool_size",
+    }
+    t = Table(
+        show_header=toplevel, title="Dask Cluster Configuration" if toplevel else None
+    )
+    t.add_column("Parameter", justify="left", style="bold bright_green")
+    t.add_column("Value", justify="left", style="bold bright_green")
+    for k, v in sorted(obj.items(), key=operator.itemgetter(0)):
+        if k in formatted_byte_keys and v is not None:
+            v = format_bytes(v)
+        # need to escape tags: []
+        # https://rich.readthedocs.io/en/stable/markup.html?highlight=escape#escaping
+        t.add_row(pretty_print(k, False), pretty_print(v, False))
+    return t
+
+
+def print_cluster_config(client):
+    """print current Dask cluster configuration"""
+    if client.asynchronous:
+        print("Printing cluster configuration works only with synchronous Dask clients")
+
+    data = get_cluster_configuration(client)
+    try:
+        from rich.console import Console
+    except ModuleNotFoundError as e:
+        error_msg = (
+            "Please install rich `python -m pip install rich` "
+            "to print a table of the current Dask Cluster Configuration"
+        )
+        raise ModuleNotFoundError(error_msg) from e
+
+    formatted = pretty_print(data, True)
+    Console().print(formatted)
+
+
+def get_cluster_configuration(client):
+    data = client.sync(
+        _get_cluster_configuration, client=client, asynchronous=client.asynchronous
+    )
+    return data

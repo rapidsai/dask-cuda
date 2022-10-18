@@ -176,7 +176,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--scheduler-file",
     type=str,
-    default="",
+    default=None,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
     with the equivalent ``dask-scheduler`` option.""",
 )
