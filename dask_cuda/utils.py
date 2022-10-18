@@ -698,7 +698,6 @@ def get_worker_config(dask_worker):
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
-    # ret.update(plugin_config)
 
     return ret
 
