@@ -614,7 +614,7 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     def _align(size, alignment_size):
         return size // alignment_size * alignment_size
 
-    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
+    if device_memory_limit in {0, "0", None, "auto"}:
         return _align(get_device_total_memory(device_index), alignment_size)
 
     with suppress(ValueError, TypeError):
