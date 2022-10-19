@@ -8,7 +8,6 @@ import warnings
 from toolz import valmap
 
 import dask
-from dask.utils import parse_bytes
 from distributed import Nanny
 from distributed.core import Server
 from distributed.deploy.cluster import Cluster
@@ -139,10 +138,6 @@ class CUDAWorker(Server):
                     "RMM pool and managed memory are incompatible with asynchronous "
                     "allocator"
                 )
-            if rmm_pool_size is not None:
-                rmm_pool_size = parse_bytes(rmm_pool_size)
-                if rmm_maximum_pool_size is not None:
-                    rmm_maximum_pool_size = parse_bytes(rmm_maximum_pool_size)
 
         else:
             if enable_nvlink:

@@ -80,6 +80,15 @@ class RMMSetup:
 
             pool_allocator = False if self.initial_pool_size is None else True
 
+            if self.initial_pool_size is not None:
+                self.initial_pool_size = parse_device_memory_limit(
+                    self.initial_pool_size, alignment_size=256
+                )
+                if self.maximum_pool_size is not None:
+                    self.maximum_pool_size = parse_device_memory_limit(
+                        self.maximum_pool_size, alignment_size=256
+                    )
+
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
                 managed_memory=self.managed_memory,
@@ -573,7 +582,7 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
         raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
-def parse_device_memory_limit(device_memory_limit, device_index=0):
+def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
     """Parse memory limit to be used by a CUDA device.
 
     Parameters
@@ -585,6 +594,9 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
+    alignment_size: int
+        Number of bytes of alignment to use, i.e., allocation must be a multiple of
+        that size. RMM pool requires 256 bytes alignment.
 
     Examples
     --------
@@ -598,18 +610,25 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
     >>> parse_device_memory_limit("1GB")
     1000000000
     """
+
+    def _align(size, alignment_size):
+        return size // alignment_size * alignment_size
+
     if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
-        return get_device_total_memory(device_index)
+        return _align(get_device_total_memory(device_index), alignment_size)
 
     with suppress(ValueError, TypeError):
         device_memory_limit = float(device_memory_limit)
         if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
-            return int(get_device_total_memory(device_index) * device_memory_limit)
+            return _align(
+                int(get_device_total_memory(device_index) * device_memory_limit),
+                alignment_size,
+            )
 
     if isinstance(device_memory_limit, str):
-        return parse_bytes(device_memory_limit)
+        return _align(parse_bytes(device_memory_limit), alignment_size)
     else:
-        return int(device_memory_limit)
+        return _align(int(device_memory_limit), alignment_size)
 
 
 class MockWorker(Worker):
