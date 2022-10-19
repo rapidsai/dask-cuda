@@ -419,6 +419,7 @@ async def test_worker_fraction_limits():
 
 
 def test_print_cluster_config(capsys):
+    pytest.importorskip("rich")
     with LocalCUDACluster(
         n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
     ) as cluster:
