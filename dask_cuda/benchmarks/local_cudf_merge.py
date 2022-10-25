@@ -14,6 +14,7 @@ from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -146,7 +147,11 @@ def merge(args, ddf1, ddf2):
     ddf_join = ddf1.merge(ddf2, on=["key"], how="inner", broadcast=broadcast)
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
+    if args.backend == "dask-noop":
+        ddf_join = as_noop(ddf_join)
+    t1 = perf_counter()
     wait(ddf_join.persist())
+    return perf_counter() - t1
 
 
 def bench_once(client, args, write_profile=None):
@@ -179,11 +184,9 @@ def bench_once(client, args, write_profile=None):
 
     with ctx1:
         with ctx2:
-            t1 = perf_counter()
-            merge(args, ddf_base, ddf_other)
-            t2 = perf_counter()
+            duration = merge(args, ddf_base, ddf_other)
 
-    return (data_processed, t2 - t1)
+    return (data_processed, duration)
 
 
 def pretty_print_results(args, address_to_index, p2p_bw, results):
@@ -273,7 +276,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms"],
+            "choices": ["dask", "explicit-comms", "dask-noop"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",

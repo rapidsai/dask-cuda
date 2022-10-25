@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import functools
 import inspect
@@ -204,7 +206,7 @@ async def local_shuffle(
 
 def shuffle(
     df: DataFrame,
-    column_names: List[str],
+    column_names: str | List[str],
     npartitions: Optional[int] = None,
     ignore_index: bool = False,
 ) -> DataFrame:
