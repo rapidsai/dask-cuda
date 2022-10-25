@@ -325,8 +325,11 @@ def shuffle(
                 rank_to_out_part_ids,
                 ignore_index,
             )
-    distributed.wait(list(result_futures.values()))
-    del df_groups
+    wait(list(result_futures.values()))
+
+    # Release dataframes from step (a)
+    for fut in df_groups:
+        fut.release()
 
     # Step (c): extract individual dataframe-partitions
     name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
