@@ -37,16 +37,16 @@ if ProxifyHostFile._spill_to_disk is None:
     # Hold on to `tmpdir` to keep dir alive until exit
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(
-        local_directory=tmpdir.name,
+        worker_local_directory=tmpdir.name,
         device_memory_limit=1024,
         memory_limit=1024,
     )
 assert ProxifyHostFile._spill_to_disk is not None
 
 # In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
-# Notice, we use `../..` to remove the `dask-worker-space/jit-unspill-disk-storage` part
+# Notice, we use `..` to remove the `jit-unspill-disk-storage` part
 # added by the ProxifyHostFile implicitly.
-root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
+root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / "..")
 
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
@@ -63,7 +63,9 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
 
 def test_one_dev_item_limit():
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
 
     a1 = one_item_array() + 42
@@ -153,7 +155,7 @@ def test_one_dev_item_limit():
 def test_one_item_host_limit(capsys):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=one_item_nbytes,
         memory_limit=memory_limit,
     )
@@ -225,7 +227,7 @@ def test_spill_on_demand():
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=2 * total_mem,
         memory_limit=2 * total_mem,
         spill_on_demand=True,
@@ -276,7 +278,7 @@ def test_dataframes_share_dev_mem():
     assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
 
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=160, memory_limit=1000
+        worker_local_directory=root_dir, device_memory_limit=160, memory_limit=1000
     )
     dhf["v1"] = view1
     dhf["v2"] = view2
@@ -317,7 +319,9 @@ def test_externals():
     __delitem__.
     """
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
@@ -361,7 +365,7 @@ def test_incompatible_types():
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=100, memory_limit=100
+        worker_local_directory=root_dir, device_memory_limit=100, memory_limit=100
     )
 
     # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval

@@ -175,7 +175,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                     "shared_filesystem": shared_filesystem,
                 },
             )
@@ -187,7 +186,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                 },
             )
 

@@ -7,7 +7,6 @@ import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 
-import dask
 from distributed.protocol import (
     dask_deserialize,
     dask_serialize,
@@ -158,6 +157,8 @@ class DeviceHostFile(ZictBase):
 
     Parameters
     ----------
+    worker_local_directory: path
+        Path where to store serialized objects on disk
     device_memory_limit: int
         Number of bytes of CUDA device memory for device LRU cache,
         spills to host cache once filled.
@@ -165,8 +166,6 @@ class DeviceHostFile(ZictBase):
         Number of bytes of host memory for host LRU cache, spills to
         disk once filled. Setting this to `0` or `None` means unlimited
         host memory, implies no spilling to disk.
-    local_directory: path
-        Path where to store serialized objects on disk
     log_spilling: bool
         If True, all spilling operations will be logged directly to
         distributed.worker with an INFO loglevel. This will eventually be
@@ -175,16 +174,15 @@ class DeviceHostFile(ZictBase):
 
     def __init__(
         self,
+        # So named such that dask will pass in the worker's local
+        # directory when constructing this through the "data" callback.
+        worker_local_directory,
+        *,
         device_memory_limit=None,
         memory_limit=None,
-        local_directory=None,
         log_spilling=False,
     ):
-        self.disk_func_path = os.path.join(
-            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
-            "dask-worker-space",
-            "storage",
-        )
+        self.disk_func_path = os.path.join(worker_local_directory, "storage")
         os.makedirs(self.disk_func_path, exist_ok=True)
 
         if memory_limit == 0:
