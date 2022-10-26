@@ -330,9 +330,10 @@ def shuffle(
     for fut in df_groups:
         fut.release()
 
-    # Step (c): extract individual dataframe-partitions
-    #           We use `submit()` to control where the tasks are
-    #           executed.
+    # Step (c): extract individual dataframe-partitions. We use `submit()`
+    #           to control where the tasks are executed.
+    # TODO: can we do this without using `submit()` to avoid the overhead
+    #       of creating a Future for each dataframe partition?
     name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
     dsk = {}
     for rank, worker in enumerate(c.worker_addresses):
