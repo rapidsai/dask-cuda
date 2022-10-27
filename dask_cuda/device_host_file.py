@@ -3,6 +3,7 @@ import logging
 import os
 import time
 
+import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 
@@ -115,7 +116,11 @@ class DeviceSerialized:
 
     def __reduce_ex__(self, protocol):
         header, frames = device_serialize(self)
-        frames = [f.obj for f in frames]
+        # Since pickle cannot handle memoryviews, we convert them
+        # to NumPy arrays (zero-copy).
+        frames = [
+            (numpy.asarray(f) if isinstance(f, memoryview) else f) for f in frames
+        ]
         return device_deserialize, (header, frames)
 
 

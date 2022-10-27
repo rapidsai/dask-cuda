@@ -153,7 +153,7 @@ def run_client_from_existing_scheduler(args: Namespace, config: Config):
             client.shutdown()
 
 
-def run_create_client(args, config):
+def run_create_client(args: Namespace, config: Config):
     """Create a client + cluster and run
 
     Shuts down the cluster at the end of the benchmark"""

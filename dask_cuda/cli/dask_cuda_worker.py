@@ -67,7 +67,8 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
     "--rmm-pool-size",
     default=None,
     help="""RMM pool size to initialize each worker with. Can be an integer (bytes),
-    string (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
+    float (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``), or
+    ``None`` to disable RMM pools.
 
     .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
@@ -75,14 +76,14 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--rmm-maximum-pool-size",
     default=None,
-    help="""When ``--rmm-pool-size`` is specified, this argument indicates the maximum pool size.
-        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
-        By default, the total available memory on the GPU is used.
-        ``rmm_pool_size`` must be specified to use RMM pool and
-        to set the maximum pool size.
+    help="""When ``--rmm-pool-size`` is specified, this argument indicates the maximum
+    pool size.  Can be an integer (bytes), float (fraction of total device memory),
+    string (like ``"5GB"`` or ``"5000M"``) or ``None``. By default, the total available
+    memory on the GPU is used. ``rmm_pool_size`` must be specified to use RMM pool and
+    to set the maximum pool size.
 
-        .. note::
-            This size is a per-worker configuration, and not cluster-wide.""",
+    .. note::
+        This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
     "--rmm-managed-memory/--no-rmm-managed-memory",
@@ -176,7 +177,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 @click.option(
     "--scheduler-file",
     type=str,
-    default="",
+    default=None,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
     with the equivalent ``dask-scheduler`` option.""",
 )

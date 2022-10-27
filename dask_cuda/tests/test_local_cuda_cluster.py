@@ -12,7 +12,14 @@ from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import MockWorker, get_gpu_count_mig, get_gpu_uuid_from_index
+from dask_cuda.utils import (
+    MockWorker,
+    get_cluster_configuration,
+    get_device_total_memory,
+    get_gpu_count_mig,
+    get_gpu_uuid_from_index,
+    print_cluster_config,
+)
 
 
 @gen_test(timeout=20)
@@ -350,7 +357,9 @@ async def test_gpu_uuid():
 async def test_rmm_track_allocations():
     rmm = pytest.importorskip("rmm")
     async with LocalCUDACluster(
-        rmm_pool_size="2GB", asynchronous=True, rmm_track_allocations=True
+        rmm_pool_size="2GB",
+        asynchronous=True,
+        rmm_track_allocations=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
@@ -364,3 +373,60 @@ async def test_rmm_track_allocations():
             )
             for v in memory_resource_upstream_type.values():
                 assert v is rmm.mr.PoolMemoryResource
+
+
+@gen_test(timeout=20)
+async def test_get_cluster_configuration():
+    async with LocalCUDACluster(
+        rmm_pool_size="2GB",
+        rmm_maximum_pool_size="3GB",
+        device_memory_limit="30B",
+        CUDA_VISIBLE_DEVICES="0",
+        scheduler_port=0,
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
+            assert ret["jit-unspill"] is False
+            assert ret["device-memory-limit"] == 30
+
+
+@gen_test(timeout=20)
+async def test_worker_fraction_limits():
+    async with LocalCUDACluster(
+        device_memory_limit=0.1,
+        rmm_pool_size=0.2,
+        rmm_maximum_pool_size=0.3,
+        CUDA_VISIBLE_DEVICES="0",
+        scheduler_port=0,
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            device_total_memory = await client.run(get_device_total_memory)
+            _, device_total_memory = device_total_memory.popitem()
+            ret = await get_cluster_configuration(client)
+            assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
+            assert (
+                ret["[plugin] RMMSetup"]["initial_pool_size"]
+                == (device_total_memory * 0.2) // 256 * 256
+            )
+            assert (
+                ret["[plugin] RMMSetup"]["maximum_pool_size"]
+                == (device_total_memory * 0.3) // 256 * 256
+            )
+
+
+def test_print_cluster_config(capsys):
+    pytest.importorskip("rich")
+    with LocalCUDACluster(
+        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
+    ) as cluster:
+        with Client(cluster) as client:
+            print_cluster_config(client)
+            captured = capsys.readouterr()
+            assert "Dask Cluster Configuration" in captured.out
+            assert "ucx" in captured.out
+            assert "1 B" in captured.out
+            assert "[plugin]" in captured.out

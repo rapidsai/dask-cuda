@@ -1,3 +1,5 @@
+.. _controlling-number-of-workers:
+
 Controlling number of workers
 =============================
 
@@ -44,4 +46,4 @@ These UUIDs can then be passed to ``CUDA_VISIBLE_DEVICES`` in place of a GPU ind
 .. code-block:: bash
 
     $ CUDA_VISIBLE_DEVICES="GPU-dae76d0e-3414-958a-8f3e-fc6682b36f31" \
-    > dask-cuda-worker 127.0.0.1:8786    
+    > dask-cuda-worker 127.0.0.1:8786

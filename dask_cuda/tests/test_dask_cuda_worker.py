@@ -10,9 +10,11 @@ import pytest
 
 from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
-from distributed.utils_test import cleanup, loop, popen  # noqa: F401
+from distributed.utils_test import cleanup, loop, loop_in_thread, popen  # noqa: F401
 
 from dask_cuda.utils import (
+    get_cluster_configuration,
+    get_device_total_memory,
     get_gpu_count_mig,
     get_gpu_uuid_from_index,
     get_n_gpus,
@@ -323,3 +325,75 @@ def test_rmm_track_allocations(loop):  # noqa: F811
                 )
                 for v in memory_resource_upstream_type.values():
                     assert v is rmm.mr.PoolMemoryResource
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_get_cluster_configuration(loop):  # noqa: F811
+    pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--device-memory-limit",
+                "30 B",
+                "--rmm-pool-size",
+                "2 GB",
+                "--rmm-maximum-pool-size",
+                "3 GB",
+                "--no-dashboard",
+                "--rmm-track-allocations",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                ret = get_cluster_configuration(client)
+                wait(ret)
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
+                assert ret["jit-unspill"] is False
+                assert ret["device-memory-limit"] == 30
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_worker_fraction_limits(loop):  # noqa: F811
+    pytest.importorskip("rmm")
+    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask-cuda-worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--device-memory-limit",
+                "0.1",
+                "--rmm-pool-size",
+                "0.2",
+                "--rmm-maximum-pool-size",
+                "0.3",
+                "--no-dashboard",
+                "--rmm-track-allocations",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                device_total_memory = client.run(get_device_total_memory)
+                wait(device_total_memory)
+                _, device_total_memory = device_total_memory.popitem()
+
+                ret = get_cluster_configuration(client)
+                wait(ret)
+
+                assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
+                assert (
+                    ret["[plugin] RMMSetup"]["initial_pool_size"]
+                    == (device_total_memory * 0.2) // 256 * 256
+                )
+                assert (
+                    ret["[plugin] RMMSetup"]["maximum_pool_size"]
+                    == (device_total_memory * 0.3) // 256 * 256
+                )
