@@ -40,18 +40,18 @@ def _create_cuda_context():
         )
         ctx = has_cuda_context()
         if (
-            ctx["has-context"]
-            and not distributed.comm.ucx.cuda_context_created["has-context"]
+            ctx.has_context
+            and not distributed.comm.ucx.cuda_context_created.has_context
         ):
             distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
 
         _create_cuda_context_handler()
 
-        if not distributed.comm.ucx.cuda_context_created["has-context"]:
+        if not distributed.comm.ucx.cuda_context_created.has_context:
             ctx = has_cuda_context()
-            if ctx is not False and ctx != cuda_visible_device:
+            if ctx.has_context and ctx.device_info != cuda_visible_device:
                 distributed.comm.ucx._warn_cuda_context_wrong_device(
-                    cuda_visible_device, ctx, os.getpid()
+                    cuda_visible_device, ctx.device_info, os.getpid()
                 )
 
     except Exception:
