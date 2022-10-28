@@ -352,9 +352,7 @@ def shuffle(
     wait(ret)
 
     # Release all temporary dataframes
-    for fut in result_futures.values():
-        fut.release()
-    for fut in dsk.values():
+    for fut in [*result_futures.values(), *dsk.values()]:
         fut.release()
     return ret
 
