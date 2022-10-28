@@ -309,7 +309,6 @@ async def test_cluster_worker():
             await new_worker.close()
 
 
-@patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})
 @gen_test(timeout=20)
 async def test_available_mig_workers():
     uuids = get_gpu_count_mig(return_uuids=True)[1]

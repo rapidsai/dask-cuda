@@ -230,7 +230,6 @@ def test_pre_import_not_found():
         assert b"ModuleNotFoundError: No module named 'my_module'" in ret.stderr
 
 
-@patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})
 def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
     uuids = get_gpu_count_mig(return_uuids=True)[1]
     # test only with some MIG Instances assuming the test bed
