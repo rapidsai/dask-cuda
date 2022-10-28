@@ -332,8 +332,10 @@ async def test_available_mig_workers():
                 result = await client.run(get_visible_devices)
 
                 assert all(len(v.split(",")) == len(uuids) for v in result.values())
-                for i in range(len(uuids)):
-                    assert set(v.split(",")[i] for v in result.values()) == set(uuids)
+                for i in range(len(cluster.workers)):
+                    assert set(v.split(",")[i] for v in result.values()) == set(
+                        uuid.decode("utf-8") for uuid in uuids
+                    )
 
 
 @gen_test(timeout=20)
