@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from unittest.mock import patch
@@ -284,13 +285,17 @@ async def test_pre_import():
 
 
 # Intentionally not using @gen_test to skip cleanup checks
-async def test_pre_import_not_found():
-    with raises_with_cause(RuntimeError, None, ImportError, None):
-        await LocalCUDACluster(
-            n_workers=1,
-            pre_import="my_module",
-            asynchronous=True,
-        )
+def test_pre_import_not_found():
+    async def _test_pre_import_not_found():
+        with raises_with_cause(RuntimeError, None, ImportError, None):
+            await LocalCUDACluster(
+                n_workers=1,
+                pre_import="my_module",
+                asynchronous=True,
+                silence_logs=True,
+            )
+
+    asyncio.run(_test_pre_import_not_found())
 
 
 @gen_test(timeout=20)
