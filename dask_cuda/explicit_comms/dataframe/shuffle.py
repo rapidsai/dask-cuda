@@ -67,7 +67,7 @@ async def local_shuffle(
     in_parts: List[Dict[int, DataFrame]],
     rank_to_out_part_ids: Dict[int, List[int]],
     ignore_index: bool,
-    concat_dfs_of_same_output_partition: bool,
+    concat_dfs_of_same_output_partition: bool = True,
 ) -> Dict[int, List[List[DataFrame]]]:
     """Local shuffle operation of the already grouped/partitioned dataframes
 
@@ -205,55 +205,6 @@ async def all_to_all(
     return ret
 
 
-async def legacy_shuffle(
-    s,
-    in_nparts: Dict[int, int],
-    in_parts: List[Dict[int, DataFrame]],
-    rank_to_out_part_ids: Dict[int, List[int]],
-    ignore_index: bool,
-) -> List[DataFrame]:
-    """Local shuffle operation of the already grouped/partitioned dataframes
-
-    This function is running on each worker participating in the shuffle.
-
-    Parameters
-    ----------
-    s: dict
-        Worker session state
-    in_nparts: dict
-        dict that for each worker rank specifices the
-        number of partitions that worker has of the input dataframe.
-        If the worker doesn't have any partitions, it is excluded from the dict.
-    in_parts: list of dict of dataframes
-        List of dataframe groups that need to be shuffled.
-    rank_to_out_part_ids: dict
-        dict that for each worker rank specifices a list of partition IDs that
-        worker should return. If the worker shouldn't return any partitions,
-        it is excluded from the dict.
-    ignore_index: bool
-        Ignore index during shuffle.  If ``True``, performance may improve,
-        but index values will not be preserved.
-
-    Returns
-    -------
-    partitions: list of DataFrames
-        List of dataframe-partitions
-    """
-
-    rank_to_out_parts_list = await local_shuffle(
-        s, in_parts, rank_to_out_part_ids, ignore_index, True
-    )
-
-    ret = await all_to_all(
-        s,
-        in_nparts,
-        rank_to_out_part_ids,
-        rank_to_out_parts_list,
-        ignore_index,
-    )
-    return ret
-
-
 def shuffle(
     df: DataFrame,
     column_names: str | List[str],
@@ -294,10 +245,11 @@ def shuffle(
     The implementation consist of three steps:
       (a) Extend the dask graph of `df` with a call to `shuffle_group()` for each
           dataframe partition and submit the graph.
-      (b) Submit a task on each worker that shuffle (all-to-all communicate)
-          the groups from (a) and return a list of dataframe-partitions.
-      (c) Submit a dask graph that extract (using `getitem()`) individual
-          dataframe-partitions from (b).
+      (b) Submit a task on each worker that do a local shuffle.
+      (c) Submit a task on each worker that shuffle (all-to-all communicate)
+          the groups from (b) and return a list of dataframe-partitions.
+      (d) Submit a dask graph that extract (using `getitem()`) individual
+          dataframe-partitions from (c).
     """
     c = comms.default_comms()
 
@@ -338,7 +290,7 @@ def shuffle(
 
     # Step (b): find out which workers has what part of `df_groups`,
     #           find the number of output each worker should have,
-    #           and submit `legacy_shuffle()` on each worker.
+    #           and submit `local_shuffle()` on each worker.
     key_to_part = {str(part.key): part for part in df_groups}
     in_parts = defaultdict(list)  # Map worker -> [list of futures]
     for key, workers in c.client.who_has(df_groups).items():
@@ -363,25 +315,41 @@ def shuffle(
     for rank, i in zip(workers_sorted, range(div * len(workers), npartitions)):
         rank_to_out_part_ids[rank].append(i)
 
-    # Run `legacy_shuffle()` on each worker
-    result_futures = {}
+    # Run `local_shuffle()` on each worker
+    local_shuffle_result = {}
     for rank, worker in enumerate(c.worker_addresses):
         if rank in workers:
-            result_futures[rank] = c.submit(
+            local_shuffle_result[rank] = c.submit(
                 worker,
-                legacy_shuffle,
-                in_nparts,
+                local_shuffle,
                 in_parts[worker],
                 rank_to_out_part_ids,
                 ignore_index,
             )
-    wait(list(result_futures.values()))
+    wait(list(local_shuffle_result.values()))
 
     # Release dataframes from step (a)
+    del in_parts
     for fut in df_groups:
         fut.release()
 
-    # Step (c): extract individual dataframe-partitions. We use `submit()`
+    # Step (c): all-to-all communicate the result from step (a).
+    all_to_all_result = {}
+    for rank, worker in enumerate(c.worker_addresses):
+        if rank in local_shuffle_result:
+            all_to_all_result[rank] = c.submit(
+                worker,
+                all_to_all,
+                in_nparts,
+                rank_to_out_part_ids,
+                local_shuffle_result[rank],
+                ignore_index,
+            )
+    wait(list(all_to_all_result.values()))
+    for fut in local_shuffle_result.values():
+        fut.release()
+
+    # Step (d): extract individual dataframe-partitions. We use `submit()`
     #           to control where the tasks are executed.
     # TODO: can we do this without using `submit()` to avoid the overhead
     #       of creating a Future for each dataframe partition?
@@ -391,7 +359,7 @@ def shuffle(
         if rank in workers:
             for i, part_id in enumerate(rank_to_out_part_ids[rank]):
                 dsk[(name, part_id)] = c.client.submit(
-                    getitem, result_futures[rank], i, workers=[worker]
+                    getitem, all_to_all_result[rank], i, workers=[worker]
                 )
 
     # Get the meta from the first output partition
@@ -403,7 +371,7 @@ def shuffle(
     wait(ret)
 
     # Release all temporary dataframes
-    for fut in [*result_futures.values(), *dsk.values()]:
+    for fut in [*all_to_all_result.values(), *dsk.values()]:
         fut.release()
     return ret
 
