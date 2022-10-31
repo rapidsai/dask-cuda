@@ -5,9 +5,7 @@ import functools
 import inspect
 from collections import defaultdict
 from operator import getitem
-from typing import Dict, List, Optional
-
-from toolz import first
+from typing import Callable, Dict, List, Optional
 
 import dask
 import dask.dataframe
@@ -19,8 +17,24 @@ from dask.delayed import delayed
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 
-from ...proxify_host_file import ProxyManager
 from .. import comms
+
+
+def get_concat(df: DataFrame) -> Callable:
+    """Infer concatenate function to use"""
+
+    try:
+        manager = df._pxy_get().manager
+        manager.proxify  # Raises if manager is disabled
+    except AttributeError:
+        return dd_concat
+
+    def concat(args, ignore_index=False):
+        if len(args) < 2:
+            return args[0]
+        return manager.proxify(dd_concat(args, ignore_index=ignore_index))[0]
+
+    return concat
 
 
 async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
@@ -53,7 +67,6 @@ def sort_in_parts(
     rank_to_out_part_ids: Dict[int, List[int]],
     ignore_index: bool,
     concat_dfs_of_same_output_partition: bool,
-    concat,
 ) -> Dict[int, List[List[DataFrame]]]:
     """Sort the list of grouped dataframes in `in_parts`
 
@@ -85,6 +98,7 @@ def sort_in_parts(
     rank_to_out_parts_list: dict of list of list of DataFrames
         Dict that maps each worker rank to its output partitions.
     """
+    concat = get_concat(next(iter(in_parts[0].values())))
 
     out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
     for bins in in_parts:
@@ -148,28 +162,11 @@ async def local_shuffle(
     myrank = s["rank"]
     eps = s["eps"]
 
-    try:
-        manager = first(iter(in_parts[0].values()))._pxy_get().manager
-    except AttributeError:
-        manager = None
-
-    if isinstance(manager, ProxyManager):
-
-        def concat(args, ignore_index=False):
-            if len(args) < 2:
-                return args[0]
-
-            return manager.proxify(dd_concat(args, ignore_index=ignore_index))[0]
-
-    else:
-        concat = dd_concat
-
     rank_to_out_parts_list = sort_in_parts(
         in_parts,
         rank_to_out_part_ids,
         ignore_index,
         concat_dfs_of_same_output_partition=True,
-        concat=concat,
     )
 
     # Communicate all the dataframe-partitions all-to-all. The result is
@@ -188,6 +185,7 @@ async def local_shuffle(
     assert len(rank_to_out_parts_list) == 1
 
     # Concatenate the received dataframes into the final output partitions
+    concat = None
     ret = []
     for i in range(len(rank_to_out_part_ids[myrank])):
         dfs = []
@@ -197,6 +195,8 @@ async def local_shuffle(
         dfs.extend(rank_to_out_parts_list[myrank][i])
         rank_to_out_parts_list[myrank][i] = None  # type: ignore
         if len(dfs) > 1:
+            if concat is None:
+                concat = get_concat(dfs[0])
             ret.append(concat(dfs, ignore_index=ignore_index))
         else:
             ret.append(dfs[0])
@@ -292,7 +292,7 @@ def shuffle(
     in_parts = defaultdict(list)  # Map worker -> [list of futures]
     for key, workers in c.client.who_has(df_groups).items():
         # Note, if multiple workers have the part, we pick the first worker
-        in_parts[first(workers)].append(key_to_part[key])
+        in_parts[next(iter(workers))].append(key_to_part[key])
 
     # Let's create a dict that specifices the number of partitions each worker has
     in_nparts = {}
