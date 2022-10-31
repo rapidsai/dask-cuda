@@ -113,13 +113,11 @@ async def local_shuffle(
     for bins in in_parts:
         for k, v in bins.items():
             out_part_id_to_dataframes[k].append(v)
-        del bins
 
     # Create mapping: rank -> list of [list of dataframes]
     rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
     for rank, part_ids in rank_to_out_part_ids.items():
         rank_to_out_parts_list[rank] = [out_part_id_to_dataframes[i] for i in part_ids]
-    del out_part_id_to_dataframes
 
     # Concatenate all dataframes of the same output partition.
     if concat_dfs_of_same_output_partition:
@@ -141,7 +139,7 @@ async def all_to_all(
     rank_to_out_parts_list: Dict[int, List[List[DataFrame]]],
     ignore_index: bool,
 ) -> List[DataFrame]:
-    """Local shuffle operation of the already grouped/partitioned dataframes
+    """All-to-all communicate the dataframes returned from `local_shuffle()`
 
     This function is running on each worker participating in the shuffle.
 
