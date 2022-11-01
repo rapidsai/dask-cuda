@@ -68,18 +68,6 @@ gpuci_mamba_retry install "cudf=${MINOR_VERSION}" \
               "cucim" \
               "pytest-asyncio=<0.14.0"
 
-# Install latest nightly version for dask and distributed if needed
-if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
-  gpuci_logger "Installing dask and distributed from dask nightly channel"
-  gpuci_mamba_retry install -c dask/label/dev \
-    "dask/label/dev::dask" \
-    "dask/label/dev::distributed"
-else
-  gpuci_logger "gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall"
-  gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall
-  conda config --system --remove channels dask/label/dev
-fi
-
 
 gpuci_logger "Check versions"
 python --version
@@ -102,6 +90,21 @@ cd "${WORKSPACE}"
 CONDA_BLD_DIR="${WORKSPACE}/.conda-bld"
 gpuci_conda_retry mambabuild --croot "${CONDA_BLD_DIR}" conda/recipes/dask-cuda --python="${PYTHON}"
 gpuci_mamba_retry install -c "${CONDA_BLD_DIR}" dask-cuda
+
+################################################################################
+# DASK - Install latest nightly version for dask and distributed if needed.
+#        Done after everything else to ensure packages are not downgraded.
+################################################################################
+if [[ "${INSTALL_DASK_MAIN}" == 1 ]]; then
+  gpuci_logger "Installing dask and distributed from dask nightly channel"
+  gpuci_mamba_retry install -c dask/label/dev \
+    "dask/label/dev::dask" \
+    "dask/label/dev::distributed"
+else
+  gpuci_logger "gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall"
+  gpuci_mamba_retry install conda-forge::dask==${DASK_STABLE_VERSION} conda-forge::distributed==${DASK_STABLE_VERSION} conda-forge::dask-core==${DASK_STABLE_VERSION} --force-reinstall
+  conda config --system --remove channels dask/label/dev
+fi
 
 ################################################################################
 # TEST - Run pytests for ucx-py
