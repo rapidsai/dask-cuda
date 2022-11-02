@@ -19,8 +19,6 @@ from dask.utils import format_bytes, parse_bytes
 from distributed import Worker, wait
 from distributed.comm import parse_address
 
-from .proxify_host_file import ProxifyHostFile
-
 try:
     from nvtx import annotate as nvtx_annotate
 except ImportError:
@@ -676,6 +674,8 @@ def get_gpu_uuid_from_index(device_index=0):
 
 
 def get_worker_config(dask_worker):
+    from .proxify_host_file import ProxifyHostFile
+
     # assume homogenous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
