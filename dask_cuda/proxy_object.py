@@ -35,6 +35,7 @@ except ImportError:
 
 from .disk_io import SpillToDiskFile
 from .is_device_object import is_device_object
+from .utils import nvtx_annotate
 
 if TYPE_CHECKING:
     from .proxify_host_file import ProxyManager
@@ -285,6 +286,7 @@ class ProxyDetail:
         self.serializer = header["serializer"]
         return self.obj
 
+    @nvtx_annotate("JIT_UNSPILL", color="green", domain="dask_cuda")
     def deserialize(self, maybe_evict: bool = True, nbytes=None):
         """Inplace deserialization of the proxied object
 

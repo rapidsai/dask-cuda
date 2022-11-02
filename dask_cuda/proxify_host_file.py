@@ -42,6 +42,7 @@ from .disk_io import SpillToDiskProperties, disk_read, disk_write
 from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
+from .utils import nvtx_annotate
 
 T = TypeVar("T")
 
@@ -393,6 +394,7 @@ class ProxyManager:
                 serializer(p)
         return freed_memory
 
+    @nvtx_annotate("JIT_SPILL_DEVICE_TO_HOST", color="red", domain="dask_cuda")
     def maybe_evict_from_device(self, extra_dev_mem=0) -> None:
         """Evict buffers until total memory usage is below device-memory-limit
 
@@ -409,6 +411,7 @@ class ProxyManager:
                 serializer=lambda p: p._pxy_serialize(serializers=("dask", "pickle")),
             )
 
+    @nvtx_annotate("JIT_SPILL_HOST_TO_DISK", color="red", domain="dask_cuda")
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         """Evict buffers until total memory usage is below host-memory-limit
 
