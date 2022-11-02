@@ -3,10 +3,11 @@ import concurrent.futures
 import contextlib
 import time
 import uuid
-from typing import List, Optional
+from typing import Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
-from distributed import Client, default_client, get_worker
+from dask.utils import stringify
+from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 _default_comms = None
@@ -147,6 +148,20 @@ async def _stop_ucp_listeners(session_state):
     del session_state["lf"]
 
 
+async def _stage_keys(session_state: dict, name: str, keys: set):
+    worker: Worker = session_state["worker"]
+    data = worker.data
+    my_keys = keys.intersection(data)
+
+    stages = session_state.get("stages", {})
+    stage = stages.get(name, {})
+    for k in my_keys:
+        stage[k] = data[k]
+    stages[name] = stage
+    session_state["stages"] = stages
+    return (session_state["rank"], my_keys)
+
+
 class CommsContext:
     """Communication handler for explicit communication
 
@@ -260,3 +275,22 @@ class CommsContext:
                     )
                 )
             return self.client.gather(ret)
+
+    def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
+        """Staging keys on workers
+
+        Parameters
+        ----------
+        name: str
+            Name for the staging
+        keys: iterable
+            The keys to stage
+
+        Returns
+        -------
+        dict
+            dict that maps each worker-rank to the workers set of staged keys
+        """
+        key_set = {stringify(k) for k in keys}
+        rank_keys_pairs = self.run(_stage_keys, name, key_set)
+        return {r: k for r, k in rank_keys_pairs}
