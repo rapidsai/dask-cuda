@@ -53,6 +53,57 @@ def get_proxify(worker):
     return lambda x: x  # no-op
 
 
+def multi_shuffle_group(
+    dfs: Dict[str, DataFrame],
+    rank_to_out_part_ids: Dict[int, List[int]],
+    column_names,
+    npartitions,
+    ignore_index,
+    proxify,
+) -> Dict[int, List[List[DataFrame]]]:
+
+    # Hash into groups
+    df_groups = []
+    while dfs:
+        df_groups.append(
+            proxify(
+                shuffle_group(
+                    dfs.popitem()[1],  # pop dataframe in any order
+                    column_names,
+                    0,
+                    npartitions,
+                    npartitions,
+                    ignore_index,
+                    npartitions,
+                )
+            )
+        )
+    out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
+    for group in df_groups:
+        for k, v in group.items():
+            out_part_id_to_dataframes[k].append(v)
+    del df_groups
+
+    # Create mapping: rank -> list of [list of dataframes]
+    rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
+    for rank, part_ids in rank_to_out_part_ids.items():
+        rank_to_out_parts_list[rank] = [out_part_id_to_dataframes[i] for i in part_ids]
+    del out_part_id_to_dataframes
+
+    # Concatenate all dataframes of the same output partition.
+    for rank in rank_to_out_part_ids.keys():
+        for i in range(len(rank_to_out_parts_list[rank])):
+            if len(rank_to_out_parts_list[rank][i]) > 1:
+                rank_to_out_parts_list[rank][i] = [
+                    proxify(
+                        dd_concat(
+                            rank_to_out_parts_list[rank][i], ignore_index=ignore_index
+                        )
+                    )
+                ]
+    return rank_to_out_parts_list
+
+
 async def shuffle_task(
     s,
     stage_name,
@@ -99,45 +150,14 @@ async def shuffle_task(
     stage: dict = s["stages"].pop(stage_name)
     assert stage.keys() == rank_to_inkeys[myrank]
 
-    # Hash into groups
-    df_groups = []
-    while stage:
-        df_groups.append(
-            proxify(
-                shuffle_group(
-                    stage.popitem()[1],  # pop dataframe in any order
-                    column_names,
-                    0,
-                    npartitions,
-                    npartitions,
-                    ignore_index,
-                    npartitions,
-                )
-            )
-        )
-    out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
-    for group in df_groups:
-        for k, v in group.items():
-            out_part_id_to_dataframes[k].append(v)
-    del df_groups
-
-    # Create mapping: rank -> list of [list of dataframes]
-    rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
-    for rank, part_ids in rank_to_out_part_ids.items():
-        rank_to_out_parts_list[rank] = [out_part_id_to_dataframes[i] for i in part_ids]
-    del out_part_id_to_dataframes
-
-    # Concatenate all dataframes of the same output partition.
-    for rank in rank_to_out_part_ids.keys():
-        for i in range(len(rank_to_out_parts_list[rank])):
-            if len(rank_to_out_parts_list[rank][i]) > 1:
-                rank_to_out_parts_list[rank][i] = [
-                    proxify(
-                        dd_concat(
-                            rank_to_out_parts_list[rank][i], ignore_index=ignore_index
-                        )
-                    )
-                ]
+    rank_to_out_parts_list = multi_shuffle_group(
+        dfs=stage,
+        rank_to_out_part_ids=rank_to_out_part_ids,
+        column_names=column_names,
+        npartitions=npartitions,
+        ignore_index=ignore_index,
+        proxify=proxify,
+    )
 
     # Communicate all the dataframe-partitions all-to-all. The result is
     # `out_parts_list` that for each worker and for each output partition
