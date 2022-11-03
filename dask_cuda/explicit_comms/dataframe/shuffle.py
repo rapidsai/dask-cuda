@@ -7,11 +7,13 @@ from collections import defaultdict
 from operator import getitem
 from typing import Dict, List, Optional
 
+import numpy
+
 import dask
 import dask.dataframe
 from dask.base import tokenize
 from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
-from dask.dataframe.shuffle import shuffle_group
+from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from dask.dataframe.utils import make_meta
 from dask.delayed import delayed
 from distributed import wait
@@ -53,6 +55,18 @@ def get_proxify(worker):
     return lambda x: x  # no-op
 
 
+def single_shuffle_group(df, column_names, npartitions, ignore_index):
+    if column_names[0] == "_partitions":
+        ind = df[column_names[0]]
+    else:
+        ind = hash_object_dispatch(
+            df[column_names] if column_names else df, index=False
+        )
+    typ = numpy.min_scalar_type(npartitions * 2)
+    ind = (ind % npartitions).astype(typ, copy=False)
+    return group_split_dispatch(df, ind, npartitions, ignore_index=ignore_index)
+
+
 def multi_shuffle_group(
     dfs: Dict[str, DataFrame],
     rank_to_out_part_ids: Dict[int, List[int]],
@@ -67,14 +81,11 @@ def multi_shuffle_group(
     while dfs:
         df_groups.append(
             proxify(
-                shuffle_group(
+                single_shuffle_group(
                     dfs.popitem()[1],  # pop dataframe in any order
                     column_names,
-                    0,
-                    npartitions,
                     npartitions,
                     ignore_index,
-                    npartitions,
                 )
             )
         )
