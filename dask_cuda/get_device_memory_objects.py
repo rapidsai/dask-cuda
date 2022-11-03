@@ -51,8 +51,9 @@ def get_device_memory_objects_default(obj):
         return dispatch(obj._pxy_get().obj)
     if hasattr(obj, "data"):
         return dispatch(obj.data)
-    if hasattr(obj, "_owner") and obj._owner is not None:
-        return dispatch(obj._owner)
+    owner = getattr(obj, "owner", None) or getattr(obj, "_owner", None)
+    if owner:
+        return dispatch(owner)
     if hasattr(obj, "__cuda_array_interface__"):
         return [obj]
     return []

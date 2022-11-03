@@ -273,7 +273,7 @@ def test_dataframes_share_dev_mem():
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
     assert view1["a"].data is not view2["a"].data
     # They still share the same underlying device memory
-    assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
+    view1["a"].data.ptr == view2["a"].data.ptr
 
     dhf = ProxifyHostFile(
         local_directory=root_dir, device_memory_limit=160, memory_limit=1000
