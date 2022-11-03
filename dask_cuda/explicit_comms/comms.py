@@ -292,5 +292,4 @@ class CommsContext:
             dict that maps each worker-rank to the workers set of staged keys
         """
         key_set = {stringify(k) for k in keys}
-        rank_keys_pairs = self.run(_stage_keys, name, key_set)
-        return {r: k for r, k in rank_keys_pairs}
+        return dict(self.run(_stage_keys, name, key_set))

@@ -97,7 +97,7 @@ async def shuffle_task(
     myrank = s["rank"]
     eps = s["eps"]
     stage: dict = s["stages"].pop(stage_name)
-    assert set(stage.keys()) == rank_to_inkeys[myrank]
+    assert stage.keys() == rank_to_inkeys[myrank]
 
     # Hash into groups
     df_groups = []
