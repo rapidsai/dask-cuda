@@ -5,14 +5,14 @@ import functools
 import inspect
 from collections import defaultdict
 from operator import getitem
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy
 
 import dask
 import dask.dataframe
 from dask.base import tokenize
-from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
+from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from dask.dataframe.utils import make_meta
 from dask.delayed import delayed
@@ -55,7 +55,7 @@ def get_proxify(worker):
     return lambda x: x  # no-op
 
 
-def single_shuffle_group(df, column_names, npartitions, ignore_index):
+def compute_map_index(df: Any, column_names, npartitions) -> Series:
     if column_names[0] == "_partitions":
         ind = df[column_names[0]]
     else:
@@ -63,8 +63,12 @@ def single_shuffle_group(df, column_names, npartitions, ignore_index):
             df[column_names] if column_names else df, index=False
         )
     typ = numpy.min_scalar_type(npartitions * 2)
-    ind = (ind % npartitions).astype(typ, copy=False)
-    return group_split_dispatch(df, ind, npartitions, ignore_index=ignore_index)
+    return (ind % npartitions).astype(typ, copy=False)
+
+
+def single_shuffle_group(df: DataFrame, column_names, npartitions, ignore_index):
+    map_index = compute_map_index(df, column_names, npartitions)
+    return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
 
 
 def multi_shuffle_group(
