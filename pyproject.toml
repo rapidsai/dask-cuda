@@ -42,3 +42,11 @@ packages = ["dask_cuda"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = "requirements.txt"}
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "dask_cuda/_version.py"
+versionfile_build = "dask_cuda/_version.py"
+tag_prefix = "v"
+parentdir_prefix = "dask_cuda-"
