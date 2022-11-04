@@ -21,6 +21,7 @@ requirements:
   host:
     - python
     - setuptools
+    - tomli
   run:
     - python
     {% for r in data.get("install_requires", []) %}
