@@ -35,6 +35,51 @@ dask-config = "dask_cuda.cli.dask_config:go"
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
 
+[tool.isort]
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+order_by_type = true
+known_dask = [
+    "dask",
+    "distributed",
+]
+known_rapids = [
+    "rmm",
+    "cuml",
+    "cugraph",
+    "dask_cudf",
+    "cudf",
+    "ucp",
+]
+known_first_party = [
+    "dask_cuda",
+]
+default_section = "THIRDPARTY"
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "DASK",
+    "RAPIDS",
+    "FIRSTPARTY",
+    "LOCALFOLDER",
+]
+skip = [
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+    "__init__.py",
+    "versioneer.py",
+]
+
 [tool.setuptools]
 license-files = ["LICENSE"]
 package-dir = {"" = "."}
