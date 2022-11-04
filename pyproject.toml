@@ -35,6 +35,11 @@ dask-config = "dask_cuda.cli.dask_config:go"
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
 
+[tool.coverage.run]
+disable_warnings = "include-ignored"
+include = "dask_cuda/*"
+omit = "dask_cuda/tests/*"
+
 [tool.isort]
 line_length = 88
 multi_line_output = 3
