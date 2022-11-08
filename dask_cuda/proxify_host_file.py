@@ -11,6 +11,7 @@ import traceback
 import warnings
 import weakref
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import (
     Any,
     Callable,
@@ -19,7 +20,6 @@ from typing import (
     Hashable,
     Iterable,
     List,
-    MutableMapping,
     Optional,
     Set,
     Tuple,
