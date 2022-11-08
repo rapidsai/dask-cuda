@@ -235,7 +235,7 @@ class DeviceHostFile(ZictBase):
         # For Worker compatibility only, where `fast` is host memory buffer
         self.fast = self.host_buffer if memory_limit is None else self.host_buffer.fast
 
-    if sys.version_info > (3, 8):
+    if sys.version_info < (3, 9):
 
         def __new__(
             cls,
