@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import sys
 import time
 
 import numpy
@@ -233,6 +234,34 @@ class DeviceHostFile(ZictBase):
 
         # For Worker compatibility only, where `fast` is host memory buffer
         self.fast = self.host_buffer if memory_limit is None else self.host_buffer.fast
+
+    if sys.version_info > (3, 8):
+
+        def __new__(
+            cls,
+            # So named such that dask will pass in the worker's local
+            # directory when constructing this through the "data" callback.
+            worker_local_directory,
+            *,
+            device_memory_limit=None,
+            memory_limit=None,
+            log_spilling=False,
+        ):
+            """
+            This is here to support Python 3.8. Right now (to support
+            3.8), ZictBase inherits from typing.MutableMapping through
+            which inspect.signature determines that the signature of
+            __init__ is just (*args, **kwargs). We need to advertise the
+            correct signature so that distributed will correctly figure
+            out that it needs to pass the worker's local directory. In
+            Python 3.9 and later, typing.MutableMapping is just an alias
+            for collections.abc.MutableMapping and we don't need to do
+            anything.
+
+            With this pass-through definition of __new__, the
+            signature of the constructor is correctly determined.
+            """
+            return super().__new__(cls)
 
     def __setitem__(self, key, value):
         if key in self.device_buffer:
