@@ -1,13 +1,13 @@
 import functools
 import logging
 import os
+import sys
 import time
 
 import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 
-import dask
 from distributed.protocol import (
     dask_deserialize,
     dask_serialize,
@@ -158,6 +158,8 @@ class DeviceHostFile(ZictBase):
 
     Parameters
     ----------
+    worker_local_directory: path
+        Path where to store serialized objects on disk
     device_memory_limit: int
         Number of bytes of CUDA device memory for device LRU cache,
         spills to host cache once filled.
@@ -165,8 +167,6 @@ class DeviceHostFile(ZictBase):
         Number of bytes of host memory for host LRU cache, spills to
         disk once filled. Setting this to `0` or `None` means unlimited
         host memory, implies no spilling to disk.
-    local_directory: path
-        Path where to store serialized objects on disk
     log_spilling: bool
         If True, all spilling operations will be logged directly to
         distributed.worker with an INFO loglevel. This will eventually be
@@ -175,16 +175,15 @@ class DeviceHostFile(ZictBase):
 
     def __init__(
         self,
+        # So named such that dask will pass in the worker's local
+        # directory when constructing this through the "data" callback.
+        worker_local_directory,
+        *,
         device_memory_limit=None,
         memory_limit=None,
-        local_directory=None,
         log_spilling=False,
     ):
-        self.disk_func_path = os.path.join(
-            local_directory or dask.config.get("temporary-directory") or os.getcwd(),
-            "dask-worker-space",
-            "storage",
-        )
+        self.disk_func_path = os.path.join(worker_local_directory, "storage")
         os.makedirs(self.disk_func_path, exist_ok=True)
 
         if memory_limit == 0:
@@ -235,6 +234,34 @@ class DeviceHostFile(ZictBase):
 
         # For Worker compatibility only, where `fast` is host memory buffer
         self.fast = self.host_buffer if memory_limit is None else self.host_buffer.fast
+
+    if sys.version_info > (3, 8):
+
+        def __new__(
+            cls,
+            # So named such that dask will pass in the worker's local
+            # directory when constructing this through the "data" callback.
+            worker_local_directory,
+            *,
+            device_memory_limit=None,
+            memory_limit=None,
+            log_spilling=False,
+        ):
+            """
+            This is here to support Python 3.8. Right now (to support
+            3.8), ZictBase inherits from typing.MutableMapping through
+            which inspect.signature determines that the signature of
+            __init__ is just (*args, **kwargs). We need to advertise the
+            correct signature so that distributed will correctly figure
+            out that it needs to pass the worker's local directory. In
+            Python 3.9 and later, typing.MutableMapping is just an alias
+            for collections.abc.MutableMapping and we don't need to do
+            anything.
+
+            With this pass-through definition of __new__, the
+            signature of the constructor is correctly determined.
+            """
+            return super().__new__(cls)
 
     def __setitem__(self, key, value):
         if key in self.device_buffer:
