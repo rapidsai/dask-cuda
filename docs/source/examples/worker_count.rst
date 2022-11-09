@@ -1,3 +1,5 @@
+.. _controlling-number-of-workers:
+
 Controlling number of workers
 =============================
 
