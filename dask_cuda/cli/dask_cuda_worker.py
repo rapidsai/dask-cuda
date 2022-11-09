@@ -21,7 +21,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
 @click.group
 def cuda():
-    """GPU specific subcommands."""
+    """GPU subcommands."""
 
 
 @cuda.command(name="worker", context_settings=dict(ignore_unknown_options=True))
