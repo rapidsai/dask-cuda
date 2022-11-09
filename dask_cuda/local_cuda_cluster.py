@@ -3,7 +3,6 @@ import os
 import warnings
 
 import dask
-from dask.utils import parse_bytes
 from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
@@ -100,18 +99,19 @@ class LocalCUDACluster(LocalCluster):
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``protocol="ucx"`` and ``enable_infiniband=True``.
     rmm_pool_size : int, str or None, default None
-        RMM pool size to initialize each worker with. Can be an integer (bytes), string
-        (like ``"5GB"`` or ``"5000M"``), or ``None`` to disable RMM pools.
+        RMM pool size to initialize each worker with. Can be an integer (bytes), float
+        (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``), or
+        ``None`` to disable RMM pools.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
     rmm_maximum_pool_size : int, str or None, default None
         When ``rmm_pool_size`` is set, this argument indicates
         the maximum pool size.
-        Can be an integer (bytes), string (like ``"5GB"`` or ``"5000M"``) or ``None``.
-        By default, the total available memory on the GPU is used.
-        ``rmm_pool_size`` must be specified to use RMM pool and
-        to set the maximum pool size.
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``) or ``None``. By default, the total available
+        memory on the GPU is used. ``rmm_pool_size`` must be specified to use RMM pool
+        and to set the maximum pool size.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.
@@ -256,10 +256,6 @@ class LocalCUDACluster(LocalCluster):
                     "RMM pool and managed memory are incompatible with asynchronous "
                     "allocator"
                 )
-            if self.rmm_pool_size is not None:
-                self.rmm_pool_size = parse_bytes(self.rmm_pool_size)
-                if self.rmm_maximum_pool_size is not None:
-                    self.rmm_maximum_pool_size = parse_bytes(self.rmm_maximum_pool_size)
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -293,7 +289,6 @@ class LocalCUDACluster(LocalCluster):
                     {
                         "device_memory_limit": self.device_memory_limit,
                         "memory_limit": self.memory_limit,
-                        "local_directory": local_directory,
                         "shared_filesystem": shared_filesystem,
                     },
                 )
@@ -303,7 +298,6 @@ class LocalCUDACluster(LocalCluster):
                     {
                         "device_memory_limit": self.device_memory_limit,
                         "memory_limit": self.memory_limit,
-                        "local_directory": local_directory,
                         "log_spilling": log_spilling,
                     },
                 )

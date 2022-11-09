@@ -12,6 +12,7 @@ from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -148,8 +149,11 @@ def bench_once(client, args, write_profile=None):
 
     with ctx:
         rng = start_range(message=args.operation, color="purple")
+        result = func(*func_args)
+        if args.backend == "dask-noop":
+            result = as_noop(result)
         t1 = clock()
-        wait(client.persist(func(*func_args)))
+        wait(client.persist(result))
         if args.type == "gpu":
             client.run(lambda xp: xp.cuda.Device().synchronize(), xp)
         took = clock() - t1
@@ -169,6 +173,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
         print("```")
     print("Roundtrip benchmark")
     print_separator(separator="-")
+    print_key_value(key="Backend", value=f"{args.backend}")
     print_key_value(key="Operation", value=f"{args.operation}")
     print_key_value(key="Array type", value="cupy" if args.type == "gpu" else "numpy")
     print_key_value(key="User size", value=f"{args.size}")
@@ -206,6 +211,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
 def create_tidy_results(args, p2p_bw, results):
     configuration = {
         "operation": args.operation,
+        "backend": args.backend,
         "array_type": "cupy" if args.type == "gpu" else "numpy",
         "user_size": args.size,
         "user_second_size": args.second_size,
@@ -303,6 +309,16 @@ def parse_args():
             "default": 3,
             "type": int,
             "help": "Number of runs (default 3).",
+        },
+        {
+            "name": [
+                "-b",
+                "--backend",
+            ],
+            "choices": ["dask", "dask-noop"],
+            "default": "dask",
+            "type": str,
+            "help": "Compute backend to use.",
         },
     ]
 

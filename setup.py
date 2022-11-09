@@ -58,6 +58,7 @@ setup(
     entry_points="""
         [console_scripts]
         dask-cuda-worker=dask_cuda.cli.dask_cuda_worker:go
+        dask-config=dask_cuda.cli.dask_config:go
         [dask_cli]
         cuda=dask_cuda.cli.dask_cuda_worker:cuda
       """,
