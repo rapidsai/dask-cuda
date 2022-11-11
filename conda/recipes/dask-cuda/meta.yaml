@@ -2,7 +2,7 @@
 
 # Usage:
 #   conda build -c conda-forge .
-{% set data = load_setup_py_data() %}
+{% set data = load_file_data("pyproject.toml") %}
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set py_version=environ.get('CONDA_PY', 36) %}
@@ -17,8 +17,8 @@ build:
   number: {{ GIT_DESCRIBE_NUMBER }}
   string: py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   entry_points:
-    {% for e in data.get("entry_points", {}).get("console_scripts", []) %}
-    - {{ e }}
+    {% for e in data.get("project", {}).get("scripts", {}).items() %}
+    - {{ e|join(" = ") }}
     {% endfor %}
 
 requirements:
@@ -28,7 +28,7 @@ requirements:
     - tomli
   run:
     - python
-    {% for r in data.get("install_requires", []) %}
+    {% for r in data.get("project", {}).get("dependencies", []) %}
     - {{ r }}
     {% endfor %}
 
