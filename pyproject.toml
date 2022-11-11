@@ -114,7 +114,14 @@ filterwarnings = [
 
 [tool.setuptools]
 license-files = ["LICENSE"]
-packages = ["dask_cuda"]
+
+[tool.setuptools.packages.find]
+exclude = [
+    "docs",
+    "tests",
+    "docs.*",
+    "tests.*",
+]
 
 [tool.versioneer]
 VCS = "git"
