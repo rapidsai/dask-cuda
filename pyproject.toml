@@ -39,6 +39,14 @@ classifiers=[
 dask-cuda-worker = "dask_cuda.cli.dask_cuda_worker:go"
 dask-config = "dask_cuda.cli.dask_config:go"
 
+[project.optional-dependencies]
+docs = [
+    "numpydoc",
+    "sphinx",
+    "sphinx-click",
+    "sphinx-rtd-theme",
+]
+
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
 
