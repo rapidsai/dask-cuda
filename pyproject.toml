@@ -98,7 +98,6 @@ filterwarnings = [
 
 [tool.setuptools]
 license-files = ["LICENSE"]
-package-dir = {"" = "."}
 packages = ["dask_cuda"]
 
 [tool.setuptools.dynamic]
