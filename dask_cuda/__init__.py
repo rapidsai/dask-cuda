@@ -31,7 +31,3 @@ dask.dataframe.shuffle.shuffle_group = proxify_decorator(
     dask.dataframe.shuffle.shuffle_group
 )
 dask.dataframe.core._concat = unproxify_decorator(dask.dataframe.core._concat)
-
-from . import _version
-
-__version__ = _version.get_versions()["version"]

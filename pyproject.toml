@@ -1,8 +1,9 @@
 [build-system]
-build-backend = "setuptools.build_meta:__legacy__"
+build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=64.0.0",
     "tomli  ; python_version < '3.11'",
+    "versioneer>=0.24",
 ]
 
 [project]

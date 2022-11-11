@@ -1,5 +1,5 @@
 [flake8]
-exclude = docs, __init__.py, versioneer.py
+exclude = docs, __init__.py
 max-line-length = 88
 ignore =
     # Assigning lambda expression

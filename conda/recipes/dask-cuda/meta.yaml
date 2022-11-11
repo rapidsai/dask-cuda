@@ -26,6 +26,7 @@ requirements:
     - python
     - pip
     - tomli
+    - versioneer >=0.24
   run:
     - python
     {% for r in data.get("project", {}).get("dependencies", []) %}
