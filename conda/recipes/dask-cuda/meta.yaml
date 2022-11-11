@@ -17,7 +17,7 @@ source:
   git_url: ../../..
 
 build:
-  number: {{ number }}
+  number: {{ number or 0 }}
   string: py{{ py_version }}_{{ git_hash }}_{{ number }}
   entry_points:
     {% for e in data.get("project", {}).get("scripts", {}).items() %}
