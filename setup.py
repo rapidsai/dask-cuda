@@ -55,9 +55,10 @@ setup(
     packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
     python_requires=">=3.8",
     install_requires=open("requirements.txt").read().strip().split("\n"),
-    entry_points="""
-        [console_scripts]
-        dask-cuda-worker=dask_cuda.cli.dask_cuda_worker:go
-        dask-config=dask_cuda.cli.dask_config:go
-      """,
+    entry_points={
+        "console_scripts": [
+            "dask-cuda-worker = dask_cuda.cli.dask_cuda_worker:go",
+            "dask-config = dask_cuda.cli.dask_config:go",
+        ],
+      },
 )
