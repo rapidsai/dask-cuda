@@ -2,12 +2,12 @@
 
 # Usage:
 #   conda build -c conda-forge .
+{% set data = load_file_data("pyproject.toml") %}
+
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set number = environ.get('GIT_DESCRIBE_NUMBER', 0) %}
 {% set py_version = environ.get('CONDA_PY', 36) %}
 {% set git_hash = environ.get('GIT_DESCRIBE_HASH', '') %}
-
-{% set data = load_file_data("pyproject.toml") %}
 
 package:
   name: dask-cuda
