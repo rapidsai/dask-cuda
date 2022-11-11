@@ -116,9 +116,6 @@ filterwarnings = [
 license-files = ["LICENSE"]
 packages = ["dask_cuda"]
 
-[tool.setuptools.dynamic]
-dependencies = {file = "requirements.txt"}
-
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
