@@ -19,6 +19,8 @@ source:
 build:
   number: {{ number }}
   string: py{{ py_version }}_{{ git_hash }}_{{ number }}
+  script:
+    - {{ PYTHON }} -m pip install . -vv
   entry_points:
     {% for e in data.get("project", {}).get("scripts", {}).items() %}
     - {{ e|join(" = ") }}
