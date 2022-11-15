@@ -51,9 +51,15 @@ docs = [
 Homepage = "https://github.com/rapidsai/dask-cuda"
 
 [tool.coverage.run]
-disable_warnings = "include-ignored"
-include = "dask_cuda/*"
-omit = "dask_cuda/tests/*"
+disable_warnings = [
+    "include-ignored",
+]
+include = [
+    "dask_cuda/*",
+]
+omit = [
+    "dask_cuda/tests/*",
+]
 
 [tool.isort]
 line_length = 88
