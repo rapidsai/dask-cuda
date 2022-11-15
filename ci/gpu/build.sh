@@ -40,6 +40,10 @@ export INSTALL_DASK_MAIN=1
 # Dask version to install when `INSTALL_DASK_MAIN=0`
 export DASK_STABLE_VERSION="2022.9.2"
 
+# Temporary workaround for Jupyter errors.
+# See https://github.com/rapidsai/dask-cuda/issues/1040
+export JUPYTER_PLATFORM_DIRS=1
+
 ################################################################################
 # SETUP - Check environment
 ################################################################################
