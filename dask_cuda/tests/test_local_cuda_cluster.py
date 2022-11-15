@@ -314,7 +314,6 @@ async def test_cluster_worker():
             await new_worker.close()
 
 
-@patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})
 @gen_test(timeout=20)
 async def test_available_mig_workers():
     uuids = get_gpu_count_mig(return_uuids=True)[1]
@@ -337,8 +336,10 @@ async def test_available_mig_workers():
                 result = await client.run(get_visible_devices)
 
                 assert all(len(v.split(",")) == len(uuids) for v in result.values())
-                for i in range(len(uuids)):
-                    assert set(v.split(",")[i] for v in result.values()) == set(uuids)
+                for i in range(len(cluster.workers)):
+                    assert set(v.split(",")[i] for v in result.values()) == set(
+                        uuid.decode("utf-8") for uuid in uuids
+                    )
 
 
 @gen_test(timeout=20)
