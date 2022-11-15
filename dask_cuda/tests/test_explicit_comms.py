@@ -121,7 +121,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
             all_workers = list(client.get_worker_logs().keys())
             comms.default_comms()
             np.random.seed(42)
-            df = pd.DataFrame({"key": np.random.random(100)})
+            df = pd.DataFrame({"key": np.random.random(10)})
             if backend == "cudf":
                 df = cudf.DataFrame.from_pandas(df)
 
@@ -152,6 +152,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_shuffle(backend, protocol, nworkers):
+    print()
     if backend == "cudf":
         pytest.importorskip("cudf")
 
