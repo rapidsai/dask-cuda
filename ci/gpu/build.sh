@@ -63,14 +63,11 @@ conda config --show-sources
 conda list --show-channel-urls
 
 # Installing cucim in order to test GDS spilling
-# Pin pytest-asyncio because latest versions modify the default asyncio
-# `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
 gpuci_mamba_retry install "cudf=${MINOR_VERSION}" \
               "dask-cudf=${MINOR_VERSION}" \
               "ucx-py=${UCXPY_VERSION}" \
               "ucx-proc=*=gpu" \
-              "cucim" \
-              "pytest-asyncio=<0.14.0"
+              "cucim"
 
 
 gpuci_logger "Check versions"
