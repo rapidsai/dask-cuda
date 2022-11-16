@@ -22,7 +22,7 @@ dependencies = [
     "dask >=2022.9.2",
     "distributed >=2022.9.2",
     "pynvml >=11.0.0",
-    "numpy >=1.16.0",
+    "numpy >=1.18.0",
     "numba >=0.54",
     "zict >=0.1.3",
 ]
