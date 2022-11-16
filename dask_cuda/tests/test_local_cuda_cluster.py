@@ -89,7 +89,6 @@ async def test_with_subset_of_cuda_visible_devices():
 
 
 @pytest.mark.parametrize("protocol", ["ucx", None])
-@pytest.mark.asyncio
 @gen_test(timeout=20)
 async def test_ucx_protocol(protocol):
     pytest.importorskip("ucp")
@@ -103,7 +102,6 @@ async def test_ucx_protocol(protocol):
         )
 
 
-@pytest.mark.asyncio
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
 @gen_test(timeout=20)
 async def test_ucx_protocol_type_error():
