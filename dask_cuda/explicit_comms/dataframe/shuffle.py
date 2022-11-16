@@ -92,6 +92,32 @@ def multi_shuffle_group(
     ignore_index,
     proxify,
 ) -> Dict[int, DataFrame]:
+    """Split multiple dataframes such that each partition hashes to the same
+
+    dataframes belonging to the same partition are concatenated thus a
+    partition ID maps to exactly one dataframe.
+
+    Parameters
+    ----------
+    df_meta: DataFrame
+        An empty dataframe matching the expected output
+    dfs: dict of dataframes
+        The dataframes to spilt given as a map of stage keys to dataframes
+    column_names: list of strings
+        List of column names on which we want to split.
+    npartitions: int or None
+        The desired number of output partitions.
+    ignore_index: bool
+        Ignore index during shuffle.  If True, performance may improve,
+        but index values will not be preserved.
+    proxify: callable
+        Function to proxify object.
+
+    Returns
+    -------
+    dict of DataFrames
+        Mapping from partition ID to dataframe.
+    """
 
     # Grouping each input dataframe, one part for each partition ID.
     dfs_grouped: List[Dict[int, DataFrame]] = []
@@ -108,7 +134,7 @@ def multi_shuffle_group(
             )
         )
 
-    # Maps a dataframe, from each output partition ID. If the partition is empty,
+    # Maps each output partition ID to a dataframe. If the partition is empty,
     # an empty dataframe is used.
     ret: Dict[int, DataFrame] = {}
     for i in range(npartitions):  # Iterate over all possible output partition IDs
@@ -179,8 +205,8 @@ async def shuffle_task(
     )
 
     # Communicate all the dataframe-partitions all-to-all. The result is
-    # `out_part_id_to_dataframe_list` that for each worker and for each
-    # output partition contains a list of dataframes received.
+    # `out_part_id_to_dataframe_list` that for each output partition maps
+    # a list of dataframes received.
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     await asyncio.gather(
         recv(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe_list, proxify),
@@ -259,7 +285,7 @@ def shuffle(
     # The ranks of the output workers
     ranks = list(range(len(c.worker_addresses)))
 
-    # As default we preserve number of partitions
+    # By default, we preserve number of partitions
     if npartitions is None:
         npartitions = df.npartitions
 
