@@ -43,10 +43,10 @@ dask-config = "dask_cuda.cli.dask_config:go"
 
 [project.optional-dependencies]
 docs = [
-    "numpydoc",
+    "numpydoc>=1.1.0",
     "sphinx",
-    "sphinx-click",
-    "sphinx-rtd-theme",
+    "sphinx-click>=2.7.1",
+    "sphinx-rtd-theme>=0.5.1",
 ]
 test = [
     "pytest",
