@@ -35,10 +35,10 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
 # Install dask and distributed from main branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MAIN=1
+export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.9.2"
+export DASK_STABLE_VERSION="2022.11.0"
 
 # Temporary workaround for Jupyter errors.
 # See https://github.com/rapidsai/dask-cuda/issues/1040
