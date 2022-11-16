@@ -43,13 +43,14 @@ async def recv(
     myrank,
     rank_to_out_part_ids: Dict[int, Set[int]],
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
+    proxify,
 ) -> None:
     """Notice, received items are appended to `out_parts_list`"""
 
     async def read_msg(rank: int) -> None:
         msg: Dict[int, DataFrame] = nested_deserialize(await eps[rank].read())
         for out_part_id, df in msg.items():
-            out_part_id_to_dataframe_list[out_part_id].append(df)
+            out_part_id_to_dataframe_list[out_part_id].append(proxify(df))
 
     await asyncio.gather(
         *(read_msg(rank) for rank in rank_to_out_part_ids if rank != myrank)
@@ -182,7 +183,7 @@ async def shuffle_task(
     # output partition contains a list of dataframes received.
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     await asyncio.gather(
-        recv(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe_list),
+        recv(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe_list, proxify),
         send(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe),
     )
 
