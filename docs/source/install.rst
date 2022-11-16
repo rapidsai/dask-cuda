@@ -12,11 +12,11 @@ To use Dask-CUDA on your system, you will need:
 - A version of NVIDIA CUDA Toolkit compatible with the installed driver version; see Table 1 of `CUDA Compatibility -- Binary Compatibility <https://docs.nvidia.com/deploy/cuda-compatibility/index.html#binary-compatibility>`_ for an overview of CUDA Toolkit driver requirements
 
 Once the proper CUDA Toolkit version has been determined, it can be installed using along with Dask-CUDA using ``conda``.
-To install the latest version of Dask-CUDA along with CUDA Toolkit 11.0:
+To install the latest version of Dask-CUDA along with CUDA Toolkit 11.5:
 
 .. code-block:: bash
 
-    conda install -c rapidsai -c nvidia -c conda-forge dask-cuda cudatoolkit=11.0
+    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cudatoolkit=11.5
 
 Pip
 ---
