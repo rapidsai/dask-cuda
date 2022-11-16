@@ -48,6 +48,9 @@ docs = [
     "sphinx-click",
     "sphinx-rtd-theme",
 ]
+test = [
+    "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
