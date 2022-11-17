@@ -1,0 +1,47 @@
+name: dask-cuda wheels
+
+on:
+  workflow_call:
+    inputs:
+      versioneer-override:
+        type: string
+        default: ''
+      build-tag:
+        type: string
+        default: ''
+      branch:
+        required: true
+        type: string
+      date:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      build-type:
+        type: string
+        default: nightly
+
+jobs:
+  dask-cuda-wheels:
+    uses: rapidsai/shared-action-workflows/.github/workflows/wheels-pure.yml@main
+    with:
+      repo: rapidsai/dask-cuda
+
+      build-type: ${{ inputs.build-type }}
+      branch: ${{ inputs.branch }}
+      sha: ${{ inputs.sha }}
+      date: ${{ inputs.date }}
+
+      package-name: dask_cuda
+      package-dir: .
+
+      python-package-versioneer-override: ${{ inputs.versioneer-override }}
+      python-package-build-tag: ${{ inputs.build-tag }}
+
+      # leave this empty to remove the default '-cu11' suffix
+      python-package-cuda-suffix: ""
+
+      test-extras:  "test"
+      test-unittest: "pytest -v ./dask_cuda/tests"
+    secrets: inherit
