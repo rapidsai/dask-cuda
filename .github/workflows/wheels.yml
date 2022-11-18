@@ -42,6 +42,6 @@ jobs:
       # leave this empty to remove the default '-cu11' suffix
       python-package-cuda-suffix: ""
 
-      test-extras:  "test"
+      test-extras:  "test-cu11"
       test-unittest: "pytest -v ./dask_cuda/tests"
     secrets: inherit
