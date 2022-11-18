@@ -3,7 +3,7 @@ import concurrent.futures
 import contextlib
 import time
 import uuid
-from typing import Dict, Hashable, Iterable, List, Optional
+from typing import Any, Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
 from dask.utils import stringify
@@ -74,7 +74,7 @@ def worker_state(sessionId: Optional[int] = None) -> dict:
     state: dict
         Either a single state dict or a dict of state dict
     """
-    worker = get_worker()
+    worker: Any = get_worker()
     if not hasattr(worker, "_explicit_comm_state"):
         worker._explicit_comm_state = {}
     if sessionId is not None:
@@ -277,7 +277,10 @@ class CommsContext:
             return self.client.gather(ret)
 
     def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
-        """Staging keys on workers
+        """Staging keys on workers under the given name
+
+        The workers storing the keys and the associated data moves the data to
+        its state dict.
 
         Parameters
         ----------

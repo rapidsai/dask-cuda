@@ -5,7 +5,7 @@ import functools
 import inspect
 from collections import defaultdict
 from operator import getitem
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 import numpy
 
@@ -16,8 +16,11 @@ from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
+from distributed.worker import Worker
 
 from .. import comms
+
+T = TypeVar("T")
 
 
 async def send(
@@ -57,15 +60,18 @@ async def recv(
     )
 
 
-def get_proxify(worker):
+def get_proxify(worker: Worker) -> Callable[[T], T]:
+    """Get function to proxify objects"""
     from dask_cuda.proxify_host_file import ProxifyHostFile
 
     if isinstance(worker.data, ProxifyHostFile):
-        return lambda x: worker.data.manager.proxify(x)[0]
+        data = worker.data
+        return lambda x: data.manager.proxify(x)[0]
     return lambda x: x  # no-op
 
 
 def compute_map_index(df: Any, column_names, npartitions) -> Series:
+    """Return a Series that maps each row `df` to a partition ID"""
     if column_names[0] == "_partitions":
         ind = df[column_names[0]]
     else:
@@ -94,7 +100,7 @@ def multi_shuffle_group(
 ) -> Dict[int, DataFrame]:
     """Split multiple dataframes such that each partition hashes to the same
 
-    dataframes belonging to the same partition are concatenated thus a
+    Since we concatenate dataframes belonging to the same partition, each
     partition ID maps to exactly one dataframe.
 
     Parameters
@@ -262,7 +268,7 @@ def shuffle(
         The desired number of output partitions. If None, the number of output
         partitions equals `df.npartitions`
     ignore_index: bool
-        Ignore index during shuffle.  If True, performance may improve,
+        Ignore index during shuffle. If True, performance may improve,
         but index values will not be preserved.
 
     Returns
@@ -273,10 +279,11 @@ def shuffle(
     Developer Notes
     ---------------
     The implementation consist of three steps:
-      (a) Extend the dask graph of `df` with a call to `shuffle_group()` for each
-          dataframe partition and submit the graph.
+      (a) Stage the partitions of `df` on all workers and then cancel them
+          thus at this point the Dask Scheduler doesn't know about any of the
+          the partitions.
       (b) Submit a task on each worker that shuffle (all-to-all communicate)
-          the groups from (a) and return a list of dataframe-partitions.
+          the staged partitions and return a list of dataframe-partitions.
       (c) Submit a dask graph that extract (using `getitem()`) individual
           dataframe-partitions from (b).
     """
