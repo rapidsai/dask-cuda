@@ -100,3 +100,27 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["pa2"])
     assert set(dhf.disk.keys()) == set(["pa1"])
+
+    del dhf["cu1"]
+    assert set(dhf.others.keys()) == set(["cu2"])
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set(["pa2"])
+    assert set(dhf.disk.keys()) == set(["pa1"])
+
+    del dhf["pa2"]
+    assert set(dhf.others.keys()) == set(["cu2"])
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set()
+    assert set(dhf.disk.keys()) == set(["pa1"])
+
+    del dhf["pa1"]
+    assert set(dhf.others.keys()) == set(["cu2"])
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set()
+    assert set(dhf.disk.keys()) == set()
+
+    del dhf["cu2"]
+    assert set(dhf.others.keys()) == set()
+    assert set(dhf.device.keys()) == set()
+    assert set(dhf.host.keys()) == set()
+    assert set(dhf.disk.keys()) == set()
