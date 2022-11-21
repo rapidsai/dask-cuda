@@ -127,16 +127,20 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     assert set(dhf.disk.keys()) == set()
 
 
-def test_proxify_host_file(tmp_path, manager: SpillManager):
-    tmpdir = tmp_path / "storage"
-    tmpdir.mkdir()
+def test_proxify_host_file(tmp_path_factory, manager: SpillManager):
+    # Reuse the spill-to-disk dir, if it exist
+    if ProxifyHostFile._spill_to_disk is None:
+        tmpdir = tmp_path_factory.mktemp("jit-unspill")
+    else:
+        tmpdir = ProxifyHostFile._spill_to_disk.root_dir / ".."
+
     with pytest.warns(
         UserWarning, match="JIT-Unspill and cuDF's built-in spilling doesn't mix well"
     ):
         dhf = ProxifyHostFile(
             device_memory_limit=1000,
             memory_limit=1000,
-            worker_local_directory=tmpdir,
+            worker_local_directory=str(tmpdir),
         )
     dhf["cu1"] = cudf.DataFrame({"a": [1, 2, 3]})
     del dhf["cu1"]

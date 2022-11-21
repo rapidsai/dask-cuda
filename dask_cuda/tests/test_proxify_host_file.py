@@ -45,7 +45,7 @@ def root_dir(tmp_path_factory):
     assert ProxifyHostFile._spill_to_disk is not None
 
     # In order to use the same tmp dir, we use `root_dir` for all
-    # ProxifyHostFile creations Notice, we use `..` to remove the
+    # ProxifyHostFile creations. Notice, we use `..` to remove the
     # `jit-unspill-disk-storage` part added by the
     # ProxifyHostFile implicitly.
     return str(ProxifyHostFile._spill_to_disk.root_dir / "..")
