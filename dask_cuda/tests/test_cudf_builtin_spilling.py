@@ -4,6 +4,7 @@ from distributed.sizeof import safe_sizeof
 
 from dask_cuda.device_host_file import DeviceHostFile
 from dask_cuda.is_spillable_object import is_spillable_object
+from dask_cuda.proxify_host_file import ProxifyHostFile
 
 cupy = pytest.importorskip("cupy")
 pandas = pytest.importorskip("pandas")
@@ -124,3 +125,18 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+
+
+def test_proxify_host_file(tmp_path, manager: SpillManager):
+    tmpdir = tmp_path / "storage"
+    tmpdir.mkdir()
+    with pytest.warns(
+        UserWarning, match="JIT-Unspill and cuDF's built-in spilling doesn't mix well"
+    ):
+        dhf = ProxifyHostFile(
+            device_memory_limit=1000,
+            memory_limit=1000,
+            worker_local_directory=tmpdir,
+        )
+    dhf["cu1"] = cudf.DataFrame({"a": [1, 2, 3]})
+    del dhf["cu1"]
