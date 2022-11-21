@@ -10,7 +10,7 @@ pandas = pytest.importorskip("pandas")
 
 pytest.importorskip(
     "cudf.core.buffer.spill_manager",
-    reason="Current version of cudf doesn't support native spilling",
+    reason="Current version of cudf doesn't support built-in spilling",
 )
 
 import cudf  # noqa: E402
@@ -24,7 +24,7 @@ from cudf.testing._utils import assert_eq  # noqa: E402
 if get_global_manager() is not None:
     pytest.skip(
         reason=(
-            "cannot test cudf native spilling, if already enabled globally. "
+            "cannot test cudf built-in spilling, if already enabled globally. "
             "Please set `CUDF_SPILL=off`"
         ),
         allow_module_level=True,
