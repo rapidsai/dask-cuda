@@ -64,6 +64,7 @@ def test_device_host_file_short(
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
 
 def test_device_host_file_step_by_step(tmp_path):
@@ -82,36 +83,43 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b1"] = b
     assert set(dhf.device.keys()) == set(["b1"])
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b2"] = b
     assert set(dhf.device.keys()) == set(["b1", "b2"])
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b3"] = b
     assert set(dhf.device.keys()) == set(["b2", "b3"])
     assert set(dhf.host.keys()) == set(["a1", "b1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["a2"] = a
     assert set(dhf.device.keys()) == set(["b2", "b3"])
     assert set(dhf.host.keys()) == set(["a2", "b1"])
     assert set(dhf.disk.keys()) == set(["a1"])
+    assert set(dhf.others.keys()) == set()
 
     dhf["b4"] = b
     assert set(dhf.device.keys()) == set(["b3", "b4"])
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
+    assert set(dhf.others.keys()) == set()
 
     dhf["b4"] = b
     assert set(dhf.device.keys()) == set(["b3", "b4"])
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
+    assert set(dhf.others.keys()) == set()
 
     assert_eq(dhf["a1"], a)
     del dhf["a1"]
@@ -129,11 +137,13 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["x"] = b
     dhf["x"] = a
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["x"])
+    assert set(dhf.others.keys()) == set()
 
 
 @pytest.mark.parametrize("collection", [dict, list, tuple])
