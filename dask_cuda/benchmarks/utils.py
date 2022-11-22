@@ -18,6 +18,35 @@ from distributed.comm.addressing import get_address_host
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
 
 
+def as_noop(dsk):
+    """
+    Turn the given dask computation into a noop.
+
+    Uses dask-noop (https://github.com/gjoseph92/dask-noop/)
+
+    Parameters
+    ----------
+    dsk
+        Dask object (on which one could call compute)
+
+    Returns
+    -------
+    New dask object representing the same task graph with no
+    computation/data attached.
+
+    Raises
+    ------
+    RuntimeError
+        If dask_noop is not importable
+    """
+    try:
+        from dask_noop import as_noop
+
+        return as_noop(dsk)
+    except ImportError:
+        raise RuntimeError("Requested noop computation but dask-noop not installed.")
+
+
 def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]):
     parser = argparse.ArgumentParser(description=description)
     worker_args = parser.add_argument_group(description="Worker configuration")

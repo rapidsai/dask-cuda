@@ -1,9 +1,11 @@
 import importlib
 import math
+import operator
 import os
 import time
 import warnings
 from contextlib import suppress
+from functools import singledispatch
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -13,8 +15,11 @@ import toolz
 import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
-from dask.utils import parse_bytes
+from dask.utils import format_bytes, parse_bytes
 from distributed import Worker, wait
+from distributed.comm import parse_address
+
+from .proxify_host_file import ProxifyHostFile
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -74,6 +79,15 @@ class RMMSetup:
             import rmm
 
             pool_allocator = False if self.initial_pool_size is None else True
+
+            if self.initial_pool_size is not None:
+                self.initial_pool_size = parse_device_memory_limit(
+                    self.initial_pool_size, alignment_size=256
+                )
+                if self.maximum_pool_size is not None:
+                    self.maximum_pool_size = parse_device_memory_limit(
+                        self.maximum_pool_size, alignment_size=256
+                    )
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
@@ -475,7 +489,7 @@ def parse_cuda_visible_device(dev):
 
     A device identifier must either be an integer, a string containing an
     integer or a string containing the device's UUID, beginning with prefix
-    'GPU-' or 'MIG-GPU'.
+    'GPU-' or 'MIG-'.
 
     >>> parse_cuda_visible_device(2)
     2
@@ -487,18 +501,23 @@ def parse_cuda_visible_device(dev):
     Traceback (most recent call last):
     ...
     ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
-    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    strings beginning with 'GPU-' or 'MIG-' prefixes.
     """
     try:
         return int(dev)
     except ValueError:
-        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", "MIG-"]):
+        if any(
+            dev.startswith(prefix)
+            for prefix in [
+                "GPU-",
+                "MIG-",
+            ]
+        ):
             return dev
         else:
             raise ValueError(
                 "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
-                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes"
-                " or 'MIG-<UUID>'."
+                "or strings beginning with 'GPU-' or 'MIG-' prefixes."
             )
 
 
@@ -568,7 +587,7 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
         raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
-def parse_device_memory_limit(device_memory_limit, device_index=0):
+def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
     """Parse memory limit to be used by a CUDA device.
 
     Parameters
@@ -580,6 +599,9 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
+    alignment_size: int
+        Number of bytes of alignment to use, i.e., allocation must be a multiple of
+        that size. RMM pool requires 256 bytes alignment.
 
     Examples
     --------
@@ -593,18 +615,25 @@ def parse_device_memory_limit(device_memory_limit, device_index=0):
     >>> parse_device_memory_limit("1GB")
     1000000000
     """
-    if any(device_memory_limit == v for v in [0, "0", None, "auto"]):
-        return get_device_total_memory(device_index)
+
+    def _align(size, alignment_size):
+        return size // alignment_size * alignment_size
+
+    if device_memory_limit in {0, "0", None, "auto"}:
+        return _align(get_device_total_memory(device_index), alignment_size)
 
     with suppress(ValueError, TypeError):
         device_memory_limit = float(device_memory_limit)
         if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
-            return int(get_device_total_memory(device_index) * device_memory_limit)
+            return _align(
+                int(get_device_total_memory(device_index) * device_memory_limit),
+                alignment_size,
+            )
 
     if isinstance(device_memory_limit, str):
-        return parse_bytes(device_memory_limit)
+        return _align(parse_bytes(device_memory_limit), alignment_size)
     else:
-        return int(device_memory_limit)
+        return _align(int(device_memory_limit), alignment_size)
 
 
 class MockWorker(Worker):
@@ -649,3 +678,147 @@ def get_gpu_uuid_from_index(device_index=0):
     pynvml.nvmlInit()
     handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
     return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+
+
+def get_worker_config(dask_worker):
+    # assume homogenous cluster
+    plugin_vals = dask_worker.plugins.values()
+    ret = {}
+
+    # device and host memory configuration
+    for p in plugin_vals:
+        ret[f"[plugin] {type(p).__name__}"] = {
+            v: getattr(p, v)
+            for v in dir(p)
+            if not (v.startswith("_") or v in {"setup", "cores"})
+        }
+
+    for mem in [
+        "memory_limit",
+        "memory_pause_fraction",
+        "memory_spill_fraction",
+        "memory_target_fraction",
+    ]:
+        ret[mem] = getattr(dask_worker.memory_manager, mem)
+
+    # jit unspilling set
+    ret["jit-unspill"] = isinstance(dask_worker.data, ProxifyHostFile)
+
+    # get optional device-memory-limit
+    if ret["jit-unspill"]:
+        ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
+    else:
+        has_device = hasattr(dask_worker.data, "device_buffer")
+        if has_device:
+            ret["device-memory-limit"] = dask_worker.data.device_buffer.n
+
+    # using ucx ?
+    scheme, loc = parse_address(dask_worker.scheduler.address)
+    ret["protocol"] = scheme
+    if scheme == "ucx":
+        import ucp
+
+        ret["ucx-transports"] = ucp.get_active_transports()
+
+    # comm timeouts
+    ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
+
+    return ret
+
+
+async def get_scheduler_configuration(client):
+    worker_ttl = await client.run_on_scheduler(
+        lambda dask_scheduler: dask_scheduler.worker_ttl
+    )
+    extensions = list(
+        await client.run_on_scheduler(
+            lambda dask_scheduler: dask_scheduler.extensions.keys()
+        )
+    )
+    ret = {}
+    ret["distributed.scheduler.worker-ttl"] = worker_ttl
+    ret["active-extensions"] = extensions
+
+    return ret
+
+
+async def _get_cluster_configuration(client):
+    worker_config = await client.run(get_worker_config)
+    ret = await get_scheduler_configuration(client)
+
+    # does the cluster have any workers ?
+    if worker_config:
+        w = list(worker_config.values())[0]
+        ret.update(w)
+        info = client.scheduler_info()
+        workers = info.get("workers", {})
+        ret["nworkers"] = len(workers)
+        ret["nthreads"] = sum(w["nthreads"] for w in workers.values())
+
+    return ret
+
+
+@singledispatch
+def pretty_print(obj, toplevel):
+    from rich.pretty import Pretty
+
+    return Pretty(obj)
+
+
+@pretty_print.register(str)
+def pretty_print_str(obj, toplevel):
+    from rich.markup import escape
+
+    return escape(obj)
+
+
+@pretty_print.register(dict)
+def pretty_print_dict(obj, toplevel):
+    from rich.table import Table
+
+    if not obj:
+        return "No known settings"
+    formatted_byte_keys = {
+        "memory_limit",
+        "device-memory-limit",
+        "initial_pool_size",
+        "maximum_pool_size",
+    }
+    t = Table(
+        show_header=toplevel, title="Dask Cluster Configuration" if toplevel else None
+    )
+    t.add_column("Parameter", justify="left", style="bold bright_green")
+    t.add_column("Value", justify="left", style="bold bright_green")
+    for k, v in sorted(obj.items(), key=operator.itemgetter(0)):
+        if k in formatted_byte_keys and v is not None:
+            v = format_bytes(v)
+        # need to escape tags: []
+        # https://rich.readthedocs.io/en/stable/markup.html?highlight=escape#escaping
+        t.add_row(pretty_print(k, False), pretty_print(v, False))
+    return t
+
+
+def print_cluster_config(client):
+    """print current Dask cluster configuration"""
+    if client.asynchronous:
+        print("Printing cluster configuration works only with synchronous Dask clients")
+
+    data = get_cluster_configuration(client)
+    try:
+        from rich.console import Console
+    except ModuleNotFoundError as e:
+        error_msg = (
+            "Please install rich `python -m pip install rich` "
+            "to print a table of the current Dask Cluster Configuration"
+        )
+        raise ModuleNotFoundError(error_msg) from e
+
+    formatted = pretty_print(data, True)
+    Console().print(formatted)
+
+
+def get_cluster_configuration(client):
+    data = client.sync(
+        _get_cluster_configuration, client=client, asynchronous=client.asynchronous
+    )
+    return data
