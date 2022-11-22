@@ -136,7 +136,8 @@ def test_proxify_host_file(tmp_path_factory, manager: SpillManager):
         tmpdir = ProxifyHostFile._spill_to_disk.root_dir / ".."
 
     with pytest.warns(
-        UserWarning, match="JIT-Unspill and cuDF's built-in spilling don't work together"
+        UserWarning,
+        match="JIT-Unspill and cuDF's built-in spilling don't work together",
     ):
         dhf = ProxifyHostFile(
             device_memory_limit=1000,

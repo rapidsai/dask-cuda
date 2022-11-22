@@ -284,9 +284,9 @@ class DeviceHostFile(ZictBase):
     def __getitem__(self, key):
         if key in self.others:
             return self.others[key]
-        if key in self.device_keys:
+        elif key in self.device_keys:
             return self.device_buffer[key]
-        if key in self.host_buffer:
+        elif key in self.host_buffer:
             return self.host_buffer[key]
         raise KeyError(key)
 
