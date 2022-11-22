@@ -503,8 +503,9 @@ class ProxifyHostFile(MutableMapping):
     ):
         if cudf_spilling_status():
             warnings.warn(
-                "JIT-Unspill and cuDF's built-in spilling doesn't mix well, please "
-                "disable one of them (`CUDF_SPILL=off` or `DASK_JIT_UNSPILL=off`)"
+                "JIT-Unspill and cuDF's built-in spilling don't work together, please "
+                "disable one of them by setting either `CUDF_SPILL=off` or "
+                "`DASK_JIT_UNSPILL=off` environment variable."
             )
 
         # each value of self.store is a tuple containing the proxified

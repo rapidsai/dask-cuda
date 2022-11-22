@@ -26,7 +26,7 @@ if get_global_manager() is not None:
     pytest.skip(
         reason=(
             "cannot test cudf built-in spilling, if already enabled globally. "
-            "Please set `CUDF_SPILL=off`"
+            "Please set the `CUDF_SPILL=off` environment variable."
         ),
         allow_module_level=True,
     )
@@ -76,13 +76,14 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     tmpdir = tmp_path / "storage"
     tmpdir.mkdir()
     pdf = pandas.DataFrame({"a": [1, 2, 3]})
+    cdf = cudf.DataFrame({"a": [1, 2, 3]})
     dhf = DeviceHostFile(
         device_memory_limit=safe_sizeof(pdf),
         memory_limit=safe_sizeof(pdf),
         worker_local_directory=tmpdir,
     )
     dhf["pa1"] = pdf
-    dhf["cu1"] = cudf.DataFrame({"a": [1, 2, 3]})
+    dhf["cu1"] = cdf
 
     assert set(dhf.others.keys()) == set(["cu1"])
     assert set(dhf.device.keys()) == set()
@@ -96,7 +97,7 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     assert set(dhf.host.keys()) == set(["pa2"])
     assert set(dhf.disk.keys()) == set(["pa1"])
 
-    dhf["cu2"] = cudf.DataFrame({"a": [1, 2, 3]})
+    dhf["cu2"] = cdf
     assert set(dhf.others.keys()) == set(["cu1", "cu2"])
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["pa2"])
@@ -135,7 +136,7 @@ def test_proxify_host_file(tmp_path_factory, manager: SpillManager):
         tmpdir = ProxifyHostFile._spill_to_disk.root_dir / ".."
 
     with pytest.warns(
-        UserWarning, match="JIT-Unspill and cuDF's built-in spilling doesn't mix well"
+        UserWarning, match="JIT-Unspill and cuDF's built-in spilling don't work together"
     ):
         dhf = ProxifyHostFile(
             device_memory_limit=1000,
