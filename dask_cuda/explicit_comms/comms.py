@@ -279,13 +279,24 @@ class CommsContext:
     def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
         """Staging keys on workers under the given name
 
-        The workers storing the keys and the associated data moves the data to
-        its state dict.
+        In an explicit-comms task, use `pop_staging_area(..., name)` to access
+        the staged keys and the associated data.
+
+        Notes
+        -----
+        In the context of explicit-comms, staging is the act of duplicating the
+        responsibility of Dask keys. When staging a key, the worker owning the
+        key (as assigned by the Dask scheduler) save a reference to the key and
+        the associated data to its local staging area. From this point on, if
+        the scheduler cancels the key, the worker (and the task running on the
+        worker) now has exclusive access to the key and the associated data.
+        This way, staging makes it possible for long running explicit-comms tasks
+        to free input data ASAP.
 
         Parameters
         ----------
         name: str
-            Name for the staging
+            Name for the staging area
         keys: iterable
             The keys to stage
 
@@ -296,3 +307,23 @@ class CommsContext:
         """
         key_set = {stringify(k) for k in keys}
         return dict(self.run(_stage_keys, name, key_set))
+
+
+def pop_staging_area(session_state: dict, name: str) -> Dict[str, Any]:
+    """Pop the staging area called `name`
+
+    This function must be called within a running explicit-comms task.
+
+    Parameters
+    ----------
+    session_state: dict
+        Worker session state
+    name: str
+        Name for the staging area
+
+    Returns
+    -------
+    dict
+        The staging area, which is a dict that maps keys to their data.
+    """
+    return session_state["stages"].pop(name)

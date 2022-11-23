@@ -198,7 +198,7 @@ async def shuffle_task(
     proxify = get_proxify(s["worker"])
     myrank = s["rank"]
     eps = s["eps"]
-    stage: dict = s["stages"].pop(stage_name)
+    stage = comms.pop_staging_area(s, stage_name)
     assert stage.keys() == rank_to_inkeys[myrank]
 
     out_part_id_to_dataframe = multi_shuffle_group(
