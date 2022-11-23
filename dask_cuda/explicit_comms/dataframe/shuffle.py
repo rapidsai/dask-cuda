@@ -108,7 +108,7 @@ def multi_shuffle_group(
     df_meta: DataFrame
         An empty dataframe matching the expected output
     dfs: dict of dataframes
-        The dataframes to spilt given as a map of stage keys to dataframes
+        The dataframes to split given as a map of stage keys to dataframes
     column_names: list of strings
         List of column names on which we want to split.
     npartitions: int or None
