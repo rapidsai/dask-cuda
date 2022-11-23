@@ -248,17 +248,10 @@ async def shuffle_task(
     del out_part_id_to_dataframe
 
     # Finally, we concatenate the output dataframes into the final output partitions
-    ret: List[DataFrame] = []
-    for out_part_id, dataframe_list in out_part_id_to_dataframe_list.items():
-        ret.append(
-            proxify(
-                dd_concat(
-                    dataframe_list,
-                    ignore_index=ignore_index,
-                )
-            )
-        )
-    return ret
+    return [
+        proxify(dd_concat(dfs, ignore_index=ignore_index))
+        for dfs in out_part_id_to_dataframe_list.values()
+    ]
 
 
 def shuffle(
