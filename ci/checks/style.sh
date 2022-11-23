@@ -19,15 +19,15 @@ echo "isort, `isort --vn`"
 echo "flake8, `flake8 --version`"
 
 # Run isort and get results/return code
-ISORT=`isort --check-only dask_cuda 2>&1`
+ISORT=`isort --check-only . 2>&1`
 ISORT_RETVAL=$?
 
 # Run black and get results/return code
-BLACK=`black --check dask_cuda 2>&1`
+BLACK=`black --check . 2>&1`
 BLACK_RETVAL=$?
 
 # Run flake8 and get results/return code
-FLAKE=`flake8 dask_cuda 2>&1`
+FLAKE=`flake8 . 2>&1`
 FLAKE_RETVAL=$?
 
 # Output results if failure otherwise show pass
