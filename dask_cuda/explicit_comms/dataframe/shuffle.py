@@ -307,8 +307,9 @@ def shuffle(
 
     # Stage all keys of `df` on the workers and cancel them, which makes it possible
     # for the shuffle to free memory as the partitions of `df` are consumed.
+    # See CommsContext.stage_keys() for a description of staging.
     rank_to_inkeys = c.stage_keys(name=name, keys=df.__dask_keys__())
-    c.client.cancel(df)  # Notice, since `df` has been staged, nothing is freed here.
+    c.client.cancel(df)
 
     # Find the output partition IDs for each worker
     div = npartitions // len(ranks)
