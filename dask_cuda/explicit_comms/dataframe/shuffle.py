@@ -71,7 +71,27 @@ def get_proxify(worker: Worker) -> Callable[[T], T]:
 
 
 def compute_map_index(df: Any, column_names, npartitions) -> Series:
-    """Return a Series that maps each row `df` to a partition ID"""
+    """Return a Series that maps each row `df` to a partition ID
+
+    The partitions are determined by hashing the columns given by column_names
+    unless if `column_names[0] == "_partitions"`, in which case the values of
+    `column_names[0]` are used as index.
+
+    Parameters
+    ----------
+    df: DataFrame
+    column_names: list of strings
+        List of column names on which we want to split.
+    npartitions: int or None
+        The desired number of output partitions.
+
+    Returns
+    -------
+    out: Dict[int, DataFrame]
+        A dictionary mapping integers in {0..k} to dataframes such that the
+        hash values of `df[col]` are well partitioned.
+    """
+
     if column_names[0] == "_partitions":
         ind = df[column_names[0]]
     else:
@@ -85,7 +105,7 @@ def compute_map_index(df: Any, column_names, npartitions) -> Series:
 def single_shuffle_group(
     df: DataFrame, column_names, npartitions, ignore_index
 ) -> Dict[int, DataFrame]:
-    """Split dataframe such that each partition hashes to the same"""
+    """Split dataframe based on the indexes returned by `compute_map_index`"""
     map_index = compute_map_index(df, column_names, npartitions)
     return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
 
@@ -243,7 +263,7 @@ async def shuffle_task(
 
 def shuffle(
     df: DataFrame,
-    column_names: str | List[str],
+    column_names: List[str],
     npartitions: Optional[int] = None,
     ignore_index: bool = False,
 ) -> DataFrame:
