@@ -16,9 +16,9 @@ from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.utils import has_arg
 from distributed.worker_memory import parse_memory_limit
 
-from ._compat import DISTRIBUTED_GT_2022_11_1
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .proxify_host_file import ProxifyHostFile
@@ -86,7 +86,8 @@ class CUDAWorker(Server):
             raise ValueError("nthreads must be higher than 0.")
 
         # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
-        if DISTRIBUTED_GT_2022_11_1:
+        if has_arg(parse_memory_limit, "logger"):
+            # TODO: Remove has_arg check after 2022.11.1 support is dropped
             logger = logging.getLogger(__name__)
             memory_limit = parse_memory_limit(
                 memory_limit=memory_limit, nthreads=1, total_cores=nprocs, logger=logger
