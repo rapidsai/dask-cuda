@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import warnings
 
@@ -6,6 +7,7 @@ import dask
 from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
+from ._compat import DISTRIBUTED_GT_2022_11_1
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .proxify_host_file import ProxifyHostFile
@@ -231,9 +233,18 @@ class LocalCUDACluster(LocalCluster):
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
-        self.memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=n_workers
-        )
+        if DISTRIBUTED_GT_2022_11_1:
+            logger = logging.getLogger(__name__)
+            self.memory_limit = parse_memory_limit(
+                memory_limit=memory_limit,
+                nthreads=1,
+                total_cores=n_workers,
+                logger=logger,
+            )
+        else:
+            self.memory_limit = parse_memory_limit(
+                memory_limit=memory_limit, nthreads=1, total_cores=n_workers
+            )
         self.device_memory_limit = parse_device_memory_limit(
             device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
         )

@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
+import logging
 import os
 import warnings
 
@@ -17,6 +18,7 @@ from distributed.proctitle import (
 )
 from distributed.worker_memory import parse_memory_limit
 
+from ._compat import DISTRIBUTED_GT_2022_11_1
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .proxify_host_file import ProxifyHostFile
@@ -84,9 +86,15 @@ class CUDAWorker(Server):
             raise ValueError("nthreads must be higher than 0.")
 
         # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
-        memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=nprocs
-        )
+        if DISTRIBUTED_GT_2022_11_1:
+            logger = logging.getLogger(__name__)
+            memory_limit = parse_memory_limit(
+                memory_limit=memory_limit, nthreads=1, total_cores=nprocs, logger=logger
+            )
+        else:
+            memory_limit = parse_memory_limit(
+                memory_limit=memory_limit, nthreads=1, total_cores=nprocs
+            )
 
         if pid_file:
             with open(pid_file, "w") as f:
