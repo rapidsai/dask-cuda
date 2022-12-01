@@ -38,7 +38,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.11.0"
+export DASK_STABLE_VERSION="2022.11.1"
 
 # Temporary workaround for Jupyter errors.
 # See https://github.com/rapidsai/dask-cuda/issues/1040
