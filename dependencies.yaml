@@ -98,8 +98,8 @@ dependencies:
           - matrix:
               arch: x86_64
             packages:
-              - numactl-libs-cos7-x86_64
+              - numactl-devel-cos7-x86_64
           - matrix:
               arch: aarch64
             packages:
-              - numactl-libs-cos7-aarch64
+              - numactl-devel-cos7-aarch64
