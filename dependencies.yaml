@@ -92,3 +92,14 @@ dependencies:
           - pytest-cov
           - ucx-proc=*=gpu
           - ucx-py=0.30.*
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              arch: x86_64
+            packages:
+              - numactl-libs-cos7-x86_64
+          - matrix:
+              arch: aarch64
+            packages:
+              - numactl-libs-cos7-aarch64
