@@ -47,7 +47,7 @@ pytest \
   --capture=no \
   --cache-clear \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
-  --cov-config=../.coveragerc \
+  --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
