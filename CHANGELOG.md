@@ -1,3 +1,44 @@
+# dask-cuda 22.12.00 (8 Dec 2022)
+
+## 🚨 Breaking Changes
+
+- Make local_directory a required argument for spilling impls ([#1023](https://github.com/rapidsai/dask-cuda/pull/1023)) [@wence-](https://github.com/wence-)
+
+## 🐛 Bug Fixes
+
+- Fix `parse_memory_limit` function call ([#1055](https://github.com/rapidsai/dask-cuda/pull/1055)) [@galipremsagar](https://github.com/galipremsagar)
+- Work around Jupyter errors in CI ([#1041](https://github.com/rapidsai/dask-cuda/pull/1041)) [@pentschev](https://github.com/pentschev)
+- Fix version constraint ([#1036](https://github.com/rapidsai/dask-cuda/pull/1036)) [@wence-](https://github.com/wence-)
+- Support the new `Buffer` in cudf ([#1033](https://github.com/rapidsai/dask-cuda/pull/1033)) [@madsbk](https://github.com/madsbk)
+- Install Dask nightly last in CI ([#1029](https://github.com/rapidsai/dask-cuda/pull/1029)) [@pentschev](https://github.com/pentschev)
+- Fix recorded time in merge benchmark ([#1028](https://github.com/rapidsai/dask-cuda/pull/1028)) [@wence-](https://github.com/wence-)
+- Switch pre-import not found test to sync definition ([#1026](https://github.com/rapidsai/dask-cuda/pull/1026)) [@pentschev](https://github.com/pentschev)
+- Make local_directory a required argument for spilling impls ([#1023](https://github.com/rapidsai/dask-cuda/pull/1023)) [@wence-](https://github.com/wence-)
+- Fixes for handling MIG devices ([#950](https://github.com/rapidsai/dask-cuda/pull/950)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Merge 22.10 into 22.12 ([#1016](https://github.com/rapidsai/dask-cuda/pull/1016)) [@pentschev](https://github.com/pentschev)
+- Merge 22.08 into 22.10 ([#1010](https://github.com/rapidsai/dask-cuda/pull/1010)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Allow specifying fractions as RMM pool initial/maximum size ([#1021](https://github.com/rapidsai/dask-cuda/pull/1021)) [@pentschev](https://github.com/pentschev)
+- Add feature to get cluster configuration ([#1006](https://github.com/rapidsai/dask-cuda/pull/1006)) [@quasiben](https://github.com/quasiben)
+- Add benchmark option to use dask-noop ([#994](https://github.com/rapidsai/dask-cuda/pull/994)) [@wence-](https://github.com/wence-)
+
+## 🛠️ Improvements
+
+- Ensure linting checks for whole repo in CI ([#1053](https://github.com/rapidsai/dask-cuda/pull/1053)) [@pentschev](https://github.com/pentschev)
+- Pin `dask` and `distributed` for release ([#1046](https://github.com/rapidsai/dask-cuda/pull/1046)) [@galipremsagar](https://github.com/galipremsagar)
+- Remove `pytest-asyncio` dependency ([#1045](https://github.com/rapidsai/dask-cuda/pull/1045)) [@pentschev](https://github.com/pentschev)
+- Migrate as much as possible to `pyproject.toml` ([#1035](https://github.com/rapidsai/dask-cuda/pull/1035)) [@jakirkham](https://github.com/jakirkham)
+- Re-implement shuffle using staging ([#1030](https://github.com/rapidsai/dask-cuda/pull/1030)) [@madsbk](https://github.com/madsbk)
+- Explicit-comms-shuffle: fine control of task scheduling ([#1025](https://github.com/rapidsai/dask-cuda/pull/1025)) [@madsbk](https://github.com/madsbk)
+- Remove stale labeler ([#1024](https://github.com/rapidsai/dask-cuda/pull/1024)) [@raydouglass](https://github.com/raydouglass)
+- Unpin `dask` and `distributed` for development ([#1005](https://github.com/rapidsai/dask-cuda/pull/1005)) [@galipremsagar](https://github.com/galipremsagar)
+- Support cuDF&#39;s built-in spilling ([#984](https://github.com/rapidsai/dask-cuda/pull/984)) [@madsbk](https://github.com/madsbk)
+
 # dask-cuda 22.10.00 (12 Oct 2022)
 
 ## 🐛 Bug Fixes
@@ -23,6 +64,7 @@
 - Unpin `dask` and `distributed` for development ([#971](https://github.com/rapidsai/dask-cuda/pull/971)) [@galipremsagar](https://github.com/galipremsagar)
 
 # dask-cuda 22.08.00 (17 Aug 2022)
+
 ## 🚨 Breaking Changes
 
 - Fix useless property ([#944](https://github.com/rapidsai/dask-cuda/pull/944)) [@wence-](https://github.com/wence-)

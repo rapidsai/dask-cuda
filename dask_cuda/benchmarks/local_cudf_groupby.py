@@ -11,6 +11,7 @@ from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
+    as_noop,
     parse_benchmark_args,
     print_key_value,
     print_separator,
@@ -20,11 +21,14 @@ from dask_cuda.benchmarks.utils import (
 
 def apply_groupby(
     df,
+    backend,
     sort=False,
     split_out=1,
     split_every=8,
     shuffle=None,
 ):
+    if backend == "dask-noop" and shuffle == "explicit-comms":
+        raise RuntimeError("dask-noop not valid for explicit-comms shuffle")
     # Handle special "explicit-comms" case
     config = {}
     if shuffle == "explicit-comms":
@@ -38,6 +42,8 @@ def apply_groupby(
             split_every=split_every,
             shuffle=shuffle,
         )
+        if backend == "dask-noop":
+            agg = as_noop(agg)
 
     wait(agg.persist())
     return agg
@@ -118,6 +124,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print("Groupby benchmark")
     print_separator(separator="-")
     print_key_value(key="Use shuffle", value=f"{args.shuffle}")
+    print_key_value(key="Backend", value=f"{args.backend}")
     print_key_value(key="Output partitions", value=f"{args.split_out}")
     print_key_value(key="Input partitions", value=f"{args.in_parts}")
     print_key_value(key="Sort Groups", value=f"{args.sort}")
@@ -150,6 +157,7 @@ def create_tidy_results(args, p2p_bw, results):
     configuration = {
         "dataframe_type": "cudf" if args.type == "gpu" else "pandas",
         "shuffle": args.shuffle,
+        "backend": args.backend,
         "sort": args.sort,
         "split_out": args.split_out,
         "split_every": args.split_every,
@@ -231,6 +239,15 @@ def parse_args():
             "default": "False",
             "type": str,
             "help": "Whether to use shuffle-based groupby.",
+        },
+        {
+            "name": "--backend",
+            "choices": ["dask", "dask-noop"],
+            "default": "dask",
+            "type": str,
+            "help": (
+                "Compute engine to use, dask-noop turns the graph into a noop graph"
+            ),
         },
         {
             "name": [

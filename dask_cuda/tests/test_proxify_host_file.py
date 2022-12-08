@@ -1,5 +1,4 @@
 import re
-import tempfile
 from typing import Iterable
 from unittest.mock import patch
 
@@ -32,21 +31,24 @@ one_item_nbytes = one_item_array().nbytes
 dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
 dask_cuda.proxify_device_objects.incompatible_types = ()  # type: ignore
 
-# Make the "disk" serializer available and use a tmp directory
-if ProxifyHostFile._spill_to_disk is None:
-    # Hold on to `tmpdir` to keep dir alive until exit
-    tmpdir = tempfile.TemporaryDirectory()
-    ProxifyHostFile(
-        local_directory=tmpdir.name,
-        device_memory_limit=1024,
-        memory_limit=1024,
-    )
-assert ProxifyHostFile._spill_to_disk is not None
 
-# In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
-# Notice, we use `../..` to remove the `dask-worker-space/jit-unspill-disk-storage` part
-# added by the ProxifyHostFile implicitly.
-root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
+@pytest.fixture(scope="module")
+def root_dir(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("jit-unspill")
+    # Make the "disk" serializer available and use a tmp directory
+    if ProxifyHostFile._spill_to_disk is None:
+        ProxifyHostFile(
+            worker_local_directory=tmpdir.name,
+            device_memory_limit=1024,
+            memory_limit=1024,
+        )
+    assert ProxifyHostFile._spill_to_disk is not None
+
+    # In order to use the same tmp dir, we use `root_dir` for all
+    # ProxifyHostFile creations. Notice, we use `..` to remove the
+    # `jit-unspill-disk-storage` part added by the
+    # ProxifyHostFile implicitly.
+    return str(ProxifyHostFile._spill_to_disk.root_dir / "..")
 
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
@@ -61,9 +63,11 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     return ids1 == ids2
 
 
-def test_one_dev_item_limit():
+def test_one_dev_item_limit(root_dir):
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
 
     a1 = one_item_array() + 42
@@ -150,10 +154,10 @@ def test_one_dev_item_limit():
     assert len(dhf.manager) == 0
 
 
-def test_one_item_host_limit(capsys):
+def test_one_item_host_limit(capsys, root_dir):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=one_item_nbytes,
         memory_limit=memory_limit,
     )
@@ -213,7 +217,7 @@ def test_one_item_host_limit(capsys):
     assert len(dhf.manager) == 0
 
 
-def test_spill_on_demand():
+def test_spill_on_demand(root_dir):
     """
     Test spilling on demand by disabling the device_memory_limit
     and allocating two large buffers that will otherwise fail because
@@ -225,7 +229,7 @@ def test_spill_on_demand():
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=2 * total_mem,
         memory_limit=2 * total_mem,
         spill_on_demand=True,
@@ -263,7 +267,7 @@ def test_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-def test_dataframes_share_dev_mem():
+def test_dataframes_share_dev_mem(root_dir):
     cudf = pytest.importorskip("cudf")
 
     df = cudf.DataFrame({"a": range(10)})
@@ -273,10 +277,10 @@ def test_dataframes_share_dev_mem():
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
     assert view1["a"].data is not view2["a"].data
     # They still share the same underlying device memory
-    assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
+    view1["a"].data.ptr == view2["a"].data.ptr
 
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=160, memory_limit=1000
+        worker_local_directory=root_dir, device_memory_limit=160, memory_limit=1000
     )
     dhf["v1"] = view1
     dhf["v2"] = view2
@@ -303,7 +307,7 @@ def test_cudf_get_device_memory_objects():
     assert len(res) == 4, "We expect four buffer objects"
 
 
-def test_externals():
+def test_externals(root_dir):
     """Test adding objects directly to the manager
 
     Add an object directly to the manager makes it count against the
@@ -317,7 +321,9 @@ def test_externals():
     __delitem__.
     """
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
@@ -353,7 +359,7 @@ def test_externals():
 
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
-def test_incompatible_types():
+def test_incompatible_types(root_dir):
     """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
 
     Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
@@ -361,7 +367,7 @@ def test_incompatible_types():
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=100, memory_limit=100
+        worker_local_directory=root_dir, device_memory_limit=100, memory_limit=100
     )
 
     # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval

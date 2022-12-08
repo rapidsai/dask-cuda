@@ -28,7 +28,7 @@ from dask_cuda.proxify_host_file import ProxifyHostFile
 if ProxifyHostFile._spill_to_disk is None:
     tmpdir = tempfile.TemporaryDirectory()
     ProxifyHostFile(
-        local_directory=tmpdir.name,
+        worker_local_directory=tmpdir.name,
         device_memory_limit=1024,
         memory_limit=1024,
     )

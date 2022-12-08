@@ -1,4 +1,3 @@
-import os
 from random import randint
 
 import numpy as np
@@ -24,14 +23,6 @@ def assert_eq(x, y):
     return dask.array.assert_eq(cupy.asnumpy(x), cupy.asnumpy(y))
 
 
-def test_device_host_file_config(tmp_path):
-    dhf_disk_path = str(tmp_path / "dask-worker-space" / "storage")
-    with dask.config.set(temporary_directory=str(tmp_path)):
-        dhf = DeviceHostFile()
-        assert os.path.exists(dhf_disk_path)
-        assert dhf.disk_func_path == dhf_disk_path
-
-
 @pytest.mark.parametrize("num_host_arrays", [1, 10, 100])
 @pytest.mark.parametrize("num_device_arrays", [1, 10, 100])
 @pytest.mark.parametrize("array_size_range", [(1, 1000), (100, 100), (1000, 1000)])
@@ -43,7 +34,7 @@ def test_device_host_file_short(
     dhf = DeviceHostFile(
         device_memory_limit=1024 * 16,
         memory_limit=1024 * 16,
-        local_directory=tmpdir,
+        worker_local_directory=tmpdir,
     )
 
     host = [
@@ -73,6 +64,7 @@ def test_device_host_file_short(
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
 
 def test_device_host_file_step_by_step(tmp_path):
@@ -81,48 +73,53 @@ def test_device_host_file_step_by_step(tmp_path):
     dhf = DeviceHostFile(
         device_memory_limit=1024 * 16,
         memory_limit=1024 * 16,
-        local_directory=tmpdir,
+        worker_local_directory=tmpdir,
     )
 
     a = np.random.random(1000)
     b = cupy.random.random(1000)
 
     dhf["a1"] = a
-
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b1"] = b
-
     assert set(dhf.device.keys()) == set(["b1"])
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b2"] = b
     assert set(dhf.device.keys()) == set(["b1", "b2"])
     assert set(dhf.host.keys()) == set(["a1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["b3"] = b
     assert set(dhf.device.keys()) == set(["b2", "b3"])
     assert set(dhf.host.keys()) == set(["a1", "b1"])
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["a2"] = a
     assert set(dhf.device.keys()) == set(["b2", "b3"])
     assert set(dhf.host.keys()) == set(["a2", "b1"])
     assert set(dhf.disk.keys()) == set(["a1"])
+    assert set(dhf.others.keys()) == set()
 
     dhf["b4"] = b
     assert set(dhf.device.keys()) == set(["b3", "b4"])
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
+    assert set(dhf.others.keys()) == set()
 
     dhf["b4"] = b
     assert set(dhf.device.keys()) == set(["b3", "b4"])
     assert set(dhf.host.keys()) == set(["a2", "b2"])
     assert set(dhf.disk.keys()) == set(["a1", "b1"])
+    assert set(dhf.others.keys()) == set()
 
     assert_eq(dhf["a1"], a)
     del dhf["a1"]
@@ -140,11 +137,13 @@ def test_device_host_file_step_by_step(tmp_path):
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set()
     assert set(dhf.disk.keys()) == set()
+    assert set(dhf.others.keys()) == set()
 
     dhf["x"] = b
     dhf["x"] = a
     assert set(dhf.device.keys()) == set()
     assert set(dhf.host.keys()) == set(["x"])
+    assert set(dhf.others.keys()) == set()
 
 
 @pytest.mark.parametrize("collection", [dict, list, tuple])

@@ -2,13 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
+import logging
 import os
 import warnings
 
 from toolz import valmap
 
 import dask
-from dask.utils import parse_bytes
 from distributed import Nanny
 from distributed.core import Server
 from distributed.deploy.cluster import Cluster
@@ -16,6 +16,7 @@ from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.utils import has_arg
 from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
@@ -85,9 +86,16 @@ class CUDAWorker(Server):
             raise ValueError("nthreads must be higher than 0.")
 
         # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
-        memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=nprocs
-        )
+        if has_arg(parse_memory_limit, "logger"):
+            # TODO: Remove has_arg check after 2022.11.1 support is dropped
+            logger = logging.getLogger(__name__)
+            memory_limit = parse_memory_limit(
+                memory_limit=memory_limit, nthreads=1, total_cores=nprocs, logger=logger
+            )
+        else:
+            memory_limit = parse_memory_limit(
+                memory_limit=memory_limit, nthreads=1, total_cores=nprocs
+            )
 
         if pid_file:
             with open(pid_file, "w") as f:
@@ -139,10 +147,6 @@ class CUDAWorker(Server):
                     "RMM pool and managed memory are incompatible with asynchronous "
                     "allocator"
                 )
-            if rmm_pool_size is not None:
-                rmm_pool_size = parse_bytes(rmm_pool_size)
-                if rmm_maximum_pool_size is not None:
-                    rmm_maximum_pool_size = parse_bytes(rmm_maximum_pool_size)
 
         else:
             if enable_nvlink:
@@ -180,7 +184,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                     "shared_filesystem": shared_filesystem,
                 },
             )
@@ -192,7 +195,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                 },
             )
 

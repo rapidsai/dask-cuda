@@ -11,6 +11,7 @@ import traceback
 import warnings
 import weakref
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import (
     Any,
     Callable,
@@ -19,7 +20,6 @@ from typing import (
     Hashable,
     Iterable,
     List,
-    MutableMapping,
     Optional,
     Set,
     Tuple,
@@ -40,6 +40,7 @@ from distributed.protocol.serialize import (
 from . import proxify_device_objects as pdo
 from .disk_io import SpillToDiskProperties, disk_read, disk_write
 from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
+from .is_spillable_object import cudf_spilling_status
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
 
@@ -452,17 +453,14 @@ class ProxifyHostFile(MutableMapping):
 
     Parameters
     ----------
+    worker_local_directory: str
+        Path on local machine to store temporary files.
+        WARNING, this **cannot** change while running thus all serialization to
+        disk are using the same directory.
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
     memory_limit: int
         Number of bytes of host memory used before spilling to disk.
-    local_directory: str or None, default None
-        Path on local machine to store temporary files. Can be a string (like
-        ``"path/to/files"``) or ``None`` to fall back on the value of
-        ``dask.temporary-directory`` in the local Dask configuration, using the
-        current working directory if this is not set.
-        WARNING, this **cannot** change while running thus all serialization to
-        disk are using the same directory.
     shared_filesystem: bool or None, default None
         Whether the `local_directory` above is shared between all workers or not.
         If ``None``, the "jit-unspill-shared-fs" config value are used, which
@@ -492,15 +490,24 @@ class ProxifyHostFile(MutableMapping):
 
     def __init__(
         self,
+        # So named such that dask will pass in the worker's local
+        # directory when constructing this through the "data" callback.
+        worker_local_directory: str,
         *,
         device_memory_limit: int,
         memory_limit: int,
-        local_directory: str = None,
         shared_filesystem: bool = None,
         compatibility_mode: bool = None,
         spill_on_demand: bool = None,
         gds_spilling: bool = None,
     ):
+        if cudf_spilling_status():
+            warnings.warn(
+                "JIT-Unspill and cuDF's built-in spilling don't work together, please "
+                "disable one of them by setting either `CUDF_SPILL=off` or "
+                "`DASK_JIT_UNSPILL=off` environment variable."
+            )
+
         # each value of self.store is a tuple containing the proxified
         # object, as well as a boolean indicating whether any
         # incompatible types were found when proxifying it
@@ -510,10 +517,7 @@ class ProxifyHostFile(MutableMapping):
         # Create an instance of `SpillToDiskProperties` if it doesn't already exist
         path = pathlib.Path(
             os.path.join(
-                local_directory
-                or dask.config.get("temporary-directory")
-                or os.getcwd(),
-                "dask-worker-space",
+                worker_local_directory,
                 "jit-unspill-disk-storage",
             )
         ).resolve()
