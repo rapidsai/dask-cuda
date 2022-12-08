@@ -65,6 +65,7 @@ conda list --show-channel-urls
 # Installing cucim in order to test GDS spilling
 gpuci_mamba_retry install "cudf=${MINOR_VERSION}" \
               "dask-cudf=${MINOR_VERSION}" \
+              "strings_udf=${MINOR_VERSION}" \
               "ucx-py=${UCXPY_VERSION}" \
               "ucx-proc=*=gpu" \
               "cucim"
