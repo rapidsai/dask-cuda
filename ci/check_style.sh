@@ -14,7 +14,5 @@ rapids-dependency-file-generator \
 rapids-mamba-retry env create --force -f env.yaml -n checks
 conda activate checks
 
-set +e
-
 # Run pre-commit checks
 pre-commit run --hook-stage manual --all-files --show-diff-on-failure
