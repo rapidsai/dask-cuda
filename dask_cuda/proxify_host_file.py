@@ -40,6 +40,7 @@ from distributed.protocol.serialize import (
 from . import proxify_device_objects as pdo
 from .disk_io import SpillToDiskProperties, disk_read, disk_write
 from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
+from .is_spillable_object import cudf_spilling_status
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
 
@@ -500,6 +501,13 @@ class ProxifyHostFile(MutableMapping):
         spill_on_demand: bool = None,
         gds_spilling: bool = None,
     ):
+        if cudf_spilling_status():
+            warnings.warn(
+                "JIT-Unspill and cuDF's built-in spilling don't work together, please "
+                "disable one of them by setting either `CUDF_SPILL=off` or "
+                "`DASK_JIT_UNSPILL=off` environment variable."
+            )
+
         # each value of self.store is a tuple containing the proxified
         # object, as well as a boolean indicating whether any
         # incompatible types were found when proxifying it

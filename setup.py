@@ -1,8 +1,7 @@
 import os
 
-from setuptools import setup
-
 import versioneer
+from setuptools import setup
 
 if "GIT_DESCRIBE_TAG" in os.environ:
     # Disgusting hack. For pypi uploads we cannot use the
