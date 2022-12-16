@@ -46,7 +46,7 @@ def bench_once(client, args, write_profile=None):
     nchunks = args.in_parts
     totalsize = chunksize * nchunks
     x = da.random.random((totalsize,), chunks=(chunksize,))
-    df = dask.dataframe.from_dask_array(x, columns="data").to_frame()
+    df = dask.dataframe.from_dask_array(x, columns=["data"])
 
     if args.type == "gpu":
         import cudf
