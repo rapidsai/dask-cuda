@@ -254,6 +254,173 @@ async def shuffle_task(
     ]
 
 
+def create_partitions(stage, column_names, npartitions, ignore_index, proxify):
+    """Create partitions from one or more staged dataframes
+
+    Parameters
+    ----------
+    stage
+        The staged input dataframes
+    column_names: list of strings
+        List of column names on which we want to split.
+    npartitions: int or None
+        The desired number of output partitions.
+    ignore_index: bool
+        Ignore index during shuffle.  If True, performance may improve,
+        but index values will not be preserved.
+    proxify
+        Function to proxify object.
+
+    Returns
+    -------
+    partitions: list of DataFrames
+        List of dataframe-partitions
+    """
+
+    if not stage:
+        return {}
+
+    return proxify(
+        single_shuffle_group(
+            stage.popitem()[1], column_names, npartitions, ignore_index
+        )
+    )
+
+
+async def shuffle_partitions(
+    eps: dict,
+    myrank: int,
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    out_part_id_to_dataframe: Dict[int, DataFrame],
+    proxify: Callable[[T], T],
+    out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
+) -> None:
+    """Shuffle (all-to-all) partitions between all workers
+
+    Parameters
+    ----------
+    eps
+        Communication endpoints to the other workers.
+    myrank
+        The rank of this worker.
+    rank_to_out_part_ids
+        dict that for each worker rank specifices a set of output partition IDs.
+        If the worker shouldn't return any partitions, it is excluded from the
+        dict. Partition IDs are global integers `0..npartitions` and corresponds
+        to the dict keys returned by `group_split_dispatch`.
+    out_part_id_to_dataframe
+        Mapping from partition ID to dataframe.
+    proxify
+        Function to proxify object.
+    out_part_id_to_dataframe_list
+        The **output** of this function, which is a dict of the partitions owned by
+        this worker.
+    """
+    await asyncio.gather(
+        recv(
+            eps,
+            myrank,
+            rank_to_out_part_ids,
+            out_part_id_to_dataframe_list,
+            proxify,
+        ),
+        send(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe),
+    )
+
+    # At this point `send()` should have pop'ed all output partitions
+    # beside the partitions owned be `myrank` (if any).
+    assert (
+        rank_to_out_part_ids[myrank] == out_part_id_to_dataframe.keys()
+        or not out_part_id_to_dataframe
+    )
+    # We can now add them to the output dataframes.
+    for out_part_id, dataframe in out_part_id_to_dataframe.items():
+        out_part_id_to_dataframe_list[out_part_id].append(
+            proxify(dataframe.copy(deep=True))
+        )
+    out_part_id_to_dataframe.clear()
+
+
+async def shuffle_task_low_memory(
+    s,
+    stage_name,
+    df_meta,
+    rank_to_inkeys: Dict[int, set],
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    column_names,
+    npartitions,
+    ignore_index,
+) -> List[DataFrame]:
+    """Explicit-comms shuffle task
+
+    This function is running on each worker participating in the shuffle.
+
+    Parameters
+    ----------
+    s: dict
+        Worker session state
+    stage_name: str
+        Name of the stage to retrieve the input keys from.
+    rank_to_inkeys: dict
+        dict that for each worker rank specifices the set of staged input keys.
+    rank_to_out_part_ids: dict
+        dict that for each worker rank specifices a set of output partition IDs.
+        If the worker shouldn't return any partitions, it is excluded from the
+        dict. Partition IDs are global integers `0..npartitions` and corresponds
+        to the dict keys returned by `group_split_dispatch`.
+    column_names: list of strings
+        List of column names on which we want to split.
+    npartitions: int or None
+        The desired number of output partitions.
+    ignore_index: bool
+        Ignore index during shuffle.  If True, performance may improve,
+        but index values will not be preserved.
+
+    Returns
+    -------
+    partitions: list of DataFrames
+        List of dataframe-partitions
+    """
+
+    proxify = get_proxify(s["worker"])
+    myrank = s["rank"]
+    eps = s["eps"]
+    stage = comms.pop_staging_area(s, stage_name)
+    assert stage.keys() == rank_to_inkeys[myrank]
+
+    out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
+    max_num_inkeys = max(len(k) for k in rank_to_inkeys.values())
+
+    for _ in range(max_num_inkeys):
+        partitions = create_partitions(
+            stage, column_names, npartitions, ignore_index, proxify
+        )
+        await shuffle_partitions(
+            eps,
+            myrank,
+            rank_to_out_part_ids,
+            partitions,
+            proxify,
+            out_part_id_to_dataframe_list,
+        )
+
+    # Finally, we concatenate the output dataframes into the final output partitions
+    ret = []
+    while out_part_id_to_dataframe_list:
+        ret.append(
+            proxify(
+                dd_concat(
+                    out_part_id_to_dataframe_list.popitem()[1],
+                    ignore_index=ignore_index,
+                )
+            )
+        )
+        # For robustness, we yield this task to give Dask a chance to do bookkeeping
+        # such as letting the Worker answer heartbeat requests
+        await asyncio.sleep(0)
+    return ret
+
+
 def shuffle(
     df: DataFrame,
     column_names: List[str],
@@ -332,12 +499,18 @@ def shuffle(
     for rank, i in zip(ranks, range(div * len(ranks), npartitions)):
         rank_to_out_part_ids[rank].add(i)
 
-    # Run `_shuffle()` on each worker
+    shuffler = (
+        shuffle_task_low_memory
+        if dask.config.get("LOW_MEM_MODE", True)
+        else shuffle_task
+    )
+
+    # Run a shuffle task on each worker
     shuffle_result = {}
     for rank in ranks:
         shuffle_result[rank] = c.submit(
             c.worker_addresses[rank],
-            shuffle_task,
+            shuffler,
             name,
             df_meta,
             rank_to_inkeys,
