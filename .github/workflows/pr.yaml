@@ -33,10 +33,45 @@ jobs:
     with:
       build_type: pull-request
   wheel-build:
-    uses: rapidsai/dask-cuda/.github/workflows/wheels.yaml@gha
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      repo: rapidsai/dask-cuda
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
+    strategy:
+      fail-fast: false
+    runs-on:
+      - self-hosted
+      - linux
+      - amd64
+      - cpu4
+    container:
+      image: rapidsai/ci:latest
+      env:
+        RAPIDS_BUILD_TYPE: 'pull-request'
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Standardize repository information
+        run: |
+          echo "RAPIDS_REPOSITORY=${{ github.repository }}" >> "${GITHUB_ENV}"
+          echo "RAPIDS_SHA=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
+          echo "RAPIDS_REF_NAME=${{ github.ref_name }}" >> "${GITHUB_ENV}"
+          echo "RAPIDS_BUILD_TYPE=pull-request" >> "${GITHUB_ENV}"
+      - name: Install pypa/build
+        run: |
+          python -m pip install build --user
+      - name: Set up environment variables
+        run: |
+          # While conda provides these during conda-build, they are also necessary during
+          # the setup.py build for PyPI
+          echo "GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`" >> $GITHUB_ENV
+          echo "GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`" >> $GITHUB_ENV
+          # Compute version suffix
+          rapids-env-update
+          echo "VERSION_SUFFIX=${VERSION_SUFFIX}" >> $GITHUB_ENV
+      - name: Build a binary wheel and a source tarball
+        run: |
+          python -m build --sdist --wheel --outdir dist/ .
+      - name: Publish distribution 📦 to PyPI
+        if: inputs.build_type == 'branch'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.RAPIDSAI_PYPI_TOKEN }}

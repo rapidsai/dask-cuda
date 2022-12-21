@@ -45,11 +45,3 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
-  wheel-build:
-    uses: rapidsai/dask-cuda/.github/workflows/wheels.yaml@gha
-    with:
-      build_type: ${{ inputs.build_type || 'branch' }}
-      repo: rapidsai/dask-cuda
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
