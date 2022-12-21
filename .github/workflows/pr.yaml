@@ -41,25 +41,17 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
     - name: Install pypa/build
-      run: >-
-        python -m
-        pip install
-        build
-        --user
+      run: >
+        python -m pip install build --user
     - name: Set up environment variables
-      run: >-
+      run: >
         # While conda provides these during conda-build, they are also necessary during
         # the setup.py build for PyPI
         echo "GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`" >> $GITHUB_ENV
         echo "GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`" >> $GITHUB_ENV
     - name: Build a binary wheel and a source tarball
-      run: >-
-        python -m
-        build
-        --sdist
-        --wheel
-        --outdir dist/
-        .
+      run: >
+        python -m build --sdist --wheel --outdir dist/ .
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
