@@ -35,7 +35,6 @@ jobs:
   wheel-build:
     # Copied from:
     # https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
-    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -47,6 +46,12 @@ jobs:
         pip install
         build
         --user
+    - name: Set up environment variables
+      run: >-
+        # While conda provides these during conda-build, they are also necessary during
+        # the setup.py build for PyPI
+        echo "GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`" >> $GITHUB_ENV
+        echo "GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`" >> $GITHUB_ENV
     - name: Build a binary wheel and a source tarball
       run: >-
         python -m
