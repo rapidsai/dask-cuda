@@ -51,6 +51,7 @@ jobs:
         # the setup.py build for PyPI
         echo "GIT_DESCRIBE_TAG=`git describe --abbrev=0 --tags`" >> $GITHUB_ENV
         echo "GIT_DESCRIBE_NUMBER=`git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count`" >> $GITHUB_ENV
+        echo "VERSION_SUFFIX=`date +%y%m%d`" >> $GITHUB_ENV
     - name: Build a binary wheel and a source tarball
       run: |
         python -m build --sdist --wheel --outdir dist/ .
