@@ -26,8 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python-build:
-    needs: [cpp-build]
+  conda-python-build:
     secrets: inherit
     uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-matrix-build.yaml@main
     with:
@@ -37,9 +36,17 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
   upload-conda:
-    needs: [python-build]
+    needs: [conda-python-build]
     secrets: inherit
     uses: rapidsai/shared-action-workflows/.github/workflows/conda-upload-packages.yaml@main
+    with:
+      build_type: ${{ inputs.build_type || 'branch' }}
+      repo: rapidsai/dask-cuda
+      branch: ${{ inputs.branch }}
+      date: ${{ inputs.date }}
+      sha: ${{ inputs.sha }}
+  wheel-build:
+    uses: rapidsai/dask-cuda/.github/workflows/wheels.yaml@gha
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       repo: rapidsai/dask-cuda
