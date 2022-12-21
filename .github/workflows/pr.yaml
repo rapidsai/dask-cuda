@@ -45,6 +45,9 @@ jobs:
       env:
         RAPIDS_BUILD_TYPE: 'pull-request'
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v3
         with:
