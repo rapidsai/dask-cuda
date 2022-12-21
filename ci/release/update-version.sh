@@ -33,3 +33,7 @@ function sed_runner() {
 
 # Update UCX-Py version
 sed_runner "s/export UCXPY_VERSION=.*/export UCXPY_VERSION="${NEXT_UCXPY_VERSION}"/g" ci/gpu/build.sh
+
+# Bump cudf and dask-cudf testing dependencies
+sed_runner "s/cudf=${CURRENT_SHORT_TAG}/cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
+sed_runner "s/dask-cudf=${CURRENT_SHORT_TAG}/dask-cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
