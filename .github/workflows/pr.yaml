@@ -33,18 +33,9 @@ jobs:
     with:
       build_type: pull-request
   wheel-build:
-    strategy:
-      fail-fast: false
-    runs-on:
-      - self-hosted
-      - linux
-      - amd64
-      - cpu4
+    runs-on: ubuntu-latest
     container:
       image: rapidsai/ci:latest
-      env:
-        RAPIDS_BUILD_TYPE: 'pull-request'
-        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     defaults:
       run:
         shell: bash
