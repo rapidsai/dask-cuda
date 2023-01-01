@@ -56,21 +56,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Install pypa/build
-        run: |
-          python -m pip install build --user
-      - name: Set up environment variables
-        run: |
-          # While conda provides these during conda-build, they are also necessary during
-          # the setup.py build for PyPI
-          echo "GIT_DESCRIBE_TAG=$(git describe --abbrev=0 --tags)" >> $GITHUB_ENV
-          echo "GIT_DESCRIBE_NUMBER=$(git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count)" >> $GITHUB_ENV
-          # Compute version suffix
-          source rapids-env-update
-          echo "VERSION_SUFFIX=${VERSION_SUFFIX}" >> $GITHUB_ENV
-      - name: Build a binary wheel and a source tarball
-        run: |
-          python -m build --sdist --wheel --outdir dist/ .
+      - name: Build wheel
+        run: ci/build_python_pypi.sh
       - name: Publish distribution 📦 to PyPI
         if: inputs.build_type == 'branch'
         uses: pypa/gh-action-pypi-publish@release/v1
