@@ -43,12 +43,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Standardize repository information
-        run: |
-          echo "RAPIDS_REPOSITORY=${{ github.repository }}" >> "${GITHUB_ENV}"
-          echo "RAPIDS_SHA=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
-          echo "RAPIDS_REF_NAME=${{ github.ref_name }}" >> "${GITHUB_ENV}"
-          echo "RAPIDS_BUILD_TYPE=pull-request" >> "${GITHUB_ENV}"
       - name: Install pypa/build
         run: |
           python -m pip install build --user
