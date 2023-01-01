@@ -2,9 +2,6 @@
 files:
   all:
     output: none
-    matrix:
-      cuda: ["11.5"]
-      arch: [x86_64]
     includes:
       - build_python
       - cudatoolkit
