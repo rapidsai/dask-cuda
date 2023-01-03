@@ -34,7 +34,7 @@ jobs:
     with:
       build_type: pull-request
   wheel-build:
-      needs: checks
+    needs: checks
     runs-on: ubuntu-latest
     container:
       image: rapidsai/ci:latest
