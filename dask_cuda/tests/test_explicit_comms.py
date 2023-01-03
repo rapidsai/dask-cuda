@@ -132,7 +132,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                     ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
                         workers=all_workers
                     )
-                    # To reduce test runtime, we change the batchsizes here instread
+                    # To reduce test runtime, we change the batchsizes here instead
                     # of using a test parameter.
                     for batchsize in (-1, 1, 2):
                         with dask.config.set(xcomm_batchsize=batchsize):
