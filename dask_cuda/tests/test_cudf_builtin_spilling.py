@@ -77,6 +77,11 @@ def test_device_host_file_step_by_step(tmp_path, manager: SpillManager):
     tmpdir.mkdir()
     pdf = pandas.DataFrame({"a": [1, 2, 3]})
     cdf = cudf.DataFrame({"a": [1, 2, 3]})
+
+    # Pandas will cache the result of probing this attribute.
+    # We trigger it here, to get consistent results from `safe_sizeof()`
+    hasattr(pdf, "__cuda_array_interface__")
+
     dhf = DeviceHostFile(
         device_memory_limit=safe_sizeof(pdf),
         memory_limit=safe_sizeof(pdf),
