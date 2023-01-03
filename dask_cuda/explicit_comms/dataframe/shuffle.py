@@ -6,7 +6,7 @@ import inspect
 from collections import defaultdict
 from math import ceil
 from operator import getitem
-from typing import Any, Dict, List, Optional, Protocol, Set, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Protocol, Set, TypeVar
 
 import dask
 import dask.dataframe
@@ -37,6 +37,50 @@ def get_proxify(worker: Worker) -> Proxify:
         data = worker.data
         return lambda x: data.manager.proxify(x)[0]
     return lambda x: x  # no-op
+
+
+def get_no_comm_postprocess(
+    stage: Dict[str, Any], num_rounds: int, batchsize: int
+) -> Callable[[DataFrame], DataFrame]:
+    """Get function for post-processing partitions not communicated
+
+    In cuDF, the `group_split_dispatch` uses `scatter_by_map` to create
+    the partitions, which is implemented by splitting a single base dataframe
+    into multiple partitions. This means that memory are not freed until
+    ALL partitions are deleted.
+
+    In order to free memory ASAP, we can deep copy partitions NOT being
+    communicated. We do this when `num_rounds != batchsize`.
+
+    Parameters
+    ----------
+    stage
+        The staged input dataframes.
+    num_rounds: int
+        Number of rounds of dataframe partitioning and all-to-all communication.
+    batchsize: int
+        Number of partitions each worker will handle in each round.
+
+    Returns
+    -------
+    Function to be called on partitions not communicated.
+
+    """
+    if num_rounds == batchsize:
+        return lambda x: x
+    try:
+        import cudf
+    except ImportError:
+        return lambda x: x
+    if not stage or not isinstance(next(iter(stage)), cudf.DataFrame):
+        return lambda x: x
+
+    # Deep coping a cuDF dataframe doesn't deep copy its index hence
+    # we have to do it explicitly.
+    return lambda x: x._from_data(
+        x._data.copy(deep=True),
+        x._index.copy(deep=True),
+    )
 
 
 async def send(
@@ -207,6 +251,7 @@ async def send_recv_partitions(
     myrank: int,
     rank_to_out_part_ids: Dict[int, Set[int]],
     out_part_id_to_dataframe: Dict[int, DataFrame],
+    no_comm_postprocess: Callable[[DataFrame], DataFrame],
     proxify: Proxify,
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
 ) -> None:
@@ -224,7 +269,10 @@ async def send_recv_partitions(
         dict. Partition IDs are global integers `0..npartitions` and corresponds
         to the dict keys returned by `group_split_dispatch`.
     out_part_id_to_dataframe
-        Mapping from partition ID to dataframe.
+        Mapping from partition ID to dataframe. This dict is cleared on return.
+    no_comm_postprocess
+        Function to post-process partitions not communicated.
+        See `get_no_comm_postprocess`
     proxify
         Function to proxify object.
     out_part_id_to_dataframe_list
@@ -250,7 +298,9 @@ async def send_recv_partitions(
     )
     # We can now add them to the output dataframes.
     for out_part_id, dataframe in out_part_id_to_dataframe.items():
-        out_part_id_to_dataframe_list[out_part_id].append(proxify(dataframe))
+        out_part_id_to_dataframe_list[out_part_id].append(
+            no_comm_postprocess(proxify(dataframe))
+        )
     out_part_id_to_dataframe.clear()
 
 
@@ -305,6 +355,7 @@ async def shuffle_task(
     myrank: int = s["rank"]
     stage = comms.pop_staging_area(s, stage_name)
     assert stage.keys() == rank_to_inkeys[myrank]
+    no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize)
 
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     for _ in range(num_rounds):
@@ -316,6 +367,7 @@ async def shuffle_task(
             myrank,
             rank_to_out_part_ids,
             partitions,
+            no_comm_postprocess,
             proxify,
             out_part_id_to_dataframe_list,
         )
@@ -371,8 +423,11 @@ def shuffle(
         A shuffle consist of multiple rounds where each worker partition and
         all-to-all communicate a number of its dataframe partitions. The batch
         size is the number of partitions each worker will handle in each round.
-        If -1, each worker will handle all its partitions in a single round.
-        if None, the value of `DASK_XCOMM_BATCHSIZE` is used or 1 if not set.
+        If -1, each worker will handle all its partitions in a single round and
+        all techniques to reduce memory usage is disabled, which might be faster
+        when memory pressure isn't an issue.
+        If None, the value of `DASK_XCOMM_BATCHSIZE` is used or 1 if not set thus
+        by default, we prioritize robustness over performance.
 
     Returns
     -------
