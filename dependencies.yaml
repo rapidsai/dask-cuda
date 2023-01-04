@@ -1,0 +1,103 @@
+# Dependency list for https://github.com/rapidsai/dependency-file-generator
+files:
+  all:
+    output: none
+    includes:
+      - build_python
+      - cudatoolkit
+      - develop
+      - py_version
+      - run_python
+      - test_python
+  test_python:
+    output: none
+    includes:
+      - cudatoolkit
+      - py_version
+      - test_python
+  checks:
+    output: none
+    includes:
+      - develop
+      - py_version
+channels:
+  - rapidsai
+  - rapidsai-nightly
+  - dask/label/dev
+  - conda-forge
+  - nvidia
+dependencies:
+  build_python:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - setuptools>=64.0.0
+  cudatoolkit:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              cuda: "11.2"
+            packages:
+              - cudatoolkit=11.2
+          - matrix:
+              cuda: "11.4"
+            packages:
+              - cudatoolkit=11.4
+          - matrix:
+              cuda: "11.5"
+            packages:
+              - cudatoolkit=11.5
+  develop:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - pre-commit
+  py_version:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              py: "3.8"
+            packages:
+              - python=3.8
+          - matrix:
+              py: "3.9"
+            packages:
+              - python=3.9
+          - matrix:
+            packages:
+              - python>=3.8,<3.10
+  run_python:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - dask>=2022.12.0
+          - distributed>=2022.12.0
+          - numba>=0.54
+          - numpy>=1.18.0
+          - pandas>=1.0
+          - pynvml>=11.0.0
+          - zict>=0.1.3
+  test_python:
+    common:
+      - output_types: [conda]
+        packages:
+          - cucim
+          - cudf=23.02
+          - dask-cudf=23.02
+          - pytest
+          - pytest-cov
+          - ucx-proc=*=gpu
+          - ucx-py=0.30
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              arch: x86_64
+            packages:
+              - numactl-devel-cos7-x86_64
+          - matrix:
+              arch: aarch64
+            packages:
+              - numactl-devel-cos7-aarch64
