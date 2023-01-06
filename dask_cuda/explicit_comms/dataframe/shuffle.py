@@ -68,11 +68,13 @@ def get_no_comm_postprocess(
     """
     if num_rounds == batchsize:
         return lambda x: x
+
+    # Check that we are shuffling a cudf dataframe
     try:
         import cudf
     except ImportError:
         return lambda x: x
-    if not stage or not isinstance(next(iter(stage)), cudf.DataFrame):
+    if not stage or not isinstance(next(iter(stage.values())), cudf.DataFrame):
         return lambda x: x
 
     # Deep coping a cuDF dataframe doesn't deep copy its index hence
