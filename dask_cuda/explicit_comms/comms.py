@@ -10,7 +10,7 @@ from dask.utils import stringify
 from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
-_default_comms = None
+_default_comms: Optional[Client] = None
 
 
 def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):

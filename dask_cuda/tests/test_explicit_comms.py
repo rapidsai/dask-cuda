@@ -1,5 +1,7 @@
 import asyncio
 import multiprocessing as mp
+from collections import defaultdict
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -9,11 +11,12 @@ import dask
 from dask import dataframe as dd
 from dask.dataframe.shuffle import partitioning_index
 from dask.dataframe.utils import assert_eq
-from distributed import Client, get_worker
+from distributed import Client, get_worker, wait
 from distributed.deploy.local import LocalCluster
 
 import dask_cuda
 from dask_cuda.explicit_comms import comms
+from dask_cuda.explicit_comms.dataframe.redistribute import redistribute
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
@@ -341,3 +344,54 @@ def test_lock_workers():
             p.join()
 
         assert all(p.exitcode == 0 for p in ps)
+
+
+@pytest.mark.parametrize(
+    "dist1,dist2",
+    [
+        ([2, 2], [1, 3]),
+        ([3, 1], [1, 3]),
+        ([3, 3], [0, 6]),
+        ([3, 0], [3, 0]),
+        ([3, 0, 3], [2, 3, 1]),
+    ],
+)
+def test_redistribute(dist1, dist2):
+    def get_dist_of_df(client: Client, df: dd.DataFrame) -> List[int]:
+        worker_to_keys = defaultdict(set)
+        for key, workers in client.who_has(df).items():
+            for worker in workers:
+                worker_to_keys[worker].add(key)
+        return [len(keys) for keys in worker_to_keys.values()]
+
+    def assert_dist(d1, d2):
+        d1 = sorted([d for d in d1 if d > 0])
+        d2 = sorted([d for d in d2 if d > 0])
+        assert d1 == d2
+
+    n_workers = len(dist1)
+    npartitions = sum(dist1)
+    with LocalCluster(
+        protocol="tcp",
+        dashboard_address=None,
+        n_workers=n_workers,
+        threads_per_worker=1,
+        processes=True,
+    ) as cluster:
+        with Client(cluster) as client:
+            comms._default_comms = None  # TODO: support cluster restart
+            all_workers = list(client.get_worker_logs().keys())
+            df_org = pd.DataFrame({"data": np.random.random(1000)})
+            df0 = dd.from_pandas(df_org.copy(), npartitions=npartitions).persist(
+                workers=all_workers
+            )
+
+            df1 = redistribute(df0, distribution=dist1).persist()
+            wait(df1)
+            assert_dist(dist1, get_dist_of_df(client, df1))
+            assert_eq(df_org, df1.compute())
+
+            df2 = redistribute(df1, distribution=dist2).persist()
+            wait(df2)
+            assert_dist(dist2, get_dist_of_df(client, df2))
+            assert_eq(df_org, df2.compute())
