@@ -75,7 +75,7 @@ def create_data(
     wait(dsk.values())
 
     divs = [None] * (len(dsk) + 1)
-    ret = new_dd_object(dsk, name, create_df(0, "cpu"), divs).persist()
+    ret = new_dd_object(dsk, name, create_df(0, args.type), divs).persist()
     wait(ret)
 
     data_processed = args.in_parts * args.partition_size
