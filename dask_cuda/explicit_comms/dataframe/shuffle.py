@@ -77,7 +77,7 @@ def get_no_comm_postprocess(
     if not stage or not isinstance(next(iter(stage.values())), cudf.DataFrame):
         return lambda x: x
 
-    # Deep coping a cuDF dataframe doesn't deep copy its index hence
+    # Deep copying a cuDF dataframe doesn't deep copy its index hence
     # we have to do it explicitly.
     return lambda x: x._from_data(
         x._data.copy(deep=True),
@@ -161,7 +161,7 @@ def partition_dataframe(
     """Partition dataframe to a dict of dataframes
 
     The partitions are determined by hashing the columns given by column_names
-    unless if `column_names[0] == "_partitions"`, in which case the values of
+    unless `column_names[0] == "_partitions"`, in which case the values of
     `column_names[0]` are used as index.
 
     Parameters
@@ -422,11 +422,11 @@ def shuffle(
         Ignore index during shuffle. If True, performance may improve,
         but index values will not be preserved.
     batchsize: int
-        A shuffle consist of multiple rounds where each worker partition and
-        all-to-all communicate a number of its dataframe partitions. The batch
+        A shuffle consist of multiple rounds where each worker partitions and
+        then all-to-all communicates a number of its dataframe partitions. The batch
         size is the number of partitions each worker will handle in each round.
         If -1, each worker will handle all its partitions in a single round and
-        all techniques to reduce memory usage is disabled, which might be faster
+        all techniques to reduce memory usage are disabled, which might be faster
         when memory pressure isn't an issue.
         If None, the value of `DASK_XCOMM_BATCHSIZE` is used or 1 if not set thus
         by default, we prioritize robustness over performance.
