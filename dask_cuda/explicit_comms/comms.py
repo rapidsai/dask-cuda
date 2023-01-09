@@ -180,7 +180,7 @@ class CommsContext:
         self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
-        self.worker_addresses = list(self.client.run(lambda: 42).keys())
+        self.worker_addresses = list(client.scheduler_info()["workers"].keys())
 
         # Make all workers listen and get all listen addresses
         self.worker_direct_addresses = []
