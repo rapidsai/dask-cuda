@@ -57,7 +57,8 @@ def create_df(nelem, df_type):
 def create_data(
     client: Client, args, name="balanced-df"
 ) -> Tuple[int, dask.dataframe.DataFrame]:
-    """Create evenly distributed a dask dataframe"""
+    """Create an evenly distributed dask dataframe"""
+
     workers = list(client.scheduler_info()["workers"].keys())
     assert len(workers) > 0
 
