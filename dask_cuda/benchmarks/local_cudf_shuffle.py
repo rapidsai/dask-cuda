@@ -23,6 +23,14 @@ from dask_cuda.benchmarks.utils import (
     print_throughput_bandwidth,
 )
 
+try:
+    import cupy
+
+    import cudf
+except ImportError:
+    cupy = None
+    cudf = None
+
 
 def shuffle_dask(df, args):
     result = shuffle(df, index="data", shuffle="tasks", ignore_index=args.ignore_index)
@@ -46,12 +54,12 @@ def shuffle_explicit_comms(df, args):
 def create_df(nelem, df_type):
     if df_type == "cpu":
         return pd.DataFrame({"data": np.random.random(nelem)})
-    else:
-        assert df_type == "gpu"
-        import cupy  # isort:skip
-        import cudf
-
+    elif df_type == "gpu":
+        if cudf is None or cupy is None:
+            raise RuntimeError("`--type=gpu` requires cudf and cupy ")
         return cudf.DataFrame({"data": cupy.random.random(nelem)})
+    else:
+        raise ValueError(f"Unknown type {df_type}")
 
 
 def create_data(
