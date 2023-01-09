@@ -424,8 +424,8 @@ def shuffle(
         If -1, each worker will handle all its partitions in a single round and
         all techniques to reduce memory usage are disabled, which might be faster
         when memory pressure isn't an issue.
-        If None, the value of `DASK_XCOMM_BATCHSIZE` is used or 1 if not set thus
-        by default, we prioritize robustness over performance.
+        If None, the value of `DASK_EXPLICIT_COMMS_BATCHSIZE` is used or 1 if not
+        set thus by default, we prioritize robustness over performance.
 
     Returns
     -------
@@ -469,7 +469,7 @@ def shuffle(
 
     # Get batchsize
     max_num_inkeys = max(len(k) for k in rank_to_inkeys.values())
-    batchsize = batchsize or dask.config.get("xcomm-batchsize", 1)
+    batchsize = batchsize or dask.config.get("explicit_comms-batchsize", 1)
     if batchsize == -1:
         batchsize = max_num_inkeys
 

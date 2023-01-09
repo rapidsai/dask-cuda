@@ -76,7 +76,9 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
 
             for batchsize in (-1, 1, 2):
-                with dask.config.set(explicit_comms=True, xcomm_batchsize=batchsize):
+                with dask.config.set(
+                    explicit_comms=True, explicit_comms_batchsize=batchsize
+                ):
                     ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
                     got = ddf3.compute()
                     pd.testing.assert_frame_equal(got, expected)
@@ -135,7 +137,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                     # To reduce test runtime, we change the batchsizes here instead
                     # of using a test parameter.
                     for batchsize in (-1, 1, 2):
-                        with dask.config.set(xcomm_batchsize=batchsize):
+                        with dask.config.set(explicit_comms_batchsize=batchsize):
                             ddf = explicit_comms_shuffle(
                                 ddf,
                                 ["key"],
