@@ -62,7 +62,8 @@ def create_data(
     assert len(workers) > 0
 
     chunksize = args.partition_size // np.float64().nbytes
-    # Distribute the new partitions between worker by round robin
+    # Distribute the new partitions between workers by round robin.
+    # We use `client.submit` to control the distribution exactly.
     # TODO: support unbalanced partition distribution
     dsk = {}
     for i in range(args.in_parts):
