@@ -57,8 +57,8 @@ def create_df(nelem, df_type):
 def create_data(
     client: Client, args, name="balanced-df"
 ) -> Tuple[int, dask.dataframe.DataFrame]:
-    """Create a dask dataframe that are distributed evenly"""
-    workers = list(client.run(lambda: 42).keys())
+    """Create evenly distributed a dask dataframe"""
+    workers = list(client.scheduler_info()["workers"].keys())
     assert len(workers) > 0
 
     chunksize = args.partition_size // np.float64().nbytes
