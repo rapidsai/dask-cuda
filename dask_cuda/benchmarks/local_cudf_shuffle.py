@@ -1,6 +1,7 @@
 import contextlib
 from collections import ChainMap
 from time import perf_counter
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -53,12 +54,16 @@ def create_df(nelem, df_type):
     return cudf.DataFrame({"data": cupy.random.random(nelem)})
 
 
-def create_data(client: Client, args, name="balanced-df") -> dask.dataframe.DataFrame:
+def create_data(
+    client: Client, args, name="balanced-df"
+) -> Tuple[int, dask.dataframe.DataFrame]:
     """Create a dask dataframe that are distributed evenly"""
     workers = list(client.run(lambda: 42).keys())
     assert len(workers) > 0
 
     chunksize = args.partition_size // np.float64().nbytes
+    # Distribute the new partitions between worker by round robin
+    # TODO: support unbalanced partition distribution
     dsk = {}
     for i in range(args.in_parts):
         worker = workers[i % len(workers)]  # Round robin
@@ -70,15 +75,17 @@ def create_data(client: Client, args, name="balanced-df") -> dask.dataframe.Data
     divs = [None] * (len(dsk) + 1)
     ret = new_dd_object(dsk, name, create_df(0, "cpu"), divs).persist()
     wait(ret)
-    return ret
+
+    data_processed = args.in_parts * args.partition_size
+    if not args.ignore_index:
+        data_processed += (
+            args.in_parts * chunksize * create_df(0, args.type).index.dtype.itemsize
+        )
+    return data_processed, ret
 
 
 def bench_once(client, args, write_profile=None):
-    df = create_data(client, args)
-
-    data_processed = len(df) * sum([t.itemsize for t in df.dtypes])
-    if not args.ignore_index:
-        data_processed += len(df) * df.index.dtype.itemsize
+    data_processed, df = create_data(client, args)
 
     if write_profile is None:
         ctx = contextlib.nullcontext()
