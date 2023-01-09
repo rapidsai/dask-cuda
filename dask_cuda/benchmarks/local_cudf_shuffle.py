@@ -46,12 +46,12 @@ def shuffle_explicit_comms(df, args):
 def create_df(nelem, df_type):
     if df_type == "cpu":
         return pd.DataFrame({"data": np.random.random(nelem)})
+    else:
+        assert df_type == "gpu"
+        import cupy  # isort:skip
+        import cudf
 
-    assert df_type == "gpu"
-    import cupy  # isort:skip
-    import cudf  # isort:skip
-
-    return cudf.DataFrame({"data": cupy.random.random(nelem)})
+        return cudf.DataFrame({"data": cupy.random.random(nelem)})
 
 
 def create_data(
