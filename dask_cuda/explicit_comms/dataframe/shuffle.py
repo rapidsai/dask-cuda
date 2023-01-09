@@ -6,7 +6,7 @@ import inspect
 from collections import defaultdict
 from math import ceil
 from operator import getitem
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 import dask
 import dask.dataframe
@@ -22,11 +22,7 @@ from .. import comms
 T = TypeVar("T")
 
 
-class Proxify(Protocol):
-    """Proxify type hint"""
-
-    def __call__(self, obj: T) -> T:
-        ...
+Proxify = Callable[[T], T]
 
 
 def get_proxify(worker: Worker) -> Proxify:
