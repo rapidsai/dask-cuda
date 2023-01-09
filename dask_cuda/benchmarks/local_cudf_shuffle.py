@@ -78,15 +78,14 @@ def create_data(
         )
     wait(dsk.values())
 
+    df_meta = create_df(0, args.type)
     divs = [None] * (len(dsk) + 1)
-    ret = new_dd_object(dsk, name, create_df(0, args.type), divs).persist()
+    ret = new_dd_object(dsk, name, df_meta, divs).persist()
     wait(ret)
 
     data_processed = args.in_parts * args.partition_size
     if not args.ignore_index:
-        data_processed += (
-            args.in_parts * chunksize * create_df(0, args.type).index.dtype.itemsize
-        )
+        data_processed += args.in_parts * chunksize * df_meta.index.dtype.itemsize
     return data_processed, ret
 
 
