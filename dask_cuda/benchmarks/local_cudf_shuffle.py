@@ -57,7 +57,11 @@ def create_df(nelem, df_type):
 def create_data(
     client: Client, args, name="balanced-df"
 ) -> Tuple[int, dask.dataframe.DataFrame]:
-    """Create an evenly distributed dask dataframe"""
+    """Create an evenly distributed dask dataframe
+
+    The partitions are perfectly distributed across workers, if the number of
+    requested partitions is evenly divisible by the number of workers.
+    """
 
     workers = list(client.scheduler_info()["workers"].keys())
     assert len(workers) > 0
