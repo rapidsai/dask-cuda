@@ -122,6 +122,7 @@ def run(client: Client, args: Namespace, config: Config):
         args.rmm_pool_size,
         args.disable_rmm_pool,
         args.rmm_log_directory,
+        args.enable_rmm_statistics,
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)
