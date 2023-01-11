@@ -108,7 +108,9 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     cluster_args.add_argument(
         "--enable-rmm-statistics",
         action="store_true",
-        help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics",
+        help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
+        "This enables spilling implementations such as JIT-Unspill to provides more "
+        "information on out-of-memory errors",
     )
     cluster_args.add_argument(
         "--enable-tcp-over-ucx",
