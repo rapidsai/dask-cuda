@@ -51,9 +51,9 @@ def get_rmm_device_memory_usage() -> Optional[int]:
     """Get current bytes allocated on current device through RMM
 
     Check the current RMM resource stack for resources such as
-    StatisticsResourceAdaptor and TrackingResourceAdaptor that
-    can report the current allocated bytes. Returns None, if
-    no such resources exist.
+    `StatisticsResourceAdaptor` and `TrackingResourceAdaptor`
+    that can report the current allocated bytes. Returns None,
+    if no such resources exist.
 
     Return
     ------
