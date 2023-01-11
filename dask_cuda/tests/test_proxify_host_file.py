@@ -1,4 +1,3 @@
-import re
 from typing import Iterable
 from unittest.mock import patch
 
@@ -10,6 +9,7 @@ import dask
 import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from dask.sizeof import sizeof
+from dask.utils import format_bytes
 from distributed import Client
 from distributed.utils_test import gen_test
 from distributed.worker import get_worker
@@ -448,25 +448,32 @@ def test_on_demand_debug_info():
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
 
-    total_mem = get_device_total_memory()
+    rmm_pool_size = 2**20
 
     def task():
-        rmm.DeviceBuffer(size=total_mem + 1)
+        (
+            rmm.DeviceBuffer(size=rmm_pool_size // 2),
+            rmm.DeviceBuffer(size=rmm_pool_size // 2),
+            rmm.DeviceBuffer(size=rmm_pool_size),  # Trigger OOM
+        )
 
-    with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
+    with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        jit_unspill=True,
+        rmm_pool_size=rmm_pool_size,
+        rmm_maximum_pool_size=rmm_pool_size,
+        rmm_track_allocations=True,
+    ) as cluster:
         with Client(cluster) as client:
             # Warmup, which trigger the initialization of spill on demand
             client.submit(range, 10).result()
 
             # Submit too large RMM buffer
-            with pytest.raises(
-                MemoryError, match=r".*std::bad_alloc:.*CUDA error at:.*"
-            ):
+            with pytest.raises(MemoryError, match="Maximum pool size exceeded"):
                 client.submit(task).result()
 
             log = str(client.get_worker_logs())
-            assert re.search(
-                "WARNING - RMM allocation of .* failed, spill-on-demand", log
-            )
-            assert re.search("<ProxyManager dev_limit=.* host_limit=.*>: Empty", log)
+            size = format_bytes(rmm_pool_size)
+            assert f"WARNING - RMM allocation of {size} failed" in log
+            assert f"RMM allocs: {size}" in log
             assert "traceback:" in log

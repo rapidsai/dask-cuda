@@ -47,6 +47,38 @@ from .proxy_object import ProxyObject
 T = TypeVar("T")
 
 
+def get_rmm_device_memory_usage() -> Optional[int]:
+    """Get current bytes allocated on current device through RMM
+
+    Check the current RMM resource stack for resources such as
+    StatisticsResourceAdaptor and TrackingResourceAdaptor that
+    can report the current allocated bytes. Returns None, if
+    no such resources exist.
+
+    Return
+    ------
+    nbytes: int or None
+        Number of bytes allocated on device through RMM or None
+    """
+
+    def get_rmm_memory_resource_stack(mr) -> list:
+        if hasattr(mr, "upstream_mr"):
+            return [mr] + get_rmm_memory_resource_stack(mr.upstream_mr)
+        return [mr]
+
+    try:
+        import rmm
+    except ImportError:
+        return None
+
+    for mr in get_rmm_memory_resource_stack(rmm.mr.get_current_device_resource()):
+        if isinstance(mr, rmm.mr.TrackingResourceAdaptor):
+            return mr.get_allocated_bytes()
+        if isinstance(mr, rmm.mr.StatisticsResourceAdaptor):
+            return mr.allocation_counts["current_bytes"]
+    return None
+
+
 class Proxies(abc.ABC):
     """Abstract base class to implement tracking of proxies
 
@@ -591,12 +623,16 @@ class ProxifyHostFile(MutableMapping):
                             traceback.print_stack(file=f)
                             f.seek(0)
                             tb = f.read()
+
+                        dev_mem = get_rmm_device_memory_usage()
+                        dev_msg = ""
+                        if dev_mem is not None:
+                            dev_msg = f"RMM allocs: {format_bytes(dev_mem)}, "
+
                         self.logger.warning(
-                            "RMM allocation of %s failed, spill-on-demand couldn't "
-                            "find any device memory to spill:\n%s\ntraceback:\n%s\n",
-                            format_bytes(nbytes),
-                            self.manager.pprint(),
-                            tb,
+                            f"RMM allocation of {format_bytes(nbytes)} failed, "
+                            "spill-on-demand couldn't find any device memory to "
+                            f"spill.\n{dev_msg}{self.manager}, traceback:\n{tb}\n"
                         )
                         # Since we didn't find anything to spill, we give up.
                         return False
