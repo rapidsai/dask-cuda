@@ -3,10 +3,11 @@ import concurrent.futures
 import contextlib
 import time
 import uuid
-from typing import List, Optional
+from typing import Any, Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
-from distributed import Client, default_client, get_worker
+from dask.utils import stringify
+from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 _default_comms = None
@@ -73,7 +74,7 @@ def worker_state(sessionId: Optional[int] = None) -> dict:
     state: dict
         Either a single state dict or a dict of state dict
     """
-    worker = get_worker()
+    worker: Any = get_worker()
     if not hasattr(worker, "_explicit_comm_state"):
         worker._explicit_comm_state = {}
     if sessionId is not None:
@@ -147,6 +148,20 @@ async def _stop_ucp_listeners(session_state):
     del session_state["lf"]
 
 
+async def _stage_keys(session_state: dict, name: str, keys: set):
+    worker: Worker = session_state["worker"]
+    data = worker.data
+    my_keys = keys.intersection(data)
+
+    stages = session_state.get("stages", {})
+    stage = stages.get(name, {})
+    for k in my_keys:
+        stage[k] = data[k]
+    stages[name] = stage
+    session_state["stages"] = stages
+    return (session_state["rank"], my_keys)
+
+
 class CommsContext:
     """Communication handler for explicit communication
 
@@ -165,7 +180,7 @@ class CommsContext:
         self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
-        self.worker_addresses = list(self.client.run(lambda: 42).keys())
+        self.worker_addresses = list(self.client.scheduler_info()["workers"].keys())
 
         # Make all workers listen and get all listen addresses
         self.worker_direct_addresses = []
@@ -260,3 +275,55 @@ class CommsContext:
                     )
                 )
             return self.client.gather(ret)
+
+    def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
+        """Staging keys on workers under the given name
+
+        In an explicit-comms task, use `pop_staging_area(..., name)` to access
+        the staged keys and the associated data.
+
+        Notes
+        -----
+        In the context of explicit-comms, staging is the act of duplicating the
+        responsibility of Dask keys. When staging a key, the worker owning the
+        key (as assigned by the Dask scheduler) save a reference to the key and
+        the associated data to its local staging area. From this point on, if
+        the scheduler cancels the key, the worker (and the task running on the
+        worker) now has exclusive access to the key and the associated data.
+        This way, staging makes it possible for long running explicit-comms tasks
+        to free input data ASAP.
+
+        Parameters
+        ----------
+        name: str
+            Name for the staging area
+        keys: iterable
+            The keys to stage
+
+        Returns
+        -------
+        dict
+            dict that maps each worker-rank to the workers set of staged keys
+        """
+        key_set = {stringify(k) for k in keys}
+        return dict(self.run(_stage_keys, name, key_set))
+
+
+def pop_staging_area(session_state: dict, name: str) -> Dict[str, Any]:
+    """Pop the staging area called `name`
+
+    This function must be called within a running explicit-comms task.
+
+    Parameters
+    ----------
+    session_state: dict
+        Worker session state
+    name: str
+        Name for the staging area
+
+    Returns
+    -------
+    dict
+        The staging area, which is a dict that maps keys to their data.
+    """
+    return session_state["stages"].pop(name)

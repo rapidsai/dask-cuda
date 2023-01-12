@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import warnings
 
@@ -123,7 +124,7 @@ class LocalCUDACluster(LocalCluster):
             Managed memory is currently incompatible with NVLink. Trying to enable both
             will result in an exception.
     rmm_async: bool, default False
-        Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
+        Initialize each worker with RMM and set it to use RMM's asynchronous allocator.
         See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
         .. warning::
@@ -231,8 +232,12 @@ class LocalCUDACluster(LocalCluster):
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
+        logger = logging.getLogger(__name__)
         self.memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=n_workers
+            memory_limit=memory_limit,
+            nthreads=1,
+            total_cores=n_workers,
+            logger=logger,
         )
         self.device_memory_limit = parse_device_memory_limit(
             device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)

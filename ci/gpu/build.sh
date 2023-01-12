@@ -26,7 +26,7 @@ cd "$WORKSPACE"
 export GIT_DESCRIBE_TAG=`git describe --tags`
 export MINOR_VERSION=`echo $GIT_DESCRIBE_TAG | grep -o -E '([0-9]+\.[0-9]+)'`
 export UCX_PATH=$CONDA_PREFIX
-export UCXPY_VERSION=0.29.*
+export UCXPY_VERSION=0.30
 unset GIT_DESCRIBE_TAG
 
 # Enable NumPy's __array_function__ protocol (needed for NumPy 1.16.x,
@@ -38,7 +38,11 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 export INSTALL_DASK_MAIN=1
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.9.2"
+export DASK_STABLE_VERSION="2022.12.0"
+
+# Temporary workaround for Jupyter errors.
+# See https://github.com/rapidsai/dask-cuda/issues/1040
+export JUPYTER_PLATFORM_DIRS=1
 
 ################################################################################
 # SETUP - Check environment
@@ -59,14 +63,11 @@ conda config --show-sources
 conda list --show-channel-urls
 
 # Installing cucim in order to test GDS spilling
-# Pin pytest-asyncio because latest versions modify the default asyncio
-# `event_loop_policy`. See https://github.com/dask/distributed/pull/4212 .
 gpuci_mamba_retry install "cudf=${MINOR_VERSION}" \
               "dask-cudf=${MINOR_VERSION}" \
               "ucx-py=${UCXPY_VERSION}" \
               "ucx-proc=*=gpu" \
-              "cucim" \
-              "pytest-asyncio=<0.14.0"
+              "cucim"
 
 
 gpuci_logger "Check versions"

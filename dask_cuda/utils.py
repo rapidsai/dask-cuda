@@ -7,6 +7,7 @@ import warnings
 from contextlib import suppress
 from functools import singledispatch
 from multiprocessing import cpu_count
+from typing import Optional
 
 import numpy as np
 import pynvml
@@ -18,8 +19,6 @@ from dask.config import canonical_name
 from dask.utils import format_bytes, parse_bytes
 from distributed import Worker, wait
 from distributed.comm import parse_address
-
-from .proxify_host_file import ProxifyHostFile
 
 try:
     from nvtx import annotate as nvtx_annotate
@@ -489,7 +488,7 @@ def parse_cuda_visible_device(dev):
 
     A device identifier must either be an integer, a string containing an
     integer or a string containing the device's UUID, beginning with prefix
-    'GPU-' or 'MIG-GPU'.
+    'GPU-' or 'MIG-'.
 
     >>> parse_cuda_visible_device(2)
     2
@@ -501,18 +500,23 @@ def parse_cuda_visible_device(dev):
     Traceback (most recent call last):
     ...
     ValueError: Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers or
-    strings beginning with 'GPU-' or 'MIG-GPU-' prefixes.
+    strings beginning with 'GPU-' or 'MIG-' prefixes.
     """
     try:
         return int(dev)
     except ValueError:
-        if any(dev.startswith(prefix) for prefix in ["GPU-", "MIG-GPU-", "MIG-"]):
+        if any(
+            dev.startswith(prefix)
+            for prefix in [
+                "GPU-",
+                "MIG-",
+            ]
+        ):
             return dev
         else:
             raise ValueError(
                 "Devices in CUDA_VISIBLE_DEVICES must be comma-separated integers "
-                "or strings beginning with 'GPU-' or 'MIG-GPU-' prefixes"
-                " or 'MIG-<UUID>'."
+                "or strings beginning with 'GPU-' or 'MIG-' prefixes."
             )
 
 
@@ -676,6 +680,8 @@ def get_gpu_uuid_from_index(device_index=0):
 
 
 def get_worker_config(dask_worker):
+    from .proxify_host_file import ProxifyHostFile
+
     # assume homogenous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
@@ -817,3 +823,35 @@ def get_cluster_configuration(client):
         _get_cluster_configuration, client=client, asynchronous=client.asynchronous
     )
     return data
+
+
+def get_rmm_device_memory_usage() -> Optional[int]:
+    """Get current bytes allocated on current device through RMM
+
+    Check the current RMM resource stack for resources such as
+    `StatisticsResourceAdaptor` and `TrackingResourceAdaptor`
+    that can report the current allocated bytes. Returns None,
+    if no such resources exist.
+
+    Return
+    ------
+    nbytes: int or None
+        Number of bytes allocated on device through RMM or None
+    """
+
+    def get_rmm_memory_resource_stack(mr) -> list:
+        if hasattr(mr, "upstream_mr"):
+            return [mr] + get_rmm_memory_resource_stack(mr.upstream_mr)
+        return [mr]
+
+    try:
+        import rmm
+    except ImportError:
+        return None
+
+    for mr in get_rmm_memory_resource_stack(rmm.mr.get_current_device_resource()):
+        if isinstance(mr, rmm.mr.TrackingResourceAdaptor):
+            return mr.get_allocated_bytes()
+        if isinstance(mr, rmm.mr.StatisticsResourceAdaptor):
+            return mr.allocation_counts["current_bytes"]
+    return None

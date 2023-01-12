@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
+import logging
 import os
 import warnings
 
@@ -84,8 +85,9 @@ class CUDAWorker(Server):
             raise ValueError("nthreads must be higher than 0.")
 
         # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
+        logger = logging.getLogger(__name__)
         memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=nprocs
+            memory_limit=memory_limit, nthreads=1, total_cores=nprocs, logger=logger
         )
 
         if pid_file:
