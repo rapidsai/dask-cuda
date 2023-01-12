@@ -16,8 +16,8 @@ To create a Dask-CUDA cluster using all available GPUs and connect a Dask.distri
     cluster = LocalCUDACluster()
     client = Client(cluster)
 
-dask cuda worker
-----------------
+``dask cuda worker``
+--------------------
 
 To create an equivalent cluster from the command line, Dask-CUDA workers must be connected to a scheduler started with ``dask-scheduler``:
 

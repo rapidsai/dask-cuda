@@ -48,8 +48,8 @@ To connect a client to a cluster with all supported transports and an RMM pool:
     )
     client = Client(cluster)
 
-dask cuda worker with Automatic Configuration
----------------------------------------------
+``dask cuda worker`` with Automatic Configuration
+-------------------------------------------------
 
 When using ``dask cuda worker`` with UCX communication and automatic configuration, the scheduler, workers, and client must all be started manually, but without specifying any UCX transports explicitly. This is only supported in Dask-CUDA 22.02 and newer and requires UCX >= 1.11.1.
 
