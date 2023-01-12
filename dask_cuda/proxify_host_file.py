@@ -43,6 +43,7 @@ from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
 from .is_spillable_object import cudf_spilling_status
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
+from .utils import get_rmm_device_memory_usage
 
 T = TypeVar("T")
 
@@ -591,12 +592,16 @@ class ProxifyHostFile(MutableMapping):
                             traceback.print_stack(file=f)
                             f.seek(0)
                             tb = f.read()
+
+                        dev_mem = get_rmm_device_memory_usage()
+                        dev_msg = ""
+                        if dev_mem is not None:
+                            dev_msg = f"RMM allocs: {format_bytes(dev_mem)}, "
+
                         self.logger.warning(
-                            "RMM allocation of %s failed, spill-on-demand couldn't "
-                            "find any device memory to spill:\n%s\ntraceback:\n%s\n",
-                            format_bytes(nbytes),
-                            self.manager.pprint(),
-                            tb,
+                            f"RMM allocation of {format_bytes(nbytes)} failed, "
+                            "spill-on-demand couldn't find any device memory to "
+                            f"spill.\n{dev_msg}{self.manager}, traceback:\n{tb}\n"
                         )
                         # Since we didn't find anything to spill, we give up.
                         return False

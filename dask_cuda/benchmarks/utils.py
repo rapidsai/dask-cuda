@@ -116,6 +116,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Logging is only enabled if RMM memory pool is enabled.",
     )
     cluster_args.add_argument(
+        "--enable-rmm-statistics",
+        action="store_true",
+        help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
+        "This enables spilling implementations such as JIT-Unspill to provides more "
+        "information on out-of-memory errors",
+    )
+    cluster_args.add_argument(
         "--enable-tcp-over-ucx",
         default=None,
         action="store_true",
@@ -352,6 +359,7 @@ def setup_memory_pool(
     rmm_async=False,
     rmm_managed=False,
     log_directory=None,
+    statistics=False,
 ):
     import cupy
 
@@ -373,10 +381,21 @@ def setup_memory_pool(
             log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    if statistics:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
 
 
 def setup_memory_pools(
-    client, is_gpu, pool_size, disable_pool, rmm_async, rmm_managed, log_directory
+    client,
+    is_gpu,
+    pool_size,
+    disable_pool,
+    rmm_async,
+    rmm_managed,
+    log_directory,
+    statistics,
 ):
     if not is_gpu:
         return
@@ -387,6 +406,7 @@ def setup_memory_pools(
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
         log_directory=log_directory,
+        statistics=statistics,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
@@ -397,6 +417,7 @@ def setup_memory_pools(
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
         log_directory=log_directory,
+        statistics=statistics,
     )
 
 

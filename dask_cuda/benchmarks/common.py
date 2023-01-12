@@ -85,7 +85,8 @@ class Config(NamedTuple):
 def run_benchmark(client: Client, args: Namespace, config: Config):
     """Run a benchmark a specified number of times
 
-    If ``args.profile`` is set, the final run is profiled."""
+    If ``args.profile`` is set, the final run is profiled.
+    """
     results = []
     for _ in range(max(1, args.runs) - 1):
         res = config.bench_once(client, args, write_profile=None)
@@ -110,8 +111,11 @@ def gather_bench_results(client: Client, args: Namespace, config: Config):
 def run(client: Client, args: Namespace, config: Config):
     """Run the full benchmark on the cluster
 
-    Waits for the cluster, sets up memory pools, prints and saves results"""
+    Waits for the cluster, sets up memory pools, prints and saves results
+    """
+
     wait_for_cluster(client, shutdown_on_failure=True)
+    assert len(client.scheduler_info()["workers"]) > 0
     setup_memory_pools(
         client,
         args.type == "gpu",
@@ -120,6 +124,7 @@ def run(client: Client, args: Namespace, config: Config):
         args.enable_rmm_async,
         args.enable_rmm_managed,
         args.rmm_log_directory,
+        args.enable_rmm_statistics,
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)
@@ -158,7 +163,8 @@ def run_client_from_existing_scheduler(args: Namespace, config: Config):
 def run_create_client(args: Namespace, config: Config):
     """Create a client + cluster and run
 
-    Shuts down the cluster at the end of the benchmark"""
+    Shuts down the cluster at the end of the benchmark
+    """
     cluster_options = get_cluster_options(args)
     Cluster = cluster_options["class"]
     cluster_args = cluster_options["args"]
