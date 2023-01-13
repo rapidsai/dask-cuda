@@ -337,7 +337,10 @@ def worker(
     multiprocessing_method,
     **kwargs,
 ):
-    """Launch a distributed worker with GPUs attached to an existing SCHEDULER.
+    """Launch a distributed worker with GPUs attached to an existing scheduler.
+
+    A scheduler can be specified either through a URI passed through the ``SCHEDULER``
+    argument or a scheduler file passed through the ``--scheduler-file`` option.
 
     See
     https://docs.rapids.ai/api/dask-cuda/stable/quickstart.html#dask-cuda-worker
@@ -448,7 +451,11 @@ def config(
     tls_key,
     **kwargs,
 ):
-    """Query an existing GPU cluster's configuration."""
+    """Query an existing GPU cluster's configuration.
+
+    A cluster can be specified either through a URI passed through the ``SCHEDULER``
+    argument or a scheduler file passed through the ``--scheduler-file`` option.
+    """
 
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
