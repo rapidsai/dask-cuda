@@ -23,7 +23,7 @@ pem_file_option_type = click.Path(exists=True, resolve_path=True)
 
 @click.group
 def cuda():
-    """GPU subcommands."""
+    """Subcommands to launch or query distributed workers with GPUs."""
 
 
 @cuda.command(name="worker", context_settings=dict(ignore_unknown_options=True))
