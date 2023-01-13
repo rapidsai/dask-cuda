@@ -45,6 +45,7 @@ test:
     {% for e in data.get("project", {}).get("scripts", {}).keys() %}
     - {{ e }} --help
     {% endfor %}
+    - dask cuda --help
     - dask cuda worker --help
     - dask cuda config --help
 
