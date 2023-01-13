@@ -28,6 +28,7 @@ jobs:
     with:
       build_type: pull-request
   conda-python-tests:
+    timeout-minutes: 45
     needs: conda-python-build
     secrets: inherit
     # TODO: Switch this testing branch to "cuda-118" after `cudf` `3.10` builds are out.
