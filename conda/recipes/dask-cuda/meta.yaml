@@ -42,8 +42,9 @@ test:
   imports:
     - dask_cuda
   commands:
-    - dask-cuda-worker --help
-    - dask-cuda-config --help
+    {% for e in data.get("project", {}).get("scripts", {}).keys() %}
+    - {{ e }} --help
+    {% endfor %}
     - dask cuda worker --help
     - dask cuda config --help
 
