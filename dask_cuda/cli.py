@@ -19,6 +19,38 @@ logger = logging.getLogger(__name__)
 
 
 pem_file_option_type = click.Path(exists=True, resolve_path=True)
+scheduler = click.argument("scheduler", type=str, required=False)
+preload_argv = click.argument(
+    "preload_argv", nargs=-1, type=click.UNPROCESSED, callback=validate_preload_argv
+)
+scheduler_file = click.option(
+    "--scheduler-file",
+    type=str,
+    default=None,
+    help="""Filename to JSON encoded scheduler information. To be used in conjunction
+    with the equivalent ``dask-scheduler`` option.""",
+)
+tls_ca_file = click.option(
+    "--tls-ca-file",
+    type=pem_file_option_type,
+    default=None,
+    help="""CA certificate(s) file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
+)
+tls_cert = click.option(
+    "--tls-cert",
+    type=pem_file_option_type,
+    default=None,
+    help="""Certificate file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
+)
+tls_key = click.option(
+    "--tls-key",
+    type=pem_file_option_type,
+    default=None,
+    help="""Private key file for TLS (in PEM format). Can be a string (like
+    ``"path/to/certs"``), or ``None`` for no private key.""",
+)
 
 
 @click.group
@@ -27,10 +59,8 @@ def cuda():
 
 
 @cuda.command(name="worker", context_settings=dict(ignore_unknown_options=True))
-@click.argument("scheduler", type=str, required=False)
-@click.argument(
-    "preload_argv", nargs=-1, type=click.UNPROCESSED, callback=validate_preload_argv
-)
+@scheduler
+@preload_argv
 @click.option(
     "--host",
     type=str,
@@ -181,13 +211,7 @@ def cuda():
     specified by `"jit-unspill-shared-fs"`.
     Notice, a shared filesystem must support the `os.link()` operation.""",
 )
-@click.option(
-    "--scheduler-file",
-    type=str,
-    default=None,
-    help="""Filename to JSON encoded scheduler information. To be used in conjunction
-    with the equivalent ``dask-scheduler`` option.""",
-)
+@scheduler_file
 @click.option(
     "--protocol", type=str, default=None, help="Protocol like tcp, tls, or ucx"
 )
@@ -215,27 +239,9 @@ def cuda():
     help="""Prefix for the dashboard. Can be a string (like ...) or ``None`` for no
     prefix.""",
 )
-@click.option(
-    "--tls-ca-file",
-    type=pem_file_option_type,
-    default=None,
-    help="""CA certificate(s) file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
-)
-@click.option(
-    "--tls-cert",
-    type=pem_file_option_type,
-    default=None,
-    help="""Certificate file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
-)
-@click.option(
-    "--tls-key",
-    type=pem_file_option_type,
-    default=None,
-    help="""Private key file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no private key.""",
-)
+@tls_ca_file
+@tls_cert
+@tls_key
 @click.option(
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
     default=None,
@@ -417,18 +423,10 @@ def worker(
             logger.info("End worker")
 
 
-@cuda.command(context_settings=dict(ignore_unknown_options=True))
-@click.argument("scheduler", type=str, required=False)
-@click.argument(
-    "preload_argv", nargs=-1, type=click.UNPROCESSED, callback=validate_preload_argv
-)
-@click.option(
-    "--scheduler-file",
-    type=str,
-    default=None,
-    help="""Filename to JSON encoded scheduler information. To be used in conjunction
-    with the equivalent ``dask-scheduler`` option.""",
-)
+@cuda.command(name="config", context_settings=dict(ignore_unknown_options=True))
+@scheduler
+@preload_argv
+@scheduler_file
 @click.option(
     "--get-cluster-configuration",
     "get_cluster_conf",
@@ -438,27 +436,9 @@ def worker(
     show_default=True,
     help="""Print a table of the current cluster configuration""",
 )
-@click.option(
-    "--tls-ca-file",
-    type=pem_file_option_type,
-    default=None,
-    help="""CA certificate(s) file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
-)
-@click.option(
-    "--tls-cert",
-    type=pem_file_option_type,
-    default=None,
-    help="""Certificate file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no certificate(s).""",
-)
-@click.option(
-    "--tls-key",
-    type=pem_file_option_type,
-    default=None,
-    help="""Private key file for TLS (in PEM format). Can be a string (like
-    ``"path/to/certs"``), or ``None`` for no private key.""",
-)
+@tls_ca_file
+@tls_cert
+@tls_key
 def config(
     scheduler,
     scheduler_file,
