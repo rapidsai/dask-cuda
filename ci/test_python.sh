@@ -44,6 +44,7 @@ UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
 timeout 45m pytest \
+  -vv \
   --capture=no \
   --cache-clear \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
