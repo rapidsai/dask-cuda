@@ -28,7 +28,7 @@ scheduler_file = click.option(
     type=str,
     default=None,
     help="""Filename to JSON encoded scheduler information. To be used in conjunction
-    with the equivalent ``dask-scheduler`` option.""",
+    with the equivalent ``dask scheduler`` option.""",
 )
 tls_ca_file = click.option(
     "--tls-ca-file",

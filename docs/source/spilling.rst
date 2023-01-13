@@ -23,7 +23,7 @@ The same applies for ``dask cuda worker``, and spilling can be controlled by set
 
 .. code-block::
 
-    $ dask-scheduler
+    $ dask scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
     $ dask cuda worker --device-memory-limit 50000
@@ -65,7 +65,7 @@ Or set the worker argument ``--enable-jit-unspill​``
 
 .. code-block::
 
-    $ dask-scheduler
+    $ dask scheduler
     distributed.scheduler - INFO - Scheduler at:  tcp://127.0.0.1:8786
 
     $ dask cuda worker --enable-jit-unspill​
@@ -74,7 +74,7 @@ Or environment variable ``DASK_JIT_UNSPILL=True``
 
 .. code-block::
 
-    $ dask-scheduler
+    $ dask scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
     $ DASK_JIT_UNSPILL=True dask cuda worker​

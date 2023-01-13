@@ -24,7 +24,7 @@ When using ``dask cuda worker``, ``CUDA_VISIBLE_DEVICES`` must be provided as an
 
 .. code-block:: bash
 
-    $ dask-scheduler
+    $ dask scheduler
     distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
 
     $ CUDA_VISIBLE_DEVICES=0,1 dask cuda worker 127.0.0.1:8786

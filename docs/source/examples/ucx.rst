@@ -64,7 +64,7 @@ To start a Dask scheduler using UCX with automatic configuration and one GB of R
 
     $ DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True \
     > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
-    > dask-scheduler --protocol ucx --interface ib0
+    > dask scheduler --protocol ucx --interface ib0
 
 .. note::
     The ``interface="ib0"`` is intentionally specified above to ensure RDMACM is used in systems that support InfiniBand. On systems that don't support InfiniBand or where RDMACM isn't required, the ``interface`` argument may be omitted or specified to listen on a different interface.
@@ -121,7 +121,7 @@ Alternatively, the ``with dask.config.set`` statement from the example above may
 .. note::
     We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
 
-dask-cuda-worker with Manual Configuration
+``dask cuda worker`` with Manual Configuration
 ------------------------------------------
 
 When using ``dask cuda worker`` with UCX communication and manual configuration, the scheduler, workers, and client must all be started manually, each using the same UCX configuration.
@@ -129,7 +129,7 @@ When using ``dask cuda worker`` with UCX communication and manual configuration,
 Scheduler
 ^^^^^^^^^
 
-UCX configuration options will need to be specified for ``dask-scheduler`` as environment variables; see `Dask Configuration -- Environment Variables <https://docs.dask.org/en/latest/configuration.html#environment-variables>`_ for more details on the mapping between environment variables and options.
+UCX configuration options will need to be specified for ``dask scheduler`` as environment variables; see `Dask Configuration -- Environment Variables <https://docs.dask.org/en/latest/configuration.html#environment-variables>`_ for more details on the mapping between environment variables and options.
 
 To start a Dask scheduler using UCX with all supported transports and an gigabyte RMM pool:
 
@@ -141,7 +141,7 @@ To start a Dask scheduler using UCX with all supported transports and an gigabyt
     > DASK_DISTRIBUTED__COMM__UCX__INFINIBAND=True \
     > DASK_DISTRIBUTED__COMM__UCX__RDMACM=True \
     > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
-    > dask-scheduler --protocol ucx --interface ib0
+    > dask scheduler --protocol ucx --interface ib0
 
 We communicate to the scheduler that we will be using UCX with the ``--protocol`` option, and that we will be using InfiniBand with the ``--interface`` option.
 

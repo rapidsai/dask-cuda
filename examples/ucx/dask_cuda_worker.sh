@@ -46,7 +46,7 @@ if [[ $transport == *"ib"* ]]; then
 fi
 
 # initialize scheduler
-dask-scheduler $scheduler_flags &
+dask scheduler $scheduler_flags &
 
 # initialize workers
 dask cuda worker $worker_flags
