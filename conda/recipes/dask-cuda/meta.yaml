@@ -41,6 +41,11 @@ requirements:
 test:
   imports:
     - dask_cuda
+  commands:
+    - dask-cuda-worker --help
+    - dask-cuda-config --help
+    - dask cuda worker --help
+    - dask cuda config --help
 
 about:
   home: https://rapids.ai/
