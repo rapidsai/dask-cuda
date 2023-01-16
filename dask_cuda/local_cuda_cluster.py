@@ -124,7 +124,7 @@ class LocalCUDACluster(LocalCluster):
             Managed memory is currently incompatible with NVLink. Trying to enable both
             will result in an exception.
     rmm_async: bool, default False
-        Initialize each worker withh RMM and set it to use RMM's asynchronous allocator.
+        Initialize each worker with RMM and set it to use RMM's asynchronous allocator.
         See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
         .. warning::
