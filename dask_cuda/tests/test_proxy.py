@@ -16,9 +16,10 @@ from dask.dataframe.core import has_parallel_type
 from dask.sizeof import sizeof
 from distributed import Client
 from distributed.protocol.serialize import deserialize, serialize
+from distributed.utils_test import gen_test
 
 import dask_cuda
-from dask_cuda import proxy_object
+from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
@@ -299,8 +300,10 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         return x
 
     # Notice, setting `device_memory_limit=1B` to trigger spilling
-    with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=jit_unspill
+    with LocalCUDACluster(
+        n_workers=1,
+        device_memory_limit="1B",
+        jit_unspill=jit_unspill,
     ) as cluster:
         with Client(cluster):
             df = cudf.DataFrame({"a": range(10)})
@@ -395,11 +398,12 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-def test_communicating_proxy_objects(protocol, send_serializers):
+@gen_test(timeout=20)
+async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
 
-    def task(x):
+    async def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
         serializers_used = x._pxy_get().serializer
@@ -413,10 +417,13 @@ def test_communicating_proxy_objects(protocol, send_serializers):
         else:
             assert serializers_used == "dask"
 
-    with dask_cuda.LocalCUDACluster(
-        n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
+    async with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        protocol=protocol,
+        enable_tcp_over_ucx=protocol == "ucx",
+        asynchronous=True,
     ) as cluster:
-        with Client(cluster) as client:
+        async with Client(cluster, asynchronous=True) as client:
             df = cudf.DataFrame({"a": range(10)})
             df = proxy_object.asproxy(
                 df, serializers=send_serializers, subclass=_PxyObjTest
@@ -429,19 +436,20 @@ def test_communicating_proxy_objects(protocol, send_serializers):
                 df._pxy_get().assert_on_deserializing = False
             else:
                 df._pxy_get().assert_on_deserializing = True
-            df = client.scatter(df)
-            client.submit(task, df).result()
-            client.shutdown()  # Avoids a UCX shutdown error
+            df = await client.scatter(df)
+            await client.submit(task, df)
+            await client.shutdown()  # Avoids a UCX shutdown error
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 @pytest.mark.parametrize("shared_fs", [True, False])
-def test_communicating_disk_objects(protocol, shared_fs):
+@gen_test(timeout=20)
+async def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 
-    def task(x):
+    async def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
         serializer_used = x._pxy_get().serializer
@@ -450,16 +458,19 @@ def test_communicating_disk_objects(protocol, shared_fs):
         else:
             assert serializer_used == "dask"
 
-    with dask_cuda.LocalCUDACluster(
-        n_workers=1, protocol=protocol, enable_tcp_over_ucx=protocol == "ucx"
+    async with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        protocol=protocol,
+        enable_tcp_over_ucx=protocol == "ucx",
+        asynchronous=True,
     ) as cluster:
-        with Client(cluster) as client:
+        async with Client(cluster, asynchronous=True) as client:
             df = cudf.DataFrame({"a": range(10)})
             df = proxy_object.asproxy(df, serializers=("disk",), subclass=_PxyObjTest)
             df._pxy_get().assert_on_deserializing = False
-            df = client.scatter(df)
-            client.submit(task, df).result()
-            client.shutdown()  # Avoids a UCX shutdown error
+            df = await client.scatter(df)
+            await client.submit(task, df)
+            await client.shutdown()  # Avoids a UCX shutdown error
 
 
 @pytest.mark.parametrize("array_module", ["numpy", "cupy"])
