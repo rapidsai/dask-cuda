@@ -111,6 +111,8 @@ fi
 # TEST - Run pytests for ucx-py
 ################################################################################
 
+pip install git+https://github.com/madsbk/distributed.git@dont_close_client_on_shutdown
+
 if hasArg --skip-tests; then
     gpuci_logger "Skipping Tests"
 else
