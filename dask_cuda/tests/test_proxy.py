@@ -403,7 +403,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
 
-    async def task(x):
+    def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
         serializers_used = x._pxy_get().serializer
@@ -438,7 +438,6 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
                 df._pxy_get().assert_on_deserializing = True
             df = await client.scatter(df)
             await client.submit(task, df)
-            await client.shutdown()  # Avoids a UCX shutdown error
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
@@ -449,7 +448,7 @@ async def test_communicating_disk_objects(protocol, shared_fs):
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 
-    async def task(x):
+    def task(x):
         # Check that the subclass survives the trip from client to worker
         assert isinstance(x, _PxyObjTest)
         serializer_used = x._pxy_get().serializer
@@ -470,7 +469,6 @@ async def test_communicating_disk_objects(protocol, shared_fs):
             df._pxy_get().assert_on_deserializing = False
             df = await client.scatter(df)
             await client.submit(task, df)
-            await client.shutdown()  # Avoids a UCX shutdown error
 
 
 @pytest.mark.parametrize("array_module", ["numpy", "cupy"])
