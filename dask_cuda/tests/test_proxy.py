@@ -283,7 +283,8 @@ def test_fixed_attribute_name():
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
-def test_spilling_local_cuda_cluster(jit_unspill):
+@gen_test(timeout=20)
+async def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
@@ -300,16 +301,17 @@ def test_spilling_local_cuda_cluster(jit_unspill):
         return x
 
     # Notice, setting `device_memory_limit=1B` to trigger spilling
-    with LocalCUDACluster(
+    async with LocalCUDACluster(
         n_workers=1,
         device_memory_limit="1B",
         jit_unspill=jit_unspill,
+        asynchronous=True,
     ) as cluster:
-        with Client(cluster):
+        async with Client(cluster, asynchronous=True) as client:
             df = cudf.DataFrame({"a": range(10)})
             ddf = dask_cudf.from_cudf(df, npartitions=1)
             ddf = ddf.map_partitions(task, meta=df.head())
-            got = ddf.compute()
+            got = await client.compute(ddf)
             if isinstance(got, pandas.Series):
                 pytest.xfail(
                     "BUG fixed by <https://github.com/rapidsai/dask-cuda/pull/451>"
