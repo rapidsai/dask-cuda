@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2021, NVIDIA CORPORATION.
+# Copyright (c) 2019-2022, NVIDIA CORPORATION.
 
 # Usage:
 #   conda build -c conda-forge .
@@ -6,7 +6,7 @@
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
 {% set number = environ.get('GIT_DESCRIBE_NUMBER', 0) %}
-{% set py_version = environ.get('CONDA_PY', 36) %}
+{% set py_version = environ['CONDA_PY'] %}
 {% set git_hash = environ.get('GIT_DESCRIBE_HASH', '') %}
 
 package:
@@ -42,9 +42,8 @@ test:
   imports:
     - dask_cuda
 
-
 about:
-  home: http://rapids.ai/
+  home: https://rapids.ai/
   license: Apache-2.0
   license_file: ../../../LICENSE
   summary: dask-cuda library
