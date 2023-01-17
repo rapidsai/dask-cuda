@@ -1,9 +1,9 @@
 import asyncio
 import os
+import pkgutil
 import sys
 from unittest.mock import patch
 
-import pkg_resources
 import pytest
 
 from dask.distributed import Client
@@ -263,9 +263,9 @@ async def test_pre_import():
     module = None
 
     # Pick a module that isn't currently loaded
-    for m in pkg_resources.working_set:
-        if m.key not in sys.modules.keys():
-            module = m.key
+    for m in pkgutil.iter_modules():
+        if m.ispkg and m.name not in sys.modules.keys():
+            module = m.name
             break
 
     if module is None:

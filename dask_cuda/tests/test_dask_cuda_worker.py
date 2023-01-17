@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import pkgutil
 import subprocess
 import sys
 from unittest.mock import patch
 
-import pkg_resources
 import pytest
 
 from distributed import Client, wait
@@ -194,9 +194,9 @@ def test_pre_import(loop):  # noqa: F811
     module = None
 
     # Pick a module that isn't currently loaded
-    for m in pkg_resources.working_set:
-        if m.key not in sys.modules.keys():
-            module = m.key
+    for m in pkgutil.iter_modules():
+        if m.ispkg and m.name not in sys.modules.keys():
+            module = m.name
             break
 
     if module is None:
