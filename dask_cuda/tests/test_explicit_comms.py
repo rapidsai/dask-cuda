@@ -330,12 +330,6 @@ def test_lock_workers():
     except ImportError as e:
         pytest.skip(str(e))
 
-    # Avoids DeprecationWarning from `IOLoop()` due to no event loop getting created
-    # with `asyncio.get_event_loop()` in Python >= 3.10
-    # TODO: Switch to async cluster, simply switching the cluster is raising connection
-    # errors.
-    asyncio.new_event_loop()
-
     with LocalCluster(
         protocol="tcp",
         dashboard_address=None,
