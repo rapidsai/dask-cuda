@@ -91,7 +91,7 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - cucim
+          - cucim=23.02
           - cudf=23.02
           - dask-cudf=23.02
           - pytest
