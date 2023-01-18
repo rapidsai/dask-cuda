@@ -121,6 +121,8 @@ filterwarnings = [
     # tornado 6.2, remove when dask/distributed#6669 is fixed
     "ignore:clear_current is deprecated:DeprecationWarning:",
     "ignore:make_current is deprecated:DeprecationWarning:",
+    # remove after https://github.com/rapidsai/dask-cuda/issues/1087 is closed
+    "ignore:There is no current event loop:DeprecationWarning:tornado",
 ]
 
 [tool.setuptools]
