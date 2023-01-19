@@ -453,7 +453,8 @@ def config(
     ):
         raise ValueError(
             "No scheduler specified. A scheduler can be specified by "
-            "passing an address through the SCHEDULER argument or the "
+            "passing an address through the SCHEDULER argument or "
+            "'dask.scheduler-address' config option, or by passing the "
             "location of a scheduler file through the --scheduler-file "
             "option"
         )
