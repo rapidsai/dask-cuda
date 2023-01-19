@@ -25,10 +25,12 @@ from dask_cuda.utils import (
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,3,7,8"})
 def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
     nthreads = 4
-    with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9359",
                 "--host",
                 "127.0.0.1",
@@ -62,10 +64,12 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
 
 def test_rmm_pool(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -86,10 +90,12 @@ def test_rmm_pool(loop):  # noqa: F811
 
 def test_rmm_managed(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -115,10 +121,12 @@ def test_rmm_async(loop):  # noqa: F811
     if driver_version < 11020 or runtime_version < 11020:
         pytest.skip("cudaMallocAsync not supported")
 
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -138,10 +146,12 @@ def test_rmm_async(loop):  # noqa: F811
 
 def test_rmm_logging(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -164,10 +174,12 @@ def test_rmm_logging(loop):  # noqa: F811
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_dashboard_address(loop):  # noqa: F811
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--dashboard-address",
                 "127.0.0.1:9370",
@@ -184,7 +196,9 @@ def test_dashboard_address(loop):  # noqa: F811
 
 
 def test_unknown_argument():
-    ret = subprocess.run(["dask-cuda-worker", "--my-argument"], capture_output=True)
+    ret = subprocess.run(
+        ["dask", "cuda", "worker", "--my-argument"], capture_output=True
+    )
     assert ret.returncode != 0
     assert b"Scheduler address: --my-argument" in ret.stderr
 
@@ -202,10 +216,12 @@ def test_pre_import(loop):  # noqa: F811
     if module is None:
         pytest.skip("No module found that isn't already loaded")
 
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--pre-import",
                 module,
@@ -221,9 +237,9 @@ def test_pre_import(loop):  # noqa: F811
 @pytest.mark.timeout(20)
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_pre_import_not_found():
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         ret = subprocess.run(
-            ["dask-cuda-worker", "127.0.0.1:9369", "--pre-import", "my_module"],
+            ["dask", "cuda", "worker", "127.0.0.1:9369", "--pre-import", "my_module"],
             capture_output=True,
         )
         assert ret.returncode != 0
@@ -241,10 +257,12 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
 
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": cuda_visible_devices}):
         nthreads = len(cuda_visible_devices)
-        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+        with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
                 [
-                    "dask-cuda-worker",
+                    "dask",
+                    "cuda",
+                    "worker",
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
@@ -276,10 +294,12 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
     gpu_uuid = get_gpu_uuid_from_index(0)
 
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": gpu_uuid}):
-        with popen(["dask-scheduler", "--port", "9359", "--no-dashboard"]):
+        with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
             with popen(
                 [
-                    "dask-cuda-worker",
+                    "dask",
+                    "cuda",
+                    "worker",
                     "127.0.0.1:9359",
                     "--host",
                     "127.0.0.1",
@@ -297,10 +317,12 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
 
 def test_rmm_track_allocations(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -329,10 +351,12 @@ def test_rmm_track_allocations(loop):  # noqa: F811
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_get_cluster_configuration(loop):  # noqa: F811
     pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
@@ -360,10 +384,12 @@ def test_get_cluster_configuration(loop):  # noqa: F811
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_worker_fraction_limits(loop):  # noqa: F811
     pytest.importorskip("rmm")
-    with popen(["dask-scheduler", "--port", "9369", "--no-dashboard"]):
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
-                "dask-cuda-worker",
+                "dask",
+                "cuda",
+                "worker",
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",

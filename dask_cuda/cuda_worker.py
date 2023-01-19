@@ -117,7 +117,7 @@ class CUDAWorker(Server):
         ):
             raise ValueError(
                 "Need to provide scheduler address like\n"
-                "dask-worker SCHEDULER_ADDRESS:8786"
+                "dask cuda worker SCHEDULER_ADDRESS:8786"
             )
 
         if isinstance(scheduler, Cluster):

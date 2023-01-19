@@ -41,6 +41,12 @@ requirements:
 test:
   imports:
     - dask_cuda
+  commands:
+    - dask cuda --help
+    {% for e in data.get("project", {}).get("scripts", {}).keys() %}
+    - {{ e }} --help
+    - {{ e|replace("-", " ") }} --help
+    {% endfor %}
 
 about:
   home: https://rapids.ai/

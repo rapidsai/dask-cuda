@@ -39,8 +39,11 @@ classifiers=[
 ]
 
 [project.scripts]
-dask-cuda-worker = "dask_cuda.cli.dask_cuda_worker:go"
-dask-config = "dask_cuda.cli.dask_config:go"
+dask-cuda-worker = "dask_cuda.cli:worker"
+dask-cuda-config = "dask_cuda.cli:config"
+
+[project.entry-points.dask_cli]
+cuda = "dask_cuda.cli:cuda"
 
 [project.optional-dependencies]
 docs = [
