@@ -430,22 +430,12 @@ def worker(
 @scheduler
 @preload_argv
 @scheduler_file
-@click.option(
-    "--get-cluster-configuration",
-    "get_cluster_conf",
-    default=False,
-    is_flag=True,
-    required=False,
-    show_default=True,
-    help="""Print a table of the current cluster configuration""",
-)
 @tls_ca_file
 @tls_cert
 @tls_key
 def config(
     scheduler,
     scheduler_file,
-    get_cluster_conf,
     tls_ca_file,
     tls_cert,
     tls_key,
@@ -456,6 +446,24 @@ def config(
     A cluster can be specified either through a URI passed through the ``SCHEDULER``
     argument or a scheduler file passed through the ``--scheduler-file`` option.
     """
+    if (
+        scheduler is None
+        and scheduler_file is None
+        and dask_config.get("scheduler-address", None) is None
+    ):
+        raise ValueError(
+            "No scheduler specified. A scheduler can be specified by "
+            "passing an address through the SCHEDULER argument or the "
+            "location of a scheduler file through the --scheduler-file "
+            "option"
+        )
+
+    if isinstance(scheduler, str) and scheduler.startswith("-"):
+        raise ValueError(
+            "The scheduler address can't start with '-'. Please check "
+            "your command line arguments, you probably attempted to use "
+            "unsupported one. Scheduler address: %s" % scheduler
+        )
 
     if tls_ca_file and tls_cert and tls_key:
         security = Security(
@@ -466,16 +474,8 @@ def config(
     else:
         security = None
 
-    if isinstance(scheduler, str) and scheduler.startswith("-"):
-        raise ValueError(
-            "The scheduler address can't start with '-'. Please check "
-            "your command line arguments, you probably attempted to use "
-            "unsupported one. Scheduler address: %s" % scheduler
-        )
-
-    if get_cluster_conf:
-        if scheduler_file is not None:
-            client = Client(scheduler_file=scheduler_file, security=security)
-        else:
-            client = Client(scheduler, security=security)
-        print_cluster_config(client)
+    if scheduler_file is not None:
+        client = Client(scheduler_file=scheduler_file, security=security)
+    else:
+        client = Client(scheduler, security=security)
+    print_cluster_config(client)
