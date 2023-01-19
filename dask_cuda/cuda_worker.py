@@ -111,13 +111,16 @@ class CUDAWorker(Server):
         kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
-            not scheduler
-            and not scheduler_file
+            scheduler is None
+            and scheduler_file is None
             and dask.config.get("scheduler-address", None) is None
         ):
             raise ValueError(
-                "Need to provide scheduler address like\n"
-                "dask cuda worker SCHEDULER_ADDRESS:8786"
+                "No scheduler specified. A scheduler can be specified by "
+                "passing an address through the SCHEDULER argument or "
+                "'dask.scheduler-address' config option, or by passing the "
+                "location of a scheduler file through the --scheduler-file "
+                "option"
             )
 
         if isinstance(scheduler, Cluster):
