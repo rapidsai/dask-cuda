@@ -89,8 +89,8 @@ def create_data(
         )
     if sum(dist) != args.in_parts:
         raise ValueError(
-            f"The sum of `--partition-distribution`({sum(dist)}) "
-            f"must match the length of `--devs`({len(workers)})"
+            f"The sum of `--partition-distribution`({sum(dist)}) must match "
+            f"the number of input partitions `--in-parts={args.in_parts}`"
         )
 
     # Create partition based to the specified partition distribution
