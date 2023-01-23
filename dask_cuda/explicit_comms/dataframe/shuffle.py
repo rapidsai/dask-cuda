@@ -174,10 +174,18 @@ def partition_dataframe(
 
     Returns
     -------
-    partitions: list of DataFrames
-        List of dataframe-partitions
+    partitions
+        Dict of dataframe-partitions, mapping partition-ID to dataframe
     """
-    # TODO: use cuDF's partition_by_hash() when `column_names[0] != "_partitions"`
+    if column_names[0] != "_partitions" and hasattr(df, "partition_by_hash"):
+        return dict(
+            zip(
+                range(npartitions),
+                df.partition_by_hash(
+                    column_names, npartitions, keep_index=not ignore_index
+                ),
+            )
+        )
     map_index = compute_map_index(df, column_names, npartitions)
     return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
 

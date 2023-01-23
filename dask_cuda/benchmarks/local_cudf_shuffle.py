@@ -45,7 +45,7 @@ def shuffle_explicit_comms(df, args):
     t1 = perf_counter()
     wait(
         dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
-            df, column_names="data", ignore_index=args.ignore_index
+            df, column_names=["data"], ignore_index=args.ignore_index
         ).persist()
     )
     return perf_counter() - t1
