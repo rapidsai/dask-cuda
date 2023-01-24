@@ -1,4 +1,9 @@
 repos:
+      - repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v4.3.0
+        hooks:
+              - id: trailing-whitespace
+              - id: end-of-file-fixer
       - repo: https://github.com/pycqa/isort
         rev: 5.10.1
         hooks:
@@ -11,5 +16,16 @@ repos:
         rev: 3.8.3
         hooks:
               - id: flake8
+      - repo: https://github.com/codespell-project/codespell
+        rev: v2.1.0
+        hooks:
+              - id: codespell
+                exclude: |
+                  (?x)^(
+                    .*test.*|
+                    ^CHANGELOG.md$|
+                    ^.*versioneer.py$
+                  )
+
 default_language_version:
       python: python3

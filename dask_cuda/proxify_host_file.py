@@ -477,7 +477,7 @@ class ProxifyHostFile(MutableMapping):
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
-        Notice, enabling this does nothing when RMM isn't availabe or not used.
+        Notice, enabling this does nothing when RMM isn't available or not used.
     gds_spilling: bool
         Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
         value are used, which defaults to ``False``.
@@ -635,7 +635,7 @@ class ProxifyHostFile(MutableMapping):
     def fast(self):
         """Alternative access to `.evict()` used by Dask
 
-        Dask expects `.fast.evict()` to be availabe for manually triggering
+        Dask expects `.fast.evict()` to be available for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:

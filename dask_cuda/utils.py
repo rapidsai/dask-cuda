@@ -682,7 +682,7 @@ def get_gpu_uuid_from_index(device_index=0):
 def get_worker_config(dask_worker):
     from .proxify_host_file import ProxifyHostFile
 
-    # assume homogenous cluster
+    # assume homogeneous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
 

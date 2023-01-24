@@ -19,7 +19,7 @@ def _register_incompatible_types():
     """Lazy register types that ProxifyHostFile should unproxify on retrieval.
 
     It reads the config key "jit-unspill-incompatible"
-    (DASK_JIT_UNSPILL_INCOMPATIBLE), which should be a comma seperated
+    (DASK_JIT_UNSPILL_INCOMPATIBLE), which should be a comma separated
     list of types. The default value is:
         DASK_JIT_UNSPILL_INCOMPATIBLE="cupy.ndarray"
     """

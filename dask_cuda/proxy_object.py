@@ -344,7 +344,7 @@ class ProxyObject:
     Attributes
     ----------
     _pxy: ProxyDetail
-        Details of all proxy information of the underlaying proxied object.
+        Details of all proxy information of the underlying proxied object.
         Access to _pxy is not pass-through to the proxied object, which is
         the case for most other access to the ProxyObject.
 
