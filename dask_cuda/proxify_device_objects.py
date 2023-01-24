@@ -135,7 +135,9 @@ def unproxify_device_objects(
         pxy = obj._pxy_get(copy=True)
         if only_incompatible_types:
             if incompatible_types and isinstance(obj, incompatible_types):
-                obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
+                obj = obj._pxy_deserialize(  # type: ignore
+                    maybe_evict=False, proxy_detail=pxy
+                )
         elif not skip_explicit_proxies or not pxy.explicit_proxy:
             pxy.explicit_proxy = False
             obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
