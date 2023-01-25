@@ -58,6 +58,8 @@ test = [
 
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
+Documentation = "https://docs.rapids.ai/api/dask-cuda/stable/"
+Source = "https://github.com/rapidsai/dask-cuda"
 
 [tool.coverage.run]
 disable_warnings = [
