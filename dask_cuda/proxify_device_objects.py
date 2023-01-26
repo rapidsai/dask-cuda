@@ -51,8 +51,8 @@ def _register_incompatible_types():
 
 def proxify_device_objects(
     obj: T,
-    proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
-    found_proxies: List[ProxyObject] = None,
+    proxied_id_to_proxy: Optional[MutableMapping[int, ProxyObject]] = None,
+    found_proxies: Optional[List[ProxyObject]] = None,
     excl_proxies: bool = False,
     mark_as_explicit_proxies: bool = False,
 ) -> T:

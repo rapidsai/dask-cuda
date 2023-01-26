@@ -164,7 +164,7 @@ class ProxiesOnDevice(Proxies):
     In this case the tally of the total device memory usage is incorrect.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.proxy_id_to_dev_mems: Dict[int, Set[DeviceMemoryId]] = {}
         self.dev_mem_to_proxy_ids: DefaultDict[DeviceMemoryId, Set[int]] = defaultdict(
@@ -497,10 +497,10 @@ class ProxifyHostFile(MutableMapping):
         *,
         device_memory_limit: int,
         memory_limit: int,
-        shared_filesystem: bool = None,
-        compatibility_mode: bool = None,
-        spill_on_demand: bool = None,
-        gds_spilling: bool = None,
+        shared_filesystem: Optional[bool] = None,
+        compatibility_mode: Optional[bool] = None,
+        spill_on_demand: Optional[bool] = None,
+        gds_spilling: Optional[bool] = None,
     ):
         if cudf_spilling_status():
             warnings.warn(

@@ -46,7 +46,9 @@ _FIXED_ATTRS = ["name", "__len__"]
 
 
 def asproxy(
-    obj: object, serializers: Iterable[str] = None, subclass: Type["ProxyObject"] = None
+    obj: object,
+    serializers: Optional[Iterable[str]] = None,
+    subclass: Optional[Type["ProxyObject"]] = None,
 ) -> "ProxyObject":
     """Wrap `obj` in a ProxyObject object if it isn't already.
 
@@ -380,7 +382,7 @@ class ProxyObject:
     def _pxy_serialize(
         self,
         serializers: Iterable[str],
-        proxy_detail: ProxyDetail = None,
+        proxy_detail: Optional[ProxyDetail] = None,
     ) -> None:
         """Inplace serialization of the proxied object using the `serializers`
 
@@ -410,7 +412,7 @@ class ProxyObject:
         self._pxy_cache.pop("device_memory_objects", None)
 
     def _pxy_deserialize(
-        self, maybe_evict: bool = True, proxy_detail: ProxyDetail = None
+        self, maybe_evict: bool = True, proxy_detail: Optional[ProxyDetail] = None
     ):
         """Inplace deserialization of the proxied object
 
