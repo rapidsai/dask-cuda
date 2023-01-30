@@ -477,9 +477,14 @@ def shuffle(
 
     # Get batchsize
     max_num_inkeys = max(len(k) for k in rank_to_inkeys.values())
-    batchsize = batchsize or dask.config.get("explicit_comms-batchsize", 1)
+    batchsize = batchsize or dask.config.get("explicit-comms-batchsize", 1)
     if batchsize == -1:
         batchsize = max_num_inkeys
+    if not isinstance(batchsize, int) or batchsize < 0:
+        raise ValueError(
+            "explicit-comms-batchsize must be a "
+            f"positive integer or -1 (was '{batchsize}')"
+        )
 
     # Get number of rounds of dataframe partitioning and all-to-all communication.
     num_rounds = ceil(max_num_inkeys / batchsize)
