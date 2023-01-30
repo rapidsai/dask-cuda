@@ -30,7 +30,7 @@ def _create_cuda_context():
         try:
             distributed.comm.ucx.init_once()
         except ModuleNotFoundError:
-            # UCX intialization has to be delegated to Distributed, it will take care
+            # UCX initialization has to be delegated to Distributed, it will take care
             # of setting correct environment variables and importing `ucp` after that.
             # Therefore if ``import ucp`` fails we can just continue here.
             pass

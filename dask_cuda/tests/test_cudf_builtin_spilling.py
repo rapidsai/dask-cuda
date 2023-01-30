@@ -34,7 +34,7 @@ if get_global_manager() is not None:
 
 @pytest.fixture
 def manager(request):
-    """Fixture to enable and make a spilling manager availabe"""
+    """Fixture to enable and make a spilling manager available"""
     kwargs = dict(getattr(request, "param", {}))
     set_global_manager(manager=SpillManager(**kwargs))
     yield get_global_manager()

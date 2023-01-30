@@ -164,7 +164,7 @@ class ProxiesOnDevice(Proxies):
     In this case the tally of the total device memory usage is incorrect.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.proxy_id_to_dev_mems: Dict[int, Set[DeviceMemoryId]] = {}
         self.dev_mem_to_proxy_ids: DefaultDict[DeviceMemoryId, Set[int]] = defaultdict(
@@ -477,7 +477,7 @@ class ProxifyHostFile(MutableMapping):
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
-        Notice, enabling this does nothing when RMM isn't availabe or not used.
+        Notice, enabling this does nothing when RMM isn't available or not used.
     gds_spilling: bool
         Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
         value are used, which defaults to ``False``.
@@ -497,10 +497,10 @@ class ProxifyHostFile(MutableMapping):
         *,
         device_memory_limit: int,
         memory_limit: int,
-        shared_filesystem: bool = None,
-        compatibility_mode: bool = None,
-        spill_on_demand: bool = None,
-        gds_spilling: bool = None,
+        shared_filesystem: Optional[bool] = None,
+        compatibility_mode: Optional[bool] = None,
+        spill_on_demand: Optional[bool] = None,
+        gds_spilling: Optional[bool] = None,
     ):
         if cudf_spilling_status():
             warnings.warn(
@@ -635,7 +635,7 @@ class ProxifyHostFile(MutableMapping):
     def fast(self):
         """Alternative access to `.evict()` used by Dask
 
-        Dask expects `.fast.evict()` to be availabe for manually triggering
+        Dask expects `.fast.evict()` to be available for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:
