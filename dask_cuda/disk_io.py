@@ -96,8 +96,8 @@ class SpillToDiskProperties:
     def __init__(
         self,
         root_dir: Union[str, os.PathLike],
-        shared_filesystem: bool = None,
-        gds: bool = None,
+        shared_filesystem: Optional[bool] = None,
+        gds: Optional[bool] = None,
     ):
         """
         Parameters

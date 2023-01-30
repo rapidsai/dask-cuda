@@ -137,7 +137,7 @@ def cuda():
     "--rmm-async/--no-rmm-async",
     default=False,
     show_default=True,
-    help="""Initialize each worker withh RMM and set it to use RMM's asynchronous
+    help="""Initialize each worker with RMM and set it to use RMM's asynchronous
     allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
     .. warning::

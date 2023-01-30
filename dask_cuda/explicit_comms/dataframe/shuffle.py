@@ -270,7 +270,7 @@ async def send_recv_partitions(
     myrank
         The rank of this worker.
     rank_to_out_part_ids
-        dict that for each worker rank specifices a set of output partition IDs.
+        dict that for each worker rank specifies a set of output partition IDs.
         If the worker shouldn't return any partitions, it is excluded from the
         dict. Partition IDs are global integers `0..npartitions` and corresponds
         to the dict keys returned by `group_split_dispatch`.
@@ -332,9 +332,9 @@ async def shuffle_task(
     stage_name: str
         Name of the stage to retrieve the input keys from.
     rank_to_inkeys: dict
-        dict that for each worker rank specifices the set of staged input keys.
+        dict that for each worker rank specifies the set of staged input keys.
     rank_to_out_part_ids: dict
-        dict that for each worker rank specifices a set of output partition IDs.
+        dict that for each worker rank specifies a set of output partition IDs.
         If the worker shouldn't return any partitions, it is excluded from the
         dict. Partition IDs are global integers `0..npartitions` and corresponds
         to the dict keys returned by `group_split_dispatch`.

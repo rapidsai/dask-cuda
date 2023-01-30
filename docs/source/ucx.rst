@@ -127,8 +127,7 @@ therefore do something like the following:
 
 .. note::
 
-   To confirm that no bad fork calls are occuring, start jobs with
+   To confirm that no bad fork calls are occurring, start jobs with
    ``UCX_IB_FORK_INIT=n``. UCX will produce a warning ``UCX  WARN  IB:
    ibv_fork_init() was disabled or failed, yet a fork() has been
    issued.`` if the application calls ``fork()``.
-
