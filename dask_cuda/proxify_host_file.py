@@ -353,7 +353,7 @@ class ProxyManager:
         with self.lock:
             found_proxies: List[ProxyObject] = []
             if duplicate_check:
-                # In order detect already proxied object, proxify_device_objects()
+                # In order to detect already proxied object, proxify_device_objects()
                 # needs a mapping from proxied objects to their proxy objects.
                 proxied_id_to_proxy = {
                     id(p._pxy_get().obj): p for p in self._dev.get_proxies()
