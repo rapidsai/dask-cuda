@@ -322,7 +322,7 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: T) -> Tuple[T, bool]:
+    def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
         """Proxify `obj` and add found proxies to the `Proxies` collections
 
         Returns the proxified object and a boolean, which is `True` when one or
@@ -333,9 +333,12 @@ class ProxyManager:
             found_proxies: List[ProxyObject] = []
             # In order detect already proxied object, proxify_device_objects()
             # needs a mapping from proxied objects to their proxy objects.
-            proxied_id_to_proxy = {
-                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
-            }
+            if duplicate_check:
+                proxied_id_to_proxy = {
+                    id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+                }
+            else:
+                proxied_id_to_proxy = None
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
