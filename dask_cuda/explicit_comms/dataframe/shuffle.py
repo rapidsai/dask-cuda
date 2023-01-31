@@ -53,10 +53,12 @@ def get_no_comm_postprocess(
     ----------
     stage
         The staged input dataframes.
-    num_rounds: int
+    num_rounds
         Number of rounds of dataframe partitioning and all-to-all communication.
-    batchsize: int
+    batchsize
         Number of partitions each worker will handle in each round.
+    proxify
+        Function to proxify object.
 
     Returns
     -------
