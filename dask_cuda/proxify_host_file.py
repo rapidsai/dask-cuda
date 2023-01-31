@@ -346,7 +346,7 @@ class ProxyManager:
         obj
             The proxified object.
         bool
-            Whether an incompatible-types were found or not.
+            Whether incompatible-types were found or not.
         """
 
         incompatible_type_found = False
