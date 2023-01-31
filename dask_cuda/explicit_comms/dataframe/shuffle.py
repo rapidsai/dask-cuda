@@ -31,6 +31,8 @@ def get_proxify(worker: Worker) -> Proxify:
 
     if isinstance(worker.data, ProxifyHostFile):
         data = worker.data
+        # Notice, we know that we never call proxify() on the same proxied
+        # object thus we can speedup the call by setting `duplicate_check=False`
         return lambda x: data.manager.proxify(x, duplicate_check=False)[0]
     return lambda x: x  # no-op
 
