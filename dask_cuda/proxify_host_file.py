@@ -325,7 +325,7 @@ class ProxyManager:
     def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
         """Proxify `obj` and add found proxies to the `Proxies` collections
 
-        Search through `obj` and wraps all CUDA device objects in ProxyObject.
+        Search through `obj` and wrap all CUDA device objects in ProxyObject.
         If duplicate_check is True, identical CUDA device objects found in
         `obj` are wrapped by the same ProxyObject.
 
@@ -338,8 +338,9 @@ class ProxyManager:
             Object to search through or wrap in a ProxyObject.
         duplicate_check
             Make sure that identical CUDA device objects found in `obj` are
-            wrapped by the same ProxyObject. This check comes with a significate
-            overhead hence set to False when it is known that no duplicate exist.
+            wrapped by the same ProxyObject. This check comes with a significant
+            overhead hence it is recommended setting to False when it is known
+            that no duplicate exist.
 
         Return
         ------
