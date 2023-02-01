@@ -322,20 +322,45 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: T) -> Tuple[T, bool]:
+    def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
         """Proxify `obj` and add found proxies to the `Proxies` collections
+
+        Search through `obj` and wrap all CUDA device objects in ProxyObject.
+        If duplicate_check is True, identical CUDA device objects found in
+        `obj` are wrapped by the same ProxyObject.
 
         Returns the proxified object and a boolean, which is `True` when one or
         more incompatible-types were found.
+
+        Parameters
+        ----------
+        obj
+            Object to search through or wrap in a ProxyObject.
+        duplicate_check
+            Make sure that identical CUDA device objects found in `obj` are
+            wrapped by the same ProxyObject. This check comes with a significant
+            overhead hence it is recommended setting to False when it is known
+            that no duplicate exist.
+
+        Return
+        ------
+        obj
+            The proxified object.
+        bool
+            Whether incompatible-types were found or not.
         """
+
         incompatible_type_found = False
         with self.lock:
             found_proxies: List[ProxyObject] = []
-            # In order detect already proxied object, proxify_device_objects()
-            # needs a mapping from proxied objects to their proxy objects.
-            proxied_id_to_proxy = {
-                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
-            }
+            if duplicate_check:
+                # In order to detect already proxied object, proxify_device_objects()
+                # needs a mapping from proxied objects to their proxy objects.
+                proxied_id_to_proxy = {
+                    id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+                }
+            else:
+                proxied_id_to_proxy = None
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:

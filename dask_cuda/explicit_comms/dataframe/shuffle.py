@@ -30,13 +30,14 @@ def get_proxify(worker: Worker) -> Proxify:
     from dask_cuda.proxify_host_file import ProxifyHostFile
 
     if isinstance(worker.data, ProxifyHostFile):
-        data = worker.data
-        return lambda x: data.manager.proxify(x)[0]
+        # Notice, we know that we never call proxify() on the same proxied
+        # object thus we can speedup the call by setting `duplicate_check=False`
+        return lambda x: worker.data.manager.proxify(x, duplicate_check=False)[0]
     return lambda x: x  # no-op
 
 
 def get_no_comm_postprocess(
-    stage: Dict[str, Any], num_rounds: int, batchsize: int
+    stage: Dict[str, Any], num_rounds: int, batchsize: int, proxify: Proxify
 ) -> Callable[[DataFrame], DataFrame]:
     """Get function for post-processing partitions not communicated
 
@@ -52,10 +53,12 @@ def get_no_comm_postprocess(
     ----------
     stage
         The staged input dataframes.
-    num_rounds: int
+    num_rounds
         Number of rounds of dataframe partitioning and all-to-all communication.
-    batchsize: int
+    batchsize
         Number of partitions each worker will handle in each round.
+    proxify
+        Function to proxify object.
 
     Returns
     -------
@@ -75,9 +78,11 @@ def get_no_comm_postprocess(
 
     # Deep copying a cuDF dataframe doesn't deep copy its index hence
     # we have to do it explicitly.
-    return lambda x: x._from_data(
-        x._data.copy(deep=True),
-        x._index.copy(deep=True),
+    return lambda x: proxify(
+        x._from_data(
+            x._data.copy(deep=True),
+            x._index.copy(deep=True),
+        )
     )
 
 
@@ -246,7 +251,7 @@ def create_partitions(
         t = [df_grouped[i] for df_grouped in dfs_grouped]
         assert len(t) > 0
         if len(t) == 1:
-            ret[i] = proxify(t[0])
+            ret[i] = t[0]
         elif len(t) > 1:
             ret[i] = proxify(dd_concat(t, ignore_index=ignore_index))
     return ret
@@ -305,7 +310,7 @@ async def send_recv_partitions(
     # We can now add them to the output dataframes.
     for out_part_id, dataframe in out_part_id_to_dataframe.items():
         out_part_id_to_dataframe_list[out_part_id].append(
-            no_comm_postprocess(proxify(dataframe))
+            no_comm_postprocess(dataframe)
         )
     out_part_id_to_dataframe.clear()
 
@@ -361,7 +366,7 @@ async def shuffle_task(
     myrank: int = s["rank"]
     stage = comms.pop_staging_area(s, stage_name)
     assert stage.keys() == rank_to_inkeys[myrank]
-    no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize)
+    no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize, proxify)
 
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     for _ in range(num_rounds):
