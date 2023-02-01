@@ -1,13 +1,12 @@
-# Copyright (c) 2019-2022, NVIDIA CORPORATION.
+# Copyright (c) 2019-2023, NVIDIA CORPORATION.
 
 # Usage:
 #   conda build -c conda-forge .
 {% set data = load_file_data("pyproject.toml") %}
 
-{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
-{% set number = environ.get('GIT_DESCRIBE_NUMBER', 0) %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
 {% set py_version = environ['CONDA_PY'] %}
-{% set git_hash = environ.get('GIT_DESCRIBE_HASH', '') %}
+{% set date_string = environ.get('DATE_STRING', '000000') %}
 
 package:
   name: dask-cuda
@@ -17,8 +16,8 @@ source:
   git_url: ../../..
 
 build:
-  number: {{ number }}
-  string: py{{ py_version }}_{{ git_hash }}_{{ number }}
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ py_version }}_{{ date_string }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
