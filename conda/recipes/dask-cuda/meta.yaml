@@ -6,7 +6,7 @@
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
 {% set py_version = environ['CONDA_PY'] %}
-{% set date_string = environ.get('DATE_STRING', '000000') %}
+{% set date_string = environ['RAPIDS_DATE_STRING'] %}
 
 package:
   name: dask-cuda
