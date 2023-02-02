@@ -40,7 +40,7 @@ def register_cudf():
 
 
 def cudf_spilling_status() -> Optional[bool]:
-    """Check the status of cudf's build-in spilling
+    """Check the status of cudf's built-in spilling
 
     Returns:
         - True if cudf's internal spilling is enabled, or

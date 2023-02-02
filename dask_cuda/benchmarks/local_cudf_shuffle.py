@@ -45,7 +45,7 @@ def shuffle_explicit_comms(df, args):
     t1 = perf_counter()
     wait(
         dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
-            df, column_names="data", ignore_index=args.ignore_index
+            df, column_names=["data"], ignore_index=args.ignore_index
         ).persist()
     )
     return perf_counter() - t1
@@ -70,20 +70,37 @@ def create_data(
     The partitions are perfectly distributed across workers, if the number of
     requested partitions is evenly divisible by the number of workers.
     """
+    chunksize = args.partition_size // np.float64().nbytes
 
     workers = list(client.scheduler_info()["workers"].keys())
     assert len(workers) > 0
 
-    chunksize = args.partition_size // np.float64().nbytes
-    # Distribute the new partitions between workers by round robin.
-    # We use `client.submit` to control the distribution exactly.
-    # TODO: support unbalanced partition distribution
-    dsk = {}
-    for i in range(args.in_parts):
-        worker = workers[i % len(workers)]  # Round robin
-        dsk[(name, i)] = client.submit(
-            create_df, chunksize, args.type, workers=[worker], pure=False
+    dist = args.partition_distribution
+    if dist is None:
+        # By default, we create a balanced distribution
+        dist = [args.in_parts // len(workers)] * len(workers)
+        for i in range(args.in_parts % len(workers)):
+            dist[i] += 1
+
+    if len(dist) != len(workers):
+        raise ValueError(
+            f"The length of `--devs`({len(dist)}) and "
+            f"`--partition-distribution`({len(workers)}) doesn't match"
         )
+    if sum(dist) != args.in_parts:
+        raise ValueError(
+            f"The sum of `--partition-distribution`({sum(dist)}) must match "
+            f"the number of input partitions `--in-parts={args.in_parts}`"
+        )
+
+    # Create partition based to the specified partition distribution
+    dsk = {}
+    for i, part_size in enumerate(dist):
+        for _ in range(part_size):
+            # We use `client.submit` to control placement of the partition.
+            dsk[(name, len(dsk))] = client.submit(
+                create_df, chunksize, args.type, workers=[workers[i]], pure=False
+            )
     wait(dsk.values())
 
     df_meta = create_df(0, args.type)
@@ -224,6 +241,15 @@ def parse_args():
             "name": "--ignore-index",
             "action": "store_true",
             "help": "When shuffle, ignore the index",
+        },
+        {
+            "name": "--partition-distribution",
+            "default": None,
+            "metavar": "PARTITION_SIZE_LIST",
+            "type": lambda x: [int(y) for y in x.split(",")],
+            "help": "Comma separated list defining the size of each partition, "
+            "which must have the same length as `--devs`. "
+            "If not set, a balanced distribution is used.",
         },
     ]
 

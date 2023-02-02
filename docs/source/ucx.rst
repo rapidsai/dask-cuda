@@ -37,7 +37,7 @@ Automatic
 
 Beginning with Dask-CUDA 22.02 and assuming UCX >= 1.11.1, specifying UCX transports is now optional.
 
-A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask-scheduler --protocol="ucx"`` and connecting a ``dask-cuda-worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <examples/ucx.html>`_ for more details examples of UCX usage with automatic configuration.
+A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <examples/ucx.html>`_ for more details examples of UCX usage with automatic configuration.
 
 Configuring transports manually is still possible, please refer to the subsection below.
 
@@ -97,7 +97,7 @@ this when using Dask-CUDA's UCX integration, processes launched via
 multiprocessing should use the start processes using the
 `"forkserver"
 <https://docs.python.org/dev/library/multiprocessing.html#contexts-and-start-methods>`_
-method. When launching workers using `dask-cuda-worker <quickstart.html#dask-cuda-worker>`_, this can be
+method. When launching workers using `dask cuda worker <quickstart.html#dask-cuda-worker>`_, this can be
 achieved by passing ``--multiprocessing-method forkserver`` as an
 argument. In user code, the method can be controlled with the
 ``distributed.worker.multiprocessing-method`` configuration key in
@@ -127,8 +127,7 @@ therefore do something like the following:
 
 .. note::
 
-   To confirm that no bad fork calls are occuring, start jobs with
+   To confirm that no bad fork calls are occurring, start jobs with
    ``UCX_IB_FORK_INIT=n``. UCX will produce a warning ``UCX  WARN  IB:
    ibv_fork_init() was disabled or failed, yet a fork() has been
    issued.`` if the application calls ``fork()``.
-

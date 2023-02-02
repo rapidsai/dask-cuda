@@ -19,7 +19,7 @@ def _register_incompatible_types():
     """Lazy register types that ProxifyHostFile should unproxify on retrieval.
 
     It reads the config key "jit-unspill-incompatible"
-    (DASK_JIT_UNSPILL_INCOMPATIBLE), which should be a comma seperated
+    (DASK_JIT_UNSPILL_INCOMPATIBLE), which should be a comma separated
     list of types. The default value is:
         DASK_JIT_UNSPILL_INCOMPATIBLE="cupy.ndarray"
     """
@@ -51,8 +51,8 @@ def _register_incompatible_types():
 
 def proxify_device_objects(
     obj: T,
-    proxied_id_to_proxy: MutableMapping[int, ProxyObject] = None,
-    found_proxies: List[ProxyObject] = None,
+    proxied_id_to_proxy: Optional[MutableMapping[int, ProxyObject]] = None,
+    found_proxies: Optional[List[ProxyObject]] = None,
     excl_proxies: bool = False,
     mark_as_explicit_proxies: bool = False,
 ) -> T:
@@ -135,7 +135,9 @@ def unproxify_device_objects(
         pxy = obj._pxy_get(copy=True)
         if only_incompatible_types:
             if incompatible_types and isinstance(obj, incompatible_types):
-                obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)
+                obj = obj._pxy_deserialize(  # type: ignore
+                    maybe_evict=False, proxy_detail=pxy
+                )
         elif not skip_explicit_proxies or not pxy.explicit_proxy:
             pxy.explicit_proxy = False
             obj = obj._pxy_deserialize(maybe_evict=False, proxy_detail=pxy)

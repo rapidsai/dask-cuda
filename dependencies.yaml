@@ -6,6 +6,7 @@ files:
       - build_python
       - cudatoolkit
       - develop
+      - docs
       - py_version
       - run_python
       - test_python
@@ -19,6 +20,12 @@ files:
     output: none
     includes:
       - develop
+      - py_version
+  docs:
+    output: none
+    includes:
+      - cudatoolkit
+      - docs
       - py_version
 channels:
   - rapidsai
@@ -57,6 +64,14 @@ dependencies:
       - output_types: [conda, requirements]
         packages:
           - pre-commit
+  docs:
+    common:
+      - output_types: [conda, requirements]
+        packages:
+          - numpydoc
+          - sphinx
+          - sphinx-click
+          - sphinx_rtd_theme
   py_version:
     specific:
       - output_types: conda
@@ -91,7 +106,7 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - cucim
+          - cucim=23.02
           - cudf=23.02
           - dask-cudf=23.02
           - pytest

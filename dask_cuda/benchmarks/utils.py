@@ -674,7 +674,7 @@ def bandwidth_statistics(
     logs:
         the ``dask_worker.incoming_transfer_log`` object
     ignore_size: int (optional)
-        ignore messsages whose total byte count is smaller than this
+        ignore messages whose total byte count is smaller than this
         value (if provided)
 
     Returns

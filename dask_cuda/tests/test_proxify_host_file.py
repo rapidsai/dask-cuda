@@ -239,7 +239,8 @@ def test_spill_on_demand(root_dir):
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
-def test_local_cuda_cluster(jit_unspill):
+@gen_test(timeout=20)
+async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
@@ -256,14 +257,17 @@ def test_local_cuda_cluster(jit_unspill):
         return x
 
     # Notice, setting `device_memory_limit=1B` to trigger spilling
-    with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=jit_unspill
+    async with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        device_memory_limit="1B",
+        jit_unspill=jit_unspill,
+        asynchronous=True,
     ) as cluster:
-        with Client(cluster):
+        async with Client(cluster, asynchronous=True) as client:
             df = cudf.DataFrame({"a": range(10)})
             ddf = dask_cudf.from_cudf(df, npartitions=1)
             ddf = ddf.map_partitions(task, meta=df.head())
-            got = ddf.compute()
+            got = await client.compute(ddf)
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
@@ -277,7 +281,7 @@ def test_dataframes_share_dev_mem(root_dir):
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
     assert view1["a"].data is not view2["a"].data
     # They still share the same underlying device memory
-    view1["a"].data.ptr == view2["a"].data.ptr
+    view1["a"].data.get_ptr(mode="read") == view2["a"].data.get_ptr(mode="read")
 
     dhf = ProxifyHostFile(
         worker_local_directory=root_dir, device_memory_limit=160, memory_limit=1000
@@ -381,15 +385,18 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
-def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
+@gen_test(timeout=20)
+async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
     def is_proxy_object(x):
         return "ProxyObject" in str(type(x))
 
     with dask.config.set(jit_unspill_compatibility_mode=compatibility_mode):
-        with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
-            with Client(cluster):
+        async with dask_cuda.LocalCUDACluster(
+            n_workers=1, jit_unspill=True, asynchronous=True
+        ) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
@@ -397,8 +404,8 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
-                    assert "ProxyObject" not in str(type(res.compute()))
-                res = res.map_partitions(is_proxy_object).compute()
+                    assert "ProxyObject" not in str(type(await client.compute(res)))
+                res = await client.compute(res.map_partitions(is_proxy_object))
                 res = res.to_list()
 
                 if compatibility_mode:

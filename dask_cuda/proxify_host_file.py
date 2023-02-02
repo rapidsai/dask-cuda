@@ -164,7 +164,7 @@ class ProxiesOnDevice(Proxies):
     In this case the tally of the total device memory usage is incorrect.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.proxy_id_to_dev_mems: Dict[int, Set[DeviceMemoryId]] = {}
         self.dev_mem_to_proxy_ids: DefaultDict[DeviceMemoryId, Set[int]] = defaultdict(
@@ -322,20 +322,45 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: T) -> Tuple[T, bool]:
+    def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
         """Proxify `obj` and add found proxies to the `Proxies` collections
+
+        Search through `obj` and wrap all CUDA device objects in ProxyObject.
+        If duplicate_check is True, identical CUDA device objects found in
+        `obj` are wrapped by the same ProxyObject.
 
         Returns the proxified object and a boolean, which is `True` when one or
         more incompatible-types were found.
+
+        Parameters
+        ----------
+        obj
+            Object to search through or wrap in a ProxyObject.
+        duplicate_check
+            Make sure that identical CUDA device objects found in `obj` are
+            wrapped by the same ProxyObject. This check comes with a significant
+            overhead hence it is recommended setting to False when it is known
+            that no duplicate exist.
+
+        Return
+        ------
+        obj
+            The proxified object.
+        bool
+            Whether incompatible-types were found or not.
         """
+
         incompatible_type_found = False
         with self.lock:
             found_proxies: List[ProxyObject] = []
-            # In order detect already proxied object, proxify_device_objects()
-            # needs a mapping from proxied objects to their proxy objects.
-            proxied_id_to_proxy = {
-                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
-            }
+            if duplicate_check:
+                # In order to detect already proxied object, proxify_device_objects()
+                # needs a mapping from proxied objects to their proxy objects.
+                proxied_id_to_proxy = {
+                    id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+                }
+            else:
+                proxied_id_to_proxy = None
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
@@ -477,7 +502,7 @@ class ProxifyHostFile(MutableMapping):
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
-        Notice, enabling this does nothing when RMM isn't availabe or not used.
+        Notice, enabling this does nothing when RMM isn't available or not used.
     gds_spilling: bool
         Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
         value are used, which defaults to ``False``.
@@ -497,10 +522,10 @@ class ProxifyHostFile(MutableMapping):
         *,
         device_memory_limit: int,
         memory_limit: int,
-        shared_filesystem: bool = None,
-        compatibility_mode: bool = None,
-        spill_on_demand: bool = None,
-        gds_spilling: bool = None,
+        shared_filesystem: Optional[bool] = None,
+        compatibility_mode: Optional[bool] = None,
+        spill_on_demand: Optional[bool] = None,
+        gds_spilling: Optional[bool] = None,
     ):
         if cudf_spilling_status():
             warnings.warn(
@@ -635,7 +660,7 @@ class ProxifyHostFile(MutableMapping):
     def fast(self):
         """Alternative access to `.evict()` used by Dask
 
-        Dask expects `.fast.evict()` to be availabe for manually triggering
+        Dask expects `.fast.evict()` to be available for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:
