@@ -1,5 +1,7 @@
 import asyncio
 import multiprocessing as mp
+import os
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -74,10 +76,14 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             expected = df1.merge(df2).set_index("key")
             ddf1 = dd.from_pandas(df1, npartitions=npartitions)
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
-            with dask.config.set(explicit_comms=True):
-                ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
-                got = ddf3.compute()
-                pd.testing.assert_frame_equal(got, expected)
+
+            for batchsize in (-1, 1, 2):
+                with dask.config.set(
+                    explicit_comms=True, explicit_comms_batchsize=batchsize
+                ):
+                    ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
+                    got = ddf3.compute()
+                    pd.testing.assert_frame_equal(got, expected)
 
 
 def test_dataframe_merge_empty_partitions():
@@ -130,22 +136,29 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                     ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
                         workers=all_workers
                     )
-                    ddf = explicit_comms_shuffle(
-                        ddf, ["key"], npartitions=output_nparts
-                    ).persist()
+                    # To reduce test runtime, we change the batchsizes here instead
+                    # of using a test parameter.
+                    for batchsize in (-1, 1, 2):
+                        with dask.config.set(explicit_comms_batchsize=batchsize):
+                            ddf = explicit_comms_shuffle(
+                                ddf,
+                                ["key"],
+                                npartitions=output_nparts,
+                                batchsize=batchsize,
+                            ).persist()
 
-                    assert ddf.npartitions == output_nparts
+                            assert ddf.npartitions == output_nparts
 
-                    # Check that each partition of `ddf` hashes to the same value
-                    result = ddf.map_partitions(
-                        check_partitions, output_nparts
-                    ).compute()
-                    assert all(result.to_list())
+                            # Check that each partition hashes to the same value
+                            result = ddf.map_partitions(
+                                check_partitions, output_nparts
+                            ).compute()
+                            assert all(result.to_list())
 
-                    # Check the values of `ddf` (ignoring the row order)
-                    expected = df.sort_values("key")
-                    got = ddf.compute().sort_values("key")
-                    assert_eq(got, expected)
+                            # Check the values (ignoring the row order)
+                            expected = df.sort_values("key")
+                            got = ddf.compute().sort_values("key")
+                            assert_eq(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 3])
@@ -161,8 +174,9 @@ def test_dataframe_shuffle(backend, protocol, nworkers):
     assert not p.exitcode
 
 
-def _test_dask_use_explicit_comms():
-    def check_shuffle(in_cluster):
+@pytest.mark.parametrize("in_cluster", [True, False])
+def test_dask_use_explicit_comms(in_cluster):
+    def check_shuffle():
         """Check if shuffle use explicit-comms by search for keys named
         'explicit-comms-shuffle'
         """
@@ -178,23 +192,28 @@ def _test_dask_use_explicit_comms():
             else:  # If not in cluster, we cannot use explicit comms
                 assert all(name not in str(key) for key in res.dask)
 
-    with LocalCluster(
-        protocol="tcp",
-        dashboard_address=None,
-        n_workers=2,
-        threads_per_worker=1,
-        processes=True,
-    ) as cluster:
-        with Client(cluster):
-            check_shuffle(True)
-    check_shuffle(False)
+        if in_cluster:
+            # We check environment variables by setting an illegal batchsize
+            with patch.dict(
+                os.environ,
+                {"DASK_EXPLICIT_COMMS": "1", "DASK_EXPLICIT_COMMS_BATCHSIZE": "-2"},
+            ):
+                dask.config.refresh()  # Trigger re-read of the environment variables
+                with pytest.raises(ValueError, match="explicit-comms-batchsize"):
+                    ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
 
-
-def test_dask_use_explicit_comms():
-    p = mp.Process(target=_test_dask_use_explicit_comms)
-    p.start()
-    p.join()
-    assert not p.exitcode
+    if in_cluster:
+        with LocalCluster(
+            protocol="tcp",
+            dashboard_address=None,
+            n_workers=2,
+            threads_per_worker=1,
+            processes=True,
+        ) as cluster:
+            with Client(cluster):
+                check_shuffle()
+    else:
+        check_shuffle()
 
 
 def _test_dataframe_shuffle_merge(backend, protocol, n_workers):

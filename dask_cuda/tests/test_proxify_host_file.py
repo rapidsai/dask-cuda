@@ -1,5 +1,3 @@
-import re
-import tempfile
 from typing import Iterable
 from unittest.mock import patch
 
@@ -11,6 +9,7 @@ import dask
 import dask.dataframe
 from dask.dataframe.shuffle import shuffle_group
 from dask.sizeof import sizeof
+from dask.utils import format_bytes
 from distributed import Client
 from distributed.utils_test import gen_test
 from distributed.worker import get_worker
@@ -32,21 +31,24 @@ one_item_nbytes = one_item_array().nbytes
 dask_cuda.proxify_device_objects.dispatch.dispatch(cupy.ndarray)
 dask_cuda.proxify_device_objects.incompatible_types = ()  # type: ignore
 
-# Make the "disk" serializer available and use a tmp directory
-if ProxifyHostFile._spill_to_disk is None:
-    # Hold on to `tmpdir` to keep dir alive until exit
-    tmpdir = tempfile.TemporaryDirectory()
-    ProxifyHostFile(
-        local_directory=tmpdir.name,
-        device_memory_limit=1024,
-        memory_limit=1024,
-    )
-assert ProxifyHostFile._spill_to_disk is not None
 
-# In order to use the same tmp dir, we use `root_dir` for all ProxifyHostFile creations
-# Notice, we use `../..` to remove the `dask-worker-space/jit-unspill-disk-storage` part
-# added by the ProxifyHostFile implicitly.
-root_dir = str(ProxifyHostFile._spill_to_disk.root_dir / ".." / "..")
+@pytest.fixture(scope="module")
+def root_dir(tmp_path_factory):
+    tmpdir = tmp_path_factory.mktemp("jit-unspill")
+    # Make the "disk" serializer available and use a tmp directory
+    if ProxifyHostFile._spill_to_disk is None:
+        ProxifyHostFile(
+            worker_local_directory=tmpdir.name,
+            device_memory_limit=1024,
+            memory_limit=1024,
+        )
+    assert ProxifyHostFile._spill_to_disk is not None
+
+    # In order to use the same tmp dir, we use `root_dir` for all
+    # ProxifyHostFile creations. Notice, we use `..` to remove the
+    # `jit-unspill-disk-storage` part added by the
+    # ProxifyHostFile implicitly.
+    return str(ProxifyHostFile._spill_to_disk.root_dir / "..")
 
 
 def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
@@ -61,9 +63,11 @@ def is_proxies_equal(p1: Iterable[ProxyObject], p2: Iterable[ProxyObject]):
     return ids1 == ids2
 
 
-def test_one_dev_item_limit():
+def test_one_dev_item_limit(root_dir):
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
 
     a1 = one_item_array() + 42
@@ -150,10 +154,10 @@ def test_one_dev_item_limit():
     assert len(dhf.manager) == 0
 
 
-def test_one_item_host_limit(capsys):
+def test_one_item_host_limit(capsys, root_dir):
     memory_limit = sizeof(asproxy(one_item_array(), serializers=("dask", "pickle")))
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=one_item_nbytes,
         memory_limit=memory_limit,
     )
@@ -213,7 +217,7 @@ def test_one_item_host_limit(capsys):
     assert len(dhf.manager) == 0
 
 
-def test_spill_on_demand():
+def test_spill_on_demand(root_dir):
     """
     Test spilling on demand by disabling the device_memory_limit
     and allocating two large buffers that will otherwise fail because
@@ -225,7 +229,7 @@ def test_spill_on_demand():
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
-        local_directory=root_dir,
+        worker_local_directory=root_dir,
         device_memory_limit=2 * total_mem,
         memory_limit=2 * total_mem,
         spill_on_demand=True,
@@ -235,7 +239,8 @@ def test_spill_on_demand():
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
-def test_local_cuda_cluster(jit_unspill):
+@gen_test(timeout=20)
+async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
@@ -252,18 +257,21 @@ def test_local_cuda_cluster(jit_unspill):
         return x
 
     # Notice, setting `device_memory_limit=1B` to trigger spilling
-    with dask_cuda.LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=jit_unspill
+    async with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        device_memory_limit="1B",
+        jit_unspill=jit_unspill,
+        asynchronous=True,
     ) as cluster:
-        with Client(cluster):
+        async with Client(cluster, asynchronous=True) as client:
             df = cudf.DataFrame({"a": range(10)})
             ddf = dask_cudf.from_cudf(df, npartitions=1)
             ddf = ddf.map_partitions(task, meta=df.head())
-            got = ddf.compute()
+            got = await client.compute(ddf)
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
-def test_dataframes_share_dev_mem():
+def test_dataframes_share_dev_mem(root_dir):
     cudf = pytest.importorskip("cudf")
 
     df = cudf.DataFrame({"a": range(10)})
@@ -273,10 +281,10 @@ def test_dataframes_share_dev_mem():
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
     assert view1["a"].data is not view2["a"].data
     # They still share the same underlying device memory
-    assert view1["a"].data._owner._owner is view2["a"].data._owner._owner
+    view1["a"].data.get_ptr(mode="read") == view2["a"].data.get_ptr(mode="read")
 
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=160, memory_limit=1000
+        worker_local_directory=root_dir, device_memory_limit=160, memory_limit=1000
     )
     dhf["v1"] = view1
     dhf["v2"] = view2
@@ -303,7 +311,7 @@ def test_cudf_get_device_memory_objects():
     assert len(res) == 4, "We expect four buffer objects"
 
 
-def test_externals():
+def test_externals(root_dir):
     """Test adding objects directly to the manager
 
     Add an object directly to the manager makes it count against the
@@ -317,7 +325,9 @@ def test_externals():
     __delitem__.
     """
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=one_item_nbytes, memory_limit=1000
+        worker_local_directory=root_dir,
+        device_memory_limit=one_item_nbytes,
+        memory_limit=1000,
     )
     dhf["k1"] = one_item_array()
     k1 = dhf["k1"]
@@ -353,7 +363,7 @@ def test_externals():
 
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
-def test_incompatible_types():
+def test_incompatible_types(root_dir):
     """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
 
     Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
@@ -361,7 +371,7 @@ def test_incompatible_types():
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")
     dhf = ProxifyHostFile(
-        local_directory=root_dir, device_memory_limit=100, memory_limit=100
+        worker_local_directory=root_dir, device_memory_limit=100, memory_limit=100
     )
 
     # We expect `dhf` to unproxify `a1` (but not `a2`) on retrieval
@@ -375,15 +385,18 @@ def test_incompatible_types():
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
-def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
+@gen_test(timeout=20)
+async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
     def is_proxy_object(x):
         return "ProxyObject" in str(type(x))
 
     with dask.config.set(jit_unspill_compatibility_mode=compatibility_mode):
-        with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
-            with Client(cluster):
+        async with dask_cuda.LocalCUDACluster(
+            n_workers=1, jit_unspill=True, asynchronous=True
+        ) as cluster:
+            async with Client(cluster, asynchronous=True) as client:
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
@@ -391,8 +404,8 @@ def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
-                    assert "ProxyObject" not in str(type(res.compute()))
-                res = res.map_partitions(is_proxy_object).compute()
+                    assert "ProxyObject" not in str(type(await client.compute(res)))
+                res = await client.compute(res.map_partitions(is_proxy_object))
                 res = res.to_list()
 
                 if compatibility_mode:
@@ -442,25 +455,32 @@ def test_on_demand_debug_info():
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
 
-    total_mem = get_device_total_memory()
+    rmm_pool_size = 2**20
 
     def task():
-        rmm.DeviceBuffer(size=total_mem + 1)
+        (
+            rmm.DeviceBuffer(size=rmm_pool_size // 2),
+            rmm.DeviceBuffer(size=rmm_pool_size // 2),
+            rmm.DeviceBuffer(size=rmm_pool_size),  # Trigger OOM
+        )
 
-    with dask_cuda.LocalCUDACluster(n_workers=1, jit_unspill=True) as cluster:
+    with dask_cuda.LocalCUDACluster(
+        n_workers=1,
+        jit_unspill=True,
+        rmm_pool_size=rmm_pool_size,
+        rmm_maximum_pool_size=rmm_pool_size,
+        rmm_track_allocations=True,
+    ) as cluster:
         with Client(cluster) as client:
             # Warmup, which trigger the initialization of spill on demand
             client.submit(range, 10).result()
 
             # Submit too large RMM buffer
-            with pytest.raises(
-                MemoryError, match=r".*std::bad_alloc:.*CUDA error at:.*"
-            ):
+            with pytest.raises(MemoryError, match="Maximum pool size exceeded"):
                 client.submit(task).result()
 
             log = str(client.get_worker_logs())
-            assert re.search(
-                "WARNING - RMM allocation of .* failed, spill-on-demand", log
-            )
-            assert re.search("<ProxyManager dev_limit=.* host_limit=.*>: Empty", log)
+            size = format_bytes(rmm_pool_size)
+            assert f"WARNING - RMM allocation of {size} failed" in log
+            assert f"RMM allocs: {size}" in log
             assert "traceback:" in log

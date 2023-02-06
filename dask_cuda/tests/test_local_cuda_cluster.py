@@ -1,8 +1,9 @@
+import asyncio
 import os
+import pkgutil
 import sys
 from unittest.mock import patch
 
-import pkg_resources
 import pytest
 
 from dask.distributed import Client
@@ -88,7 +89,6 @@ async def test_with_subset_of_cuda_visible_devices():
 
 
 @pytest.mark.parametrize("protocol", ["ucx", None])
-@pytest.mark.asyncio
 @gen_test(timeout=20)
 async def test_ucx_protocol(protocol):
     pytest.importorskip("ucp")
@@ -102,7 +102,6 @@ async def test_ucx_protocol(protocol):
         )
 
 
-@pytest.mark.asyncio
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
 @gen_test(timeout=20)
 async def test_ucx_protocol_type_error():
@@ -264,9 +263,9 @@ async def test_pre_import():
     module = None
 
     # Pick a module that isn't currently loaded
-    for m in pkg_resources.working_set:
-        if m.key not in sys.modules.keys():
-            module = m.key
+    for m in pkgutil.iter_modules():
+        if m.ispkg and m.name not in sys.modules.keys():
+            module = m.name
             break
 
     if module is None:
@@ -284,13 +283,17 @@ async def test_pre_import():
 
 
 # Intentionally not using @gen_test to skip cleanup checks
-async def test_pre_import_not_found():
-    with raises_with_cause(RuntimeError, None, ImportError, None):
-        await LocalCUDACluster(
-            n_workers=1,
-            pre_import="my_module",
-            asynchronous=True,
-        )
+def test_pre_import_not_found():
+    async def _test_pre_import_not_found():
+        with raises_with_cause(RuntimeError, None, ImportError, None):
+            await LocalCUDACluster(
+                n_workers=1,
+                pre_import="my_module",
+                asynchronous=True,
+                silence_logs=True,
+            )
+
+    asyncio.run(_test_pre_import_not_found())
 
 
 @gen_test(timeout=20)
@@ -309,7 +312,6 @@ async def test_cluster_worker():
             await new_worker.close()
 
 
-@patch.dict(os.environ, {"DASK_DISTRIBUTED__DIAGNOSTICS__NVML": "False"})
 @gen_test(timeout=20)
 async def test_available_mig_workers():
     uuids = get_gpu_count_mig(return_uuids=True)[1]
@@ -332,8 +334,10 @@ async def test_available_mig_workers():
                 result = await client.run(get_visible_devices)
 
                 assert all(len(v.split(",")) == len(uuids) for v in result.values())
-                for i in range(len(uuids)):
-                    assert set(v.split(",")[i] for v in result.values()) == set(uuids)
+                for i in range(len(cluster.workers)):
+                    assert set(v.split(",")[i] for v in result.values()) == set(
+                        uuid.decode("utf-8") for uuid in uuids
+                    )
 
 
 @gen_test(timeout=20)

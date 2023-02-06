@@ -4,122 +4,329 @@ import asyncio
 import functools
 import inspect
 from collections import defaultdict
+from math import ceil
 from operator import getitem
-from typing import Dict, List, Optional
-
-from toolz import first
+from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 import dask
 import dask.dataframe
-import distributed
-from dask.base import compute_as_if_collection, tokenize
-from dask.dataframe.core import DataFrame, _concat as dd_concat, new_dd_object
-from dask.dataframe.shuffle import shuffle_group
-from dask.dataframe.utils import make_meta
-from dask.delayed import delayed
+from dask.base import tokenize
+from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
+from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
+from distributed.worker import Worker
 
-from ...proxify_host_file import ProxyManager
 from .. import comms
 
+T = TypeVar("T")
 
-async def send(eps, rank_to_out_parts_list: Dict[int, List[List[DataFrame]]]):
-    """Notice, items sent are removed from `rank_to_out_parts_list`"""
+
+Proxify = Callable[[T], T]
+
+
+def get_proxify(worker: Worker) -> Proxify:
+    """Get function to proxify objects"""
+    from dask_cuda.proxify_host_file import ProxifyHostFile
+
+    if isinstance(worker.data, ProxifyHostFile):
+        # Notice, we know that we never call proxify() on the same proxied
+        # object thus we can speedup the call by setting `duplicate_check=False`
+        return lambda x: worker.data.manager.proxify(x, duplicate_check=False)[0]
+    return lambda x: x  # no-op
+
+
+def get_no_comm_postprocess(
+    stage: Dict[str, Any], num_rounds: int, batchsize: int, proxify: Proxify
+) -> Callable[[DataFrame], DataFrame]:
+    """Get function for post-processing partitions not communicated
+
+    In cuDF, the `group_split_dispatch` uses `scatter_by_map` to create
+    the partitions, which is implemented by splitting a single base dataframe
+    into multiple partitions. This means that memory are not freed until
+    ALL partitions are deleted.
+
+    In order to free memory ASAP, we can deep copy partitions NOT being
+    communicated. We do this when `num_rounds != batchsize`.
+
+    Parameters
+    ----------
+    stage
+        The staged input dataframes.
+    num_rounds
+        Number of rounds of dataframe partitioning and all-to-all communication.
+    batchsize
+        Number of partitions each worker will handle in each round.
+    proxify
+        Function to proxify object.
+
+    Returns
+    -------
+    Function to be called on partitions not communicated.
+
+    """
+    if num_rounds == batchsize:
+        return lambda x: x
+
+    # Check that we are shuffling a cudf dataframe
+    try:
+        import cudf
+    except ImportError:
+        return lambda x: x
+    if not stage or not isinstance(next(iter(stage.values())), cudf.DataFrame):
+        return lambda x: x
+
+    # Deep copying a cuDF dataframe doesn't deep copy its index hence
+    # we have to do it explicitly.
+    return lambda x: proxify(
+        x._from_data(
+            x._data.copy(deep=True),
+            x._index.copy(deep=True),
+        )
+    )
+
+
+async def send(
+    eps,
+    myrank: int,
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    out_part_id_to_dataframe: Dict[int, DataFrame],
+) -> None:
+    """Notice, items sent are removed from `out_part_id_to_dataframe`"""
     futures = []
-    for rank, ep in eps.items():
-        out_parts_list = rank_to_out_parts_list.pop(rank, None)
-        if out_parts_list is not None:
-            futures.append(ep.write([to_serialize(f) for f in out_parts_list]))
+    for rank, out_part_ids in rank_to_out_part_ids.items():
+        if rank != myrank:
+            msg = {
+                i: to_serialize(out_part_id_to_dataframe.pop(i))
+                for i in (out_part_ids & out_part_id_to_dataframe.keys())
+            }
+            futures.append(eps[rank].write(msg))
     await asyncio.gather(*futures)
 
 
 async def recv(
-    eps, in_nparts: Dict[int, int], out_parts_list: List[List[List[DataFrame]]]
-):
+    eps,
+    myrank: int,
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
+    proxify: Proxify,
+) -> None:
     """Notice, received items are appended to `out_parts_list`"""
-    futures = []
-    for rank, ep in eps.items():
-        if rank in in_nparts:
-            futures.append(ep.read())
 
-    # Notice, since Dask may convert lists to tuples, we convert them back into lists
-    out_parts_list.extend(
-        [[y for y in x] for x in nested_deserialize(await asyncio.gather(*futures))]
+    async def read_msg(rank: int) -> None:
+        msg: Dict[int, DataFrame] = nested_deserialize(await eps[rank].read())
+        for out_part_id, df in msg.items():
+            out_part_id_to_dataframe_list[out_part_id].append(proxify(df))
+
+    await asyncio.gather(
+        *(read_msg(rank) for rank in rank_to_out_part_ids if rank != myrank)
     )
 
 
-def sort_in_parts(
-    in_parts: List[Dict[int, DataFrame]],
-    rank_to_out_part_ids: Dict[int, List[int]],
-    ignore_index: bool,
-    concat_dfs_of_same_output_partition: bool,
-    concat,
-) -> Dict[int, List[List[DataFrame]]]:
-    """Sort the list of grouped dataframes in `in_parts`
+def compute_map_index(
+    df: DataFrame, column_names: List[str], npartitions: int
+) -> Series:
+    """Return a Series that maps each row `df` to a partition ID
 
-    It returns a dict that for each worker-rank specifies the output partitions:
-    '''
-        for each worker:
-            for each output partition:
-                list of dataframes that makes of an output partition
-    '''
-    If `concat_dfs_of_same_output_partition` is True, all the dataframes of an
-    output partition are concatenated.
+    The partitions are determined by hashing the columns given by column_names
+    unless if `column_names[0] == "_partitions"`, in which case the values of
+    `column_names[0]` are used as index.
 
     Parameters
     ----------
-    in_parts: list of dict of dataframes
-        List of dataframe groups that need to be shuffled.
-    rank_to_out_part_ids: dict
-        dict that for each worker rank specifices a list of partition IDs that
-        worker should return. If the worker shouldn't return any partitions,
-        it is excluded from the dict.
-    ignore_index: bool
-        Ignore index during shuffle.  If ``True``, performance may improve,
-        but index values will not be preserved.
-    concat_dfs_of_same_output_partition: bool
-        Concatenate all dataframes of the same output partition.
+    df
+        The dataframe.
+    column_names
+        List of column names on which we want to split.
+    npartitions
+        The desired number of output partitions.
 
     Returns
     -------
-    rank_to_out_parts_list: dict of list of list of DataFrames
-        Dict that maps each worker rank to its output partitions.
+    Series
+        Series that maps each row `df` to a partition ID
     """
 
-    out_part_id_to_dataframes = defaultdict(list)  # part_id -> list of dataframes
-    for bins in in_parts:
-        for k, v in bins.items():
-            out_part_id_to_dataframes[k].append(v)
-        del bins
-
-    # Create mapping: rank -> list of [list of dataframes]
-    rank_to_out_parts_list: Dict[int, List[List[DataFrame]]] = {}
-    for rank, part_ids in rank_to_out_part_ids.items():
-        rank_to_out_parts_list[rank] = [out_part_id_to_dataframes[i] for i in part_ids]
-    del out_part_id_to_dataframes
-
-    # Concatenate all dataframes of the same output partition.
-    if concat_dfs_of_same_output_partition:
-        for rank in rank_to_out_part_ids.keys():
-            for i in range(len(rank_to_out_parts_list[rank])):
-                if len(rank_to_out_parts_list[rank][i]) > 1:
-                    rank_to_out_parts_list[rank][i] = [
-                        concat(
-                            rank_to_out_parts_list[rank][i], ignore_index=ignore_index
-                        )
-                    ]
-    return rank_to_out_parts_list
+    if column_names[0] == "_partitions":
+        ind = df[column_names[0]]
+    else:
+        ind = hash_object_dispatch(
+            df[column_names] if column_names else df, index=False
+        )
+    return ind % npartitions
 
 
-async def local_shuffle(
-    s,
-    in_nparts: Dict[int, int],
-    in_parts: List[Dict[int, DataFrame]],
-    rank_to_out_part_ids: Dict[int, List[int]],
+def partition_dataframe(
+    df: DataFrame, column_names: List[str], npartitions: int, ignore_index: bool
+) -> Dict[int, DataFrame]:
+    """Partition dataframe to a dict of dataframes
+
+    The partitions are determined by hashing the columns given by column_names
+    unless `column_names[0] == "_partitions"`, in which case the values of
+    `column_names[0]` are used as index.
+
+    Parameters
+    ----------
+    df
+        The dataframe to partition
+    column_names
+        List of column names on which we want to partition.
+    npartitions
+        The desired number of output partitions.
+    ignore_index
+        Ignore index during shuffle. If True, performance may improve,
+        but index values will not be preserved.
+
+    Returns
+    -------
+    partitions
+        Dict of dataframe-partitions, mapping partition-ID to dataframe
+    """
+    if column_names[0] != "_partitions" and hasattr(df, "partition_by_hash"):
+        return dict(
+            zip(
+                range(npartitions),
+                df.partition_by_hash(
+                    column_names, npartitions, keep_index=not ignore_index
+                ),
+            )
+        )
+    map_index = compute_map_index(df, column_names, npartitions)
+    return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
+
+
+def create_partitions(
+    stage: Dict[str, Any],
+    batchsize: int,
+    column_names: List[str],
+    npartitions: int,
     ignore_index: bool,
+    proxify: Proxify,
+) -> Dict[int, DataFrame]:
+    """Create partitions from one or more staged dataframes
+
+    Parameters
+    ----------
+    stage
+        The staged input dataframes
+    column_names
+        List of column names on which we want to split.
+    npartitions
+        The desired number of output partitions.
+    ignore_index
+        Ignore index during shuffle.  If True, performance may improve,
+        but index values will not be preserved.
+    proxify
+        Function to proxify object.
+
+    Returns
+    -------
+    partitions: list of DataFrames
+        List of dataframe-partitions
+    """
+
+    if not stage:
+        return {}
+    batchsize = min(len(stage), batchsize)
+
+    # Grouping each input dataframe, one part for each partition ID.
+    dfs_grouped: List[Dict[int, DataFrame]] = []
+    for _ in range(batchsize):
+        dfs_grouped.append(
+            proxify(
+                partition_dataframe(
+                    # pop dataframe in any order, to free staged memory ASAP
+                    stage.popitem()[1],
+                    column_names,
+                    npartitions,
+                    ignore_index,
+                )
+            )
+        )
+
+    # Maps each output partition ID to a dataframe. If the partition is empty,
+    # an empty dataframe is used.
+    ret: Dict[int, DataFrame] = {}
+    for i in range(npartitions):  # Iterate over all possible output partition IDs
+        t = [df_grouped[i] for df_grouped in dfs_grouped]
+        assert len(t) > 0
+        if len(t) == 1:
+            ret[i] = t[0]
+        elif len(t) > 1:
+            ret[i] = proxify(dd_concat(t, ignore_index=ignore_index))
+    return ret
+
+
+async def send_recv_partitions(
+    eps: dict,
+    myrank: int,
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    out_part_id_to_dataframe: Dict[int, DataFrame],
+    no_comm_postprocess: Callable[[DataFrame], DataFrame],
+    proxify: Proxify,
+    out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
+) -> None:
+    """Send and receive (all-to-all) partitions between all workers
+
+    Parameters
+    ----------
+    eps
+        Communication endpoints to the other workers.
+    myrank
+        The rank of this worker.
+    rank_to_out_part_ids
+        dict that for each worker rank specifies a set of output partition IDs.
+        If the worker shouldn't return any partitions, it is excluded from the
+        dict. Partition IDs are global integers `0..npartitions` and corresponds
+        to the dict keys returned by `group_split_dispatch`.
+    out_part_id_to_dataframe
+        Mapping from partition ID to dataframe. This dict is cleared on return.
+    no_comm_postprocess
+        Function to post-process partitions not communicated.
+        See `get_no_comm_postprocess`
+    proxify
+        Function to proxify object.
+    out_part_id_to_dataframe_list
+        The **output** of this function, which is a dict of the partitions owned by
+        this worker.
+    """
+    await asyncio.gather(
+        recv(
+            eps,
+            myrank,
+            rank_to_out_part_ids,
+            out_part_id_to_dataframe_list,
+            proxify,
+        ),
+        send(eps, myrank, rank_to_out_part_ids, out_part_id_to_dataframe),
+    )
+
+    # At this point `send()` should have pop'ed all output partitions
+    # beside the partitions owned be `myrank` (if any).
+    assert (
+        rank_to_out_part_ids[myrank] == out_part_id_to_dataframe.keys()
+        or not out_part_id_to_dataframe
+    )
+    # We can now add them to the output dataframes.
+    for out_part_id, dataframe in out_part_id_to_dataframe.items():
+        out_part_id_to_dataframe_list[out_part_id].append(
+            no_comm_postprocess(dataframe)
+        )
+    out_part_id_to_dataframe.clear()
+
+
+async def shuffle_task(
+    s,
+    stage_name: str,
+    rank_to_inkeys: Dict[int, set],
+    rank_to_out_part_ids: Dict[int, Set[int]],
+    column_names: List[str],
+    npartitions: int,
+    ignore_index: bool,
+    num_rounds: int,
+    batchsize: int,
 ) -> List[DataFrame]:
-    """Local shuffle operation of the already grouped/partitioned dataframes
+    """Explicit-comms shuffle task
 
     This function is running on each worker participating in the shuffle.
 
@@ -127,88 +334,78 @@ async def local_shuffle(
     ----------
     s: dict
         Worker session state
-    in_nparts: dict
-        dict that for each worker rank specifices the
-        number of partitions that worker has of the input dataframe.
-        If the worker doesn't have any partitions, it is excluded from the dict.
-    in_parts: list of dict of dataframes
-        List of dataframe groups that need to be shuffled.
+    stage_name: str
+        Name of the stage to retrieve the input keys from.
+    rank_to_inkeys: dict
+        dict that for each worker rank specifies the set of staged input keys.
     rank_to_out_part_ids: dict
-        dict that for each worker rank specifices a list of partition IDs that
-        worker should return. If the worker shouldn't return any partitions,
-        it is excluded from the dict.
+        dict that for each worker rank specifies a set of output partition IDs.
+        If the worker shouldn't return any partitions, it is excluded from the
+        dict. Partition IDs are global integers `0..npartitions` and corresponds
+        to the dict keys returned by `group_split_dispatch`.
+    column_names: list of strings
+        List of column names on which we want to split.
+    npartitions: int
+        The desired number of output partitions.
     ignore_index: bool
-        Ignore index during shuffle.  If ``True``, performance may improve,
+        Ignore index during shuffle.  If True, performance may improve,
         but index values will not be preserved.
+    num_rounds: int
+        Number of rounds of dataframe partitioning and all-to-all communication.
+    batchsize: int
+        Number of partitions each worker will handle in each round.
 
     Returns
     -------
     partitions: list of DataFrames
         List of dataframe-partitions
     """
-    myrank = s["rank"]
+
+    proxify = get_proxify(s["worker"])
     eps = s["eps"]
+    myrank: int = s["rank"]
+    stage = comms.pop_staging_area(s, stage_name)
+    assert stage.keys() == rank_to_inkeys[myrank]
+    no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize, proxify)
 
-    try:
-        manager = first(iter(in_parts[0].values()))._pxy_get().manager
-    except AttributeError:
-        manager = None
+    out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
+    for _ in range(num_rounds):
+        partitions = create_partitions(
+            stage, batchsize, column_names, npartitions, ignore_index, proxify
+        )
+        await send_recv_partitions(
+            eps,
+            myrank,
+            rank_to_out_part_ids,
+            partitions,
+            no_comm_postprocess,
+            proxify,
+            out_part_id_to_dataframe_list,
+        )
 
-    if isinstance(manager, ProxyManager):
-
-        def concat(args, ignore_index=False):
-            if len(args) < 2:
-                return args[0]
-
-            return manager.proxify(dd_concat(args, ignore_index=ignore_index))[0]
-
-    else:
-        concat = dd_concat
-
-    rank_to_out_parts_list = sort_in_parts(
-        in_parts,
-        rank_to_out_part_ids,
-        ignore_index,
-        concat_dfs_of_same_output_partition=True,
-        concat=concat,
-    )
-
-    # Communicate all the dataframe-partitions all-to-all. The result is
-    # `out_parts_list` that for each worker and for each output partition
-    # contains a list of dataframes received.
-    out_parts_list: List[List[List[DataFrame]]] = []
-    futures = []
-    if myrank in rank_to_out_parts_list:
-        futures.append(recv(eps, in_nparts, out_parts_list))
-    if myrank in in_nparts:
-        futures.append(send(eps, rank_to_out_parts_list))
-    await asyncio.gather(*futures)
-
-    # At this point `send()` should have pop'ed all output partitions
-    # beside the partitions owned be `myrank`.
-    assert len(rank_to_out_parts_list) == 1
-
-    # Concatenate the received dataframes into the final output partitions
+    # Finally, we concatenate the output dataframes into the final output partitions
     ret = []
-    for i in range(len(rank_to_out_part_ids[myrank])):
-        dfs = []
-        for out_parts in out_parts_list:
-            dfs.extend(out_parts[i])
-            out_parts[i] = None  # type: ignore
-        dfs.extend(rank_to_out_parts_list[myrank][i])
-        rank_to_out_parts_list[myrank][i] = None  # type: ignore
-        if len(dfs) > 1:
-            ret.append(concat(dfs, ignore_index=ignore_index))
-        else:
-            ret.append(dfs[0])
+    while out_part_id_to_dataframe_list:
+        ret.append(
+            proxify(
+                dd_concat(
+                    out_part_id_to_dataframe_list.popitem()[1],
+                    ignore_index=ignore_index,
+                )
+            )
+        )
+        # For robustness, we yield this task to give Dask a chance to do bookkeeping
+        # such as letting the Worker answer heartbeat requests
+        await asyncio.sleep(0)
     return ret
 
 
 def shuffle(
     df: DataFrame,
-    column_names: str | List[str],
+    column_names: List[str],
     npartitions: Optional[int] = None,
     ignore_index: bool = False,
+    batchsize: Optional[int] = None,
 ) -> DataFrame:
     """Order divisions of DataFrame so that all values within column(s) align
 
@@ -231,8 +428,17 @@ def shuffle(
         The desired number of output partitions. If None, the number of output
         partitions equals `df.npartitions`
     ignore_index: bool
-        Ignore index during shuffle.  If True, performance may improve,
+        Ignore index during shuffle. If True, performance may improve,
         but index values will not be preserved.
+    batchsize: int
+        A shuffle consist of multiple rounds where each worker partitions and
+        then all-to-all communicates a number of its dataframe partitions. The batch
+        size is the number of partitions each worker will handle in each round.
+        If -1, each worker will handle all its partitions in a single round and
+        all techniques to reduce memory usage are disabled, which might be faster
+        when memory pressure isn't an issue.
+        If None, the value of `DASK_EXPLICIT_COMMS_BATCHSIZE` is used or 1 if not
+        set thus by default, we prioritize robustness over performance.
 
     Returns
     -------
@@ -242,108 +448,98 @@ def shuffle(
     Developer Notes
     ---------------
     The implementation consist of three steps:
-      (a) Extend the dask graph of `df` with a call to `shuffle_group()` for each
-          dataframe partition and submit the graph.
+      (a) Stage the partitions of `df` on all workers and then cancel them
+          thus at this point the Dask Scheduler doesn't know about any of the
+          the partitions.
       (b) Submit a task on each worker that shuffle (all-to-all communicate)
-          the groups from (a) and return a list of dataframe-partitions.
+          the staged partitions and return a list of dataframe-partitions.
       (c) Submit a dask graph that extract (using `getitem()`) individual
           dataframe-partitions from (b).
     """
     c = comms.default_comms()
 
-    # As default we preserve number of partitions
+    # The ranks of the output workers
+    ranks = list(range(len(c.worker_addresses)))
+
+    # By default, we preserve number of partitions
     if npartitions is None:
         npartitions = df.npartitions
 
-    # Step (a): partition/group each dataframe-partition
+    # Step (a):
+    df = df.persist()  # Make sure optimizations are apply on the existing graph
+    wait(df)  # Make sure all keys has been materialized on workers
     name = (
-        "explicit-comms-shuffle-group-"
+        "explicit-comms-shuffle-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
     )
-    df = df.persist()  # Making sure optimizations are apply on the existing graph
-    dsk = dict(df.__dask_graph__())
-    output_keys = []
-    for input_key in df.__dask_keys__():
-        output_key = (name, input_key[1])
-        dsk[output_key] = (
-            shuffle_group,
-            input_key,
+    df_meta: DataFrame = df._meta
+
+    # Stage all keys of `df` on the workers and cancel them, which makes it possible
+    # for the shuffle to free memory as the partitions of `df` are consumed.
+    # See CommsContext.stage_keys() for a description of staging.
+    rank_to_inkeys = c.stage_keys(name=name, keys=df.__dask_keys__())
+    c.client.cancel(df)
+
+    # Get batchsize
+    max_num_inkeys = max(len(k) for k in rank_to_inkeys.values())
+    batchsize = batchsize or dask.config.get("explicit-comms-batchsize", 1)
+    if batchsize == -1:
+        batchsize = max_num_inkeys
+    if not isinstance(batchsize, int) or batchsize < 0:
+        raise ValueError(
+            "explicit-comms-batchsize must be a "
+            f"positive integer or -1 (was '{batchsize}')"
+        )
+
+    # Get number of rounds of dataframe partitioning and all-to-all communication.
+    num_rounds = ceil(max_num_inkeys / batchsize)
+
+    # Find the output partition IDs for each worker
+    div = npartitions // len(ranks)
+    rank_to_out_part_ids: Dict[int, Set[int]] = {}  # rank -> set of partition id
+    for i, rank in enumerate(ranks):
+        rank_to_out_part_ids[rank] = set(range(div * i, div * (i + 1)))
+    for rank, i in zip(ranks, range(div * len(ranks), npartitions)):
+        rank_to_out_part_ids[rank].add(i)
+
+    # Run a shuffle task on each worker
+    shuffle_result = {}
+    for rank in ranks:
+        shuffle_result[rank] = c.submit(
+            c.worker_addresses[rank],
+            shuffle_task,
+            name,
+            rank_to_inkeys,
+            rank_to_out_part_ids,
             column_names,
-            0,
-            npartitions,
             npartitions,
             ignore_index,
-            npartitions,
+            num_rounds,
+            batchsize,
         )
-        output_keys.append(output_key)
+    wait(list(shuffle_result.values()))
 
-    # Compute `df_groups`, which is a list of futures, one future per partition in `df`.
-    # Each future points to a dict of length `df.npartitions` that maps each
-    # partition-id to a DataFrame.
-    df_groups = compute_as_if_collection(type(df), dsk, output_keys, sync=False)
-    wait(df_groups)
-    for f in df_groups:  # Check for errors
-        if f.status == "error":
-            f.result()  # raise exception
+    # Step (d): extract individual dataframe-partitions. We use `submit()`
+    #           to control where the tasks are executed.
+    # TODO: can we do this without using `submit()` to avoid the overhead
+    #       of creating a Future for each dataframe partition?
 
-    # Step (b): find out which workers has what part of `df_groups`,
-    #           find the number of output each worker should have,
-    #           and submit `local_shuffle()` on each worker.
-    key_to_part = {str(part.key): part for part in df_groups}
-    in_parts = defaultdict(list)  # Map worker -> [list of futures]
-    for key, workers in c.client.who_has(df_groups).items():
-        # Note, if multiple workers have the part, we pick the first worker
-        in_parts[first(workers)].append(key_to_part[key])
-
-    # Let's create a dict that specifices the number of partitions each worker has
-    in_nparts = {}
-    workers = set()  # All ranks that have a partition of `df`
-    for rank, worker in enumerate(c.worker_addresses):
-        nparts = len(in_parts.get(worker, ()))
-        if nparts > 0:
-            in_nparts[rank] = nparts
-            workers.add(rank)
-    workers_sorted = sorted(workers)
-
-    # Find the output partitions for each worker
-    div = npartitions // len(workers)
-    rank_to_out_part_ids = {}  # rank -> [list of partition id]
-    for i, rank in enumerate(workers_sorted):
-        rank_to_out_part_ids[rank] = list(range(div * i, div * (i + 1)))
-    for rank, i in zip(workers_sorted, range(div * len(workers), npartitions)):
-        rank_to_out_part_ids[rank].append(i)
-
-    # Run `local_shuffle()` on each worker
-    result_futures = {}
-    for rank, worker in enumerate(c.worker_addresses):
-        if rank in workers:
-            result_futures[rank] = c.submit(
-                worker,
-                local_shuffle,
-                in_nparts,
-                in_parts[worker],
-                rank_to_out_part_ids,
-                ignore_index,
-            )
-    distributed.wait(list(result_futures.values()))
-    del df_groups
-
-    # Step (c): extract individual dataframe-partitions
-    name = f"explicit-comms-shuffle-getitem-{tokenize(name)}"
     dsk = {}
-    meta = None
-    for rank, parts in rank_to_out_part_ids.items():
-        for i, part_id in enumerate(parts):
-            dsk[(name, part_id)] = (getitem, result_futures[rank], i)
-            if meta is None:
-                # Get the meta from the first output partition
-                meta = delayed(make_meta)(
-                    delayed(getitem)(result_futures[rank], i)
-                ).compute()
-    assert meta is not None
+    for rank in ranks:
+        for i, part_id in enumerate(rank_to_out_part_ids[rank]):
+            dsk[(name, part_id)] = c.client.submit(
+                getitem, shuffle_result[rank], i, workers=[c.worker_addresses[rank]]
+            )
 
+    # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(dsk) + 1)
-    return new_dd_object(dsk, name, meta, divs).persist()
+    ret = new_dd_object(dsk, name, df_meta, divs).persist()
+    wait(ret)
+
+    # Release all temporary dataframes
+    for fut in [*shuffle_result.values(), *dsk.values()]:
+        fut.release()
+    return ret
 
 
 def get_rearrange_by_column_tasks_wrapper(func):

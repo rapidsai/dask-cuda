@@ -6,9 +6,9 @@ import numba.cuda
 
 import dask
 import distributed.comm.ucx
-from distributed.diagnostics.nvml import has_cuda_context
+from distributed.diagnostics.nvml import get_device_index_and_uuid, has_cuda_context
 
-from .utils import get_ucx_config, parse_cuda_visible_device
+from .utils import get_ucx_config
 
 logger = logging.getLogger(__name__)
 
@@ -30,25 +30,28 @@ def _create_cuda_context():
         try:
             distributed.comm.ucx.init_once()
         except ModuleNotFoundError:
-            # UCX intialization has to be delegated to Distributed, it will take care
+            # UCX initialization has to be delegated to Distributed, it will take care
             # of setting correct environment variables and importing `ucp` after that.
             # Therefore if ``import ucp`` fails we can just continue here.
             pass
 
-        cuda_visible_device = parse_cuda_visible_device(
+        cuda_visible_device = get_device_index_and_uuid(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
         ctx = has_cuda_context()
-        if ctx is not False and distributed.comm.ucx.cuda_context_created is False:
+        if (
+            ctx.has_context
+            and not distributed.comm.ucx.cuda_context_created.has_context
+        ):
             distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
 
         _create_cuda_context_handler()
 
-        if distributed.comm.ucx.cuda_context_created is False:
+        if not distributed.comm.ucx.cuda_context_created.has_context:
             ctx = has_cuda_context()
-            if ctx is not False and ctx != cuda_visible_device:
+            if ctx.has_context and ctx.device_info != cuda_visible_device:
                 distributed.comm.ucx._warn_cuda_context_wrong_device(
-                    cuda_visible_device, ctx, os.getpid()
+                    cuda_visible_device, ctx.device_info, os.getpid()
                 )
 
     except Exception:
@@ -70,7 +73,7 @@ def initialize(
     To ensure UCX works correctly, it is important to ensure it is initialized with the
     correct options. This is especially important for the client, which cannot be
     configured to use UCX with arguments like ``LocalCUDACluster`` and
-    ``dask-cuda-worker``. This function will ensure that they are provided a UCX
+    ``dask cuda worker``. This function will ensure that they are provided a UCX
     configuration based on the flags and options passed by the user.
 
     This function can also be used within a worker preload script for UCX configuration

@@ -21,10 +21,10 @@ export GPUCI_CONDA_RETRY_SLEEP=30
 
 # Whether to keep `dask/label/dev` channel in the env. If INSTALL_DASK_MAIN=0,
 # `dask/label/dev` channel is removed.
-export INSTALL_DASK_MAIN=1
+export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.9.2"
+export DASK_STABLE_VERSION="2023.1.1"
 
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"

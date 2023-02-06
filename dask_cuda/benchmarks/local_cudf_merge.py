@@ -148,10 +148,13 @@ def merge(args, ddf1, ddf2):
     if args.set_index:
         ddf_join = ddf_join.set_index("key")
     if args.backend == "dask-noop":
+        t1 = perf_counter()
         ddf_join = as_noop(ddf_join)
-    t1 = perf_counter()
+        noopify_duration = perf_counter() - t1
+    else:
+        noopify_duration = 0
     wait(ddf_join.persist())
-    return perf_counter() - t1
+    return noopify_duration
 
 
 def bench_once(client, args, write_profile=None):
@@ -184,7 +187,9 @@ def bench_once(client, args, write_profile=None):
 
     with ctx1:
         with ctx2:
-            duration = merge(args, ddf_base, ddf_other)
+            t1 = perf_counter()
+            noopify_duration = merge(args, ddf_base, ddf_other)
+            duration = perf_counter() - t1 - noopify_duration
 
     return (data_processed, duration)
 

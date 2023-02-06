@@ -1,13 +1,7 @@
 import os
-from codecs import open
-
-from setuptools import find_packages, setup
 
 import versioneer
-
-# Get the long description from the README file
-with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
-    long_description = f.read()
+from setuptools import setup
 
 if "GIT_DESCRIBE_TAG" in os.environ:
     # Disgusting hack. For pypi uploads we cannot use the
@@ -32,32 +26,6 @@ if "GIT_DESCRIBE_TAG" in os.environ:
 
 
 setup(
-    name="dask-cuda",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="Utilities for Dask and CUDA interactions",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/rapidsai/dask-cuda",
-    author="RAPIDS development team",
-    author_email="mrocklin@nvidia.com",
-    license="Apache-2.0",
-    license_files=["LICENSE"],
-    classifiers=[
-        "Intended Audience :: Developers",
-        "Topic :: Database",
-        "Topic :: Scientific/Engineering",
-        "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-    ],
-    packages=find_packages(exclude=["docs", "tests", "tests.*", "docs.*"]),
-    python_requires=">=3.8",
-    install_requires=open("requirements.txt").read().strip().split("\n"),
-    entry_points="""
-        [console_scripts]
-        dask-cuda-worker=dask_cuda.cli.dask_cuda_worker:go
-        dask-config=dask_cuda.cli.dask_config:go
-      """,
 )

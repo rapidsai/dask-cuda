@@ -1,11 +1,14 @@
-# Copyright (c) 2019-2021, NVIDIA CORPORATION.
+# Copyright (c) 2019-2022, NVIDIA CORPORATION.
 
 # Usage:
 #   conda build -c conda-forge .
-{% set data = load_setup_py_data() %}
+{% set data = load_file_data("pyproject.toml") %}
 
 {% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') + environ.get('VERSION_SUFFIX', '') %}
-{% set py_version=environ.get('CONDA_PY', 36) %}
+{% set number = environ.get('GIT_DESCRIBE_NUMBER', 0) %}
+{% set py_version = environ['CONDA_PY'] %}
+{% set git_hash = environ.get('GIT_DESCRIBE_HASH', '') %}
+
 package:
   name: dask-cuda
   version: {{ version }}
@@ -14,26 +17,39 @@ source:
   git_url: ../../..
 
 build:
-  number: {{ GIT_DESCRIBE_NUMBER }}
-  string: py{{ py_version }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  number: {{ number }}
+  string: py{{ py_version }}_{{ git_hash }}_{{ number }}
+  script:
+    - {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    {% for e in data.get("project", {}).get("scripts", {}).items() %}
+    - {{ e|join(" = ") }}
+    {% endfor %}
 
 requirements:
   host:
     - python
-    - setuptools
+    - pip
+    - tomli
+    - versioneer >=0.24
   run:
     - python
-    {% for r in data.get("install_requires", []) %}
+    {% for r in data.get("project", {}).get("dependencies", []) %}
     - {{ r }}
     {% endfor %}
 
 test:
   imports:
     - dask_cuda
-
+  commands:
+    - dask cuda --help
+    {% for e in data.get("project", {}).get("scripts", {}).keys() %}
+    - {{ e }} --help
+    - {{ e|replace("-", " ") }} --help
+    {% endfor %}
 
 about:
-  home: http://rapids.ai/
+  home: https://rapids.ai/
   license: Apache-2.0
   license_file: ../../../LICENSE
   summary: dask-cuda library

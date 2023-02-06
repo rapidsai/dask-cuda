@@ -9,7 +9,7 @@ Motivation
 
 While Distributed can be used to leverage GPU workloads through libraries such as `cuDF <https://docs.rapids.ai/api/cudf/stable/>`_, `CuPy <https://cupy.dev/>`_, and `Numba <https://numba.pydata.org/>`_, Dask-CUDA offers several unique features unavailable to Distributed:
 
-- **Automatic instantiation of per-GPU workers** -- Using Dask-CUDA's LocalCUDACluster or ``dask-cuda-worker`` CLI will automatically launch one worker for each GPU available on the executing node, avoiding the need to explicitly select GPUs.
+- **Automatic instantiation of per-GPU workers** -- Using Dask-CUDA's LocalCUDACluster or ``dask cuda worker`` CLI will automatically launch one worker for each GPU available on the executing node, avoiding the need to explicitly select GPUs.
 - **Automatic setting of CPU affinity**  -- The setting of CPU affinity for each GPU is done automatically, preventing memory transfers from taking suboptimal paths.
 - **Automatic selection of InfiniBand devices** -- When UCX communication is enabled over InfiniBand, Dask-CUDA automatically selects the optimal InfiniBand device for each GPU (see `UCX Integration <ucx.html>`_ for instructions on configuring UCX communication).
 - **Memory spilling from GPU** -- For memory-intensive workloads, Dask-CUDA supports spilling from GPU to host memory when a GPU reaches the default or user-specified memory utilization limit.

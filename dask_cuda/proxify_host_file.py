@@ -11,6 +11,7 @@ import traceback
 import warnings
 import weakref
 from collections import defaultdict
+from collections.abc import MutableMapping
 from typing import (
     Any,
     Callable,
@@ -19,7 +20,6 @@ from typing import (
     Hashable,
     Iterable,
     List,
-    MutableMapping,
     Optional,
     Set,
     Tuple,
@@ -40,9 +40,10 @@ from distributed.protocol.serialize import (
 from . import proxify_device_objects as pdo
 from .disk_io import SpillToDiskProperties, disk_read, disk_write
 from .get_device_memory_objects import DeviceMemoryId, get_device_memory_ids
+from .is_spillable_object import cudf_spilling_status
 from .proxify_device_objects import proxify_device_objects, unproxify_device_objects
 from .proxy_object import ProxyObject
-from .utils import nvtx_annotate
+from .utils import get_rmm_device_memory_usage, nvtx_annotate
 
 T = TypeVar("T")
 
@@ -163,7 +164,7 @@ class ProxiesOnDevice(Proxies):
     In this case the tally of the total device memory usage is incorrect.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.proxy_id_to_dev_mems: Dict[int, Set[DeviceMemoryId]] = {}
         self.dev_mem_to_proxy_ids: DefaultDict[DeviceMemoryId, Set[int]] = defaultdict(
@@ -321,20 +322,45 @@ class ProxyManager:
                         header, _ = pxy.obj
                         assert header["serializer"] == pxy.serializer
 
-    def proxify(self, obj: T) -> Tuple[T, bool]:
+    def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
         """Proxify `obj` and add found proxies to the `Proxies` collections
+
+        Search through `obj` and wrap all CUDA device objects in ProxyObject.
+        If duplicate_check is True, identical CUDA device objects found in
+        `obj` are wrapped by the same ProxyObject.
 
         Returns the proxified object and a boolean, which is `True` when one or
         more incompatible-types were found.
+
+        Parameters
+        ----------
+        obj
+            Object to search through or wrap in a ProxyObject.
+        duplicate_check
+            Make sure that identical CUDA device objects found in `obj` are
+            wrapped by the same ProxyObject. This check comes with a significant
+            overhead hence it is recommended setting to False when it is known
+            that no duplicate exist.
+
+        Return
+        ------
+        obj
+            The proxified object.
+        bool
+            Whether incompatible-types were found or not.
         """
+
         incompatible_type_found = False
         with self.lock:
             found_proxies: List[ProxyObject] = []
-            # In order detect already proxied object, proxify_device_objects()
-            # needs a mapping from proxied objects to their proxy objects.
-            proxied_id_to_proxy = {
-                id(p._pxy_get().obj): p for p in self._dev.get_proxies()
-            }
+            if duplicate_check:
+                # In order to detect already proxied object, proxify_device_objects()
+                # needs a mapping from proxied objects to their proxy objects.
+                proxied_id_to_proxy = {
+                    id(p._pxy_get().obj): p for p in self._dev.get_proxies()
+                }
+            else:
+                proxied_id_to_proxy = None
             ret = proxify_device_objects(obj, proxied_id_to_proxy, found_proxies)
             last_access = time.monotonic()
             for p in found_proxies:
@@ -455,17 +481,14 @@ class ProxifyHostFile(MutableMapping):
 
     Parameters
     ----------
+    worker_local_directory: str
+        Path on local machine to store temporary files.
+        WARNING, this **cannot** change while running thus all serialization to
+        disk are using the same directory.
     device_memory_limit: int
         Number of bytes of CUDA device memory used before spilling to host.
     memory_limit: int
         Number of bytes of host memory used before spilling to disk.
-    local_directory: str or None, default None
-        Path on local machine to store temporary files. Can be a string (like
-        ``"path/to/files"``) or ``None`` to fall back on the value of
-        ``dask.temporary-directory`` in the local Dask configuration, using the
-        current working directory if this is not set.
-        WARNING, this **cannot** change while running thus all serialization to
-        disk are using the same directory.
     shared_filesystem: bool or None, default None
         Whether the `local_directory` above is shared between all workers or not.
         If ``None``, the "jit-unspill-shared-fs" config value are used, which
@@ -481,7 +504,7 @@ class ProxifyHostFile(MutableMapping):
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
         the "spill-on-demand" config value are used, which defaults to True.
-        Notice, enabling this does nothing when RMM isn't availabe or not used.
+        Notice, enabling this does nothing when RMM isn't available or not used.
     gds_spilling: bool
         Enable GPUDirect Storage spilling. If ``None``, the "gds-spilling" config
         value are used, which defaults to ``False``.
@@ -495,15 +518,24 @@ class ProxifyHostFile(MutableMapping):
 
     def __init__(
         self,
+        # So named such that dask will pass in the worker's local
+        # directory when constructing this through the "data" callback.
+        worker_local_directory: str,
         *,
         device_memory_limit: int,
         memory_limit: int,
-        local_directory: str = None,
-        shared_filesystem: bool = None,
-        compatibility_mode: bool = None,
-        spill_on_demand: bool = None,
-        gds_spilling: bool = None,
+        shared_filesystem: Optional[bool] = None,
+        compatibility_mode: Optional[bool] = None,
+        spill_on_demand: Optional[bool] = None,
+        gds_spilling: Optional[bool] = None,
     ):
+        if cudf_spilling_status():
+            warnings.warn(
+                "JIT-Unspill and cuDF's built-in spilling don't work together, please "
+                "disable one of them by setting either `CUDF_SPILL=off` or "
+                "`DASK_JIT_UNSPILL=off` environment variable."
+            )
+
         # each value of self.store is a tuple containing the proxified
         # object, as well as a boolean indicating whether any
         # incompatible types were found when proxifying it
@@ -513,10 +545,7 @@ class ProxifyHostFile(MutableMapping):
         # Create an instance of `SpillToDiskProperties` if it doesn't already exist
         path = pathlib.Path(
             os.path.join(
-                local_directory
-                or dask.config.get("temporary-directory")
-                or os.getcwd(),
-                "dask-worker-space",
+                worker_local_directory,
                 "jit-unspill-disk-storage",
             )
         ).resolve()
@@ -590,12 +619,16 @@ class ProxifyHostFile(MutableMapping):
                             traceback.print_stack(file=f)
                             f.seek(0)
                             tb = f.read()
+
+                        dev_mem = get_rmm_device_memory_usage()
+                        dev_msg = ""
+                        if dev_mem is not None:
+                            dev_msg = f"RMM allocs: {format_bytes(dev_mem)}, "
+
                         self.logger.warning(
-                            "RMM allocation of %s failed, spill-on-demand couldn't "
-                            "find any device memory to spill:\n%s\ntraceback:\n%s\n",
-                            format_bytes(nbytes),
-                            self.manager.pprint(),
-                            tb,
+                            f"RMM allocation of {format_bytes(nbytes)} failed, "
+                            "spill-on-demand couldn't find any device memory to "
+                            f"spill.\n{dev_msg}{self.manager}, traceback:\n{tb}\n"
                         )
                         # Since we didn't find anything to spill, we give up.
                         return False
@@ -629,7 +662,7 @@ class ProxifyHostFile(MutableMapping):
     def fast(self):
         """Alternative access to `.evict()` used by Dask
 
-        Dask expects `.fast.evict()` to be availabe for manually triggering
+        Dask expects `.fast.evict()` to be available for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:

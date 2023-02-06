@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import asyncio
 import atexit
+import logging
 import os
 import warnings
 
@@ -84,8 +85,9 @@ class CUDAWorker(Server):
             raise ValueError("nthreads must be higher than 0.")
 
         # Set nthreads=1 when parsing mem_limit since it only depends on nprocs
+        logger = logging.getLogger(__name__)
         memory_limit = parse_memory_limit(
-            memory_limit=memory_limit, nthreads=1, total_cores=nprocs
+            memory_limit=memory_limit, nthreads=1, total_cores=nprocs, logger=logger
         )
 
         if pid_file:
@@ -109,13 +111,16 @@ class CUDAWorker(Server):
         kwargs = {"worker_port": None, "listen_address": None, **kwargs}
 
         if (
-            not scheduler
-            and not scheduler_file
+            scheduler is None
+            and scheduler_file is None
             and dask.config.get("scheduler-address", None) is None
         ):
             raise ValueError(
-                "Need to provide scheduler address like\n"
-                "dask-worker SCHEDULER_ADDRESS:8786"
+                "No scheduler specified. A scheduler can be specified by "
+                "passing an address through the SCHEDULER argument or "
+                "'dask.scheduler-address' config option, or by passing the "
+                "location of a scheduler file through the --scheduler-file "
+                "option"
             )
 
         if isinstance(scheduler, Cluster):
@@ -175,7 +180,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                     "shared_filesystem": shared_filesystem,
                 },
             )
@@ -187,7 +191,6 @@ class CUDAWorker(Server):
                         device_memory_limit, device_index=i
                     ),
                     "memory_limit": memory_limit,
-                    "local_directory": local_directory,
                 },
             )
 

@@ -47,7 +47,9 @@ _FIXED_ATTRS = ["name", "__len__"]
 
 
 def asproxy(
-    obj: object, serializers: Iterable[str] = None, subclass: Type["ProxyObject"] = None
+    obj: object,
+    serializers: Optional[Iterable[str]] = None,
+    subclass: Optional[Type["ProxyObject"]] = None,
 ) -> "ProxyObject":
     """Wrap `obj` in a ProxyObject object if it isn't already.
 
@@ -345,7 +347,7 @@ class ProxyObject:
     Attributes
     ----------
     _pxy: ProxyDetail
-        Details of all proxy information of the underlaying proxied object.
+        Details of all proxy information of the underlying proxied object.
         Access to _pxy is not pass-through to the proxied object, which is
         the case for most other access to the ProxyObject.
 
@@ -381,7 +383,7 @@ class ProxyObject:
     def _pxy_serialize(
         self,
         serializers: Iterable[str],
-        proxy_detail: ProxyDetail = None,
+        proxy_detail: Optional[ProxyDetail] = None,
     ) -> None:
         """Inplace serialization of the proxied object using the `serializers`
 
@@ -412,7 +414,7 @@ class ProxyObject:
 
     @nvtx_annotate("JIT_UNSPILL", color="green", domain="dask_cuda")
     def _pxy_deserialize(
-        self, maybe_evict: bool = True, proxy_detail: ProxyDetail = None
+        self, maybe_evict: bool = True, proxy_detail: Optional[ProxyDetail] = None
     ):
         """Inplace deserialization of the proxied object
 
