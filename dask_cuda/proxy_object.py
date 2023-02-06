@@ -286,7 +286,6 @@ class ProxyDetail:
         self.serializer = header["serializer"]
         return self.obj
 
-    @nvtx_annotate("JIT_UNSPILL", color="green", domain="dask_cuda")
     def deserialize(self, maybe_evict: bool = True, nbytes=None):
         """Inplace deserialization of the proxied object
 
@@ -411,6 +410,7 @@ class ProxyObject:
         # Invalidate the (possible) cached "device_memory_objects"
         self._pxy_cache.pop("device_memory_objects", None)
 
+    @nvtx_annotate("JIT_UNSPILL", color="green", domain="dask_cuda")
     def _pxy_deserialize(
         self, maybe_evict: bool = True, proxy_detail: ProxyDetail = None
     ):
