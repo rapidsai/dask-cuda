@@ -35,7 +35,7 @@ export NUMPY_EXPERIMENTAL_ARRAY_FUNCTION=1
 
 # Install dask and distributed from main branch. Usually needed during
 # development time and disabled before a new dask-cuda release.
-export INSTALL_DASK_MAIN=0
+export INSTALL_DASK_MAIN=1
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
 export DASK_STABLE_VERSION="2023.1.1"
