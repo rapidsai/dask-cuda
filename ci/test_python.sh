@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2022, NVIDIA CORPORATION.
+# Copyright (c) 2022-2023, NVIDIA CORPORATION.
 
 set -euo pipefail
 
@@ -24,17 +24,18 @@ PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 RAPIDS_COVERAGE_DIR=${RAPIDS_COVERAGE_DIR:-"${PWD}/coverage-results"}
 mkdir -p "${RAPIDS_TESTS_DIR}" "${RAPIDS_COVERAGE_DIR}"
-SUITEERROR=0
 
 rapids-print-env
 
 rapids-mamba-retry install \
-  -c "${PYTHON_CHANNEL}" \
+  --channel "${PYTHON_CHANNEL}" \
   dask-cuda
 
 rapids-logger "Check GPU usage"
 nvidia-smi
 
+EXITCODE=0
+trap "EXITCODE=1" ERR
 set +e
 
 rapids-logger "pytest dask-cuda"
@@ -53,12 +54,6 @@ timeout 30m pytest \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
   tests
-exitcode=$?
-
-if (( ${exitcode} != 0 )); then
-    SUITEERROR=${exitcode}
-    echo "FAILED: 1 or more tests in dask-cuda"
-fi
 popd
 
 rapids-logger "Run local benchmark"
@@ -67,23 +62,12 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   -d 0 \
   --runs 1 \
   --backend dask
-exitcode=$?
-
-if (( ${exitcode} != 0 )); then
-    SUITEERROR=${exitcode}
-    echo "FAILED: Local benchmark with dask comms"
-fi
 
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
   --backend explicit-comms
-exitcode=$?
 
-if (( ${exitcode} != 0 )); then
-    SUITEERROR=${exitcode}
-    echo "FAILED: Local benchmark with explicit comms"
-fi
-
-exit ${SUITEERROR}
+rapids-logger "Test script exiting with value: $EXITCODE"
+exit ${EXITCODE}
