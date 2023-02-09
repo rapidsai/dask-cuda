@@ -107,6 +107,7 @@ def bench_once(client, args, write_profile=None):
         t1 = clock()
         agg = apply_groupby(
             df,
+            backend=args.backend,
             sort=args.sort,
             split_out=args.split_out,
             split_every=args.split_every,

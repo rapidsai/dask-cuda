@@ -30,7 +30,7 @@ def _create_cuda_context():
         try:
             distributed.comm.ucx.init_once()
         except ModuleNotFoundError:
-            # UCX intialization has to be delegated to Distributed, it will take care
+            # UCX initialization has to be delegated to Distributed, it will take care
             # of setting correct environment variables and importing `ucp` after that.
             # Therefore if ``import ucp`` fails we can just continue here.
             pass
@@ -73,7 +73,7 @@ def initialize(
     To ensure UCX works correctly, it is important to ensure it is initialized with the
     correct options. This is especially important for the client, which cannot be
     configured to use UCX with arguments like ``LocalCUDACluster`` and
-    ``dask-cuda-worker``. This function will ensure that they are provided a UCX
+    ``dask cuda worker``. This function will ensure that they are provided a UCX
     configuration based on the flags and options passed by the user.
 
     This function can also be used within a worker preload script for UCX configuration

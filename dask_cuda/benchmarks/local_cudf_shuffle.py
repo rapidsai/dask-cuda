@@ -1,13 +1,16 @@
 import contextlib
 from collections import ChainMap
 from time import perf_counter
+from typing import Tuple
 
+import numpy as np
 import pandas as pd
 
 import dask
-from dask import array as da
+import dask.dataframe
+from dask.dataframe.core import new_dd_object
 from dask.dataframe.shuffle import shuffle
-from dask.distributed import performance_report, wait
+from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
 import dask_cuda.explicit_comms.dataframe.shuffle
@@ -20,42 +23,99 @@ from dask_cuda.benchmarks.utils import (
     print_throughput_bandwidth,
 )
 
+try:
+    import cupy
 
-def shuffle_dask(df, *, noop=False):
-    result = shuffle(df, index="data", shuffle="tasks")
-    if noop:
+    import cudf
+except ImportError:
+    cupy = None
+    cudf = None
+
+
+def shuffle_dask(df, args):
+    result = shuffle(df, index="data", shuffle="tasks", ignore_index=args.ignore_index)
+    if args.backend == "dask-noop":
         result = as_noop(result)
     t1 = perf_counter()
     wait(result.persist())
     return perf_counter() - t1
 
 
-def shuffle_explicit_comms(df):
+def shuffle_explicit_comms(df, args):
     t1 = perf_counter()
     wait(
         dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
-            df, column_names="data"
+            df, column_names=["data"], ignore_index=args.ignore_index
         ).persist()
     )
     return perf_counter() - t1
 
 
+def create_df(nelem, df_type):
+    if df_type == "cpu":
+        return pd.DataFrame({"data": np.random.random(nelem)})
+    elif df_type == "gpu":
+        if cudf is None or cupy is None:
+            raise RuntimeError("`--type=gpu` requires cudf and cupy ")
+        return cudf.DataFrame({"data": cupy.random.random(nelem)})
+    else:
+        raise ValueError(f"Unknown type {df_type}")
+
+
+def create_data(
+    client: Client, args, name="balanced-df"
+) -> Tuple[int, dask.dataframe.DataFrame]:
+    """Create an evenly distributed dask dataframe
+
+    The partitions are perfectly distributed across workers, if the number of
+    requested partitions is evenly divisible by the number of workers.
+    """
+    chunksize = args.partition_size // np.float64().nbytes
+
+    workers = list(client.scheduler_info()["workers"].keys())
+    assert len(workers) > 0
+
+    dist = args.partition_distribution
+    if dist is None:
+        # By default, we create a balanced distribution
+        dist = [args.in_parts // len(workers)] * len(workers)
+        for i in range(args.in_parts % len(workers)):
+            dist[i] += 1
+
+    if len(dist) != len(workers):
+        raise ValueError(
+            f"The length of `--devs`({len(dist)}) and "
+            f"`--partition-distribution`({len(workers)}) doesn't match"
+        )
+    if sum(dist) != args.in_parts:
+        raise ValueError(
+            f"The sum of `--partition-distribution`({sum(dist)}) must match "
+            f"the number of input partitions `--in-parts={args.in_parts}`"
+        )
+
+    # Create partition based to the specified partition distribution
+    dsk = {}
+    for i, part_size in enumerate(dist):
+        for _ in range(part_size):
+            # We use `client.submit` to control placement of the partition.
+            dsk[(name, len(dsk))] = client.submit(
+                create_df, chunksize, args.type, workers=[workers[i]], pure=False
+            )
+    wait(dsk.values())
+
+    df_meta = create_df(0, args.type)
+    divs = [None] * (len(dsk) + 1)
+    ret = new_dd_object(dsk, name, df_meta, divs).persist()
+    wait(ret)
+
+    data_processed = args.in_parts * args.partition_size
+    if not args.ignore_index:
+        data_processed += args.in_parts * chunksize * df_meta.index.dtype.itemsize
+    return data_processed, ret
+
+
 def bench_once(client, args, write_profile=None):
-    # Generate random Dask dataframe
-    chunksize = args.partition_size // 8  # Convert bytes to float64
-    nchunks = args.in_parts
-    totalsize = chunksize * nchunks
-    x = da.random.random((totalsize,), chunks=(chunksize,))
-    df = dask.dataframe.from_dask_array(x, columns="data").to_frame()
-
-    if args.type == "gpu":
-        import cudf
-
-        df = df.map_partitions(cudf.from_pandas)
-
-    df = df.persist()
-    wait(df)
-    data_processed = len(df) * sum([t.itemsize for t in df.dtypes])
+    data_processed, df = create_data(client, args)
 
     if write_profile is None:
         ctx = contextlib.nullcontext()
@@ -64,9 +124,9 @@ def bench_once(client, args, write_profile=None):
 
     with ctx:
         if args.backend in {"dask", "dask-noop"}:
-            duration = shuffle_dask(df, noop=args.backend == "dask-noop")
+            duration = shuffle_dask(df, args)
         else:
-            duration = shuffle_explicit_comms(df)
+            duration = shuffle_explicit_comms(df, args)
 
     return (data_processed, duration)
 
@@ -176,6 +236,20 @@ def parse_args():
             "default": 3,
             "type": int,
             "help": "Number of runs",
+        },
+        {
+            "name": "--ignore-index",
+            "action": "store_true",
+            "help": "When shuffle, ignore the index",
+        },
+        {
+            "name": "--partition-distribution",
+            "default": None,
+            "metavar": "PARTITION_SIZE_LIST",
+            "type": lambda x: [int(y) for y in x.split(",")],
+            "help": "Comma separated list defining the size of each partition, "
+            "which must have the same length as `--devs`. "
+            "If not set, a balanced distribution is used.",
         },
     ]
 

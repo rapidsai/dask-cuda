@@ -24,7 +24,7 @@ export GPUCI_CONDA_RETRY_SLEEP=30
 export INSTALL_DASK_MAIN=0
 
 # Dask version to install when `INSTALL_DASK_MAIN=0`
-export DASK_STABLE_VERSION="2022.11.1"
+export DASK_STABLE_VERSION="2023.1.1"
 
 # Switch to project root; also root of repo checkout
 cd "$WORKSPACE"

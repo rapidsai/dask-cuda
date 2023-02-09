@@ -106,6 +106,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "Logging is only enabled if RMM memory pool is enabled.",
     )
     cluster_args.add_argument(
+        "--enable-rmm-statistics",
+        action="store_true",
+        help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
+        "This enables spilling implementations such as JIT-Unspill to provides more "
+        "information on out-of-memory errors",
+    )
+    cluster_args.add_argument(
         "--enable-tcp-over-ucx",
         default=None,
         action="store_true",
@@ -340,6 +347,7 @@ def setup_memory_pool(
     pool_size=None,
     disable_pool=False,
     log_directory=None,
+    statistics=False,
 ):
     import cupy
 
@@ -358,9 +366,15 @@ def setup_memory_pool(
             log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    if statistics:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
 
 
-def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
+def setup_memory_pools(
+    client, is_gpu, pool_size, disable_pool, log_directory, statistics
+):
     if not is_gpu:
         return
     client.run(
@@ -368,6 +382,7 @@ def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
         pool_size=pool_size,
         disable_pool=disable_pool,
         log_directory=log_directory,
+        statistics=statistics,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
@@ -376,6 +391,7 @@ def setup_memory_pools(client, is_gpu, pool_size, disable_pool, log_directory):
         pool_size=1e9,
         disable_pool=disable_pool,
         log_directory=log_directory,
+        statistics=statistics,
     )
 
 
@@ -632,7 +648,7 @@ def bandwidth_statistics(
     logs:
         the ``dask_worker.incoming_transfer_log`` object
     ignore_size: int (optional)
-        ignore messsages whose total byte count is smaller than this
+        ignore messages whose total byte count is smaller than this
         value (if provided)
 
     Returns
