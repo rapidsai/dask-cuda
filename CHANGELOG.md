@@ -1,6 +1,43 @@
-# dask-cuda 23.02.00 (Date TBD)
+# dask-cuda 23.02.00 (9 Feb 2023)
 
-Please see https://github.com/rapidsai/dask-cuda/releases/tag/v23.02.00a for the latest changes to this development branch.
+## 🚨 Breaking Changes
+
+- Pin `dask` and `distributed` for release ([#1106](https://github.com/rapidsai/dask-cuda/pull/1106)) [@galipremsagar](https://github.com/galipremsagar)
+
+## 🐛 Bug Fixes
+
+- pre-commit: Update isort version to 5.12.0 ([#1098](https://github.com/rapidsai/dask-cuda/pull/1098)) [@wence-](https://github.com/wence-)
+- explicit-comms: don&#39;t mix `-` and `_` in config ([#1096](https://github.com/rapidsai/dask-cuda/pull/1096)) [@madsbk](https://github.com/madsbk)
+- Update `cudf.Buffer` pointer access method ([#1094](https://github.com/rapidsai/dask-cuda/pull/1094)) [@pentschev](https://github.com/pentschev)
+- Update tests for Python 3.10 ([#1086](https://github.com/rapidsai/dask-cuda/pull/1086)) [@pentschev](https://github.com/pentschev)
+- Use `pkgutil.iter_modules` to get un-imported module for `test_pre_import` ([#1085](https://github.com/rapidsai/dask-cuda/pull/1085)) [@charlesbluca](https://github.com/charlesbluca)
+- Make proxy tests with `LocalCUDACluster` asynchronous ([#1084](https://github.com/rapidsai/dask-cuda/pull/1084)) [@pentschev](https://github.com/pentschev)
+- Ensure consistent results from `safe_sizeof()` in test ([#1071](https://github.com/rapidsai/dask-cuda/pull/1071)) [@madsbk](https://github.com/madsbk)
+- Pass missing argument to groupby benchmark compute ([#1069](https://github.com/rapidsai/dask-cuda/pull/1069)) [@mattf](https://github.com/mattf)
+- Reorder channel priority. ([#1067](https://github.com/rapidsai/dask-cuda/pull/1067)) [@bdice](https://github.com/bdice)
+- Fix owner check when the owner is a cupy array ([#1061](https://github.com/rapidsai/dask-cuda/pull/1061)) [@wence-](https://github.com/wence-)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for release ([#1106](https://github.com/rapidsai/dask-cuda/pull/1106)) [@galipremsagar](https://github.com/galipremsagar)
+- Update shared workflow branches ([#1105](https://github.com/rapidsai/dask-cuda/pull/1105)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Proxify: make duplicate check optional ([#1101](https://github.com/rapidsai/dask-cuda/pull/1101)) [@madsbk](https://github.com/madsbk)
+- Fix whitespace &amp; add URLs in `pyproject.toml` ([#1092](https://github.com/rapidsai/dask-cuda/pull/1092)) [@jakirkham](https://github.com/jakirkham)
+- pre-commit: spell, whitespace, and mypy check ([#1091](https://github.com/rapidsai/dask-cuda/pull/1091)) [@madsbk](https://github.com/madsbk)
+- shuffle: use cuDF&#39;s `partition_by_hash()` when available ([#1090](https://github.com/rapidsai/dask-cuda/pull/1090)) [@madsbk](https://github.com/madsbk)
+- add initial docs build ([#1089](https://github.com/rapidsai/dask-cuda/pull/1089)) [@AjayThorve](https://github.com/AjayThorve)
+- Remove `--get-cluster-configuration` option, check for scheduler in `dask cuda config` ([#1088](https://github.com/rapidsai/dask-cuda/pull/1088)) [@charlesbluca](https://github.com/charlesbluca)
+- Add timeout to `pytest` command ([#1082](https://github.com/rapidsai/dask-cuda/pull/1082)) [@ajschmidt8](https://github.com/ajschmidt8)
+- shuffle-benchmark: add `--partition-distribution` ([#1081](https://github.com/rapidsai/dask-cuda/pull/1081)) [@madsbk](https://github.com/madsbk)
+- Ensure tests run for Python `3.10` ([#1080](https://github.com/rapidsai/dask-cuda/pull/1080)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Use TrackingResourceAdaptor to get better debug info ([#1079](https://github.com/rapidsai/dask-cuda/pull/1079)) [@madsbk](https://github.com/madsbk)
+- Improve shuffle-benchmark ([#1074](https://github.com/rapidsai/dask-cuda/pull/1074)) [@madsbk](https://github.com/madsbk)
+- Update builds for CUDA `11.8` and Python `310` ([#1072](https://github.com/rapidsai/dask-cuda/pull/1072)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Shuffle by partition to reduce memory usage significantly ([#1068](https://github.com/rapidsai/dask-cuda/pull/1068)) [@madsbk](https://github.com/madsbk)
+- Enable copy_prs. ([#1063](https://github.com/rapidsai/dask-cuda/pull/1063)) [@bdice](https://github.com/bdice)
+- Add GitHub Actions Workflows ([#1062](https://github.com/rapidsai/dask-cuda/pull/1062)) [@bdice](https://github.com/bdice)
+- Unpin `dask` and `distributed` for development ([#1060](https://github.com/rapidsai/dask-cuda/pull/1060)) [@galipremsagar](https://github.com/galipremsagar)
+- Switch to the new dask CLI ([#981](https://github.com/rapidsai/dask-cuda/pull/981)) [@jacobtomlinson](https://github.com/jacobtomlinson)
 
 # dask-cuda 22.12.00 (8 Dec 2022)
 
