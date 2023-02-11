@@ -31,9 +31,6 @@ function sed_runner() {
     sed -i.bak ''"$1"'' $2 && rm -f ${2}.bak
 }
 
-# Update UCX-Py version
-sed_runner "s/export UCXPY_VERSION=.*/export UCXPY_VERSION="${NEXT_UCXPY_VERSION}"/g" ci/gpu/build.sh
-
 # Bump cudf and dask-cudf testing dependencies
 sed_runner "s/cudf=.*/cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/dask-cudf=.*/dask-cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
