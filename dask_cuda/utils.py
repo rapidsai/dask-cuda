@@ -55,6 +55,10 @@ class RMMSetup:
                 "`rmm_maximum_pool_size` was specified without specifying "
                 "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
             )
+        if async_alloc is True and managed_memory is True:
+            raise ValueError(
+                "`rmm_managed_memory` is incompatible with the `rmm_async`."
+            )
         if async_alloc is True and maximum_pool_size is not None:
             raise ValueError(
                 "`rmm_maximum_pool_size` is incompatible with the `rmm_async`."

@@ -231,6 +231,8 @@ async def test_rmm_async():
 
     async with LocalCUDACluster(
         rmm_async=True,
+        rmm_pool_size="2GB",
+        rmm_release_threshold="3GB",
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -239,6 +241,10 @@ async def test_rmm_async():
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.CudaAsyncMemoryResource
+
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
 
 
 @gen_test(timeout=20)
