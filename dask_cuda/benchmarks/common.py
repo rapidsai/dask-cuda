@@ -123,6 +123,7 @@ def run(client: Client, args: Namespace, config: Config):
         args.disable_rmm_pool,
         args.enable_rmm_async,
         args.enable_rmm_managed,
+        args.rmm_release_threshold,
         args.rmm_log_directory,
         args.enable_rmm_statistics,
     )

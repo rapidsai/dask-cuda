@@ -47,6 +47,7 @@ class CUDAWorker(Server):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
         pid_file=None,
@@ -138,12 +139,6 @@ class CUDAWorker(Server):
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            if rmm_async:
-                raise ValueError(
-                    "RMM pool and managed memory are incompatible with asynchronous "
-                    "allocator"
-                )
-
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -215,12 +210,13 @@ class CUDAWorker(Server):
                         get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
                     ),
                     RMMSetup(
-                        rmm_pool_size,
-                        rmm_maximum_pool_size,
-                        rmm_managed_memory,
-                        rmm_async,
-                        rmm_log_directory,
-                        rmm_track_allocations,
+                        initial_pool_size=rmm_pool_size,
+                        maximum_pool_size=rmm_maximum_pool_size,
+                        managed_memory=rmm_managed_memory,
+                        async_alloc=rmm_async,
+                        release_threshold=rmm_release_threshold,
+                        log_directory=rmm_log_directory,
+                        track_allocations=rmm_track_allocations,
                     ),
                     PreImport(pre_import),
                 },
