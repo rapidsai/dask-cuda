@@ -676,7 +676,10 @@ def get_gpu_uuid_from_index(device_index=0):
 
     pynvml.nvmlInit()
     handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
-    return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+    try:
+        return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+    except AttributeError:
+        return pynvml.nvmlDeviceGetUUID(handle)
 
 
 def get_worker_config(dask_worker):
