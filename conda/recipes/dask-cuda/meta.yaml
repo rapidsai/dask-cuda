@@ -55,3 +55,5 @@ about:
     - ../../../{{ e }}
     {% endfor %}
   summary: {{ data.get("project", {}).get("description", "") }}
+  dev_url: {{ data.get("project", {}).get("urls", {}).get("Source", "") }}
+  doc_url: {{ data.get("project", {}).get("urls", {}).get("Documentation", "") }}
