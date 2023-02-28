@@ -48,7 +48,12 @@ test:
     {% endfor %}
 
 about:
-  home: https://rapids.ai/
-  license: Apache-2.0
-  license_file: ../../../LICENSE
-  summary: dask-cuda library
+  home: {{ data.get("project", {}).get("urls", {}).get("Homepage", "") }}
+  license: {{ data.get("project", {}).get("license", {}).get("text", "") }}
+  license_file:
+    {% for e in data.get("tool", {}).get("setuptools", {}).get("license-files", []) %}
+    - ../../../{{ e }}
+    {% endfor %}
+  summary: {{ data.get("project", {}).get("description", "") }}
+  dev_url: {{ data.get("project", {}).get("urls", {}).get("Source", "") }}
+  doc_url: {{ data.get("project", {}).get("urls", {}).get("Documentation", "") }}
