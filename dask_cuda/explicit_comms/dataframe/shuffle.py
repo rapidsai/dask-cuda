@@ -542,7 +542,7 @@ def shuffle(
     return ret
 
 
-def get_rearrange_by_column_tasks_wrapper(func):
+def get_rearrange_by_column_wrapper(func):
     """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
     Notice, this is monkey patched into Dask at dask_cuda import
@@ -565,10 +565,13 @@ def get_rearrange_by_column_tasks_wrapper(func):
                 kw = func_sig.bind(*args, **kwargs)
                 kw.apply_defaults()
                 kw = kw.arguments
-                column = kw["column"]
-                if isinstance(column, str):
-                    column = [column]
-                return shuffle(kw["df"], column, kw["npartitions"], kw["ignore_index"])
+                # Notice, we only overwrite the default and the "tasks" shuffle
+                # algorithm. The "disk" and "p2p" algorithm, we don't touch.
+                if kw["shuffle"] in ("tasks", None):
+                    col = kw["col"]
+                    if isinstance(col, str):
+                        col = [col]
+                    return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
         return func(*args, **kwargs)
 
     return wrapper
