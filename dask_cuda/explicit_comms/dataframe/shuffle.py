@@ -9,7 +9,10 @@ from operator import getitem
 from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
 import dask
+import dask.config
 import dask.dataframe
+import dask.utils
+import distributed.worker
 from dask.base import tokenize
 from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
@@ -467,7 +470,7 @@ def shuffle(
 
     # Step (a):
     df = df.persist()  # Make sure optimizations are apply on the existing graph
-    wait(df)  # Make sure all keys has been materialized on workers
+    wait([df])  # Make sure all keys has been materialized on workers
     name = (
         "explicit-comms-shuffle-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
@@ -534,7 +537,7 @@ def shuffle(
     # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(dsk) + 1)
     ret = new_dd_object(dsk, name, df_meta, divs).persist()
-    wait(ret)
+    wait([ret])
 
     # Release all temporary dataframes
     for fut in [*shuffle_result.values(), *dsk.values()]:
@@ -542,7 +545,20 @@ def shuffle(
     return ret
 
 
-def get_rearrange_by_column_tasks_wrapper(func):
+def _use_explicit_comms() -> bool:
+    """Is explicit-comms and available?"""
+    if dask.config.get("explicit-comms", False):
+        try:
+            # Make sure we have an activate client.
+            distributed.worker.get_client()
+        except (ImportError, ValueError):
+            pass
+        else:
+            return True
+    return False
+
+
+def get_rearrange_by_column_wrapper(func):
     """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
     Notice, this is monkey patched into Dask at dask_cuda import
@@ -552,23 +568,30 @@ def get_rearrange_by_column_tasks_wrapper(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if dask.config.get("explicit-comms", False):
-            try:
-                import distributed.worker
-
-                # Make sure we have an activate client.
-                distributed.worker.get_client()
-            except (ImportError, ValueError):
-                pass
-            else:
-                # Convert `*args, **kwargs` to a dict of `keyword -> values`
-                kw = func_sig.bind(*args, **kwargs)
-                kw.apply_defaults()
-                kw = kw.arguments
-                column = kw["column"]
-                if isinstance(column, str):
-                    column = [column]
-                return shuffle(kw["df"], column, kw["npartitions"], kw["ignore_index"])
+        if _use_explicit_comms():
+            # Convert `*args, **kwargs` to a dict of `keyword -> values`
+            kw = func_sig.bind(*args, **kwargs)
+            kw.apply_defaults()
+            kw = kw.arguments
+            # Notice, we only overwrite the default and the "tasks" shuffle
+            # algorithm. The "disk" and "p2p" algorithm, we don't touch.
+            if kw["shuffle"] in ("tasks", None):
+                col = kw["col"]
+                if isinstance(col, str):
+                    col = [col]
+                return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def get_default_shuffle_algorithm() -> str:
+    """Return the default shuffle algorithm used by Dask
+
+    This changes the default shuffle algorithm from "p2p" to "tasks"
+    when explicit comms is enabled.
+    """
+    ret = dask.config.get("dataframe.shuffle.algorithm", None)
+    if ret is None and _use_explicit_comms():
+        return "tasks"
+    return dask.utils.get_default_shuffle_algorithm()
