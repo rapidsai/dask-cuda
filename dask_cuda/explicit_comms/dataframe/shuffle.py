@@ -11,6 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 import dask
 import dask.config
 import dask.dataframe
+import dask.utils
+import distributed.worker
 from dask.base import tokenize
 from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
@@ -547,8 +549,6 @@ def _use_explicit_comms() -> bool:
     """Is explicit-comms and available?"""
     if dask.config.get("explicit-comms", False):
         try:
-            import distributed.worker
-
             # Make sure we have an activate client.
             distributed.worker.get_client()
         except (ImportError, ValueError):
@@ -591,8 +591,6 @@ def get_default_shuffle_algorithm() -> str:
     This changes the default shuffle algorithm from "p2p" to "tasks"
     when explicit comms is enabled.
     """
-    import dask.utils
-
     ret = dask.config.get("dataframe.shuffle.algorithm", None)
     if ret is None and _use_explicit_comms():
         return "tasks"
