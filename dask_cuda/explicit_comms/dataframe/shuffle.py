@@ -470,7 +470,7 @@ def shuffle(
 
     # Step (a):
     df = df.persist()  # Make sure optimizations are apply on the existing graph
-    wait(df)  # Make sure all keys has been materialized on workers
+    wait([df])  # Make sure all keys has been materialized on workers
     name = (
         "explicit-comms-shuffle-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
@@ -537,7 +537,7 @@ def shuffle(
     # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(dsk) + 1)
     ret = new_dd_object(dsk, name, df_meta, divs).persist()
-    wait(ret)
+    wait([ret])
 
     # Release all temporary dataframes
     for fut in [*shuffle_result.values(), *dsk.values()]:
