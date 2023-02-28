@@ -189,13 +189,16 @@ def test_parse_visible_devices():
     uuids = []
     for index in range(get_gpu_count()):
         handle = pynvml.nvmlDeviceGetHandleByIndex(index)
-        uuid = pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+        try:
+            uuid = pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
+        except AttributeError:
+            uuid = pynvml.nvmlDeviceGetUUID(handle)
 
         assert parse_cuda_visible_device(index) == index
         assert parse_cuda_visible_device(uuid) == uuid
 
         indices.append(str(index))
-        uuids.append(pynvml.nvmlDeviceGetUUID(handle).decode("utf-8"))
+        uuids.append(uuid)
 
     index_devices = ",".join(indices)
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": index_devices}):
