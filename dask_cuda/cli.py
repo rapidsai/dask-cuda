@@ -148,7 +148,7 @@ def cuda():
 @click.option(
     "--rmm-release-threshold",
     default=None,
-    help="""When ``rmm.async is True`` and the pool size grows beyond this value, unused
+    help="""When ``rmm.async`` is ``True`` and the pool size grows beyond this value, unused
     memory held by the pool will be released at the next synchronization point. Can be
     an integer (bytes), float (fraction of total device memory), string (like ``"5GB"``
     or ``"5000M"``) or ``None``. By default, this feature is disabled.
