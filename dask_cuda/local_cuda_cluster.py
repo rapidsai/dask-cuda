@@ -131,6 +131,14 @@ class LocalCUDACluster(LocalCluster):
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
             incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
+    rmm_release_threshold: int, str or None, default None
+        When ``rmm.async is True`` and the pool size grows beyond this value, unused
+        memory held by the pool will be released at the next synchronization point.
+        Can be an integer (bytes), float (fraction of total device memory), string (like
+        ``"5GB"`` or ``"5000M"``) or ``None``. By default, this feature is disabled.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.
     rmm_log_directory : str or None, default None
         Directory to write per-worker RMM log files to. The client and scheduler are not
         logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to
@@ -178,8 +186,12 @@ class LocalCUDACluster(LocalCluster):
     TypeError
         If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
     ValueError
-        If NVLink and RMM managed memory are both enabled, or if RMM pools / managed
-        memory and asynchronous allocator are both enabled.
+        If RMM pool, RMM managed memory or RMM async allocator are requested but RMM
+        cannot be imported.
+        If RMM managed memory and asynchronous allocator are both enabled.
+        If RMM maximum pool size is set but RMM pool size is not.
+        If RMM maximum pool size is set but RMM async allocator is used.
+        If RMM release threshold is set but the RMM async allocator is not being used.
 
     See Also
     --------
@@ -205,6 +217,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
         jit_unspill=None,
@@ -247,7 +260,8 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_maximum_pool_size = rmm_maximum_pool_size
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
-        if rmm_pool_size is not None or rmm_managed_memory:
+        self.rmm_release_threshold = rmm_release_threshold
+        if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
             try:
                 import rmm  # noqa F401
             except ImportError:
@@ -256,11 +270,6 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            if rmm_async:
-                raise ValueError(
-                    "RMM pool and managed memory are incompatible with asynchronous "
-                    "allocator"
-                )
         else:
             if enable_nvlink:
                 warnings.warn(
@@ -385,12 +394,13 @@ class LocalCUDACluster(LocalCluster):
                         get_cpu_affinity(nvml_device_index(0, visible_devices))
                     ),
                     RMMSetup(
-                        self.rmm_pool_size,
-                        self.rmm_maximum_pool_size,
-                        self.rmm_managed_memory,
-                        self.rmm_async,
-                        self.rmm_log_directory,
-                        self.rmm_track_allocations,
+                        initial_pool_size=self.rmm_pool_size,
+                        maximum_pool_size=self.rmm_maximum_pool_size,
+                        managed_memory=self.rmm_managed_memory,
+                        async_alloc=self.rmm_async,
+                        release_threshold=self.rmm_release_threshold,
+                        log_directory=self.rmm_log_directory,
+                        track_allocations=self.rmm_track_allocations,
                     ),
                     PreImport(self.pre_import),
                 },

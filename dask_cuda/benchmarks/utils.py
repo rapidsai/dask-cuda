@@ -109,6 +109,15 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Enable RMM async memory allocator (implies --disable-rmm-pool)",
     )
     cluster_args.add_argument(
+        "--rmm-release-threshold",
+        default=None,
+        type=parse_bytes,
+        help="When --enable-rmm-async is set and the pool size grows beyond this "
+        "value, unused memory held by the pool will be released at the next "
+        "synchronization point. Can be an integer (bytes), or a string string (like "
+        "'4GB' or '5000M'). By default, this feature is disabled.",
+    )
+    cluster_args.add_argument(
         "--rmm-log-directory",
         default=None,
         type=str,
@@ -358,6 +367,7 @@ def setup_memory_pool(
     disable_pool=False,
     rmm_async=False,
     rmm_managed=False,
+    release_threshold=None,
     log_directory=None,
     statistics=False,
 ):
@@ -371,7 +381,11 @@ def setup_memory_pool(
     logging = log_directory is not None
 
     if rmm_async:
-        rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
+        rmm.mr.set_current_device_resource(
+            rmm.mr.CudaAsyncMemoryResource(
+                initial_pool_size=pool_size, release_threshold=release_threshold
+            )
+        )
         cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
     else:
         rmm.reinitialize(
@@ -395,6 +409,7 @@ def setup_memory_pools(
     disable_pool,
     rmm_async,
     rmm_managed,
+    release_threshold,
     log_directory,
     statistics,
 ):
@@ -406,6 +421,7 @@ def setup_memory_pools(
         disable_pool=disable_pool,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
     )
@@ -417,6 +433,7 @@ def setup_memory_pools(
         disable_pool=disable_pool,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
     )
