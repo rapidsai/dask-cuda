@@ -542,6 +542,21 @@ def shuffle(
     return ret
 
 
+def _use_explicit_comms() -> bool:
+    """Is explicit-comms and available"""
+    if dask.config.get("explicit-comms", False):
+        try:
+            import distributed.worker
+
+            # Make sure we have an activate client.
+            distributed.worker.get_client()
+        except (ImportError, ValueError):
+            pass
+        else:
+            return True
+    return False
+
+
 def get_rearrange_by_column_wrapper(func):
     """Returns a function wrapper that dispatch the shuffle to explicit-comms.
 
@@ -552,26 +567,30 @@ def get_rearrange_by_column_wrapper(func):
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        if dask.config.get("explicit-comms", False):
-            try:
-                import distributed.worker
-
-                # Make sure we have an activate client.
-                distributed.worker.get_client()
-            except (ImportError, ValueError):
-                pass
-            else:
-                # Convert `*args, **kwargs` to a dict of `keyword -> values`
-                kw = func_sig.bind(*args, **kwargs)
-                kw.apply_defaults()
-                kw = kw.arguments
-                # Notice, we only overwrite the default and the "tasks" shuffle
-                # algorithm. The "disk" and "p2p" algorithm, we don't touch.
-                if kw["shuffle"] in ("tasks", None):
-                    col = kw["col"]
-                    if isinstance(col, str):
-                        col = [col]
-                    return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
+        if _use_explicit_comms():
+            # Convert `*args, **kwargs` to a dict of `keyword -> values`
+            kw = func_sig.bind(*args, **kwargs)
+            kw.apply_defaults()
+            kw = kw.arguments
+            # Notice, we only overwrite the default and the "tasks" shuffle
+            # algorithm. The "disk" and "p2p" algorithm, we don't touch.
+            if kw["shuffle"] in ("tasks", None):
+                col = kw["col"]
+                if isinstance(col, str):
+                    col = [col]
+                return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def get_default_shuffle_algorithm() -> str:
+    """Return the default shuffle algorithm used by Dask
+
+    This changes the default shuffle algorithm from "p2p" to "tasks"
+    when explicit comms is enabled.
+    """
+    ret = dask.config.get("dataframe.shuffle.algorithm", None)
+    if ret is None:
+        return "tasks" if _use_explicit_comms() else "p2p"
+    return ret
