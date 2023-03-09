@@ -386,7 +386,6 @@ def setup_memory_pool(
                 initial_pool_size=pool_size, release_threshold=release_threshold
             )
         )
-        cupy.cuda.set_allocator(rmm_cupy_allocator)
     else:
         rmm.reinitialize(
             pool_allocator=not disable_pool,
@@ -395,7 +394,7 @@ def setup_memory_pool(
             logging=logging,
             log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
-        cupy.cuda.set_allocator(rmm_cupy_allocator)
+    cupy.cuda.set_allocator(rmm_cupy_allocator)
     if statistics:
         rmm.mr.set_current_device_resource(
             rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
