@@ -386,7 +386,7 @@ def setup_memory_pool(
                 initial_pool_size=pool_size, release_threshold=release_threshold
             )
         )
-        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+        cupy.cuda.set_allocator(rmm_cupy_allocator)
     else:
         rmm.reinitialize(
             pool_allocator=not disable_pool,
