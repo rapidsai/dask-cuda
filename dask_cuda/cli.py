@@ -244,6 +244,12 @@ def cuda():
     ``"/path/to/foo.py"``.""",
 )
 @click.option(
+    "--death-timeout",
+    type=str,
+    default=None,
+    help="Seconds to wait for a scheduler before closing",
+)
+@click.option(
     "--dashboard-prefix",
     type=str,
     default=None,

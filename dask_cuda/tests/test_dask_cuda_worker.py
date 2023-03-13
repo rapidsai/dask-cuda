@@ -431,3 +431,24 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                     ret["[plugin] RMMSetup"]["maximum_pool_size"]
                     == (device_total_memory * 0.3) // 256 * 256
                 )
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_worker_timeout():
+    ret = subprocess.run(
+        [
+            "dask",
+            "cuda",
+            "worker",
+            "192.168.1.100:7777",
+            "--death-timeout",
+            "1",
+        ],
+        text=True,
+        encoding="utf8",
+        capture_output=True,
+    )
+
+    assert "closing nanny at" in ret.stderr.lower()
+    assert "reason: nanny-close" in ret.stderr.lower()
+    assert ret.returncode == 0

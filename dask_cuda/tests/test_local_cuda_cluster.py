@@ -440,3 +440,13 @@ def test_print_cluster_config(capsys):
             assert "ucx" in captured.out
             assert "1 B" in captured.out
             assert "[plugin]" in captured.out
+
+
+def test_death_timeout_raises():
+    with pytest.raises(asyncio.exceptions.TimeoutError):
+        with LocalCUDACluster(
+            silence_logs=False,
+            death_timeout=1e-10,
+            dashboard_address=":0",
+        ):
+            pass
