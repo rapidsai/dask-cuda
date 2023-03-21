@@ -11,7 +11,7 @@ import dask
 from dask import dataframe as dd
 from dask.dataframe.shuffle import partitioning_index
 from dask.dataframe.utils import assert_eq
-from distributed import Client, get_worker
+from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import dask_cuda
@@ -314,8 +314,8 @@ def test_jit_unspill(protocol):
 
 
 def _test_lock_workers(scheduler_address, ranks):
-    async def f(_):
-        worker = get_worker()
+    async def f(info):
+        worker = info["worker"]
         if hasattr(worker, "running"):
             assert not worker.running
         worker.running = True

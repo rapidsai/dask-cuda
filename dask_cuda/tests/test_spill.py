@@ -6,7 +6,7 @@ from zict.file import _safe_key as safe_key
 
 import dask
 from dask import array as da
-from distributed import Client, get_worker, wait
+from distributed import Client, wait
 from distributed.metrics import time
 from distributed.sizeof import sizeof
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
@@ -57,21 +57,25 @@ def assert_device_host_file_size(
     )
 
 
-def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+def worker_assert(
+    dask_worker, total_size, device_chunk_overhead, serialized_chunk_overhead
+):
     assert_device_host_file_size(
-        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
-def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+def delayed_worker_assert(
+    dask_worker, total_size, device_chunk_overhead, serialized_chunk_overhead
+):
     start = time()
     while not device_host_file_size_matches(
-        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
     ):
         sleep(0.01)
         if time() < start + 3:
             assert_device_host_file_size(
-                get_worker().data,
+                dask_worker.data,
                 total_size,
                 device_chunk_overhead,
                 serialized_chunk_overhead,
@@ -143,17 +147,23 @@ async def test_cupy_cluster_device_spill(params):
                 await wait(xx)
 
                 # Allow up to 1024 bytes overhead per chunk serialized
-                await client.run(worker_assert, x.nbytes, 1024, 1024)
+                await client.run(
+                    lambda dask_worker: worker_assert(dask_worker, x.nbytes, 1024, 1024)
+                )
 
                 y = client.compute(x.sum())
                 res = await y
 
                 assert (abs(res / x.size) - 0.5) < 1e-3
 
-                await client.run(worker_assert, x.nbytes, 1024, 1024)
-                host_chunks = await client.run(lambda: len(get_worker().data.host))
+                await client.run(
+                    lambda dask_worker: worker_assert(dask_worker, x.nbytes, 1024, 1024)
+                )
+                host_chunks = await client.run(
+                    lambda dask_worker: len(dask_worker.data.host)
+                )
                 disk_chunks = await client.run(
-                    lambda: len(get_worker().data.disk or list())
+                    lambda dask_worker: len(dask_worker.data.disk or list())
                 )
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
@@ -245,9 +255,11 @@ async def test_cudf_cluster_device_spill(params):
 
                 del cdf
 
-                host_chunks = await client.run(lambda: len(get_worker().data.host))
+                host_chunks = await client.run(
+                    lambda dask_worker: len(dask_worker.data.host)
+                )
                 disk_chunks = await client.run(
-                    lambda: len(get_worker().data.disk or list())
+                    lambda dask_worker: len(dask_worker.data.disk or list())
                 )
                 for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
                     if params["spills_to_disk"]:
@@ -256,8 +268,12 @@ async def test_cudf_cluster_device_spill(params):
                         assert hc > 0
                         assert dc == 0
 
-                await client.run(worker_assert, nbytes, 32, 2048)
+                await client.run(
+                    lambda dask_worker: worker_assert(dask_worker, nbytes, 32, 2048)
+                )
 
                 del cdf2
 
-                await client.run(delayed_worker_assert, 0, 0, 0)
+                await client.run(
+                    lambda dask_worker: delayed_worker_assert(dask_worker, 0, 0, 0)
+                )
