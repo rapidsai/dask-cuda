@@ -12,7 +12,6 @@ from dask.sizeof import sizeof
 from dask.utils import format_bytes
 from distributed import Client
 from distributed.utils_test import gen_test
-from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
@@ -429,9 +428,9 @@ async def test_worker_force_spill_to_disk():
                 ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 await ddf
 
-                async def f():
+                async def f(dask_worker):
                     """Trigger a memory_monitor() and reset memory_limit"""
-                    w = get_worker()
+                    w = dask_worker
                     # Set a host memory limit that triggers spilling to disk
                     w.memory_manager.memory_pause_fraction = False
                     memory = w.monitor.proc.memory_info().rss
@@ -443,7 +442,7 @@ async def test_worker_force_spill_to_disk():
                     assert w.monitor.proc.memory_info().rss < memory - 10**7
                     w.memory_manager.memory_limit = memory * 10  # Un-limit
 
-                await client.submit(f)
+                client.run(f)
                 log = str(await client.get_worker_logs())
                 # Check that the worker doesn't complain about unmanaged memory
                 assert "Unmanaged memory use is high" not in log
