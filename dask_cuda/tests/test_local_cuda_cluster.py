@@ -9,7 +9,6 @@ import pytest
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test, raises_with_cause
-from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
@@ -140,7 +139,9 @@ async def test_no_memory_limits_cluster():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
 
 
@@ -161,7 +162,9 @@ async def test_no_memory_limits_cudaworker():
             await new_worker
             await client.wait_for_workers(2)
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
             await new_worker.close()
 
