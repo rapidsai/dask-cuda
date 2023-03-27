@@ -5,9 +5,11 @@ if sys.platform != "linux":
 
 
 import dask
+import dask.utils
 import dask.dataframe.core
 import dask.dataframe.shuffle
 import dask.dataframe.multi
+import dask.bag.core
 
 from ._version import get_versions
 from .cuda_worker import CUDAWorker
@@ -26,7 +28,13 @@ del get_versions
 dask.dataframe.shuffle.rearrange_by_column = get_rearrange_by_column_wrapper(
     dask.dataframe.shuffle.rearrange_by_column
 )
+# We have to replace all modules that imports Dask's `get_default_shuffle_algorithm()`
+# TODO: introduce a shuffle-algorithm dispatcher in Dask so we don't need this hack
+dask.dataframe.shuffle.get_default_shuffle_algorithm = get_default_shuffle_algorithm
 dask.dataframe.multi.get_default_shuffle_algorithm = get_default_shuffle_algorithm
+dask.bag.core.get_default_shuffle_algorithm = get_default_shuffle_algorithm
+dask.utils.get_default_shuffle_algorithm = get_default_shuffle_algorithm
+
 
 # Monkey patching Dask to make use of proxify and unproxify in compatibility mode
 dask.dataframe.shuffle.shuffle_group = proxify_decorator(
