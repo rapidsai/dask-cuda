@@ -33,7 +33,6 @@ dask.dataframe.shuffle.rearrange_by_column = get_rearrange_by_column_wrapper(
 dask.dataframe.shuffle.get_default_shuffle_algorithm = get_default_shuffle_algorithm
 dask.dataframe.multi.get_default_shuffle_algorithm = get_default_shuffle_algorithm
 dask.bag.core.get_default_shuffle_algorithm = get_default_shuffle_algorithm
-dask.utils.get_default_shuffle_algorithm = get_default_shuffle_algorithm
 
 
 # Monkey patching Dask to make use of proxify and unproxify in compatibility mode
