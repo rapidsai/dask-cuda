@@ -132,6 +132,17 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "information on out-of-memory errors",
     )
     cluster_args.add_argument(
+        "--enable-rmm-track-allocations",
+        action="store_true",
+        help="When enabled, wraps the memory resource used by each worker with a "
+        "``rmm.mr.TrackingResourceAdaptor``, which tracks the amount of memory "
+        "allocated."
+        "NOTE: This option enables additional diagnostics to be collected and "
+        "reported by the Dask dashboard. However, there is significant overhead "
+        "associated with this and it should only be used for debugging and memory "
+        "profiling.",
+    )
+    cluster_args.add_argument(
         "--enable-tcp-over-ucx",
         default=None,
         action="store_true",
@@ -339,6 +350,7 @@ def get_cluster_options(args):
             "CUDA_VISIBLE_DEVICES": args.devs,
             "interface": args.interface,
             "device_memory_limit": args.device_memory_limit,
+            "dashboard_address": 18787,
             **ucx_options,
         }
         if args.no_silence_logs:
@@ -370,6 +382,7 @@ def setup_memory_pool(
     release_threshold=None,
     log_directory=None,
     statistics=False,
+    rmm_track_allocations=False,
 ):
     import cupy
 
@@ -399,6 +412,10 @@ def setup_memory_pool(
         rmm.mr.set_current_device_resource(
             rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
         )
+    if rmm_track_allocations:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.TrackingResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
 
 
 def setup_memory_pools(
@@ -411,6 +428,7 @@ def setup_memory_pools(
     release_threshold,
     log_directory,
     statistics,
+    rmm_track_allocations,
 ):
     if not is_gpu:
         return
@@ -423,6 +441,7 @@ def setup_memory_pools(
         release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
@@ -435,6 +454,7 @@ def setup_memory_pools(
         release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
 
 
