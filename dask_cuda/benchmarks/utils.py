@@ -221,6 +221,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "since the workers are assumed to be started separately. Similarly the other "
         "cluster configuration options have no effect.",
     )
+    group.add_argument(
+        "--dashboard-address",
+        default=None,
+        type=str,
+        help="Address on which to listen for diagnostics dashboard, ignored if "
+        "either ``--scheduler-address`` or ``--scheduler-file`` is specified.",
+    )
     cluster_args.add_argument(
         "--shutdown-external-cluster-on-exit",
         default=False,
@@ -328,7 +335,11 @@ def get_cluster_options(args):
 
         cluster_kwargs = {
             "connect_options": {"known_hosts": None},
-            "scheduler_options": {"protocol": args.protocol, "port": 8786},
+            "scheduler_options": {
+                "protocol": args.protocol,
+                "port": 8786,
+                "dashboard_address": args.dashboard_address,
+            },
             "worker_class": "dask_cuda.CUDAWorker",
             "worker_options": {
                 "protocol": args.protocol,
@@ -345,12 +356,12 @@ def get_cluster_options(args):
         cluster_args = []
         cluster_kwargs = {
             "protocol": args.protocol,
+            "dashboard_address": args.dashboard_address,
             "n_workers": len(args.devs.split(",")),
             "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
             "interface": args.interface,
             "device_memory_limit": args.device_memory_limit,
-            "dashboard_address": 18787,
             **ucx_options,
         }
         if args.no_silence_logs:
