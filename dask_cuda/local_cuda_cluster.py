@@ -23,6 +23,48 @@ from .utils import (
 )
 
 
+def workaround_distributed_7726():
+    """A workaround for https://github.com/dask/distributed/issues/7726
+
+    The last atexit finalizer in the chain of finalizers that
+    distributed registers needs to be one in the weakref module.
+    Otherwise we observe hangs in the shutdown of UCX-Py where one
+    thread has the gil but not the UCX spinlock and vice-versa.
+
+    To ensure this, unregister the known shutdown finalizers in
+    distributed, add our weakref finalizer, and then re-register them.
+    Along with a final re-implementation of the "python shutting down"
+    handler which must run before other handlers in distributed.
+    """
+    import atexit
+    import weakref
+
+    import distributed
+    from distributed._concurrent_futures_thread import _python_exit
+    from distributed.client import _close_global_client
+    from distributed.deploy.spec import close_clusters
+
+    def shutdown():
+        # This mimics a function in distributed.__init__ which we can't
+        # get a handle on (because it is del'd), and must be registered
+        # after the other functions
+        distributed._python_shutting_down = True
+
+    # Note that atexit handlers are run last in, first out.
+    # These functions must be unregistered and then re-registered
+    for fn in [_python_exit, _close_global_client, close_clusters]:
+        atexit.unregister(fn)
+    # So that this finalizer is in an atexit hook after them
+    weakref.finalize(lambda: None, lambda: None)
+    # And re-register them.
+    for fn in [_python_exit, close_clusters, _close_global_client, shutdown]:
+        atexit.register(fn)
+
+
+workaround_distributed_7726()
+del workaround_distributed_7726
+
+
 class LoggedWorker(Worker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
