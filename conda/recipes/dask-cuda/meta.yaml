@@ -21,6 +21,7 @@ build:
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
+    - dask-core ==2023.3.2
     {% for e in data.get("project", {}).get("scripts", {}).items() %}
     - {{ e|join(" = ") }}
     {% endfor %}
