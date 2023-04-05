@@ -20,7 +20,6 @@ license = { text = "Apache-2.0" }
 requires-python = ">=3.8"
 dependencies = [
     "dask ==2023.3.2",
-    "dask-core ==2023.3.2",
     "distributed ==2023.3.2.1",
     "pynvml >=11.0.0,<11.5",
     "numpy >=1.21",
