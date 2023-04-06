@@ -13,13 +13,8 @@ To create a Dask-CUDA cluster using all available GPUs and connect a Dask.distri
     from dask_cuda import LocalCUDACluster
     from dask.distributed import Client
 
-
-    if __name__ == "__main__":
-        with LocalCUDACluster() as cluster:
-            with Client(cluster) as client:
-	        pass
-
-The `__main__` guard is required when running in Python script mode (instead of a notebook environment).
+    cluster = LocalCUDACluster()
+    client = Client(cluster)
 
 ``dask cuda worker``
 --------------------
