@@ -69,7 +69,7 @@ To start a Dask scheduler using UCX with automatic configuration and one GB of R
 .. note::
     The ``interface="ib0"`` is intentionally specified above to ensure RDMACM is used in systems that support InfiniBand. On systems that don't support InfiniBand or where RDMACM isn't required, the ``interface`` argument may be omitted or specified to listen on a different interface.
 
-    We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
+    We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`__. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
 
 Workers
 ^^^^^^^
@@ -86,7 +86,7 @@ To start workers with automatic UCX configuration and an RMM pool of 14GB per GP
 .. note::
     Analogous to the scheduler setup, the ``interface="ib0"`` is intentionally specified above to ensure RDMACM is used in systems that support InfiniBand. On systems that don't support InfiniBand or where RDMACM isn't required, the ``interface`` argument may be omitted or specified to listen on a different interface.
 
-    We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
+    We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`__. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
 
 Client
 ^^^^^^
@@ -122,7 +122,7 @@ Alternatively, the ``with dask.config.set`` statement from the example above may
     We specify ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda`` above for optimal performance with InfiniBand, see details `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_. If not using InfiniBand, that option may be omitted. In UCX 1.12 and newer, that option is default and may be omitted as well even when using InfiniBand.
 
 ``dask cuda worker`` with Manual Configuration
-------------------------------------------
+----------------------------------------------
 
 When using ``dask cuda worker`` with UCX communication and manual configuration, the scheduler, workers, and client must all be started manually, each using the same UCX configuration.
 
