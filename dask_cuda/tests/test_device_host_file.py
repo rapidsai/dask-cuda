@@ -10,7 +10,6 @@ from distributed.protocol import (
     serialize,
     serialize_bytelist,
 )
-from distributed.protocol.pickle import HIGHEST_PROTOCOL
 
 from dask_cuda.device_host_file import DeviceHostFile, device_to_host, host_to_device
 
@@ -189,10 +188,7 @@ def test_serialize_cupy_collection(collection, length, value):
 
     header, frames = serialize(obj, serializers=["pickle"], on_error="raise")
 
-    if HIGHEST_PROTOCOL >= 5:
-        assert len(frames) == (1 + len(obj.frames))
-    else:
-        assert len(frames) == 1
+    assert len(frames) == (1 + len(obj.frames))
 
     obj2 = deserialize(header, frames)
     res = host_to_device(obj2)

@@ -131,6 +131,10 @@ def test_rmm_async(loop):  # noqa: F811
                 "--host",
                 "127.0.0.1",
                 "--rmm-async",
+                "--rmm-pool-size",
+                "2 GB",
+                "--rmm-release-threshold",
+                "3 GB",
                 "--no-dashboard",
             ]
         ):
@@ -142,6 +146,11 @@ def test_rmm_async(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.CudaAsyncMemoryResource
+
+                ret = get_cluster_configuration(client)
+                wait(ret)
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
 
 
 def test_rmm_logging(loop):  # noqa: F811
@@ -422,3 +431,24 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                     ret["[plugin] RMMSetup"]["maximum_pool_size"]
                     == (device_total_memory * 0.3) // 256 * 256
                 )
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_worker_timeout():
+    ret = subprocess.run(
+        [
+            "dask",
+            "cuda",
+            "worker",
+            "192.168.1.100:7777",
+            "--death-timeout",
+            "1",
+        ],
+        text=True,
+        encoding="utf8",
+        capture_output=True,
+    )
+
+    assert "closing nanny at" in ret.stderr.lower()
+    assert "reason: nanny-close" in ret.stderr.lower()
+    assert ret.returncode == 0

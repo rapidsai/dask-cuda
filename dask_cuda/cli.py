@@ -146,6 +146,17 @@ def cuda():
         result in failure.""",
 )
 @click.option(
+    "--rmm-release-threshold",
+    default=None,
+    help="""When ``rmm.async`` is ``True`` and the pool size grows beyond this value, unused
+    memory held by the pool will be released at the next synchronization point. Can be
+    an integer (bytes), float (fraction of total device memory), string (like ``"5GB"``
+    or ``"5000M"``) or ``None``. By default, this feature is disabled.
+
+    .. note::
+        This size is a per-worker configuration, and not cluster-wide.""",
+)
+@click.option(
     "--rmm-log-directory",
     default=None,
     help="""Directory to write per-worker RMM log files to. The client and scheduler are
@@ -233,6 +244,12 @@ def cuda():
     ``"/path/to/foo.py"``.""",
 )
 @click.option(
+    "--death-timeout",
+    type=str,
+    default=None,
+    help="Seconds to wait for a scheduler before closing",
+)
+@click.option(
     "--dashboard-prefix",
     type=str,
     default=None,
@@ -312,6 +329,7 @@ def worker(
     rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
+    rmm_release_threshold,
     rmm_log_directory,
     rmm_track_allocations,
     pid_file,
@@ -383,6 +401,7 @@ def worker(
             rmm_maximum_pool_size,
             rmm_managed_memory,
             rmm_async,
+            rmm_release_threshold,
             rmm_log_directory,
             rmm_track_allocations,
             pid_file,

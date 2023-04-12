@@ -9,7 +9,6 @@ import pytest
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test, raises_with_cause
-from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
@@ -140,7 +139,9 @@ async def test_no_memory_limits_cluster():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
 
 
@@ -161,7 +162,9 @@ async def test_no_memory_limits_cudaworker():
             await new_worker
             await client.wait_for_workers(2)
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
             await new_worker.close()
 
@@ -231,6 +234,8 @@ async def test_rmm_async():
 
     async with LocalCUDACluster(
         rmm_async=True,
+        rmm_pool_size="2GB",
+        rmm_release_threshold="3GB",
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -239,6 +244,10 @@ async def test_rmm_async():
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.CudaAsyncMemoryResource
+
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
 
 
 @gen_test(timeout=20)
@@ -434,3 +443,13 @@ def test_print_cluster_config(capsys):
             assert "ucx" in captured.out
             assert "1 B" in captured.out
             assert "[plugin]" in captured.out
+
+
+def test_death_timeout_raises():
+    with pytest.raises(asyncio.exceptions.TimeoutError):
+        with LocalCUDACluster(
+            silence_logs=False,
+            death_timeout=1e-10,
+            dashboard_address=":0",
+        ):
+            pass

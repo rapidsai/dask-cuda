@@ -5,7 +5,7 @@
 python:
  - 'dask_cuda/**'
 
-gpuCI:
+ci:
   - 'ci/**'
 
 conda:

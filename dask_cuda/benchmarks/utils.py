@@ -99,6 +99,25 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
     )
     cluster_args.add_argument(
+        "--enable-rmm-managed",
+        action="store_true",
+        help="Enable RMM managed memory allocator",
+    )
+    cluster_args.add_argument(
+        "--enable-rmm-async",
+        action="store_true",
+        help="Enable RMM async memory allocator (implies --disable-rmm-pool)",
+    )
+    cluster_args.add_argument(
+        "--rmm-release-threshold",
+        default=None,
+        type=parse_bytes,
+        help="When --enable-rmm-async is set and the pool size grows beyond this "
+        "value, unused memory held by the pool will be released at the next "
+        "synchronization point. Can be an integer (bytes), or a string string (like "
+        "'4GB' or '5000M'). By default, this feature is disabled.",
+    )
+    cluster_args.add_argument(
         "--rmm-log-directory",
         default=None,
         type=str,
@@ -111,6 +130,17 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
         "This enables spilling implementations such as JIT-Unspill to provides more "
         "information on out-of-memory errors",
+    )
+    cluster_args.add_argument(
+        "--enable-rmm-track-allocations",
+        action="store_true",
+        help="When enabled, wraps the memory resource used by each worker with a "
+        "``rmm.mr.TrackingResourceAdaptor``, which tracks the amount of memory "
+        "allocated."
+        "NOTE: This option enables additional diagnostics to be collected and "
+        "reported by the Dask dashboard. However, there is significant overhead "
+        "associated with this and it should only be used for debugging and memory "
+        "profiling.",
     )
     cluster_args.add_argument(
         "--enable-tcp-over-ucx",
@@ -190,6 +220,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "If provided, worker configuration options provided to this script are ignored "
         "since the workers are assumed to be started separately. Similarly the other "
         "cluster configuration options have no effect.",
+    )
+    group.add_argument(
+        "--dashboard-address",
+        default=None,
+        type=str,
+        help="Address on which to listen for diagnostics dashboard, ignored if "
+        "either ``--scheduler-address`` or ``--scheduler-file`` is specified.",
     )
     cluster_args.add_argument(
         "--shutdown-external-cluster-on-exit",
@@ -298,7 +335,11 @@ def get_cluster_options(args):
 
         cluster_kwargs = {
             "connect_options": {"known_hosts": None},
-            "scheduler_options": {"protocol": args.protocol, "port": 8786},
+            "scheduler_options": {
+                "protocol": args.protocol,
+                "port": 8786,
+                "dashboard_address": args.dashboard_address,
+            },
             "worker_class": "dask_cuda.CUDAWorker",
             "worker_options": {
                 "protocol": args.protocol,
@@ -315,6 +356,7 @@ def get_cluster_options(args):
         cluster_args = []
         cluster_kwargs = {
             "protocol": args.protocol,
+            "dashboard_address": args.dashboard_address,
             "n_workers": len(args.devs.split(",")),
             "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
@@ -346,34 +388,58 @@ def setup_memory_pool(
     dask_worker=None,
     pool_size=None,
     disable_pool=False,
+    rmm_async=False,
+    rmm_managed=False,
+    release_threshold=None,
     log_directory=None,
     statistics=False,
+    rmm_track_allocations=False,
 ):
     import cupy
 
     import rmm
+    from rmm.allocators.cupy import rmm_cupy_allocator
 
     from dask_cuda.utils import get_rmm_log_file_name
 
     logging = log_directory is not None
 
-    if not disable_pool:
+    if rmm_async:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.CudaAsyncMemoryResource(
+                initial_pool_size=pool_size, release_threshold=release_threshold
+            )
+        )
+    else:
         rmm.reinitialize(
-            pool_allocator=True,
-            devices=0,
+            pool_allocator=not disable_pool,
+            managed_memory=rmm_managed,
             initial_pool_size=pool_size,
             logging=logging,
             log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
         )
-        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    cupy.cuda.set_allocator(rmm_cupy_allocator)
     if statistics:
         rmm.mr.set_current_device_resource(
             rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
         )
+    if rmm_track_allocations:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.TrackingResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
 
 
 def setup_memory_pools(
-    client, is_gpu, pool_size, disable_pool, log_directory, statistics
+    client,
+    is_gpu,
+    pool_size,
+    disable_pool,
+    rmm_async,
+    rmm_managed,
+    release_threshold,
+    log_directory,
+    statistics,
+    rmm_track_allocations,
 ):
     if not is_gpu:
         return
@@ -381,8 +447,12 @@ def setup_memory_pools(
         setup_memory_pool,
         pool_size=pool_size,
         disable_pool=disable_pool,
+        rmm_async=rmm_async,
+        rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
@@ -390,8 +460,12 @@ def setup_memory_pools(
         setup_memory_pool,
         pool_size=1e9,
         disable_pool=disable_pool,
+        rmm_async=rmm_async,
+        rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
 
 

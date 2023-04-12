@@ -11,7 +11,7 @@ import dask
 from dask import dataframe as dd
 from dask.dataframe.shuffle import partitioning_index
 from dask.dataframe.utils import assert_eq
-from distributed import Client, get_worker
+from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 import dask_cuda
@@ -183,10 +183,10 @@ def test_dask_use_explicit_comms(in_cluster):
         name = "explicit-comms-shuffle"
         ddf = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
         with dask.config.set(explicit_comms=False):
-            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            res = ddf.shuffle(on="key", npartitions=4)
             assert all(name not in str(key) for key in res.dask)
         with dask.config.set(explicit_comms=True):
-            res = ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+            res = ddf.shuffle(on="key", npartitions=4)
             if in_cluster:
                 assert any(name in str(key) for key in res.dask)
             else:  # If not in cluster, we cannot use explicit comms
@@ -200,7 +200,7 @@ def test_dask_use_explicit_comms(in_cluster):
             ):
                 dask.config.refresh()  # Trigger re-read of the environment variables
                 with pytest.raises(ValueError, match="explicit-comms-batchsize"):
-                    ddf.shuffle(on="key", npartitions=4, shuffle="tasks")
+                    ddf.shuffle(on="key", npartitions=4)
 
     if in_cluster:
         with LocalCluster(
@@ -314,8 +314,8 @@ def test_jit_unspill(protocol):
 
 
 def _test_lock_workers(scheduler_address, ranks):
-    async def f(_):
-        worker = get_worker()
+    async def f(info):
+        worker = info["worker"]
         if hasattr(worker, "running"):
             assert not worker.running
         worker.running = True

@@ -837,7 +837,10 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
         header, frames = pxy.serialize(serializers=("dask", "pickle"))
     obj._pxy_set(pxy)
 
-    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
+    return {
+        "proxied-header": header,
+        "obj-pxy-detail": pickle.dumps(pxy.get_init_args()),
+    }, frames
 
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
@@ -860,7 +863,10 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
         # the worker's data store.
         header, frames = pxy.serialize(serializers=("cuda",))
 
-    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
+    return {
+        "proxied-header": header,
+        "obj-pxy-detail": pickle.dumps(pxy.get_init_args()),
+    }, frames
 
 
 @distributed.protocol.dask_deserialize.register(ProxyObject)
@@ -872,7 +878,7 @@ def obj_pxy_dask_deserialize(header, frames):
     deserialized using the same serializers that were used when the object was
     serialized.
     """
-    args = header["obj-pxy-detail"]
+    args = pickle.loads(header["obj-pxy-detail"])
     if args["subclass"] is None:
         subclass = ProxyObject
     else:
