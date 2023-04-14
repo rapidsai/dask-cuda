@@ -30,8 +30,8 @@ def device_host_file_size_matches(
     # `dhf.disk` is only available when Worker's `memory_limit != 0`
     if dhf.disk is not None:
         file_path = [
-            os.path.join(dhf.disk.directory, dhf.disk._safe_key(k))
-            for k in dhf.disk.keys()
+            os.path.join(dhf.disk.directory, fname)
+            for fname in dhf.disk.filenames.values()
         ]
         file_size = [os.path.getsize(f) for f in file_path]
         byte_sum += sum(file_size)
