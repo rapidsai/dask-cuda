@@ -18,26 +18,26 @@ jobs:
       - docs-build
       - wheel-build
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/pr-builder.yaml@wheel-workflow-fix
+    uses: rapidsai/shared-action-workflows/.github/workflows/pr-builder.yaml@py-39
   checks:
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/checks.yaml@wheel-workflow-fix
+    uses: rapidsai/shared-action-workflows/.github/workflows/checks.yaml@py-39
   conda-python-build:
     needs: checks
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-build.yaml@wheel-workflow-fix
+    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-build.yaml@py-39
     with:
       build_type: pull-request
   conda-python-tests:
     needs: conda-python-build
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-tests.yaml@wheel-workflow-fix
+    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-tests.yaml@py-39
     with:
       build_type: pull-request
   docs-build:
     needs: conda-python-build
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/custom-job.yaml@wheel-workflow-fix
+    uses: rapidsai/shared-action-workflows/.github/workflows/custom-job.yaml@py-39
     with:
       build_type: pull-request
       node_type: "gpu-v100-latest-1"
@@ -53,7 +53,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@wheel-workflow-fix
+      - uses: actions/checkout@py-39
         with:
           fetch-depth: 0
       - name: Build wheel
