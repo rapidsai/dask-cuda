@@ -16,8 +16,11 @@ on:
 jobs:
   conda-python-tests:
     secrets: inherit
-    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-tests.yaml@branch-23.06
+    uses: rapidsai/shared-action-workflows/.github/workflows/conda-python-tests.yaml@py-39
     with:
+      # TODO: remove the `matrix_filter` line after `cudf` is publishing `3.9`
+      # packages. also remove the line in `pr.yaml`
+      matrix_filter: map(select(.PY_VER == "3.10"))
       build_type: nightly
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
