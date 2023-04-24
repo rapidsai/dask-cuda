@@ -62,13 +62,13 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@py-39
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Build wheel
         run: ci/build_python_pypi.sh
       - name: Publish distribution 📦 to PyPI
         if: inputs.build_type == 'nightly'
-        uses: pypa/gh-action-pypi-publish@py-39
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.RAPIDSAI_PYPI_TOKEN }}
