@@ -17,7 +17,7 @@ authors = [
     { name = "NVIDIA Corporation" },
 ]
 license = { text = "Apache-2.0" }
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 dependencies = [
     "dask ==2023.3.2",
     "distributed ==2023.3.2.1",
