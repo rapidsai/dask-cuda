@@ -1,3 +1,43 @@
+# dask-cuda 23.04.00 (6 Apr 2023)
+
+## 🚨 Breaking Changes
+
+- Pin `dask` and `distributed` for release ([#1153](https://github.com/rapidsai/dask-cuda/pull/1153)) [@galipremsagar](https://github.com/galipremsagar)
+- Update minimum `pandas` and `numpy` pinnings ([#1139](https://github.com/rapidsai/dask-cuda/pull/1139)) [@galipremsagar](https://github.com/galipremsagar)
+
+## 🐛 Bug Fixes
+
+- Rectify `dask-core` pinning in pip requirements ([#1155](https://github.com/rapidsai/dask-cuda/pull/1155)) [@galipremsagar](https://github.com/galipremsagar)
+- Monkey patching all locations of `get_default_shuffle_algorithm` ([#1142](https://github.com/rapidsai/dask-cuda/pull/1142)) [@madsbk](https://github.com/madsbk)
+- Update usage of `get_worker()` in tests ([#1141](https://github.com/rapidsai/dask-cuda/pull/1141)) [@pentschev](https://github.com/pentschev)
+- Update `rmm_cupy_allocator` usage ([#1138](https://github.com/rapidsai/dask-cuda/pull/1138)) [@jakirkham](https://github.com/jakirkham)
+- Serialize of `ProxyObject` to pickle fixed attributes ([#1137](https://github.com/rapidsai/dask-cuda/pull/1137)) [@madsbk](https://github.com/madsbk)
+- Explicit-comms: update monkey patching of Dask ([#1135](https://github.com/rapidsai/dask-cuda/pull/1135)) [@madsbk](https://github.com/madsbk)
+- Fix for bytes/str discrepancy after PyNVML update ([#1118](https://github.com/rapidsai/dask-cuda/pull/1118)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Allow specifying dashboard address in benchmarks ([#1147](https://github.com/rapidsai/dask-cuda/pull/1147)) [@pentschev](https://github.com/pentschev)
+- Add argument to enable RMM alloaction tracking in benchmarks ([#1145](https://github.com/rapidsai/dask-cuda/pull/1145)) [@pentschev](https://github.com/pentschev)
+- Reinstate `--death-timeout` CLI option ([#1140](https://github.com/rapidsai/dask-cuda/pull/1140)) [@charlesbluca](https://github.com/charlesbluca)
+- Extend RMM async allocation support ([#1116](https://github.com/rapidsai/dask-cuda/pull/1116)) [@pentschev](https://github.com/pentschev)
+- Allow using stream-ordered and managed RMM allocators in benchmarks ([#1012](https://github.com/rapidsai/dask-cuda/pull/1012)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for release ([#1153](https://github.com/rapidsai/dask-cuda/pull/1153)) [@galipremsagar](https://github.com/galipremsagar)
+- Update minimum `pandas` and `numpy` pinnings ([#1139](https://github.com/rapidsai/dask-cuda/pull/1139)) [@galipremsagar](https://github.com/galipremsagar)
+- Drop Python 3.7 handling for pickle protocol 4 ([#1132](https://github.com/rapidsai/dask-cuda/pull/1132)) [@jakirkham](https://github.com/jakirkham)
+- Adapt to rapidsai/rmm#1221 which moves allocator callbacks ([#1129](https://github.com/rapidsai/dask-cuda/pull/1129)) [@wence-](https://github.com/wence-)
+- Merge `branch-23.02` into `branch-23.04` ([#1128](https://github.com/rapidsai/dask-cuda/pull/1128)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Template Conda recipe&#39;s `about` metadata ([#1121](https://github.com/rapidsai/dask-cuda/pull/1121)) [@jakirkham](https://github.com/jakirkham)
+- Fix GHA build workflow ([#1120](https://github.com/rapidsai/dask-cuda/pull/1120)) [@AjayThorve](https://github.com/AjayThorve)
+- Reduce error handling verbosity in CI tests scripts ([#1113](https://github.com/rapidsai/dask-cuda/pull/1113)) [@AjayThorve](https://github.com/AjayThorve)
+- Update shared workflow branches ([#1112](https://github.com/rapidsai/dask-cuda/pull/1112)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Remove gpuCI scripts. ([#1111](https://github.com/rapidsai/dask-cuda/pull/1111)) [@bdice](https://github.com/bdice)
+- Unpin `dask` and `distributed` for development ([#1110](https://github.com/rapidsai/dask-cuda/pull/1110)) [@galipremsagar](https://github.com/galipremsagar)
+- Move date to build string in `conda` recipe ([#1103](https://github.com/rapidsai/dask-cuda/pull/1103)) [@ajschmidt8](https://github.com/ajschmidt8)
+
 # dask-cuda 23.02.00 (9 Feb 2023)
 
 ## 🚨 Breaking Changes
