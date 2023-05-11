@@ -15,7 +15,7 @@ if "GIT_DESCRIBE_TAG" in os.environ:
     # versioneer.get_versions.
 
     orig_get_versions = versioneer.get_versions
-    version = os.environ["GIT_DESCRIBE_TAG"] + os.environ.get("VERSION_SUFFIX", "")
+    version = os.environ["GIT_DESCRIBE_TAG"] + os.environ.get("RAPIDS_DATE_STRING", "")
 
     def get_versions():
         data = orig_get_versions()

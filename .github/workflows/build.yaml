@@ -67,6 +67,8 @@ jobs:
           fetch-depth: 0
       - name: Build wheel
         run: ci/build_python_pypi.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Publish distribution 📦 to PyPI
         if: inputs.build_type == 'nightly'
         uses: pypa/gh-action-pypi-publish@release/v1

@@ -58,3 +58,5 @@ jobs:
           fetch-depth: 0
       - name: Build wheel
         run: ci/build_python_pypi.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
