@@ -2,8 +2,10 @@ from random import randint
 
 import numpy as np
 import pytest
+from packaging import version
 
 import dask.array
+import distributed
 from distributed.protocol import (
     deserialize,
     deserialize_bytes,
@@ -51,7 +53,16 @@ def test_device_host_file_short(
     random.shuffle(full)
 
     for k, v in full:
-        dhf[k] = v
+        try:
+            dhf[k] = v
+        except TypeError as e:
+            # TODO: Remove when pinning to distributed>=2023.5.1 .
+            # See https://github.com/rapidsai/dask-cuda/issues/1174 and
+            # https://github.com/dask/distributed/pull/7836 .
+            if version.parse(distributed.__version__) <= version.parse("2023.5.0"):
+                dhf[k] = v
+            else:
+                raise e
 
     random.shuffle(full)
 
