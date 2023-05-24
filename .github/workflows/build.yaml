@@ -76,3 +76,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.RAPIDSAI_PYPI_TOKEN }}
+          skip-existing: true
