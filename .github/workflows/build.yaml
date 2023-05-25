@@ -73,7 +73,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish distribution 📦 to PyPI
-        if: inputs.build_type == 'nightly'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.RAPIDSAI_PYPI_TOKEN }}
+          skip-existing: true
