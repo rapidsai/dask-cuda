@@ -127,6 +127,8 @@ filterwarnings = [
     "ignore:make_current is deprecated:DeprecationWarning:",
     # remove after https://github.com/rapidsai/dask-cuda/issues/1087 is closed
     "ignore:There is no current event loop:DeprecationWarning:tornado",
+    # remove after unpinning Dask/Distributed 2023.3.2
+    "ignore:.*np.bool.*:DeprecationWarning:",
 ]
 
 [tool.setuptools]
