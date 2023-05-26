@@ -500,5 +500,6 @@ def config(
         client = Client(scheduler, security=security)
     print_cluster_config(client)
 
+
 if __name__ == "__main__":
     worker()
