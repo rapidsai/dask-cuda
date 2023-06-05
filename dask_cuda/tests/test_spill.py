@@ -220,6 +220,7 @@ async def test_cudf_cluster_device_spill(params):
         {
             "distributed.comm.compression": False,
             "distributed.worker.memory.terminate": False,
+            "distributed.worker.memory.spill-compression": False,
         }
     ):
         async with LocalCUDACluster(
