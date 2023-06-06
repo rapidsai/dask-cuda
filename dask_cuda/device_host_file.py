@@ -17,7 +17,7 @@ from distributed.protocol import (
     serialize_bytelist,
 )
 from distributed.sizeof import safe_sizeof
-from distributed.utils import has_arg, nbytes
+from distributed.utils import nbytes
 
 from .is_device_object import is_device_object
 from .is_spillable_object import is_spillable_object
@@ -27,12 +27,8 @@ from .utils import nvtx_annotate
 def _serialize_bytelist(x, **kwargs):
     kwargs["on_error"] = "raise"
 
-    if has_arg(serialize_bytelist, "compression"):
-        compression = dask.config.get("distributed.worker.memory.spill-compression")
-        return serialize_bytelist(x, compression=compression, **kwargs)
-    else:
-        # For Distributed < 2023.5.0 compatibility
-        return serialize_bytelist(x, **kwargs)
+    compression = dask.config.get("distributed.worker.memory.spill-compression")
+    return serialize_bytelist(x, compression=compression, **kwargs)
 
 
 class LoggedBuffer(Buffer):
