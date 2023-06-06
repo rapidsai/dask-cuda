@@ -446,7 +446,9 @@ def wait_workers(
     client: distributed.Client
         Instance of client, used to query for number of workers connected.
     min_timeout: float
-        Minimum number of seconds to wait before timeout.
+        Minimum number of seconds to wait before timeout. This value may be
+        overridden by setting the `DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT` with
+        a positive integer.
     seconds_per_gpu: float
         Seconds to wait for each GPU on the system. For example, if its
         value is 2 and there is a total of 8 GPUs (workers) being started,
@@ -463,6 +465,8 @@ def wait_workers(
     -------
     True if all workers were started, False if a timeout occurs.
     """
+    min_timeout_env = os.environ.get("DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT", None)
+    min_timeout = min_timeout if min_timeout_env is None else int(min_timeout_env)
     n_gpus = n_gpus or get_n_gpus()
     timeout = max(min_timeout, seconds_per_gpu * n_gpus)
 
