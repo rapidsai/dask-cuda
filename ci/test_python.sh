@@ -41,10 +41,11 @@ set +e
 rapids-logger "pytest dask-cuda"
 pushd dask_cuda
 DASK_CUDA_TEST_SINGLE_GPU=1 \
+DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
-timeout 30m pytest \
+timeout 40m pytest \
   -vv \
   --capture=no \
   --cache-clear \

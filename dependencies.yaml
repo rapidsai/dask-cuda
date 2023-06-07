@@ -77,10 +77,6 @@ dependencies:
       - output_types: conda
         matrices:
           - matrix:
-              py: "3.8"
-            packages:
-              - python=3.8
-          - matrix:
               py: "3.9"
             packages:
               - python=3.9
@@ -90,18 +86,18 @@ dependencies:
               - python=3.10
           - matrix:
             packages:
-              - python>=3.8,<3.11
+              - python>=3.9,<3.11
   run_python:
     common:
       - output_types: [conda, requirements]
         packages:
           - dask==2023.3.2
           - distributed==2023.3.2.1
-          - numba>=0.54
+          - numba>=0.57
           - numpy>=1.21
           - pandas>=1.3,<1.6.0dev0
           - pynvml>=11.0.0,<11.5
-          - zict>=0.1.3
+          - zict>=2.0.0
       - output_types: [conda]
         packages:
           - dask-core==2023.3.2
@@ -109,13 +105,13 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - cucim=23.04
-          - cudf=23.04
-          - dask-cudf=23.04
+          - cucim=23.06
+          - cudf=23.06
+          - dask-cudf=23.06
           - pytest
           - pytest-cov
           - ucx-proc=*=gpu
-          - ucx-py=0.31
+          - ucx-py=0.32
     specific:
       - output_types: conda
         matrices:
