@@ -1,3 +1,39 @@
+# dask-cuda 23.06.00 (7 Jun 2023)
+
+## 🚨 Breaking Changes
+
+- Update minimum Python version to Python 3.9 ([#1164](https://github.com/rapidsai/dask-cuda/pull/1164)) [@shwina](https://github.com/shwina)
+
+## 🐛 Bug Fixes
+
+- Increase pytest CI timeout ([#1196](https://github.com/rapidsai/dask-cuda/pull/1196)) [@pentschev](https://github.com/pentschev)
+- Increase minimum timeout to wait for workers in CI ([#1193](https://github.com/rapidsai/dask-cuda/pull/1193)) [@pentschev](https://github.com/pentschev)
+- Disable `np.bool` deprecation warning ([#1182](https://github.com/rapidsai/dask-cuda/pull/1182)) [@pentschev](https://github.com/pentschev)
+- Always upload on branch/nightly builds ([#1177](https://github.com/rapidsai/dask-cuda/pull/1177)) [@raydouglass](https://github.com/raydouglass)
+- Workaround for `DeviceHostFile` tests with CuPy&gt;=12.0.0 ([#1175](https://github.com/rapidsai/dask-cuda/pull/1175)) [@pentschev](https://github.com/pentschev)
+- Temporarily relax Python constraint ([#1166](https://github.com/rapidsai/dask-cuda/pull/1166)) [@vyasr](https://github.com/vyasr)
+
+## 📖 Documentation
+
+- [doc] Add document about main guard. ([#1157](https://github.com/rapidsai/dask-cuda/pull/1157)) [@trivialfis](https://github.com/trivialfis)
+
+## 🚀 New Features
+
+- Require Numba 0.57.0+ ([#1185](https://github.com/rapidsai/dask-cuda/pull/1185)) [@jakirkham](https://github.com/jakirkham)
+- Revert &quot;Temporarily relax Python constraint&quot; ([#1171](https://github.com/rapidsai/dask-cuda/pull/1171)) [@vyasr](https://github.com/vyasr)
+- Update to zict 3.0 ([#1160](https://github.com/rapidsai/dask-cuda/pull/1160)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Add `__main__` entrypoint to dask-cuda-worker CLI ([#1181](https://github.com/rapidsai/dask-cuda/pull/1181)) [@hmacdope](https://github.com/hmacdope)
+- run docs nightly too ([#1176](https://github.com/rapidsai/dask-cuda/pull/1176)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Fix GHAs Workflows ([#1172](https://github.com/rapidsai/dask-cuda/pull/1172)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Remove `matrix_filter` from workflows ([#1168](https://github.com/rapidsai/dask-cuda/pull/1168)) [@charlesbluca](https://github.com/charlesbluca)
+- Revert to branch-23.06 for shared-action-workflows ([#1167](https://github.com/rapidsai/dask-cuda/pull/1167)) [@shwina](https://github.com/shwina)
+- Update minimum Python version to Python 3.9 ([#1164](https://github.com/rapidsai/dask-cuda/pull/1164)) [@shwina](https://github.com/shwina)
+- Remove usage of rapids-get-rapids-version-from-git ([#1163](https://github.com/rapidsai/dask-cuda/pull/1163)) [@jjacobelli](https://github.com/jjacobelli)
+- Use ARC V2 self-hosted runners for GPU jobs ([#1159](https://github.com/rapidsai/dask-cuda/pull/1159)) [@jjacobelli](https://github.com/jjacobelli)
+
 # dask-cuda 23.04.00 (6 Apr 2023)
 
 ## 🚨 Breaking Changes
