@@ -11,7 +11,6 @@ from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test, raises_with_cause
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
-from dask_cuda.initialize import initialize
 from dask_cuda.utils import (
     MockWorker,
     get_cluster_configuration,
@@ -92,9 +91,8 @@ async def test_with_subset_of_cuda_visible_devices():
 async def test_ucx_protocol(protocol):
     pytest.importorskip("ucp")
 
-    initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
-        protocol=protocol, enable_tcp_over_ucx=True, asynchronous=True, data=dict
+        protocol=protocol, asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
@@ -106,11 +104,8 @@ async def test_ucx_protocol(protocol):
 async def test_ucx_protocol_type_error():
     pytest.importorskip("ucp")
 
-    initialize(enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
-        async with LocalCUDACluster(
-            protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict
-        ):
+        async with LocalCUDACluster(protocol="tcp", asynchronous=True, data=dict):
             pass
 
 
