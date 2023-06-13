@@ -87,14 +87,25 @@ async def test_with_subset_of_cuda_visible_devices():
                 }
 
 
-@pytest.mark.parametrize("protocol", ["ucx", None])
 @gen_test(timeout=20)
-async def test_ucx_protocol(protocol):
+async def test_ucx_protocol():
+    pytest.importorskip("ucp")
+
+    async with LocalCUDACluster(
+        protocol="ucx", asynchronous=True, data=dict
+    ) as cluster:
+        assert all(
+            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
+        )
+
+
+@gen_test(timeout=20)
+async def test_explicit_ucx_with_protocol_none():
     pytest.importorskip("ucp")
 
     initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
-        protocol=protocol, enable_tcp_over_ucx=True, asynchronous=True, data=dict
+        protocol=None, enable_tcp_over_ucx=True, asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
