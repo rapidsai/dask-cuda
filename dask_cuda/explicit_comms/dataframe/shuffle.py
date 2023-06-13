@@ -585,7 +585,7 @@ def get_rearrange_by_column_wrapper(func):
     return wrapper
 
 
-def get_default_shuffle_algorithm() -> str:
+def get_default_shuffle_method() -> str:
     """Return the default shuffle algorithm used by Dask
 
     This changes the default shuffle algorithm from "p2p" to "tasks"
@@ -594,4 +594,4 @@ def get_default_shuffle_algorithm() -> str:
     ret = dask.config.get("dataframe.shuffle.algorithm", None)
     if ret is None and _use_explicit_comms():
         return "tasks"
-    return dask.utils.get_default_shuffle_algorithm()
+    return dask.utils.get_default_shuffle_method()
