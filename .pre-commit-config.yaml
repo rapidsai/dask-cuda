@@ -24,7 +24,6 @@ repos:
                   (?x)^(
                     .*test.*|
                     ^CHANGELOG.md$|
-                    ^.*versioneer.py$
                   )
       - repo: https://github.com/pre-commit/mirrors-mypy
         rev: 'v0.991'
