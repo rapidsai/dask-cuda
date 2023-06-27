@@ -125,11 +125,13 @@ class SpillToDiskProperties:
 
         if self.gds_enabled:
             try:
-                import cucim.clara.filesystem as cucim_fs  # noqa F401
+                import kvikio  # noqa F401
             except ImportError:
-                raise ImportError("GPUDirect Storage requires the cucim Python package")
+                raise ImportError(
+                    "GPUDirect Storage requires the kvikio Python package"
+                )
             else:
-                self.gds_enabled = bool(cucim_fs.is_gds_available())
+                self.gds_enabled = kvikio.DriverProperties().is_gds_available
 
     def gen_file_path(self) -> str:
         """Generate an unique file path"""
@@ -164,12 +166,11 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
     cuda_frames = tuple(hasattr(f, "__cuda_array_interface__") for f in frames)
     frame_lengths = tuple(map(nbytes, frames))
     if gds and any(cuda_frames):
-        import cucim.clara.filesystem as cucim_fs
+        import kvikio
 
-        with cucim_fs.open(path, "w") as f:
+        with kvikio.CuFile(path, "w") as f:
             for frame, length in zip(frames, frame_lengths):
-                f.pwrite(buf=frame, count=length, file_offset=0, buf_offset=0)
-
+                f.pwrite(buf=frame, count=length, file_offset=0, buf_offset=0).get()
     else:
         with open(path, "wb") as f:
             for frame in frames:
@@ -201,16 +202,18 @@ def disk_read(header: Mapping, gds=False) -> list:
     """
     ret = []
     if gds:
-        import cucim.clara.filesystem as cucim_fs  # isort:skip
+        import kvikio  # isort:skip
 
-        with cucim_fs.open(header["path"], "rb") as f:
+        with kvikio.CuFile(header["path"], "rb") as f:
             file_offset = 0
             for length, is_cuda in zip(header["frame-lengths"], header["cuda-frames"]):
                 if is_cuda:
                     buf = get_new_cuda_buffer()(length)
                 else:
                     buf = np.empty((length,), dtype="u1")
-                f.pread(buf=buf, count=length, file_offset=file_offset, buf_offset=0)
+                f.pread(
+                    buf=buf, count=length, file_offset=file_offset, buf_offset=0
+                ).get()
                 file_offset += length
                 ret.append(buf)
     else:

@@ -34,7 +34,7 @@ function sed_runner() {
 # Bump cudf and dask-cudf testing dependencies
 sed_runner "s/cudf=.*/cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/dask-cudf=.*/dask-cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
-sed_runner "s/cucim=.*/cucim=${NEXT_SHORT_TAG}/g" dependencies.yaml
+sed_runner "s/kvikio=.*/kvikio=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/ucx-py=.*/ucx-py=${NEXT_UCXPY_VERSION}/g" dependencies.yaml
 
 # CI files
