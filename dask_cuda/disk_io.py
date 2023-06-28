@@ -219,5 +219,7 @@ def disk_read(header: Mapping, gds=False) -> list:
     else:
         with open(str(header["path"]), "rb") as f:
             for length in header["frame-lengths"]:
-                ret.append(f.read(length))
+                buf = np.empty((length,), dtype="u1")
+                f.readinto(buf)
+                ret.append(buf)
     return ret
