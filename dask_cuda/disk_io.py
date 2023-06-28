@@ -169,8 +169,10 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
         import kvikio
 
         with kvikio.CuFile(path, "w") as f:
+            file_offset = 0
             for frame, length in zip(frames, frame_lengths):
-                f.pwrite(buf=frame, count=length, file_offset=0, buf_offset=0).get()
+                f.pwrite(buf=frame, count=length, file_offset=file_offset, buf_offset=0).get()
+                file_offset += length
     else:
         with open(path, "wb") as f:
             for frame in frames:
