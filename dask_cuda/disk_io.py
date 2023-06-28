@@ -175,7 +175,7 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
                 file_offset += length
     else:
         with open(path, "wb") as f:
-            f.writelines(frames)
+            os.writev(f.fileno(), frames)  # type: ignore
     return {
         "method": "stdio",
         "path": SpillToDiskFile(path),
@@ -217,6 +217,5 @@ def disk_read(header: Mapping, gds=False) -> list:
                 file_offset += b.nbytes
     else:
         with open(str(header["path"]), "rb") as f:
-            for b in ret:
-                f.readinto(b)
+            os.readv(f.fileno(), ret)  # type: ignore
     return ret
