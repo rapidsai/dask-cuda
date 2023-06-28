@@ -170,8 +170,8 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
 
         with kvikio.CuFile(path, "w") as f:
             file_offset = 0
-            for frame, length in zip(frames, frame_lengths):
-                f.pwrite(buf=frame, count=length, file_offset=file_offset, buf_offset=0).get()
+            for b, length in zip(frames, frame_lengths):
+                f.pwrite(b, file_offset=file_offset).get()
                 file_offset += length
     else:
         with open(path, "wb") as f:
@@ -213,9 +213,7 @@ def disk_read(header: Mapping, gds=False) -> list:
                     buf = get_new_cuda_buffer()(length)
                 else:
                     buf = np.empty((length,), dtype="u1")
-                f.pread(
-                    buf=buf, count=length, file_offset=file_offset, buf_offset=0
-                ).get()
+                f.pread(buf, file_offset=file_offset).get()
                 file_offset += length
                 ret.append(buf)
     else:
