@@ -202,25 +202,21 @@ def disk_read(header: Mapping, gds=False) -> list:
     frames: list
         List of read frames
     """
-    ret = []
+    ret = [
+        get_new_cuda_buffer()(length)
+        if gds and is_cuda
+        else np.empty((length,), dtype="u1")
+        for length, is_cuda in zip(header["frame-lengths"], header["cuda-frames"])
+    ]
     if gds:
         import kvikio  # isort:skip
 
-        ret.extend(
-            get_new_cuda_buffer()(length)
-            if is_cuda
-            else np.empty((length,), dtype="u1")
-            for length, is_cuda in zip(header["frame-lengths"], header["cuda-frames"])
-        )
         with kvikio.CuFile(header["path"], "rb") as f:
             file_offset = 0
             for b in ret:
                 f.pread(b, file_offset=file_offset).get()
                 file_offset += b.nbytes
     else:
-        ret.extend(
-            np.empty((length,), dtype="u1") for length in header["frame-lengths"]
-        )
         with open(str(header["path"]), "rb") as f:
             for b in ret:
                 f.readinto(b)
