@@ -171,7 +171,7 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
 
         # Write each frame consecutively into `path` in parallel
         with kvikio.CuFile(path, "w") as f:
-            file_offsets = itertools.accumulate(map(nbytes, frames))
+            file_offsets = itertools.accumulate(map(nbytes, frames), initial=0)
             futures = [f.pwrite(b, file_offset=o) for b, o in zip(frames, file_offsets)]
             for each_fut in futures:
                 each_fut.get()
@@ -212,9 +212,9 @@ def disk_read(header: Mapping, gds=False) -> list:
     if gds:
         import kvikio  # isort:skip
 
-        with kvikio.CuFile(header["path"], "rb") as f:
+        with kvikio.CuFile(str(header["path"]), "r") as f:
             # Read each frame consecutively from `path` in parallel
-            file_offsets = itertools.accumulate(b.nbytes for b in ret)
+            file_offsets = itertools.accumulate((b.nbytes for b in ret), initial=0)
             futures = [f.pread(b, file_offset=o) for b, o in zip(ret, file_offsets)]
             for each_fut in futures:
                 each_fut.get()
