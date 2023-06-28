@@ -169,10 +169,13 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
         import kvikio
 
         with kvikio.CuFile(path, "w") as f:
+            futs = []
             file_offset = 0
             for b, length in zip(frames, frame_lengths):
-                f.pwrite(b, file_offset=file_offset).get()
+                futs.append(f.pwrite(b, file_offset=file_offset))
                 file_offset += length
+            for each_fut in futs:
+                each_fut.get()
     else:
         with open(path, "wb") as f:
             os.writev(f.fileno(), frames)  # type: ignore
@@ -211,10 +214,13 @@ def disk_read(header: Mapping, gds=False) -> list:
         import kvikio  # isort:skip
 
         with kvikio.CuFile(header["path"], "rb") as f:
+            futs = []
             file_offset = 0
             for b in ret:
-                f.pread(b, file_offset=file_offset).get()
+                futs.append(f.pread(b, file_offset=file_offset))
                 file_offset += b.nbytes
+            for each_fut in futs:
+                each_fut.get()
     else:
         with open(str(header["path"]), "rb") as f:
             os.readv(f.fileno(), ret)  # type: ignore
