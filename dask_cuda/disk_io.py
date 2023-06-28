@@ -204,7 +204,7 @@ def disk_read(header: Mapping, gds=False) -> list:
     frames: list
         List of read frames
     """
-    ret = [
+    ret: list = [
         get_new_cuda_buffer()(length)
         if gds and is_cuda
         else np.empty((length,), dtype="u1")
