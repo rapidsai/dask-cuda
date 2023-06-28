@@ -1,3 +1,4 @@
+import itertools
 import os
 import os.path
 import pathlib
@@ -164,17 +165,15 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
         A dict of metadata
     """
     cuda_frames = tuple(hasattr(f, "__cuda_array_interface__") for f in frames)
-    frame_lengths = tuple(map(nbytes, frames))
+
     if gds and any(cuda_frames):
         import kvikio
 
+        # We write each frame consecutively into `path` in parallel
         with kvikio.CuFile(path, "w") as f:
-            futs = []
-            file_offset = 0
-            for b, length in zip(frames, frame_lengths):
-                futs.append(f.pwrite(b, file_offset=file_offset))
-                file_offset += length
-            for each_fut in futs:
+            file_offsets = itertools.accumulate(map(nbytes, frames))
+            futures = [f.pwrite(b, file_offset=o) for b, o in zip(frames, file_offsets)]
+            for each_fut in futures:
                 each_fut.get()
     else:
         with open(path, "wb") as f:
