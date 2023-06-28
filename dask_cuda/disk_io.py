@@ -175,8 +175,7 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
                 file_offset += length
     else:
         with open(path, "wb") as f:
-            for frame in frames:
-                f.write(frame)
+            f.writelines(frames)
     return {
         "method": "stdio",
         "path": SpillToDiskFile(path),
