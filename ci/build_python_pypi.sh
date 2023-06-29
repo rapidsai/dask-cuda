@@ -11,10 +11,10 @@ export GIT_DESCRIBE_NUMBER=$(git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count)
 # Build date for PyPI pre-releases
 export RAPIDS_VERSION_NUMBER="23.08"
 if rapids-is-release-build; then
-  export PACKAGE_VERSION_NUMBER="${RELEASE_VESION}.00"
+  export PACKAGE_VERSION_NUMBER="${RAPIDS_VERSION_NUMBER}.00"
 else
   export BUILD_DATE=$(date +%y%m%d)
-  export PACKAGE_VERSION_NUMBER="${RELEASE_VESION}.00a${BUILD_DATE}"
+  export PACKAGE_VERSION_NUMBER="${RAPIDS_VERSION_NUMBER}.00a${BUILD_DATE}"
 fi
 
 # Compute/export RAPIDS_DATE_STRING
