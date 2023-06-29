@@ -10,11 +10,12 @@ export GIT_DESCRIBE_NUMBER=$(git rev-list ${GIT_DESCRIBE_TAG}..HEAD --count)
 
 # Build date for PyPI pre-releases
 export RAPIDS_VERSION_NUMBER="23.08"
+export RAPIDS_FULL_VERSION_NUMBER="${RAPIDS_VERSION_NUMBER}.00"
 if rapids-is-release-build; then
-  export PACKAGE_VERSION_NUMBER="${RAPIDS_VERSION_NUMBER}.00"
+  export PACKAGE_VERSION_NUMBER="${RAPIDS_FULL_VERSION_NUMBER}"
 else
   export BUILD_DATE=$(date +%y%m%d)
-  export PACKAGE_VERSION_NUMBER="${RAPIDS_VERSION_NUMBER}.00a${BUILD_DATE}"
+  export PACKAGE_VERSION_NUMBER="${RAPIDS_FULL_VERSION_NUMBER}a${BUILD_DATE}"
 fi
 
 # Compute/export RAPIDS_DATE_STRING
@@ -27,7 +28,7 @@ function sed_runner() {
 
 # Update pyproject.toml with pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${RAPIDS_VERSION_NUMBER}"\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
+  sed_runner "s/^version = \""${RAPIDS_FULL_VERSION_NUMBER}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" ../pyproject.toml
 fi
 
 python -m build \
@@ -38,5 +39,5 @@ python -m build \
 
 # Revert pyproject.toml pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_VERSION_NUMBER}"\"/g" pyproject.toml
+  sed_runner "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_FULL_VERSION_NUMBER}"\"/g" ../pyproject.toml
 fi
