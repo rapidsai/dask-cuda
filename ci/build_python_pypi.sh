@@ -28,7 +28,7 @@ function sed_runner() {
 
 # Update pyproject.toml with pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${RAPIDS_FULL_VERSION_NUMBER}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" ../pyproject.toml
+  sed_runner "s/^version = \""${RAPIDS_FULL_VERSION_NUMBER}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
 fi
 
 python -m build \
@@ -39,5 +39,5 @@ python -m build \
 
 # Revert pyproject.toml pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_FULL_VERSION_NUMBER}"\"/g" ../pyproject.toml
+  sed_runner "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_FULL_VERSION_NUMBER}"\"/g" pyproject.toml
 fi
