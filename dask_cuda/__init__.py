@@ -11,7 +11,6 @@ import dask.dataframe.shuffle
 import dask.dataframe.multi
 import dask.bag.core
 
-from ._version import get_versions
 from .cuda_worker import CUDAWorker
 from .explicit_comms.dataframe.shuffle import (
     get_rearrange_by_column_wrapper,
@@ -20,8 +19,7 @@ from .explicit_comms.dataframe.shuffle import (
 from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
-__version__ = get_versions()["version"]
-del get_versions
+__version__ = "23.08.00"
 
 
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
