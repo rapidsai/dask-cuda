@@ -21,14 +21,9 @@ fi
 # Compute/export RAPIDS_DATE_STRING
 source rapids-env-update
 
-# Inplace sed replace; workaround for Linux and Mac
-function sed_runner() {
-    sed -i.bak ''"$1"'' $2 && rm -f ${2}.bak
-}
-
 # Update pyproject.toml with pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${RAPIDS_FULL_VERSION_NUMBER}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
+  sed -i "s/^version = \""${RAPIDS_FULL_VERSION_NUMBER}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
 fi
 
 python -m build \
@@ -39,5 +34,5 @@ python -m build \
 
 # Revert pyproject.toml pre-release build date
 if ! rapids-is-release-build; then
-  sed_runner "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_FULL_VERSION_NUMBER}"\"/g" pyproject.toml
+  sed -i "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${RAPIDS_FULL_VERSION_NUMBER}"\"/g" pyproject.toml
 fi
