@@ -144,8 +144,8 @@ class CUDAWorker(Server):
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`.  Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
-                    "#important-notes for more details"
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "for more details"
                 )
 
         if enable_nvlink and rmm_managed_memory:

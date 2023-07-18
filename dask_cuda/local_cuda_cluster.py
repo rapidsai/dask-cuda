@@ -276,8 +276,8 @@ class LocalCUDACluster(LocalCluster):
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`. Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
-                    "#important-notes for more details"
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "for more details"
                 )
 
         self.rmm_log_directory = rmm_log_directory
