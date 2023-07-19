@@ -2,6 +2,7 @@ import importlib
 import math
 import operator
 import os
+import pickle
 import time
 import warnings
 from contextlib import suppress
@@ -716,14 +717,20 @@ def get_worker_config(dask_worker):
     # assume homogeneous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
-
     # device and host memory configuration
     for p in plugin_vals:
-        ret[f"[plugin] {type(p).__name__}"] = {
+        config = {
             v: getattr(p, v)
             for v in dir(p)
             if not (v.startswith("_") or v in {"setup", "cores"})
         }
+        # To send this back to the client the data will be serialised
+        # which might fail, so pre-emptively check
+        try:
+            pickle.dumps(config)
+        except TypeError:
+            config = "UNKNOWN CONFIG"
+        ret[f"[plugin] {type(p).__name__}"] = config
 
     for mem in [
         "memory_limit",
