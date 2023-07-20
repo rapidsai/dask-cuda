@@ -32,10 +32,6 @@ CUDF_CHANNEL_20=$(rapids-get-artifact ci/cudf/pull-request/13599/${COMMIT}/cudf_
 rapids-logger $LIBCUDF_CHANNEL_20
 rapids-logger $CUDF_CHANNEL_20
 
-# Force remove packages
-conda remove --force cudf libcudf dask-cudf pandas python-tzdata
-
-
 
 rapids-logger "Downloading artifacts from previous jobs"
 PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
@@ -49,6 +45,10 @@ rapids-print-env
 rapids-mamba-retry install \
   --channel "${PYTHON_CHANNEL}" \
   dask-cuda
+
+
+# Force remove packages
+conda remove --force cudf libcudf dask-cudf pandas python-tzdata
 
 # Install the removed packages from the custom artifact channels.
 rapids-mamba-retry install \
