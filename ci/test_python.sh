@@ -19,7 +19,7 @@ conda activate test
 set -u
 
 # Possible cuda versions 11, 12
-CONDA_CUDA_VERSION=${RAPIDS_CUDA_VERSION%.*}
+CONDA_CUDA_VERSION=$(echo ${RAPIDS_CUDA_VERSION} | cut -d. -f1)
 rapids-logger "CONDA_VUDA_VERSION=${CONDA_CUDA_VERSION}"
 
 # Don't change commit unless communicated.
