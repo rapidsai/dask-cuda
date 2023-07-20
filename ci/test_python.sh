@@ -18,6 +18,31 @@ set +u
 conda activate test
 set -u
 
+# Possible cuda versions 11, 12
+CONDA_CUDA_VERSION=${RAPIDS_CUDA_VERSION%.*}
+rapids-logger "CONDA_VUDA_VERSION=${CONDA_CUDA_VERSION}"
+
+# Don't change commit unless communicated.
+COMMIT="c67e306"
+
+LIBCUDF_CHANNEL_20=$(rapids-get-artifact ci/cudf/pull-request/13599/${COMMIT}/cudf_conda_cpp_cuda${CONDA_CUDA_VERSION}_$(arch).tar.gz)
+
+CUDF_CHANNEL_20=$(rapids-get-artifact ci/cudf/pull-request/13599/${COMMIT}/cudf_conda_python_cuda${CONDA_CUDA_VERSION}_${RAPIDS_PY_VERSION//.}_$(arch).tar.gz)
+
+rapids-logger $LIBCUDF_CHANNEL_20
+rapids-logger $CUDF_CHANNEL_20
+
+# Force remove packages
+rapids-mamba-retry remove --force cudf libcudf dask-cudf pandas python-tzdata
+
+# Install the removed packages from the custom artifact channels.
+rapids-mamba-retry install \
+  --channel "${CUDF_CHANNEL_20}" \
+  --channel "${LIBCUDF_CHANNEL_20}" \
+  --channel dask/label/dev \
+  --channel conda-forge \
+  cudf libcudf dask-cudf pandas==2.0.2 python-tzdata
+
 rapids-logger "Downloading artifacts from previous jobs"
 PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
 
