@@ -35,13 +35,7 @@ rapids-logger $CUDF_CHANNEL_20
 # Force remove packages
 conda remove --force cudf libcudf dask-cudf pandas python-tzdata
 
-# Install the removed packages from the custom artifact channels.
-rapids-mamba-retry install \
-  --channel "${CUDF_CHANNEL_20}" \
-  --channel "${LIBCUDF_CHANNEL_20}" \
-  --channel dask/label/dev \
-  --channel conda-forge \
-  cudf libcudf dask-cudf pandas==2.0.2 python-tzdata
+
 
 rapids-logger "Downloading artifacts from previous jobs"
 PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
@@ -55,6 +49,14 @@ rapids-print-env
 rapids-mamba-retry install \
   --channel "${PYTHON_CHANNEL}" \
   dask-cuda
+
+# Install the removed packages from the custom artifact channels.
+rapids-mamba-retry install \
+  --channel "${CUDF_CHANNEL_20}" \
+  --channel "${LIBCUDF_CHANNEL_20}" \
+  --channel dask/label/dev \
+  --channel conda-forge \
+  cudf libcudf dask-cudf pandas==2.0.2 python-tzdata
 
 rapids-logger "Check GPU usage"
 nvidia-smi
