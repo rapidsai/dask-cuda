@@ -33,7 +33,7 @@ rapids-logger $LIBCUDF_CHANNEL_20
 rapids-logger $CUDF_CHANNEL_20
 
 # Force remove packages
-rapids-mamba-retry remove --force cudf libcudf dask-cudf pandas python-tzdata
+conda remove --force cudf libcudf dask-cudf pandas python-tzdata
 
 # Install the removed packages from the custom artifact channels.
 rapids-mamba-retry install \
