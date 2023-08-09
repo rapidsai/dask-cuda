@@ -30,10 +30,9 @@ requirements:
     - python
     - pip
     - tomli
-    - versioneer >=0.24
   run:
     - python
-    - dask-core ==2023.3.2
+    - dask-core ==2023.7.1
     {% for r in data.get("project", {}).get("dependencies", []) %}
     - {{ r }}
     {% endfor %}

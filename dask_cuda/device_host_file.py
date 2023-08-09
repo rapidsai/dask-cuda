@@ -1,4 +1,3 @@
-import functools
 import itertools
 import logging
 import os
@@ -8,6 +7,7 @@ import numpy
 from zict import Buffer, File, Func
 from zict.common import ZictBase
 
+import dask
 from distributed.protocol import (
     dask_deserialize,
     dask_serialize,
@@ -22,6 +22,13 @@ from distributed.utils import nbytes
 from .is_device_object import is_device_object
 from .is_spillable_object import is_spillable_object
 from .utils import nvtx_annotate
+
+
+def _serialize_bytelist(x, **kwargs):
+    kwargs["on_error"] = "raise"
+
+    compression = dask.config.get("distributed.worker.memory.spill-compression")
+    return serialize_bytelist(x, compression=compression, **kwargs)
 
 
 class LoggedBuffer(Buffer):
@@ -192,7 +199,7 @@ class DeviceHostFile(ZictBase):
 
         self.host_func = dict()
         self.disk_func = Func(
-            functools.partial(serialize_bytelist, on_error="raise"),
+            _serialize_bytelist,
             deserialize_bytes,
             File(self.disk_func_path),
         )

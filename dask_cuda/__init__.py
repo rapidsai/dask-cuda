@@ -11,28 +11,26 @@ import dask.dataframe.shuffle
 import dask.dataframe.multi
 import dask.bag.core
 
-from ._version import get_versions
 from .cuda_worker import CUDAWorker
 from .explicit_comms.dataframe.shuffle import (
     get_rearrange_by_column_wrapper,
-    get_default_shuffle_algorithm,
+    get_default_shuffle_method,
 )
 from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
-__version__ = get_versions()["version"]
-del get_versions
+__version__ = "23.08.00"
 
 
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
 dask.dataframe.shuffle.rearrange_by_column = get_rearrange_by_column_wrapper(
     dask.dataframe.shuffle.rearrange_by_column
 )
-# We have to replace all modules that imports Dask's `get_default_shuffle_algorithm()`
+# We have to replace all modules that imports Dask's `get_default_shuffle_method()`
 # TODO: introduce a shuffle-algorithm dispatcher in Dask so we don't need this hack
-dask.dataframe.shuffle.get_default_shuffle_algorithm = get_default_shuffle_algorithm
-dask.dataframe.multi.get_default_shuffle_algorithm = get_default_shuffle_algorithm
-dask.bag.core.get_default_shuffle_algorithm = get_default_shuffle_algorithm
+dask.dataframe.shuffle.get_default_shuffle_method = get_default_shuffle_method
+dask.dataframe.multi.get_default_shuffle_method = get_default_shuffle_method
+dask.bag.core.get_default_shuffle_method = get_default_shuffle_method
 
 
 # Monkey patching Dask to make use of proxify and unproxify in compatibility mode

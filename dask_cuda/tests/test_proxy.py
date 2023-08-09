@@ -422,7 +422,6 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
     async with dask_cuda.LocalCUDACluster(
         n_workers=1,
         protocol=protocol,
-        enable_tcp_over_ucx=protocol == "ucx",
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -462,7 +461,6 @@ async def test_communicating_disk_objects(protocol, shared_fs):
     async with dask_cuda.LocalCUDACluster(
         n_workers=1,
         protocol=protocol,
-        enable_tcp_over_ucx=protocol == "ucx",
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:

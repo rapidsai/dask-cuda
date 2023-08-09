@@ -87,9 +87,10 @@ def cuda():
     "--memory-limit",
     default="auto",
     show_default=True,
-    help="""Bytes of memory per process that the worker can use. Can be an integer
-    (bytes), float (fraction of total system memory), string (like ``"5GB"`` or
-    ``"5000M"``), or ``"auto"`` or 0 for no memory management.""",
+    help="""Size of the host LRU cache, which is used to determine when the worker
+    starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
+    integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
+    or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",

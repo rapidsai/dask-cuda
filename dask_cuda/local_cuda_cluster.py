@@ -65,9 +65,10 @@ class LocalCUDACluster(LocalCluster):
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
     memory_limit : int, float, str, or None, default "auto"
-        Bytes of memory per process that the worker can use. Can be an integer (bytes),
-        float (fraction of total system memory), string (like ``"5GB"`` or ``"5000M"``),
-        or ``"auto"``, 0, or ``None`` for no memory management.
+        Size of the host LRU cache, which is used to determine when the worker
+        starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
+        integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
+        or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.
     device_memory_limit : int, float, str, or None, default 0.8
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
@@ -275,8 +276,8 @@ class LocalCUDACluster(LocalCluster):
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`. Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
-                    "#important-notes for more details"
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "for more details"
                 )
 
         self.rmm_log_directory = rmm_log_directory

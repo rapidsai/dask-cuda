@@ -46,19 +46,29 @@ dependencies:
           - matrix:
               cuda: "11.2"
             packages:
-              - cudatoolkit=11.2
+              - cuda-version=11.2
+              - cudatoolkit
           - matrix:
               cuda: "11.4"
             packages:
-              - cudatoolkit=11.4
+              - cuda-version=11.4
+              - cudatoolkit
           - matrix:
               cuda: "11.5"
             packages:
-              - cudatoolkit=11.5
+              - cuda-version=11.5
+              - cudatoolkit
           - matrix:
               cuda: "11.8"
             packages:
-              - cudatoolkit=11.8
+              - cuda-version=11.8
+              - cudatoolkit
+          - matrix:
+              cuda: "12.0"
+            packages:
+              - cuda-version=12.0
+              - cuda-nvcc-impl
+              - cuda-nvrtc
   develop:
     common:
       - output_types: [conda, requirements]
@@ -91,8 +101,8 @@ dependencies:
     common:
       - output_types: [conda, requirements]
         packages:
-          - dask==2023.3.2
-          - distributed==2023.3.2.1
+          - dask==2023.7.1
+          - distributed==2023.7.1
           - numba>=0.57
           - numpy>=1.21
           - pandas>=1.3,<1.6.0dev0
@@ -100,18 +110,18 @@ dependencies:
           - zict>=2.0.0
       - output_types: [conda]
         packages:
-          - dask-core==2023.3.2
+          - dask-core==2023.7.1
   test_python:
     common:
       - output_types: [conda]
         packages:
-          - cucim=23.06
-          - cudf=23.06
-          - dask-cudf=23.06
+          - cudf=23.08
+          - dask-cudf=23.08
+          - kvikio=23.08
           - pytest
           - pytest-cov
           - ucx-proc=*=gpu
-          - ucx-py=0.32
+          - ucx-py=0.33
     specific:
       - output_types: conda
         matrices:

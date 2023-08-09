@@ -1,7 +1,0 @@
-version: 2
-
-sphinx:
-  configuration: rtd/conf.py
-
-formats:
-  - htmlzip
