@@ -1,3 +1,35 @@
+# dask-cuda 23.08.00 (9 Aug 2023)
+
+## 🐛 Bug Fixes
+
+- Ensure plugin config can be passed from worker to client ([#1212](https://github.com/rapidsai/dask-cuda/pull/1212)) [@wence-](https://github.com/wence-)
+- Adjust to new `get_default_shuffle_method` name ([#1200](https://github.com/rapidsai/dask-cuda/pull/1200)) [@pentschev](https://github.com/pentschev)
+- Increase minimum timeout to wait for workers in CI ([#1192](https://github.com/rapidsai/dask-cuda/pull/1192)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Remove RTD configuration and references to RTD page ([#1211](https://github.com/rapidsai/dask-cuda/pull/1211)) [@charlesbluca](https://github.com/charlesbluca)
+- Clarify `memory_limit` docs ([#1207](https://github.com/rapidsai/dask-cuda/pull/1207)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Remove versioneer ([#1204](https://github.com/rapidsai/dask-cuda/pull/1204)) [@pentschev](https://github.com/pentschev)
+- Remove code for Distributed&lt;2023.5.1 compatibility ([#1191](https://github.com/rapidsai/dask-cuda/pull/1191)) [@pentschev](https://github.com/pentschev)
+- Specify disk spill compression based on Dask config ([#1190](https://github.com/rapidsai/dask-cuda/pull/1190)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for `23.08` release ([#1214](https://github.com/rapidsai/dask-cuda/pull/1214)) [@galipremsagar](https://github.com/galipremsagar)
+- Revert CUDA 12.0 CI workflows to branch-23.08. ([#1210](https://github.com/rapidsai/dask-cuda/pull/1210)) [@bdice](https://github.com/bdice)
+- Use minimal Numba dependencies for CUDA 12 ([#1209](https://github.com/rapidsai/dask-cuda/pull/1209)) [@jakirkham](https://github.com/jakirkham)
+- Aggregate reads &amp; writes in `disk_io` ([#1205](https://github.com/rapidsai/dask-cuda/pull/1205)) [@jakirkham](https://github.com/jakirkham)
+- CUDA 12 Support ([#1201](https://github.com/rapidsai/dask-cuda/pull/1201)) [@quasiben](https://github.com/quasiben)
+- Remove explicit UCX config from tests ([#1199](https://github.com/rapidsai/dask-cuda/pull/1199)) [@pentschev](https://github.com/pentschev)
+- use rapids-upload-docs script ([#1194](https://github.com/rapidsai/dask-cuda/pull/1194)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Unpin `dask` and `distributed` for development ([#1189](https://github.com/rapidsai/dask-cuda/pull/1189)) [@galipremsagar](https://github.com/galipremsagar)
+- Remove documentation build scripts for Jenkins ([#1187](https://github.com/rapidsai/dask-cuda/pull/1187)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Use KvikIO in Dask-CUDA ([#925](https://github.com/rapidsai/dask-cuda/pull/925)) [@jakirkham](https://github.com/jakirkham)
+
 # dask-cuda 23.06.00 (7 Jun 2023)
 
 ## 🚨 Breaking Changes
