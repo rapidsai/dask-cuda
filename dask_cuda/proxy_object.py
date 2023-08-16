@@ -19,7 +19,7 @@ import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
 from distributed.protocol.compression import decompress
-from distributed.worker import dumps_function, loads_function
+from distributed.worker import dumps_function
 
 from dask_cuda.disk_io import disk_read
 
@@ -440,7 +440,7 @@ class ProxyObject:
         pxy = self._pxy_get(copy=True)
         pxy.serialize(serializers=("pickle",))
         if pxy.subclass:
-            subclass = loads_function(pxy.subclass)
+            subclass = pickle.loads(pxy.subclass)
         else:
             subclass = ProxyObject
 
@@ -882,7 +882,7 @@ def obj_pxy_dask_deserialize(header, frames):
     if args["subclass"] is None:
         subclass = ProxyObject
     else:
-        subclass = loads_function(args["subclass"])
+        subclass = pickle.loads(args["subclass"])
     pxy = ProxyDetail(obj=(header["proxied-header"], frames), **args)
     if pxy.serializer == "disk":
         header, _ = pxy.obj
