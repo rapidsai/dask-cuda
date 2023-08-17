@@ -19,7 +19,6 @@ import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
 from distributed.protocol.compression import decompress
-from distributed.worker import dumps_function
 
 from dask_cuda.disk_io import disk_read
 
@@ -85,7 +84,7 @@ def asproxy(
             subclass = ProxyObject
             subclass_serialized = None
         else:
-            subclass_serialized = dumps_function(subclass)
+            subclass_serialized = pickle.dumps(subclass)
 
         ret = subclass(
             ProxyDetail(
