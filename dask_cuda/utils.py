@@ -56,14 +56,11 @@ class RMMSetup:
                 "`rmm_maximum_pool_size` was specified without specifying "
                 "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
             )
-        if async_alloc is True and managed_memory is True:
-            raise ValueError(
-                "`rmm_managed_memory` is incompatible with the `rmm_async`."
-            )
-        if async_alloc is True and maximum_pool_size is not None:
-            raise ValueError(
-                "`rmm_maximum_pool_size` is incompatible with the `rmm_async`."
-            )
+        if async_alloc is True:
+            if managed_memory is True:
+                raise ValueError(
+                    "`rmm_managed_memory` is incompatible with the `rmm_async`."
+                )
         if async_alloc is False and release_threshold is not None:
             raise ValueError("`rmm_release_threshold` requires `rmm_async`.")
 
@@ -90,12 +87,20 @@ class RMMSetup:
                     self.release_threshold, alignment_size=256
                 )
 
-            rmm.mr.set_current_device_resource(
-                rmm.mr.CudaAsyncMemoryResource(
-                    initial_pool_size=self.initial_pool_size,
-                    release_threshold=self.release_threshold,
-                )
+            mr = rmm.mr.CudaAsyncMemoryResource(
+                initial_pool_size=self.initial_pool_size,
+                release_threshold=self.release_threshold,
             )
+
+            if self.maximum_pool_size is not None:
+                self.maximum_pool_size = parse_device_memory_limit(
+                    self.maximum_pool_size, alignment_size=256
+                )
+                mr = rmm.mr.LimitingResourceAdaptor(
+                    mr, allocation_limit=self.maximum_pool_size
+                )
+
+            rmm.mr.set_current_device_resource(mr)
             if self.logging:
                 rmm.enable_logging(
                     log_file_name=get_rmm_log_file_name(
