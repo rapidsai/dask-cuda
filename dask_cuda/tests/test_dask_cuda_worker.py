@@ -450,5 +450,6 @@ def test_worker_timeout():
     )
 
     assert "closing nanny at" in ret.stderr.lower()
-    assert "reason: nanny-close" in ret.stderr.lower()
+    assert "reason: failure-to-start-" in ret.stderr.lower()
+    assert "timeouterror" in ret.stderr.lower()
     assert ret.returncode == 0
