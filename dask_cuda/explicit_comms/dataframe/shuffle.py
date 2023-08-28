@@ -617,6 +617,7 @@ def shuffle_to_parquet(
     npartitions: Optional[int] = None,
     ignore_index: bool = False,
     batchsize: int = 4,
+    pre_shuffle: Optional[int] = None,
 ) -> DataFrame:
 
     import dask_cudf
@@ -644,7 +645,10 @@ def shuffle_to_parquet(
         offset = parts_per_batch * stage
         df = full_df.partitions[offset : offset + parts_per_batch]
 
-        # Step (a):
+        # Execute pre-shuffle function on each batch
+        if callable(pre_shuffle):
+            df = pre_shuffle(df)
+
         df = df.persist()  # Make sure optimizations are apply on the existing graph
         wait([df])  # Make sure all keys has been materialized on workers
         name = (
@@ -678,7 +682,7 @@ def shuffle_to_parquet(
             )
         wait(list(shuffle_result.values()))
 
-    return dask_cudf.read_parquet(parquet_dir, blocksize=None)
+    return dask_cudf.read_parquet(parquet_dir, split_row_groups=False)
 
 
 def _use_explicit_comms() -> bool:
