@@ -454,6 +454,7 @@ async def test_get_cluster_configuration():
 @gen_test(timeout=20)
 async def test_worker_fraction_limits():
     async with LocalCUDACluster(
+        dashboard_address=None,
         device_memory_limit=0.1,
         rmm_pool_size=0.2,
         rmm_maximum_pool_size=0.3,
