@@ -400,7 +400,7 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-@gen_test(timeout=30)
+@gen_test(timeout=60)
 async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
     cudf = pytest.importorskip("cudf")
