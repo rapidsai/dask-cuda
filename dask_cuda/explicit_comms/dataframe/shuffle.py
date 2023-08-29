@@ -5,6 +5,7 @@ import contextlib
 import functools
 import inspect
 import threading
+import uuid
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -407,6 +408,8 @@ async def shuffle_task(
     assert stage.keys() == rank_to_inkeys[myrank]
     no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize, proxify)
 
+    fns = []
+    append_files = True  # Whether to keep files open between batches
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     for _ in range(num_rounds):
         partitions = create_partitions(
@@ -427,28 +430,44 @@ async def shuffle_task(
 
             out_part_ids = list(out_part_id_to_dataframe_list.keys())
             for out_part_id in out_part_ids:
-                writers = _get_worker_cache("writers")
-                try:
-                    writer = writers[out_part_id]
-                except KeyError:
-                    fn = f"{parquet_dir}/part.{out_part_id}.parquet"
-                    writer = cudf.io.parquet.ParquetWriter(fn, index=False)
-                    writers[out_part_id] = writer
-
-                dfs = out_part_id_to_dataframe_list.pop(out_part_id)
-                for df in dfs:
-                    writer.write_table(df)
-                del dfs
-            await asyncio.sleep(0)
+                if append_files:
+                    writers = _get_worker_cache("writers")
+                    try:
+                        writer = writers[out_part_id]
+                    except KeyError:
+                        fn = f"{parquet_dir}/part.{out_part_id}.parquet"
+                        fns.append(fn)
+                        writer = cudf.io.parquet.ParquetWriter(fn, index=False)
+                        writers[out_part_id] = writer
+                    dfs = out_part_id_to_dataframe_list.pop(out_part_id)
+                    dfs = [df for df in dfs if len(dfs) > 0]
+                    for df in dfs:
+                        writer.write_table(df)
+                    del dfs
+                else:
+                    dfs = out_part_id_to_dataframe_list.pop(out_part_id)
+                    id = str(uuid.uuid4())[:8]
+                    fn = f"{parquet_dir}/part.{out_part_id}.{id}.parquet"
+                    fns.append(fn)
+                    dfs = [df for df in dfs if len(dfs) > 0]
+                    if len(dfs) > 1:
+                        with cudf.io.parquet.ParquetWriter(fn, index=False) as writer:
+                            for df in dfs:
+                                writer.write_table(df)
+                    elif dfs:
+                        dfs[0].to_parquet(fn, index=False)
+                    del dfs
+                await asyncio.sleep(0)
 
     if parquet_dir:
-        out_part_ids = list(writers.keys())
-        if final_task:
-            for out_part_id in out_part_ids:
-                writers.pop(out_part_id).close()
-                await asyncio.sleep(0)
-            del writers
-        return out_part_ids
+        if append_files:
+            if final_task:
+                for out_part_id in list(writers.keys()):
+                    writers.pop(out_part_id).close()
+                    await asyncio.sleep(0)
+                del writers
+            return fns
+        return fns
 
     # Finally, we concatenate the output dataframes into the final output partitions
     ret = []
@@ -620,9 +639,14 @@ def shuffle_to_parquet(
     pre_shuffle: Optional[int] = None,
 ) -> DataFrame:
 
+    import os
+
     import dask_cudf
 
     c = comms.default_comms()
+
+    if not os.path.isdir(parquet_dir):
+        os.mkdir(parquet_dir)
 
     # The ranks of the output workers
     ranks = list(range(len(c.worker_addresses)))
