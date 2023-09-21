@@ -4,7 +4,7 @@ import os
 import time
 
 import numpy
-from zict import Buffer, File, Func
+from zict import Buffer, Func
 from zict.common import ZictBase
 
 import dask
@@ -17,6 +17,7 @@ from distributed.protocol import (
     serialize_bytelist,
 )
 from distributed.sizeof import safe_sizeof
+from distributed.spill import CustomFile as KeyAsStringFile
 from distributed.utils import nbytes
 
 from .is_device_object import is_device_object
@@ -201,7 +202,10 @@ class DeviceHostFile(ZictBase):
         self.disk_func = Func(
             _serialize_bytelist,
             deserialize_bytes,
-            File(self.disk_func_path),
+            # Task keys are not strings, so this takes care of
+            # converting arbitrary tuple keys into a string before
+            # handing off to zict.File
+            KeyAsStringFile(self.disk_func_path),
         )
 
         host_buffer_kwargs = {}

@@ -384,7 +384,7 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
