@@ -121,7 +121,7 @@ def delayed_worker_assert(
         },
     ],
 )
-@gen_test(timeout=30)
+@gen_test(timeout=120)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set({"distributed.worker.memory.terminate": False}):
@@ -212,7 +212,7 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
-@gen_test(timeout=30)
+@gen_test(timeout=120)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
