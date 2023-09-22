@@ -7,7 +7,7 @@ requires = [
 
 [project]
 name = "dask-cuda"
-version = "23.10.00"
+version = "23.12.00"
 description = "Utilities for Dask and CUDA interactions"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
