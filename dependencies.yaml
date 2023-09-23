@@ -115,7 +115,6 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - aws-sdk-cpp<1.11
           - cudf=23.10
           - dask-cudf=23.10
           - kvikio=23.10
