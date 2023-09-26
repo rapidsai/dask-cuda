@@ -134,7 +134,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                             assert ddf.npartitions == output_nparts
 
                             if _partitions:
-                                # If "_partitions" is the hash key, we except all but
+                                # If "_partitions" is the hash key, we expect all but
                                 # the first partition to be empty
                                 assert_eq(ddf.partitions[0].compute(), df)
                                 assert all(
@@ -142,7 +142,6 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                                     for i in range(1, ddf.npartitions)
                                 )
                             else:
-
                                 # Check that each partition hashes to the same value
                                 result = ddf.map_partitions(
                                     check_partitions, output_nparts
