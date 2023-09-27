@@ -21,6 +21,7 @@ from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
 __version__ = "23.10.00"
 
+from . import compat
 
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
 dask.dataframe.shuffle.rearrange_by_column = get_rearrange_by_column_wrapper(
