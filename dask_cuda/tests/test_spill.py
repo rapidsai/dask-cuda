@@ -103,11 +103,12 @@ def delayed_worker_assert(
         },
         {
             # This test setup differs from the one above as Distributed worker
-            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            # spilling fraction is very low and thus forcefully triggers
+            # `DeviceHostFile.evict()`
             "device_memory_limit": int(200e6),
             "memory_limit": int(200e6),
-            "host_target": None,
-            "host_spill": None,
+            "host_target": False,
+            "host_spill": 0.01,
             "host_pause": False,
             "spills_to_disk": True,
         },
@@ -124,7 +125,14 @@ def delayed_worker_assert(
 @gen_test(timeout=120)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
-    with dask.config.set({"distributed.worker.memory.terminate": False}):
+    with dask.config.set(
+        {
+            "distributed.worker.memory.terminate": False,
+            "distributed.worker.memory.pause": params["host_pause"],
+            "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.target": params["host_target"],
+        }
+    ):
         async with LocalCUDACluster(
             n_workers=1,
             scheduler_port=0,
@@ -133,9 +141,6 @@ async def test_cupy_cluster_device_spill(params):
             asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=params["host_pause"],
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
@@ -194,11 +199,12 @@ async def test_cupy_cluster_device_spill(params):
         },
         {
             # This test setup differs from the one above as Distributed worker
-            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            # spilling fraction is very low and thus forcefully triggers
+            # `DeviceHostFile.evict()`
             "device_memory_limit": int(50e6),
             "memory_limit": int(50e6),
-            "host_target": None,
-            "host_spill": None,
+            "host_target": False,
+            "host_spill": 0.01,
             "host_pause": False,
             "spills_to_disk": True,
         },
@@ -221,16 +227,19 @@ async def test_cudf_cluster_device_spill(params):
             "distributed.comm.compression": False,
             "distributed.worker.memory.terminate": False,
             "distributed.worker.memory.spill-compression": False,
+            "distributed.worker.memory.pause": params["host_pause"],
+            "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.target": params["host_target"],
         }
     ):
         async with LocalCUDACluster(
             n_workers=1,
+            scheduler_port=0,
+            silence_logs=False,
+            dashboard_address=None,
+            asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=params["host_pause"],
-            asynchronous=True,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
