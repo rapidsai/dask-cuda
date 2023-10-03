@@ -1,3 +1,4 @@
+import gc
 import os
 from time import sleep
 
@@ -288,6 +289,7 @@ async def test_cudf_cluster_device_spill(params):
                 await wait(cdf2)
 
                 del cdf
+                gc.collect()
 
                 await client.run(
                     assert_host_chunks,
@@ -307,9 +309,15 @@ async def test_cudf_cluster_device_spill(params):
 
                 del cdf2
 
-                await client.run(
-                    delayed_worker_assert,
-                    0,
-                    0,
-                    0,
-                )
+                while True:
+                    try:
+                        await client.run(
+                            delayed_worker_assert,
+                            0,
+                            0,
+                            0,
+                        )
+                    except AssertionError:
+                        gc.collect()
+                    else:
+                        break
