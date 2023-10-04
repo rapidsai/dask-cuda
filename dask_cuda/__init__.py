@@ -19,7 +19,7 @@ from .explicit_comms.dataframe.shuffle import (
 from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
-__version__ = "23.10.00"
+__version__ = "23.12.00"
 
 from . import compat
 

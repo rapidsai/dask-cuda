@@ -115,13 +115,13 @@ dependencies:
     common:
       - output_types: [conda]
         packages:
-          - cudf=23.10
-          - dask-cudf=23.10
-          - kvikio=23.10
+          - cudf=23.12
+          - dask-cudf=23.12
+          - kvikio=23.12
           - pytest
           - pytest-cov
           - ucx-proc=*=gpu
-          - ucx-py=0.34
+          - ucx-py=0.35
     specific:
       - output_types: conda
         matrices:
