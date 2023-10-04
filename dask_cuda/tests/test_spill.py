@@ -141,7 +141,7 @@ def assert_disk_chunks(spills_to_disk, dask_worker=None):
         },
     ],
 )
-@gen_test(timeout=120)
+@gen_test(timeout=30)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
     with dask.config.set(
@@ -241,7 +241,7 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
-@gen_test(timeout=120)
+@gen_test(timeout=30)
 async def test_cudf_cluster_device_spill(params):
     cudf = pytest.importorskip("cudf")
 
