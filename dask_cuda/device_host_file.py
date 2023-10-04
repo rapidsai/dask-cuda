@@ -17,7 +17,7 @@ from distributed.protocol import (
     serialize_bytelist,
 )
 from distributed.sizeof import safe_sizeof
-from distributed.spill import CustomFile as KeyAsStringFile
+from distributed.spill import AnyKeyFile as KeyAsStringFile
 from distributed.utils import nbytes
 
 from .is_device_object import is_device_object
