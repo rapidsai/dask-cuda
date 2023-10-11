@@ -262,6 +262,40 @@ async def test_rmm_async():
 
 
 @gen_test(timeout=20)
+async def test_rmm_async_with_maximum_pool_size():
+    rmm = pytest.importorskip("rmm")
+
+    driver_version = rmm._cuda.gpu.driverGetVersion()
+    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
+    if driver_version < 11020 or runtime_version < 11020:
+        pytest.skip("cudaMallocAsync not supported")
+
+    async with LocalCUDACluster(
+        rmm_async=True,
+        rmm_pool_size="2GB",
+        rmm_release_threshold="3GB",
+        rmm_maximum_pool_size="4GB",
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_types = await client.run(
+                lambda: (
+                    rmm.mr.get_current_device_resource_type(),
+                    type(rmm.mr.get_current_device_resource().get_upstream()),
+                )
+            )
+            for v in memory_resource_types.values():
+                memory_resource_type, upstream_memory_resource_type = v
+                assert memory_resource_type is rmm.mr.LimitingResourceAdaptor
+                assert upstream_memory_resource_type is rmm.mr.CudaAsyncMemoryResource
+
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
+            assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 4000000000
+
+
+@gen_test(timeout=20)
 async def test_rmm_logging():
     rmm = pytest.importorskip("rmm")
 
@@ -420,6 +454,7 @@ async def test_get_cluster_configuration():
 @gen_test(timeout=20)
 async def test_worker_fraction_limits():
     async with LocalCUDACluster(
+        dashboard_address=None,
         device_memory_limit=0.1,
         rmm_pool_size=0.2,
         rmm_maximum_pool_size=0.3,

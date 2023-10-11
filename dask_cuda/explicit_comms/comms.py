@@ -6,7 +6,6 @@ import uuid
 from typing import Any, Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
-from dask.utils import stringify
 from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
@@ -305,8 +304,7 @@ class CommsContext:
         dict
             dict that maps each worker-rank to the workers set of staged keys
         """
-        key_set = {stringify(k) for k in keys}
-        return dict(self.run(_stage_keys, name, key_set))
+        return dict(self.run(_stage_keys, name, set(keys)))
 
 
 def pop_staging_area(session_state: dict, name: str) -> Dict[str, Any]:
