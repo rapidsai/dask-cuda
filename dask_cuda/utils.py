@@ -18,7 +18,7 @@ import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
 from dask.utils import format_bytes, parse_bytes
-from distributed import Worker, wait
+from distributed import Worker, WorkerPlugin, wait
 from distributed.comm import parse_address
 
 try:
@@ -32,7 +32,7 @@ except ImportError:
         yield
 
 
-class CPUAffinity:
+class CPUAffinity(WorkerPlugin):
     def __init__(self, cores):
         self.cores = cores
 
@@ -40,7 +40,7 @@ class CPUAffinity:
         os.sched_setaffinity(0, self.cores)
 
 
-class RMMSetup:
+class RMMSetup(WorkerPlugin):
     def __init__(
         self,
         initial_pool_size,
@@ -135,7 +135,7 @@ class RMMSetup:
             rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
 
 
-class PreImport:
+class PreImport(WorkerPlugin):
     def __init__(self, libraries):
         if libraries is None:
             libraries = []
