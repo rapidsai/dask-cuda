@@ -2,6 +2,8 @@ import copy
 import logging
 import os
 import warnings
+from functools import partial
+from typing import Literal
 
 import dask
 from distributed import LocalCluster, Nanny, Worker
@@ -23,6 +25,13 @@ from .utils import (
 )
 
 
+class IncreasedCloseTimeoutNanny(Nanny):
+    async def close(  # type:ignore[override]
+        self, timeout: float = 10.0, reason: str = "nanny-close"
+    ) -> Literal["OK"]:
+        return await super().close(timeout=timeout, reason=reason)
+
+
 class LoggedWorker(Worker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,7 +41,7 @@ class LoggedWorker(Worker):
         self.data.set_address(self.address)
 
 
-class LoggedNanny(Nanny):
+class LoggedNanny(IncreasedCloseTimeoutNanny):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, worker_class=LoggedWorker, **kwargs)
 
@@ -333,13 +342,10 @@ class LocalCUDACluster(LocalCluster):
             enable_rdmacm=enable_rdmacm,
         )
 
-        if worker_class is not None:
-            from functools import partial
-
-            worker_class = partial(
-                LoggedNanny if log_spilling is True else Nanny,
-                worker_class=worker_class,
-            )
+        worker_class = partial(
+            LoggedNanny if log_spilling is True else IncreasedCloseTimeoutNanny,
+            worker_class=worker_class,
+        )
 
         self.pre_import = pre_import
 
