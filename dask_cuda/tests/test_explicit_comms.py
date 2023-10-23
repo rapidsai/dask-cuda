@@ -17,7 +17,7 @@ from distributed.deploy.local import LocalCluster
 import dask_cuda
 from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
-from dask_cuda.local_cuda_cluster import IncreasedCloseTimeoutNanny
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")

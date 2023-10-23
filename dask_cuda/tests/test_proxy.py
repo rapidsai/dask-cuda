@@ -23,6 +23,7 @@ from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 # Make the "disk" serializer available and use a directory that are
 # remove on exit.
@@ -422,6 +423,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
     async with dask_cuda.LocalCUDACluster(
         n_workers=1,
         protocol=protocol,
+        worker_class=IncreasedCloseTimeoutNanny,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
