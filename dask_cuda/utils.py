@@ -17,7 +17,7 @@ import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
 from dask.utils import format_bytes, parse_bytes
-from distributed import Worker, wait
+from distributed import wait
 from distributed.comm import parse_address
 
 try:
@@ -550,27 +550,6 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         return _align(parse_bytes(device_memory_limit), alignment_size)
     else:
         return _align(int(device_memory_limit), alignment_size)
-
-
-class MockWorker(Worker):
-    """Mock Worker class preventing NVML from getting used by SystemMonitor.
-
-    By preventing the Worker from initializing NVML in the SystemMonitor, we can
-    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
-    machines.
-    """
-
-    def __init__(self, *args, **kwargs):
-        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
-        self._device_get_count = distributed.diagnostics.nvml.device_get_count
-        super().__init__(*args, **kwargs)
-
-    def __del__(self):
-        distributed.diagnostics.nvml.device_get_count = self._device_get_count
-
-    @staticmethod
-    def device_get_count():
-        return 0
 
 
 def get_gpu_uuid_from_index(device_index=0):
