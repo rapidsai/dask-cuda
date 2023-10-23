@@ -11,11 +11,9 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .plugins import CPUAffinity, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
-    CPUAffinity,
-    PreImport,
-    RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
