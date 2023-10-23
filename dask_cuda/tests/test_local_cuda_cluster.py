@@ -13,13 +13,13 @@ from distributed.utils_test import gen_test, raises_with_cause
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import (
-    MockWorker,
     get_cluster_configuration,
     get_device_total_memory,
     get_gpu_count_mig,
     get_gpu_uuid_from_index,
     print_cluster_config,
 )
+from dask_cuda.utils_test import MockWorker
 
 
 @gen_test(timeout=20)

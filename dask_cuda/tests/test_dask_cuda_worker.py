@@ -40,7 +40,7 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                 str(nthreads),
                 "--no-dashboard",
                 "--worker-class",
-                "dask_cuda.utils.MockWorker",
+                "dask_cuda.utils_test.MockWorker",
             ]
         ):
             with Client("127.0.0.1:9359", loop=loop) as client:
@@ -329,7 +329,7 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
                     str(nthreads),
                     "--no-dashboard",
                     "--worker-class",
-                    "dask_cuda.utils.MockWorker",
+                    "dask_cuda.utils_test.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
@@ -364,7 +364,7 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
                     "127.0.0.1",
                     "--no-dashboard",
                     "--worker-class",
-                    "dask_cuda.utils.MockWorker",
+                    "dask_cuda.utils_test.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
