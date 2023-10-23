@@ -1,5 +1,7 @@
+from typing import Literal
+
 import distributed
-from distributed import Worker
+from distributed import Nanny, Worker
 
 
 class MockWorker(Worker):
@@ -21,3 +23,23 @@ class MockWorker(Worker):
     @staticmethod
     def device_get_count():
         return 0
+
+
+class IncreasedCloseTimeoutNanny(Nanny):
+    """Increase `Nanny`'s close timeout.
+
+    The internal close timeout mechanism of `Nanny` recomputes the time left to kill
+    the `Worker` process based on elapsed time of the close task, which may leave
+    very little time for the subprocess to shutdown cleanly, which may cause tests
+    to fail when the system is under higher load. This class increases the default
+    close timeout of 5.0 seconds that `Nanny` sets by default, which can be overriden
+    via Distributed's public API.
+
+    This class can be used with the `worker_class` argument of `LocalCluster` or
+    `LocalCUDACluster` to provide a much higher default of 30.0 seconds.
+    """
+
+    async def close(  # type:ignore[override]
+        self, timeout: float = 30.0, reason: str = "nanny-close"
+    ) -> Literal["OK"]:
+        return await super().close(timeout=timeout, reason=reason)
