@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import warnings
+from functools import partial
 
 import dask
 from distributed import LocalCluster, Nanny, Worker
@@ -339,6 +340,8 @@ class LocalCUDACluster(LocalCluster):
                 "`distributed.local_cuda_cluster.LoggedWorker`, and specify "
                 "`log_spilling=False`."
             )
+        if not isinstance(worker_class, Nanny):
+            worker_class = partial(Nanny, worker_class=worker_class)
 
         self.pre_import = pre_import
 
