@@ -5,7 +5,8 @@ from distributed.system import MEMORY_LIMIT
 
 from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
-from .utils import CPUAffinity, get_cpu_affinity, get_gpu_count
+from .plugins import CPUAffinity
+from .utils import get_cpu_affinity, get_gpu_count
 
 
 def worker_spec(

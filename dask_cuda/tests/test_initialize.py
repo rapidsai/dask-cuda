@@ -10,6 +10,7 @@ from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
@@ -29,6 +30,7 @@ def _test_initialize_ucx_tcp():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -64,6 +66,7 @@ def _test_initialize_ucx_nvlink():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -100,6 +103,7 @@ def _test_initialize_ucx_infiniband():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -138,6 +142,7 @@ def _test_initialize_ucx_all():
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config()},
     ) as cluster:
         with Client(cluster) as client:
