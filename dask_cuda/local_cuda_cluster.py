@@ -3,7 +3,6 @@ import logging
 import os
 import warnings
 from functools import partial
-from typing import Literal
 
 import dask
 from distributed import LocalCluster, Nanny, Worker
@@ -11,11 +10,9 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .plugins import CPUAffinity, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
-    CPUAffinity,
-    PreImport,
-    RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
@@ -23,13 +20,6 @@ from .utils import (
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
-
-
-class IncreasedCloseTimeoutNanny(Nanny):
-    async def close(  # type:ignore[override]
-        self, timeout: float = 10.0, reason: str = "nanny-close"
-    ) -> Literal["OK"]:
-        return await super().close(timeout=timeout, reason=reason)
 
 
 class LoggedWorker(Worker):
@@ -41,7 +31,7 @@ class LoggedWorker(Worker):
         self.data.set_address(self.address)
 
 
-class LoggedNanny(IncreasedCloseTimeoutNanny):
+class LoggedNanny(Nanny):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, worker_class=LoggedWorker, **kwargs)
 
@@ -342,10 +332,17 @@ class LocalCUDACluster(LocalCluster):
             enable_rdmacm=enable_rdmacm,
         )
 
-        worker_class = partial(
-            LoggedNanny if log_spilling is True else IncreasedCloseTimeoutNanny,
-            worker_class=worker_class,
-        )
+        if worker_class is not None:
+            if log_spilling is True:
+                raise ValueError(
+                    "Cannot enable `log_spilling` when `worker_class` is specified. If "
+                    "logging is needed, ensure `worker_class` is a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedNanny` or a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedWorker`, and specify "
+                    "`log_spilling=False`."
+                )
+            if not issubclass(worker_class, Nanny):
+                worker_class = partial(Nanny, worker_class=worker_class)
 
         self.pre_import = pre_import
 

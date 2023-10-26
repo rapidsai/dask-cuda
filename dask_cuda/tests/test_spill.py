@@ -12,6 +12,7 @@ from distributed.sizeof import sizeof
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 
 from dask_cuda import LocalCUDACluster, utils
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 if utils.get_device_total_memory() < 1e10:
     pytest.skip("Not enough GPU memory", allow_module_level=True)
@@ -160,6 +161,7 @@ async def test_cupy_cluster_device_spill(params):
             asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
+            worker_class=IncreasedCloseTimeoutNanny,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
@@ -263,6 +265,7 @@ async def test_cudf_cluster_device_spill(params):
             asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
+            worker_class=IncreasedCloseTimeoutNanny,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
