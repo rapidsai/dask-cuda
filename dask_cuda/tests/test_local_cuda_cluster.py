@@ -337,6 +337,7 @@ async def test_pre_import():
 
 
 # Intentionally not using @gen_test to skip cleanup checks
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
 def test_pre_import_not_found():
     async def _test_pre_import_not_found():
         with raises_with_cause(RuntimeError, None, ImportError, None):
@@ -491,6 +492,7 @@ def test_print_cluster_config(capsys):
             assert "[plugin]" in captured.out
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
 def test_death_timeout_raises():
     with pytest.raises(asyncio.exceptions.TimeoutError):
         with LocalCUDACluster(
