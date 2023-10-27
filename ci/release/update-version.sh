@@ -31,11 +31,8 @@ function sed_runner() {
     sed -i.bak ''"$1"'' $2 && rm -f ${2}.bak
 }
 
-# Python __init__.py updates
-sed_runner "s/__version__ = .*/__version__ = \"${NEXT_FULL_TAG}\"/g" dask_cuda/__init__.py
-
-# Python pyproject.toml updates
-sed_runner "s/^version = .*/version = \"${NEXT_FULL_TAG}\"/g" pyproject.toml
+# Centralized version file update
+echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
 # Bump cudf and dask-cudf testing dependencies
 sed_runner "s/cudf=.*/cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
