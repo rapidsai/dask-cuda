@@ -21,9 +21,9 @@ fi
 source rapids-env-update
 
 # Update pyproject.toml with pre-release build date
-if ! rapids-is-release-build; then
-  sed -i "s/^version = \""${TOML_VERSION}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
-fi
+# if ! rapids-is-release-build; then
+#   sed -i "s/^version = \""${TOML_VERSION}".*\"/version = \""${PACKAGE_VERSION_NUMBER}"\"/g" pyproject.toml
+# fi
 
 python -m build \
   --sdist \
@@ -32,6 +32,6 @@ python -m build \
   .
 
 # Revert pyproject.toml pre-release build date
-if ! rapids-is-release-build; then
-  sed -i "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${TOML_VERSION}"\"/g" pyproject.toml
-fi
+# if ! rapids-is-release-build; then
+#   sed -i "s/^version = \""${PACKAGE_VERSION_NUMBER}"\"/version = \""${TOML_VERSION}"\"/g" pyproject.toml
+# fi
