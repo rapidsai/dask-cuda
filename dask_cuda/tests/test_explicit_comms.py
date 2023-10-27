@@ -164,8 +164,6 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
 @pytest.mark.parametrize("_partitions", [True, False])
 def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
     if backend == "cudf":
-        pytest.skip("Temporarily disable due to segfaults in libaws-cpp-sdk-core.so")
-
         pytest.importorskip("cudf")
 
     p = mp.Process(
@@ -261,8 +259,6 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_dataframe_shuffle_merge(backend, protocol, nworkers):
     if backend == "cudf":
-        pytest.skip("Temporarily disable due to segfaults in libaws-cpp-sdk-core.so")
-
         pytest.importorskip("cudf")
     p = mp.Process(
         target=_test_dataframe_shuffle_merge, args=(backend, protocol, nworkers)
