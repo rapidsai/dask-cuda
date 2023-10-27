@@ -17,6 +17,10 @@ if ! rapids-is-release-build; then
   export PACKAGE_VERSION_NUMBER="${version}"
 fi
 
+
+echo "${version}" | tr -d '"' > VERSION
+sed -i "/^__git_commit__/ s/= .*/= \"${commit}\"/g" "${package_name}/_version.py"
+
 # Compute/export RAPIDS_DATE_STRING
 source rapids-env-update
 
