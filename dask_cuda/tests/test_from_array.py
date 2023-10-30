@@ -5,12 +5,16 @@ from distributed import Client
 
 from dask_cuda import LocalCUDACluster
 
-pytest.importorskip("ucp")
 cupy = pytest.importorskip("cupy")
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "tcp"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx", "tcp"])
 def test_ucx_from_array(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
     N = 10_000
     with LocalCUDACluster(protocol=protocol) as cluster:
         with Client(cluster):

@@ -79,11 +79,18 @@ def test_get_device_total_memory():
             assert total_mem > 0
 
 
-def test_get_preload_options_default():
-    pytest.importorskip("ucp")
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+def test_get_preload_options_default(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
     opts = get_preload_options(
-        protocol="ucx",
+        protocol=protocol,
         create_cuda_context=True,
     )
 
@@ -93,14 +100,21 @@ def test_get_preload_options_default():
     assert opts["preload_argv"] == ["--create-cuda-context"]
 
 
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @pytest.mark.parametrize("enable_tcp", [True, False])
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("enable_nvlink", [True, False])
-def test_get_preload_options(enable_tcp, enable_infiniband, enable_nvlink):
-    pytest.importorskip("ucp")
+def test_get_preload_options(protocol, enable_tcp, enable_infiniband, enable_nvlink):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
     opts = get_preload_options(
-        protocol="ucx",
+        protocol=protocol,
         create_cuda_context=True,
         enable_tcp_over_ucx=enable_tcp,
         enable_infiniband=enable_infiniband,

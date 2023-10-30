@@ -400,10 +400,14 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 @gen_test(timeout=120)
 async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
     cudf = pytest.importorskip("cudf")
 
     def task(x):
@@ -412,7 +416,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
         serializers_used = x._pxy_get().serializer
 
         # Check that `x` is serialized with the expected serializers
-        if protocol == "ucx":
+        if protocol in ["ucx", "ucxx"]:
             if send_serializers is None:
                 assert serializers_used == "cuda"
             else:
@@ -443,11 +447,15 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
             await client.submit(task, df)
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 @pytest.mark.parametrize("shared_fs", [True, False])
 @gen_test(timeout=20)
 async def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 

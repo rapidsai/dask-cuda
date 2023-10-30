@@ -87,23 +87,38 @@ async def test_with_subset_of_cuda_visible_devices():
                 }
 
 
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @gen_test(timeout=20)
-async def test_ucx_protocol():
-    pytest.importorskip("ucp")
+async def test_ucx_protocol(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
     async with LocalCUDACluster(
-        protocol="ucx", asynchronous=True, data=dict
+        protocol=protocol, asynchronous=True, data=dict
     ) as cluster:
         assert all(
-            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
+            ws.address.startswith(f"{protocol}://")
+            for ws in cluster.scheduler.workers.values()
         )
 
 
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @gen_test(timeout=20)
-async def test_explicit_ucx_with_protocol_none():
-    pytest.importorskip("ucp")
+async def test_explicit_ucx_with_protocol_none(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
-    initialize(enable_tcp_over_ucx=True)
+    initialize(protocol=protocol, enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
         protocol=None, enable_tcp_over_ucx=True, asynchronous=True, data=dict
     ) as cluster:
@@ -113,11 +128,18 @@ async def test_explicit_ucx_with_protocol_none():
 
 
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @gen_test(timeout=20)
-async def test_ucx_protocol_type_error():
-    pytest.importorskip("ucp")
+async def test_ucx_protocol_type_error(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
-    initialize(enable_tcp_over_ucx=True)
+    initialize(protocol=protocol, enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
         async with LocalCUDACluster(
             protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict
@@ -478,16 +500,25 @@ async def test_worker_fraction_limits():
             )
 
 
-def test_print_cluster_config(capsys):
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+def test_print_cluster_config(capsys, protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
     pytest.importorskip("rich")
     with LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
+        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol=protocol
     ) as cluster:
         with Client(cluster) as client:
             print_cluster_config(client)
             captured = capsys.readouterr()
             assert "Dask Cluster Configuration" in captured.out
-            assert "ucx" in captured.out
+            assert protocol in captured.out
             assert "1 B" in captured.out
             assert "[plugin]" in captured.out
 

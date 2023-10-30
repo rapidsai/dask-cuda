@@ -122,6 +122,8 @@ dependencies:
           - pytest-cov
           - ucx-proc=*=gpu
           - ucx-py=0.35
+          - ucxx=0.35
+          - distributed-ucxx=0.35
     specific:
       - output_types: conda
         matrices:
