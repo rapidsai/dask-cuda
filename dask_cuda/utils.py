@@ -287,7 +287,7 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    if protocol == "ucx":
+    if protocol in ["ucx", "ucxx"]:
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
@@ -625,6 +625,10 @@ def get_worker_config(dask_worker):
         import ucp
 
         ret["ucx-transports"] = ucp.get_active_transports()
+    elif scheme == "ucxx":
+        import ucxx
+
+        ret["ucx-transports"] = ucxx.get_active_transports()
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
