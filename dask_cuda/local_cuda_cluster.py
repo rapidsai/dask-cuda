@@ -319,8 +319,11 @@ class LocalCUDACluster(LocalCluster):
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
                 protocol = "ucx"
-            elif protocol != "ucx":
-                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+            elif protocol not in ["ucx", "ucxx"]:
+                raise TypeError(
+                    "Enabling InfiniBand or NVLink requires protocol='ucx' or "
+                    "protocol='ucxx'"
+                )
 
         self.host = kwargs.get("host", None)
 
@@ -371,7 +374,7 @@ class LocalCUDACluster(LocalCluster):
         ) + ["dask_cuda.initialize"]
         self.new_spec["options"]["preload_argv"] = self.new_spec["options"].get(
             "preload_argv", []
-        ) + ["--create-cuda-context"]
+        ) + ["--create-cuda-context", "--protocol", protocol]
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)

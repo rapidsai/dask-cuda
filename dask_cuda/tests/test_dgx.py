@@ -73,10 +73,13 @@ def test_default():
     assert not p.exitcode
 
 
-def _test_tcp_over_ucx():
-    ucp = pytest.importorskip("ucp")
+def _test_tcp_over_ucx(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
 
-    with LocalCUDACluster(enable_tcp_over_ucx=True) as cluster:
+    with LocalCUDACluster(protocol=protocol, enable_tcp_over_ucx=True) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
             res = res.sum().compute()
@@ -93,10 +96,17 @@ def _test_tcp_over_ucx():
             assert all(client.run(check_ucx_options).values())
 
 
-def test_tcp_over_ucx():
-    ucp = pytest.importorskip("ucp")  # NOQA: F841
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+def test_tcp_over_ucx(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
-    p = mp.Process(target=_test_tcp_over_ucx)
+    p = mp.Process(target=_test_tcp_over_ucx, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
@@ -117,9 +127,14 @@ def test_tcp_only():
     assert not p.exitcode
 
 
-def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
+def _test_ucx_infiniband_nvlink(
+    protocol, enable_infiniband, enable_nvlink, enable_rdmacm
+):
     cupy = pytest.importorskip("cupy")
-    ucp = pytest.importorskip("ucp")
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
 
     if enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
         enable_tcp_over_ucx = None
@@ -135,6 +150,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
             cm_tls_priority = ["tcp"]
 
     initialize(
+        protocol=protocol,
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
@@ -142,6 +158,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     )
 
     with LocalCUDACluster(
+        protocol=protocol,
         interface="ib0",
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
@@ -171,6 +188,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
             assert all(client.run(check_ucx_options).values())
 
 
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
 @pytest.mark.parametrize(
     "params",
     [
@@ -185,8 +203,11 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     _get_dgx_version() == DGXVersion.DGX_A100,
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
-def test_ucx_infiniband_nvlink(params):
-    ucp = pytest.importorskip("ucp")  # NOQA: F841
+def test_ucx_infiniband_nvlink(protocol, params):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
 
     if params["enable_infiniband"]:
         if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
@@ -195,6 +216,7 @@ def test_ucx_infiniband_nvlink(params):
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
+            protocol,
             params["enable_infiniband"],
             params["enable_nvlink"],
             params["enable_rdmacm"],
