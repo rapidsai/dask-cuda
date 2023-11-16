@@ -152,9 +152,9 @@ dependencies:
           - ucx-py==0.36.*
       - output_types: [conda]
         packages:
-          - distributed-ucxx==0.35.*
+          - distributed-ucxx==0.36.*
           - ucx-proc=*=gpu
-          - ucxx==0.35.*
+          - ucxx==0.36.*
     specific:
       - output_types: conda
         matrices:
