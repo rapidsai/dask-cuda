@@ -29,7 +29,7 @@ fi
 sed -r -i "s/rapids-dask-dependency==(.*)\"/rapids-dask-dependency==\1${alpha_spec}\"/g" pyproject.toml
 
 echo "${version}" | tr -d '"' > VERSION
-sed -i "/^__git_commit__/ s/= .*/= \"${commit}\"/g" "${package_name}/_version.py"
+sed -i "/^__git_commit__/ s/= .*/= \"${commit}\"/g" "dask_cuda/_version.py"
 
 # Compute/export RAPIDS_DATE_STRING
 source rapids-env-update
