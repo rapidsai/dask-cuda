@@ -27,6 +27,36 @@ files:
       - cudatoolkit
       - docs
       - py_version
+  py_build:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: build-system
+    includes:
+      - build_python
+  py_run:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project
+    includes:
+      - run_python
+  py_test:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test
+    includes:
+      - test_python
+  py_docs:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: docs
+    includes:
+      - docs
 channels:
   - rapidsai
   - rapidsai-nightly
@@ -36,9 +66,12 @@ channels:
 dependencies:
   build_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
           - setuptools>=64.0.0
+      - output_types: pyproject
+        packages:
+          - tomli ; python_version < '3.11'
   cudatoolkit:
     specific:
       - output_types: conda
@@ -76,12 +109,12 @@ dependencies:
           - pre-commit
   docs:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - numpydoc
+          - numpydoc>=1.1.0
           - sphinx
-          - sphinx-click
-          - sphinx_rtd_theme
+          - sphinx-click>=2.7.1
+          - sphinx-rtd-theme>=0.5.1
   py_version:
     specific:
       - output_types: conda
@@ -99,7 +132,7 @@ dependencies:
               - python>=3.9,<3.11
   run_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
           - numba>=0.57
           - numpy>=1.21
@@ -109,7 +142,7 @@ dependencies:
           - zict>=2.0.0
   test_python:
     common:
-      - output_types: [conda]
+      - output_types: [conda, requirements, pyproject]
         packages:
           - cudf=24.02
           - dask-cudf=24.02
