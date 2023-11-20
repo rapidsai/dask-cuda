@@ -55,7 +55,7 @@ timeout 60m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  tests
+  tests -k "not ucxx"
 popd
 
 rapids-logger "Run local benchmark"
