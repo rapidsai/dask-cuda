@@ -306,6 +306,7 @@ async def test_spilling_local_cuda_cluster(jit_unspill):
         n_workers=1,
         device_memory_limit="1B",
         jit_unspill=jit_unspill,
+        worker_class=IncreasedCloseTimeoutNanny,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
