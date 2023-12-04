@@ -1,7 +1,10 @@
 # Dependency list for https://github.com/rapidsai/dependency-file-generator
 files:
   all:
-    output: none
+    output: conda
+    matrix:
+      cuda: ["11.4", "11.8", "12.0"]
+      arch: [x86_64]
     includes:
       - build_python
       - cudatoolkit
