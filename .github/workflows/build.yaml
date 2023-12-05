@@ -58,22 +58,23 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
   wheel-build:
-    runs-on: ubuntu-latest
-    container:
-      image: rapidsai/ci-conda:latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Build wheel
-        run: ci/build_python_pypi.sh
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.RAPIDSAI_PYPI_TOKEN }}
-          skip-existing: true
+    secrets: inherit
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@branch-24.02
+    with:
+      build_type: ${{ inputs.build_type || 'branch' }}
+      branch: ${{ inputs.branch }}
+      sha: ${{ inputs.sha }}
+      date: ${{ inputs.date }}
+      script: ci/build_wheel.sh
+      # Package is pure Python and only ever requires one build.
+      matrix_filter: map(select(.ARCH == "amd64" and .PY_VER == "3.10" and .CUDA_VER == "12.0.1"))
+  wheel-publish:
+    needs: wheel-build
+    secrets: inherit
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-publish.yaml@branch-24.02
+    with:
+      build_type: ${{ inputs.build_type || 'branch' }}
+      branch: ${{ inputs.branch }}
+      sha: ${{ inputs.sha }}
+      date: ${{ inputs.date }}
+      package-name: dask-cuda
