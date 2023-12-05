@@ -9,7 +9,8 @@ source rapids-date-string
 package_name=dask-cuda
 version=$(rapids-generate-version)
 
-sed -i "s/^version = .*/version = \"${version}\"/g" "pyproject.toml"
+echo "${version}" | tr -d '"' > VERSION
+sed -i "/^__git_commit__/ s/= .*/= \"${commit}\"/g" "dask_cuda/_version.py"
 
 python -m pip wheel . -w dist -vvv --no-deps --disable-pip-version-check
 
