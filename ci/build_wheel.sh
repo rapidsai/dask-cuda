@@ -8,6 +8,7 @@ source rapids-date-string
 
 package_name=dask-cuda
 version=$(rapids-generate-version)
+commit=$(git rev-parse HEAD)
 
 echo "${version}" | tr -d '"' > VERSION
 sed -i "/^__git_commit__/ s/= .*/= \"${commit}\"/g" "dask_cuda/_version.py"
