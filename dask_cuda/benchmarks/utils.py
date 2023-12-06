@@ -73,7 +73,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     cluster_args.add_argument(
         "-p",
         "--protocol",
-        choices=["tcp", "ucx"],
+        choices=["tcp", "ucx", "ucxx"],
         default="tcp",
         type=str,
         help="The communication protocol to use.",

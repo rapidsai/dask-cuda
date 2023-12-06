@@ -31,20 +31,18 @@ function sed_runner() {
     sed -i.bak ''"$1"'' $2 && rm -f ${2}.bak
 }
 
-# Python __init__.py updates
-sed_runner "s/__version__ = .*/__version__ = \"${NEXT_FULL_TAG}\"/g" dask_cuda/__init__.py
-
-# Python pyproject.toml updates
-sed_runner "s/^version = .*/version = \"${NEXT_FULL_TAG}\"/g" pyproject.toml
+# Centralized version file update
+echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
 # Bump cudf and dask-cudf testing dependencies
 sed_runner "s/cudf=.*/cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/dask-cudf=.*/dask-cudf=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/kvikio=.*/kvikio=${NEXT_SHORT_TAG}/g" dependencies.yaml
 sed_runner "s/ucx-py=.*/ucx-py=${NEXT_UCXPY_VERSION}/g" dependencies.yaml
+sed_runner "s/rapids-dask-dependency=.*/rapids-dask-dependency=${NEXT_SHORT_TAG}.*/g" dependencies.yaml
 
 # CI files
 for FILE in .github/workflows/*.yaml; do
-  sed_runner "/shared-action-workflows/ s/@.*/@branch-${NEXT_SHORT_TAG}/g" "${FILE}"
+  sed_runner "/shared-workflows/ s/@.*/@branch-${NEXT_SHORT_TAG}/g" "${FILE}"
 done
 sed_runner "s/RAPIDS_VERSION_NUMBER=\".*/RAPIDS_VERSION_NUMBER=\"${NEXT_SHORT_TAG}\"/g" ci/build_docs.sh

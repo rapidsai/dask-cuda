@@ -10,9 +10,9 @@ from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
-ucp = pytest.importorskip("ucp")
 
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
@@ -20,15 +20,21 @@ ucp = pytest.importorskip("ucp")
 # of UCX before retrieving the current config.
 
 
-def _test_initialize_ucx_tcp():
+def _test_initialize_ucx_tcp(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+
     kwargs = {"enable_tcp_over_ucx": True}
-    initialize(**kwargs)
+    initialize(protocol=protocol, **kwargs)
     with LocalCluster(
-        protocol="ucx",
+        protocol=protocol,
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -48,22 +54,34 @@ def _test_initialize_ucx_tcp():
             assert all(client.run(check_ucx_options).values())
 
 
-def test_initialize_ucx_tcp():
-    p = mp.Process(target=_test_initialize_ucx_tcp)
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+def test_initialize_ucx_tcp(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
+    p = mp.Process(target=_test_initialize_ucx_tcp, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
 
 
-def _test_initialize_ucx_nvlink():
+def _test_initialize_ucx_nvlink(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+
     kwargs = {"enable_nvlink": True}
-    initialize(**kwargs)
+    initialize(protocol=protocol, **kwargs)
     with LocalCluster(
-        protocol="ucx",
+        protocol=protocol,
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -84,22 +102,34 @@ def _test_initialize_ucx_nvlink():
             assert all(client.run(check_ucx_options).values())
 
 
-def test_initialize_ucx_nvlink():
-    p = mp.Process(target=_test_initialize_ucx_nvlink)
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+def test_initialize_ucx_nvlink(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
+    p = mp.Process(target=_test_initialize_ucx_nvlink, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
 
 
-def _test_initialize_ucx_infiniband():
+def _test_initialize_ucx_infiniband(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+
     kwargs = {"enable_infiniband": True}
-    initialize(**kwargs)
+    initialize(protocol=protocol, **kwargs)
     with LocalCluster(
-        protocol="ucx",
+        protocol=protocol,
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
@@ -123,21 +153,33 @@ def _test_initialize_ucx_infiniband():
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
-def test_initialize_ucx_infiniband():
-    p = mp.Process(target=_test_initialize_ucx_infiniband)
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+def test_initialize_ucx_infiniband(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
+    p = mp.Process(target=_test_initialize_ucx_infiniband, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
 
 
-def _test_initialize_ucx_all():
-    initialize()
+def _test_initialize_ucx_all(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+
+    initialize(protocol=protocol)
     with LocalCluster(
-        protocol="ucx",
+        protocol=protocol,
         dashboard_address=None,
         n_workers=1,
         threads_per_worker=1,
         processes=True,
+        worker_class=IncreasedCloseTimeoutNanny,
         config={"distributed.comm.ucx": get_ucx_config()},
     ) as cluster:
         with Client(cluster) as client:
@@ -161,8 +203,14 @@ def _test_initialize_ucx_all():
             assert all(client.run(check_ucx_options).values())
 
 
-def test_initialize_ucx_all():
-    p = mp.Process(target=_test_initialize_ucx_all)
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+def test_initialize_ucx_all(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
+    p = mp.Process(target=_test_initialize_ucx_all, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode

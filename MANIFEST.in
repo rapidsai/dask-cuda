@@ -1,1 +1,2 @@
 include dask_cuda/_version.py
+include dask_cuda/VERSION

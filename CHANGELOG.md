@@ -1,3 +1,34 @@
+# dask-cuda 23.12.00 (6 Dec 2023)
+
+## 🐛 Bug Fixes
+
+- Update actions/labeler to v4 ([#1292](https://github.com/rapidsai/dask-cuda/pull/1292)) [@raydouglass](https://github.com/raydouglass)
+- Increase Nanny close timeout for `test_spilling_local_cuda_cluster` ([#1289](https://github.com/rapidsai/dask-cuda/pull/1289)) [@pentschev](https://github.com/pentschev)
+- Fix path ([#1277](https://github.com/rapidsai/dask-cuda/pull/1277)) [@vyasr](https://github.com/vyasr)
+- Add missing alpha spec ([#1273](https://github.com/rapidsai/dask-cuda/pull/1273)) [@vyasr](https://github.com/vyasr)
+- Set minimum click to 8.1 ([#1272](https://github.com/rapidsai/dask-cuda/pull/1272)) [@jacobtomlinson](https://github.com/jacobtomlinson)
+- Reenable tests that were segfaulting ([#1266](https://github.com/rapidsai/dask-cuda/pull/1266)) [@pentschev](https://github.com/pentschev)
+- Increase close timeout of `Nanny` in `LocalCUDACluster` ([#1260](https://github.com/rapidsai/dask-cuda/pull/1260)) [@pentschev](https://github.com/pentschev)
+- Small reorganization and fixes for `test_spill` ([#1255](https://github.com/rapidsai/dask-cuda/pull/1255)) [@pentschev](https://github.com/pentschev)
+- Update plugins to inherit from ``WorkerPlugin`` ([#1230](https://github.com/rapidsai/dask-cuda/pull/1230)) [@jrbourbeau](https://github.com/jrbourbeau)
+
+## 🚀 New Features
+
+- Add support for UCXX ([#1268](https://github.com/rapidsai/dask-cuda/pull/1268)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Fix license ([#1285](https://github.com/rapidsai/dask-cuda/pull/1285)) [@vyasr](https://github.com/vyasr)
+- Build concurrency for nightly and merge triggers ([#1282](https://github.com/rapidsai/dask-cuda/pull/1282)) [@bdice](https://github.com/bdice)
+- Use new `rapids-dask-dependency` metapackage for managing dask versions ([#1270](https://github.com/rapidsai/dask-cuda/pull/1270)) [@galipremsagar](https://github.com/galipremsagar)
+- Remove `ucp.reset()` requirement from `test_dgx` ([#1269](https://github.com/rapidsai/dask-cuda/pull/1269)) [@pentschev](https://github.com/pentschev)
+- Generate proper, consistent nightly versions for pip and conda packages ([#1267](https://github.com/rapidsai/dask-cuda/pull/1267)) [@galipremsagar](https://github.com/galipremsagar)
+- Unpin `dask` and `distributed` for `23.12` development ([#1264](https://github.com/rapidsai/dask-cuda/pull/1264)) [@galipremsagar](https://github.com/galipremsagar)
+- Move some `dask_cuda.utils` pieces to their own modules ([#1263](https://github.com/rapidsai/dask-cuda/pull/1263)) [@pentschev](https://github.com/pentschev)
+- Update `shared-action-workflows` references ([#1261](https://github.com/rapidsai/dask-cuda/pull/1261)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Use branch-23.12 workflows. ([#1259](https://github.com/rapidsai/dask-cuda/pull/1259)) [@bdice](https://github.com/bdice)
+- dask-cuda: Build CUDA 12.0 ARM conda packages. ([#1238](https://github.com/rapidsai/dask-cuda/pull/1238)) [@bdice](https://github.com/bdice)
+
 # dask-cuda 23.10.00 (11 Oct 2023)
 
 ## 🐛 Bug Fixes

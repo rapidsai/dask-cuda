@@ -4,7 +4,7 @@
 #   conda build -c conda-forge .
 {% set data = load_file_data("pyproject.toml") %}
 
-{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0.dev').lstrip('v') %}
+{% set version = environ['RAPIDS_PACKAGE_VERSION'].strip('""').lstrip('v') %}
 {% set py_version = environ['CONDA_PY'] %}
 {% set date_string = environ['RAPIDS_DATE_STRING'] %}
 
@@ -13,7 +13,7 @@ package:
   version: {{ version }}
 
 source:
-  git_url: ../../..
+  path: ../../..
 
 build:
   number: {{ GIT_DESCRIBE_NUMBER }}
@@ -32,7 +32,6 @@ requirements:
     - tomli
   run:
     - python
-    - dask-core ==2023.9.2
     {% for r in data.get("project", {}).get("dependencies", []) %}
     - {{ r }}
     {% endfor %}

@@ -45,7 +45,7 @@ DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
-timeout 40m pytest \
+timeout 60m pytest \
   -vv \
   --durations=0 \
   --capture=no \
@@ -55,7 +55,7 @@ timeout 40m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  tests
+  tests -k "not ucxx"
 popd
 
 rapids-logger "Run local benchmark"
