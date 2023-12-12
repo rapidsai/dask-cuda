@@ -23,6 +23,7 @@ from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 # Make the "disk" serializer available and use a directory that are
 # remove on exit.
@@ -305,6 +306,7 @@ async def test_spilling_local_cuda_cluster(jit_unspill):
         n_workers=1,
         device_memory_limit="1B",
         jit_unspill=jit_unspill,
+        worker_class=IncreasedCloseTimeoutNanny,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -399,10 +401,14 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-@gen_test(timeout=20)
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@gen_test(timeout=120)
 async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
     cudf = pytest.importorskip("cudf")
 
     def task(x):
@@ -411,7 +417,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
         serializers_used = x._pxy_get().serializer
 
         # Check that `x` is serialized with the expected serializers
-        if protocol == "ucx":
+        if protocol in ["ucx", "ucxx"]:
             if send_serializers is None:
                 assert serializers_used == "cuda"
             else:
@@ -422,6 +428,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
     async with dask_cuda.LocalCUDACluster(
         n_workers=1,
         protocol=protocol,
+        worker_class=IncreasedCloseTimeoutNanny,
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -441,11 +448,15 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
             await client.submit(task, df)
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 @pytest.mark.parametrize("shared_fs", [True, False])
 @gen_test(timeout=20)
 async def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 

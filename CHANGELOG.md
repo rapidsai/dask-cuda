@@ -1,3 +1,60 @@
+# dask-cuda 23.12.00 (6 Dec 2023)
+
+## 🐛 Bug Fixes
+
+- Update actions/labeler to v4 ([#1292](https://github.com/rapidsai/dask-cuda/pull/1292)) [@raydouglass](https://github.com/raydouglass)
+- Increase Nanny close timeout for `test_spilling_local_cuda_cluster` ([#1289](https://github.com/rapidsai/dask-cuda/pull/1289)) [@pentschev](https://github.com/pentschev)
+- Fix path ([#1277](https://github.com/rapidsai/dask-cuda/pull/1277)) [@vyasr](https://github.com/vyasr)
+- Add missing alpha spec ([#1273](https://github.com/rapidsai/dask-cuda/pull/1273)) [@vyasr](https://github.com/vyasr)
+- Set minimum click to 8.1 ([#1272](https://github.com/rapidsai/dask-cuda/pull/1272)) [@jacobtomlinson](https://github.com/jacobtomlinson)
+- Reenable tests that were segfaulting ([#1266](https://github.com/rapidsai/dask-cuda/pull/1266)) [@pentschev](https://github.com/pentschev)
+- Increase close timeout of `Nanny` in `LocalCUDACluster` ([#1260](https://github.com/rapidsai/dask-cuda/pull/1260)) [@pentschev](https://github.com/pentschev)
+- Small reorganization and fixes for `test_spill` ([#1255](https://github.com/rapidsai/dask-cuda/pull/1255)) [@pentschev](https://github.com/pentschev)
+- Update plugins to inherit from ``WorkerPlugin`` ([#1230](https://github.com/rapidsai/dask-cuda/pull/1230)) [@jrbourbeau](https://github.com/jrbourbeau)
+
+## 🚀 New Features
+
+- Add support for UCXX ([#1268](https://github.com/rapidsai/dask-cuda/pull/1268)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Fix license ([#1285](https://github.com/rapidsai/dask-cuda/pull/1285)) [@vyasr](https://github.com/vyasr)
+- Build concurrency for nightly and merge triggers ([#1282](https://github.com/rapidsai/dask-cuda/pull/1282)) [@bdice](https://github.com/bdice)
+- Use new `rapids-dask-dependency` metapackage for managing dask versions ([#1270](https://github.com/rapidsai/dask-cuda/pull/1270)) [@galipremsagar](https://github.com/galipremsagar)
+- Remove `ucp.reset()` requirement from `test_dgx` ([#1269](https://github.com/rapidsai/dask-cuda/pull/1269)) [@pentschev](https://github.com/pentschev)
+- Generate proper, consistent nightly versions for pip and conda packages ([#1267](https://github.com/rapidsai/dask-cuda/pull/1267)) [@galipremsagar](https://github.com/galipremsagar)
+- Unpin `dask` and `distributed` for `23.12` development ([#1264](https://github.com/rapidsai/dask-cuda/pull/1264)) [@galipremsagar](https://github.com/galipremsagar)
+- Move some `dask_cuda.utils` pieces to their own modules ([#1263](https://github.com/rapidsai/dask-cuda/pull/1263)) [@pentschev](https://github.com/pentschev)
+- Update `shared-action-workflows` references ([#1261](https://github.com/rapidsai/dask-cuda/pull/1261)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Use branch-23.12 workflows. ([#1259](https://github.com/rapidsai/dask-cuda/pull/1259)) [@bdice](https://github.com/bdice)
+- dask-cuda: Build CUDA 12.0 ARM conda packages. ([#1238](https://github.com/rapidsai/dask-cuda/pull/1238)) [@bdice](https://github.com/bdice)
+
+# dask-cuda 23.10.00 (11 Oct 2023)
+
+## 🐛 Bug Fixes
+
+- Monkeypatch protocol.loads ala dask/distributed#8216 ([#1247](https://github.com/rapidsai/dask-cuda/pull/1247)) [@wence-](https://github.com/wence-)
+- Explicit-comms: preserve partition IDs ([#1240](https://github.com/rapidsai/dask-cuda/pull/1240)) [@madsbk](https://github.com/madsbk)
+- Increase test timeouts further to reduce CI failures ([#1234](https://github.com/rapidsai/dask-cuda/pull/1234)) [@pentschev](https://github.com/pentschev)
+- Use `conda mambabuild` not `mamba mambabuild` ([#1231](https://github.com/rapidsai/dask-cuda/pull/1231)) [@bdice](https://github.com/bdice)
+- Increate timeouts of tests that frequently timeout in CI ([#1228](https://github.com/rapidsai/dask-cuda/pull/1228)) [@pentschev](https://github.com/pentschev)
+- Adapt to non-string task keys in distributed ([#1225](https://github.com/rapidsai/dask-cuda/pull/1225)) [@wence-](https://github.com/wence-)
+- Update `test_worker_timeout` ([#1223](https://github.com/rapidsai/dask-cuda/pull/1223)) [@pentschev](https://github.com/pentschev)
+- Avoid importing `loads_function` from distributed ([#1220](https://github.com/rapidsai/dask-cuda/pull/1220)) [@rjzamora](https://github.com/rjzamora)
+
+## 🚀 New Features
+
+- Enable maximum pool size for RMM async allocator ([#1221](https://github.com/rapidsai/dask-cuda/pull/1221)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Pin `dask` and `distributed` for `23.10` release ([#1251](https://github.com/rapidsai/dask-cuda/pull/1251)) [@galipremsagar](https://github.com/galipremsagar)
+- Update `test_spill.py` to avoid `FutureWarning`s ([#1243](https://github.com/rapidsai/dask-cuda/pull/1243)) [@pentschev](https://github.com/pentschev)
+- Remove obsolete pytest `filterwarnings` ([#1241](https://github.com/rapidsai/dask-cuda/pull/1241)) [@pentschev](https://github.com/pentschev)
+- Update image names ([#1233](https://github.com/rapidsai/dask-cuda/pull/1233)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Use `copy-pr-bot` ([#1227](https://github.com/rapidsai/dask-cuda/pull/1227)) [@ajschmidt8](https://github.com/ajschmidt8)
+- Unpin `dask` and `distributed` for `23.10` development ([#1222](https://github.com/rapidsai/dask-cuda/pull/1222)) [@galipremsagar](https://github.com/galipremsagar)
+
 # dask-cuda 23.08.00 (9 Aug 2023)
 
 ## 🐛 Bug Fixes

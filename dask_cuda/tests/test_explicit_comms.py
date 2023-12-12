@@ -17,6 +17,7 @@ from distributed.deploy.local import LocalCluster
 import dask_cuda
 from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
@@ -35,6 +36,7 @@ def _test_local_cluster(protocol):
         dashboard_address=None,
         n_workers=4,
         threads_per_worker=1,
+        worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
         with Client(cluster) as client:
@@ -42,7 +44,7 @@ def _test_local_cluster(protocol):
             assert sum(c.run(my_rank, 0)) == sum(range(4))
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 def test_local_cluster(protocol):
     p = mp.Process(target=_test_local_cluster, args=(protocol,))
     p.start()
@@ -56,6 +58,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
         dashboard_address=None,
         n_workers=npartitions,
         threads_per_worker=1,
+        worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
         with Client(cluster):
@@ -93,7 +96,7 @@ def check_partitions(df, npartitions):
         return True
 
 
-def _test_dataframe_shuffle(backend, protocol, n_workers):
+def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
     if backend == "cudf":
         cudf = pytest.importorskip("cudf")
 
@@ -102,6 +105,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
         dashboard_address=None,
         n_workers=n_workers,
         threads_per_worker=1,
+        worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
         with Client(cluster) as client:
@@ -111,6 +115,9 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
             df = pd.DataFrame({"key": np.random.random(100)})
             if backend == "cudf":
                 df = cudf.DataFrame.from_pandas(df)
+
+            if _partitions:
+                df["_partitions"] = 0
 
             for input_nparts in range(1, 5):
                 for output_nparts in range(1, 5):
@@ -123,33 +130,45 @@ def _test_dataframe_shuffle(backend, protocol, n_workers):
                         with dask.config.set(explicit_comms_batchsize=batchsize):
                             ddf = explicit_comms_shuffle(
                                 ddf,
-                                ["key"],
+                                ["_partitions"] if _partitions else ["key"],
                                 npartitions=output_nparts,
                                 batchsize=batchsize,
                             ).persist()
 
                             assert ddf.npartitions == output_nparts
 
-                            # Check that each partition hashes to the same value
-                            result = ddf.map_partitions(
-                                check_partitions, output_nparts
-                            ).compute()
-                            assert all(result.to_list())
+                            if _partitions:
+                                # If "_partitions" is the hash key, we expect all but
+                                # the first partition to be empty
+                                assert_eq(ddf.partitions[0].compute(), df)
+                                assert all(
+                                    len(ddf.partitions[i].compute()) == 0
+                                    for i in range(1, ddf.npartitions)
+                                )
+                            else:
+                                # Check that each partition hashes to the same value
+                                result = ddf.map_partitions(
+                                    check_partitions, output_nparts
+                                ).compute()
+                                assert all(result.to_list())
 
-                            # Check the values (ignoring the row order)
-                            expected = df.sort_values("key")
-                            got = ddf.compute().sort_values("key")
-                            assert_eq(got, expected)
+                                # Check the values (ignoring the row order)
+                                expected = df.sort_values("key")
+                                got = ddf.compute().sort_values("key")
+                                assert_eq(got, expected)
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 3])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
-def test_dataframe_shuffle(backend, protocol, nworkers):
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.parametrize("_partitions", [True, False])
+def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
     if backend == "cudf":
         pytest.importorskip("cudf")
 
-    p = mp.Process(target=_test_dataframe_shuffle, args=(backend, protocol, nworkers))
+    p = mp.Process(
+        target=_test_dataframe_shuffle, args=(backend, protocol, nworkers, _partitions)
+    )
     p.start()
     p.join()
     assert not p.exitcode
@@ -189,6 +208,7 @@ def test_dask_use_explicit_comms(in_cluster):
             dashboard_address=None,
             n_workers=2,
             threads_per_worker=1,
+            worker_class=IncreasedCloseTimeoutNanny,
             processes=True,
         ) as cluster:
             with Client(cluster):
@@ -206,6 +226,7 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
         dashboard_address=None,
         n_workers=n_workers,
         threads_per_worker=1,
+        worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
         with Client(cluster):
@@ -235,7 +256,7 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
 
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 def test_dataframe_shuffle_merge(backend, protocol, nworkers):
     if backend == "cudf":
         pytest.importorskip("cudf")
@@ -272,7 +293,7 @@ def _test_jit_unspill(protocol):
             assert_eq(got, expected)
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 def test_jit_unspill(protocol):
     pytest.importorskip("cudf")
 
@@ -312,6 +333,7 @@ def test_lock_workers():
         dashboard_address=None,
         n_workers=4,
         threads_per_worker=5,
+        worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
         ps = []

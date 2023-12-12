@@ -1,7 +1,10 @@
 # Dependency list for https://github.com/rapidsai/dependency-file-generator
 files:
   all:
-    output: none
+    output: conda
+    matrix:
+      cuda: ["11.4", "11.8", "12.0"]
+      arch: [x86_64]
     includes:
       - build_python
       - cudatoolkit
@@ -27,6 +30,36 @@ files:
       - cudatoolkit
       - docs
       - py_version
+  py_build:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: build-system
+    includes:
+      - build_python
+  py_run:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project
+    includes:
+      - run_python
+  py_test:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test
+    includes:
+      - test_python
+  py_docs:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: docs
+    includes:
+      - docs
 channels:
   - rapidsai
   - rapidsai-nightly
@@ -36,9 +69,12 @@ channels:
 dependencies:
   build_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
           - setuptools>=64.0.0
+      - output_types: pyproject
+        packages:
+          - tomli ; python_version < '3.11'
   cudatoolkit:
     specific:
       - output_types: conda
@@ -76,12 +112,12 @@ dependencies:
           - pre-commit
   docs:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - numpydoc
+          - numpydoc>=1.1.0
           - sphinx
-          - sphinx-click
-          - sphinx_rtd_theme
+          - sphinx-click>=2.7.1
+          - sphinx-rtd-theme>=0.5.1
   py_version:
     specific:
       - output_types: conda
@@ -99,29 +135,30 @@ dependencies:
               - python>=3.9,<3.11
   run_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - dask>=2023.7.1
-          - distributed>=2023.7.1
+          - click >=8.1
           - numba>=0.57
           - numpy>=1.21
-          - pandas>=1.3,<1.6.0dev0
+          - pandas>=1.3,<1.6.0.dev0
           - pynvml>=11.0.0,<11.5
+          - rapids-dask-dependency==24.2.*
           - zict>=2.0.0
-      - output_types: [conda]
-        packages:
-          - dask-core>=2023.7.1
   test_python:
     common:
-      - output_types: [conda]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - cudf=23.10
-          - dask-cudf=23.10
-          - kvikio=23.10
+          - cudf==24.2.*
+          - dask-cudf==24.2.*
+          - kvikio==24.2.*
           - pytest
           - pytest-cov
+          - ucx-py==0.36.*
+      - output_types: [conda]
+        packages:
+          - distributed-ucxx==0.36.*
           - ucx-proc=*=gpu
-          - ucx-py=0.34
+          - ucxx==0.36.*
     specific:
       - output_types: conda
         matrices:

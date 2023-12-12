@@ -19,6 +19,7 @@ from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
 from dask_cuda.utils import get_device_total_memory
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -384,7 +385,7 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
@@ -393,7 +394,10 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
 
     with dask.config.set(jit_unspill_compatibility_mode=compatibility_mode):
         async with dask_cuda.LocalCUDACluster(
-            n_workers=1, jit_unspill=True, asynchronous=True
+            n_workers=1,
+            jit_unspill=True,
+            worker_class=IncreasedCloseTimeoutNanny,
+            asynchronous=True,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 ddf = dask.dataframe.from_pandas(

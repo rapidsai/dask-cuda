@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import warnings
+from functools import partial
 
 import dask
 from distributed import LocalCluster, Nanny, Worker
@@ -9,11 +10,9 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .plugins import CPUAffinity, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
-    CPUAffinity,
-    PreImport,
-    RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
@@ -320,8 +319,11 @@ class LocalCUDACluster(LocalCluster):
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
                 protocol = "ucx"
-            elif protocol != "ucx":
-                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+            elif protocol not in ["ucx", "ucxx"]:
+                raise TypeError(
+                    "Enabling InfiniBand or NVLink requires protocol='ucx' or "
+                    "protocol='ucxx'"
+                )
 
         self.host = kwargs.get("host", None)
 
@@ -334,12 +336,16 @@ class LocalCUDACluster(LocalCluster):
         )
 
         if worker_class is not None:
-            from functools import partial
-
-            worker_class = partial(
-                LoggedNanny if log_spilling is True else Nanny,
-                worker_class=worker_class,
-            )
+            if log_spilling is True:
+                raise ValueError(
+                    "Cannot enable `log_spilling` when `worker_class` is specified. If "
+                    "logging is needed, ensure `worker_class` is a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedNanny` or a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedWorker`, and specify "
+                    "`log_spilling=False`."
+                )
+            if not issubclass(worker_class, Nanny):
+                worker_class = partial(Nanny, worker_class=worker_class)
 
         self.pre_import = pre_import
 
@@ -368,7 +374,7 @@ class LocalCUDACluster(LocalCluster):
         ) + ["dask_cuda.initialize"]
         self.new_spec["options"]["preload_argv"] = self.new_spec["options"].get(
             "preload_argv", []
-        ) + ["--create-cuda-context"]
+        ) + ["--create-cuda-context", "--protocol", protocol]
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)
