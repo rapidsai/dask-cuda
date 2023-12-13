@@ -25,6 +25,11 @@ from distributed.worker import Worker
 
 from .. import comms
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda x: x
+
 T = TypeVar("T")
 
 
@@ -638,17 +643,20 @@ def shuffle_to_parquet(
     npartitions: Optional[int] = None,
     ignore_index: bool = False,
     batchsize: int = 2,
-    pre_shuffle: Optional = None,
-) -> DataFrame:
-
-    import os
-
-    import dask_cudf
+    pre_shuffle: Optional[int] = None,
+    overwrite: bool = False,
+) -> None:
+    from dask_cuda.explicit_comms.dataframe.utils import (
+        _clean_worker_storage,
+        _prepare_dir,
+    )
 
     c = comms.default_comms()
 
-    if not os.path.isdir(parquet_dir):
-        os.mkdir(parquet_dir)
+    # Assume we are writing to local worker storage
+    if overwrite:
+        wait(c.client.run(_clean_worker_storage, parquet_dir))
+    wait(c.client.run(_prepare_dir, parquet_dir))
 
     # The ranks of the output workers
     ranks = list(range(len(c.worker_addresses)))
@@ -667,7 +675,7 @@ def shuffle_to_parquet(
 
     parts_per_batch = len(ranks) * batchsize
     num_rounds = ceil(full_df.npartitions / parts_per_batch)
-    for stage in range(num_rounds):
+    for stage in tqdm(range(num_rounds)):
         offset = parts_per_batch * stage
         df = full_df.partitions[offset : offset + parts_per_batch]
 
@@ -708,7 +716,7 @@ def shuffle_to_parquet(
             )
         wait(list(shuffle_result.values()))
 
-    return dask_cudf.read_parquet(parquet_dir, split_row_groups=False)
+    return
 
 
 def _use_explicit_comms() -> bool:
