@@ -577,7 +577,7 @@ def get_rearrange_by_column_wrapper(func):
             kw = kw.arguments
             # Notice, we only overwrite the default and the "tasks" shuffle
             # algorithm. The "disk" and "p2p" algorithm, we don't touch.
-            if kw["shuffle"] in ("tasks", None):
+            if kw["shuffle_method"] in ("tasks", None):
                 col = kw["col"]
                 if isinstance(col, str):
                     col = [col]

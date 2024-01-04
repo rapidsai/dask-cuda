@@ -403,7 +403,7 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
-                res = ddf.shuffle(on="key", shuffle="tasks").persist()
+                res = ddf.shuffle(on="key", shuffle_method="tasks").persist()
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
