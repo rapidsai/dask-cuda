@@ -33,7 +33,7 @@ repos:
                 args: ["--module=dask_cuda", "--ignore-missing-imports"]
                 pass_filenames: false
       - repo: https://github.com/rapidsai/dependency-file-generator
-        rev: v1.5.1
+        rev: v1.8.0
         hooks:
             - id: rapids-dependency-file-generator
               args: ["--clean"]
