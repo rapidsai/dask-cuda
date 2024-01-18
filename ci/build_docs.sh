@@ -23,7 +23,7 @@ rapids-mamba-retry install \
     --channel "${PYTHON_CHANNEL}" \
     dask-cuda
 
-export RAPIDS_VERSION_NUMBER="24.02"
+export RAPIDS_VERSION_NUMBER="24.04"
 export RAPIDS_DOCS_DIR="$(mktemp -d)"
 
 rapids-logger "Build Python docs"

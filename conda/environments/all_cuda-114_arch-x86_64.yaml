@@ -10,10 +10,10 @@ dependencies:
 - click >=8.1
 - cuda-version=11.4
 - cudatoolkit
-- cudf==24.2.*
-- dask-cudf==24.2.*
-- distributed-ucxx==0.36.*
-- kvikio==24.2.*
+- cudf==24.4.*
+- dask-cudf==24.4.*
+- distributed-ucxx==0.37.*
+- kvikio==24.4.*
 - numactl-devel-cos7-x86_64
 - numba>=0.57
 - numpy>=1.21
@@ -24,13 +24,13 @@ dependencies:
 - pytest
 - pytest-cov
 - python>=3.9,<3.11
-- rapids-dask-dependency==24.2.*
+- rapids-dask-dependency==24.4.*
 - setuptools>=64.0.0
 - sphinx
 - sphinx-click>=2.7.1
 - sphinx-rtd-theme>=0.5.1
 - ucx-proc=*=gpu
-- ucx-py==0.36.*
-- ucxx==0.36.*
+- ucx-py==0.37.*
+- ucxx==0.37.*
 - zict>=2.0.0
 name: all_cuda-114_arch-x86_64
