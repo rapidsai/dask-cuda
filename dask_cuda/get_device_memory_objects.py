@@ -124,6 +124,10 @@ def get_device_memory_objects_register_cudf():
     def get_device_memory_objects_cudf_multiindex(obj):
         return dispatch(obj._columns)
 
+    @dispatch.register(cudf.core.column.ColumnBase)
+    def get_device_memory_objects_cudf_column(obj):
+        return dispatch(obj.data) + dispatch(obj.children) + dispatch(obj.mask)
+
 
 @sizeof.register_lazy("cupy")
 def register_cupy():  # NB: this overwrites dask.sizeof.register_cupy()
