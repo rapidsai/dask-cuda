@@ -11,10 +11,10 @@ dependencies:
 - cuda-nvcc-impl
 - cuda-nvrtc
 - cuda-version=12.2
-- cudf==24.2.*
-- dask-cudf==24.2.*
-- distributed-ucxx==0.36.*
-- kvikio==24.2.*
+- cudf==24.4.*
+- dask-cudf==24.4.*
+- distributed-ucxx==0.37.*
+- kvikio==24.4.*
 - numactl-devel-cos7-x86_64
 - numba>=0.57
 - numpy>=1.21
