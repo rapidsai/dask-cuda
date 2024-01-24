@@ -302,13 +302,24 @@ def test_dataframes_share_dev_mem(root_dir):
 def test_cudf_get_device_memory_objects():
     cudf = pytest.importorskip("cudf")
     objects = [
-        cudf.DataFrame({"a": range(10), "b": range(10)}, index=reversed(range(10))),
+        cudf.DataFrame(
+            {"a": [0, 1, 2, 3, None, 5, 6, 7, 8, 9], "b": range(10)},
+            index=reversed(range(10)),
+        ),
         cudf.MultiIndex(
             levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
         ),
     ]
     res = get_device_memory_ids(objects)
-    assert len(res) == 4, "We expect four buffer objects"
+    # Buffers are:
+    # 1. int data for objects[0].a
+    # 2. mask data for objects[0].a
+    # 3. int data for objects[0].b
+    # 4. int data for objects[0].index
+    # 5. int data for objects[1].levels[0]
+    # 6. char data for objects[1].levels[1]
+    # 7. offset data for objects[1].levels[1]
+    assert len(res) == 7, "We expect seven buffer objects"
 
 
 def test_externals(root_dir):
@@ -403,7 +414,7 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
-                res = ddf.shuffle(on="key", shuffle="tasks").persist()
+                res = ddf.shuffle(on="key", shuffle_method="tasks").persist()
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
