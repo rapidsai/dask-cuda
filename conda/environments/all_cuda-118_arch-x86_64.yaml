@@ -18,7 +18,7 @@ dependencies:
 - numba>=0.57
 - numpy>=1.21
 - numpydoc>=1.1.0
-- pandas>=1.3,<1.6.0.dev0
+- pandas>=1.3
 - pre-commit
 - pynvml>=11.0.0,<11.5
 - pytest
