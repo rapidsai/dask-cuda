@@ -1,3 +1,27 @@
+# dask-cuda 24.02.00 (12 Feb 2024)
+
+## 🚨 Breaking Changes
+
+- Publish nightly wheels to NVIDIA index instead of PyPI ([#1294](https://github.com/rapidsai/dask-cuda/pull/1294)) [@pentschev](https://github.com/pentschev)
+
+## 🐛 Bug Fixes
+
+- Fix get_device_memory_ids ([#1305](https://github.com/rapidsai/dask-cuda/pull/1305)) [@wence-](https://github.com/wence-)
+- Prevent double UCX initialization in `test_dgx` ([#1301](https://github.com/rapidsai/dask-cuda/pull/1301)) [@pentschev](https://github.com/pentschev)
+- Update to Dask&#39;s `shuffle_method` kwarg ([#1300](https://github.com/rapidsai/dask-cuda/pull/1300)) [@pentschev](https://github.com/pentschev)
+- Add timeout to `test_dask_use_explicit_comms` ([#1298](https://github.com/rapidsai/dask-cuda/pull/1298)) [@pentschev](https://github.com/pentschev)
+- Publish nightly wheels to NVIDIA index instead of PyPI ([#1294](https://github.com/rapidsai/dask-cuda/pull/1294)) [@pentschev](https://github.com/pentschev)
+- Make versions PEP440 compliant ([#1279](https://github.com/rapidsai/dask-cuda/pull/1279)) [@vyasr](https://github.com/vyasr)
+- Generate pyproject.toml with dfg ([#1276](https://github.com/rapidsai/dask-cuda/pull/1276)) [@vyasr](https://github.com/vyasr)
+- Fix rapids dask dependency version ([#1275](https://github.com/rapidsai/dask-cuda/pull/1275)) [@vyasr](https://github.com/vyasr)
+
+## 🛠️ Improvements
+
+- Remove usages of rapids-env-update ([#1304](https://github.com/rapidsai/dask-cuda/pull/1304)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- refactor CUDA versions in dependencies.yaml ([#1303](https://github.com/rapidsai/dask-cuda/pull/1303)) [@jameslamb](https://github.com/jameslamb)
+- Start generating conda test environments ([#1291](https://github.com/rapidsai/dask-cuda/pull/1291)) [@charlesbluca](https://github.com/charlesbluca)
+- Branch 24.02 merge branch 23.12 ([#1286](https://github.com/rapidsai/dask-cuda/pull/1286)) [@vyasr](https://github.com/vyasr)
+
 # dask-cuda 23.12.00 (6 Dec 2023)
 
 ## 🐛 Bug Fixes
