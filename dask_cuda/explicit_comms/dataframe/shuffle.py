@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import functools
 import inspect
+import threading
+import uuid
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -16,16 +19,53 @@ import distributed.worker
 from dask.base import tokenize
 from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
-from distributed import wait
+from distributed import get_worker, wait
 from distributed.protocol import nested_deserialize, to_serialize
 from distributed.worker import Worker
 
 from .. import comms
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda x: x
+
 T = TypeVar("T")
 
 
 Proxify = Callable[[T], T]
+
+
+_WORKER_CACHE = {}
+_WORKER_CACHE_LOCK = threading.RLock()
+
+
+@contextlib.contextmanager
+def get_worker_cache(name):
+    with _WORKER_CACHE_LOCK:
+        yield _get_worker_cache(name)
+
+
+def _get_worker_cache(name):
+    """Utility to get the `name` element of the cache
+    dictionary for the current worker.  If executed
+    by anything other than a distributed Dask worker,
+    we will use the global `_WORKER_CACHE` variable.
+    """
+    try:
+        worker = get_worker()
+    except ValueError:
+        # There is no dask.distributed worker.
+        # Assume client/worker are same process
+        global _WORKER_CACHE  # pylint: disable=global-variable-not-assigned
+        if name not in _WORKER_CACHE:
+            _WORKER_CACHE[name] = {}
+        return _WORKER_CACHE[name]
+    if not hasattr(worker, "worker_cache"):
+        worker.worker_cache = {}
+    if name not in worker.worker_cache:
+        worker.worker_cache[name] = {}
+    return worker.worker_cache[name]
 
 
 def get_proxify(worker: Worker) -> Proxify:
@@ -328,6 +368,8 @@ async def shuffle_task(
     ignore_index: bool,
     num_rounds: int,
     batchsize: int,
+    parquet_dir: str | None,
+    final_task: bool,
 ) -> Dict[int, DataFrame]:
     """Explicit-comms shuffle task
 
@@ -371,6 +413,8 @@ async def shuffle_task(
     assert stage.keys() == rank_to_inkeys[myrank]
     no_comm_postprocess = get_no_comm_postprocess(stage, num_rounds, batchsize, proxify)
 
+    fns = []
+    append_files = True  # Whether to keep files open between batches
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]] = defaultdict(list)
     for _ in range(num_rounds):
         partitions = create_partitions(
@@ -385,6 +429,50 @@ async def shuffle_task(
             proxify,
             out_part_id_to_dataframe_list,
         )
+
+        if parquet_dir:
+            import cudf
+
+            out_part_ids = list(out_part_id_to_dataframe_list.keys())
+            for out_part_id in out_part_ids:
+                if append_files:
+                    writers = _get_worker_cache("writers")
+                    try:
+                        writer = writers[out_part_id]
+                    except KeyError:
+                        fn = f"{parquet_dir}/part.{out_part_id}.parquet"
+                        fns.append(fn)
+                        writer = cudf.io.parquet.ParquetWriter(fn, index=False)
+                        writers[out_part_id] = writer
+                    dfs = out_part_id_to_dataframe_list.pop(out_part_id)
+                    dfs = [df for df in dfs if len(dfs) > 0]
+                    for df in dfs:
+                        writer.write_table(df)
+                    del dfs
+                else:
+                    dfs = out_part_id_to_dataframe_list.pop(out_part_id)
+                    id = str(uuid.uuid4())[:8]
+                    fn = f"{parquet_dir}/part.{out_part_id}.{id}.parquet"
+                    fns.append(fn)
+                    dfs = [df for df in dfs if len(dfs) > 0]
+                    if len(dfs) > 1:
+                        with cudf.io.parquet.ParquetWriter(fn, index=False) as writer:
+                            for df in dfs:
+                                writer.write_table(df)
+                    elif dfs:
+                        dfs[0].to_parquet(fn, index=False)
+                    del dfs
+                await asyncio.sleep(0)
+
+    if parquet_dir:
+        if append_files:
+            if final_task:
+                for out_part_id in list(writers.keys()):
+                    writers.pop(out_part_id).close()
+                    await asyncio.sleep(0)
+                del writers
+            return {i: fn for i, fn in enumerate(fns)}
+        return {i: fn for i, fn in enumerate(fns)}
 
     # Finally, we concatenate the output dataframes into the final output partitions
     ret = {}
@@ -518,6 +606,7 @@ def shuffle(
             ignore_index,
             num_rounds,
             batchsize,
+            True,
         )
     wait(list(shuffle_result.values()))
 
@@ -545,6 +634,89 @@ def shuffle(
     for fut in [*shuffle_result.values(), *dsk.values()]:
         fut.release()
     return ret
+
+
+def shuffle_to_parquet(
+    full_df: DataFrame,
+    column_names: List[str],
+    parquet_dir: str,
+    npartitions: Optional[int] = None,
+    ignore_index: bool = False,
+    batchsize: int = 2,
+    pre_shuffle: Optional[int] = None,
+    overwrite: bool = False,
+) -> None:
+    from dask_cuda.explicit_comms.dataframe.utils import (
+        _clean_worker_storage,
+        _prepare_dir,
+    )
+
+    c = comms.default_comms()
+
+    # Assume we are writing to local worker storage
+    if overwrite:
+        wait(c.client.run(_clean_worker_storage, parquet_dir))
+    wait(c.client.run(_prepare_dir, parquet_dir))
+
+    # The ranks of the output workers
+    ranks = list(range(len(c.worker_addresses)))
+
+    # By default, we preserve number of partitions
+    if npartitions is None:
+        npartitions = full_df.npartitions
+
+    # Find the output partition IDs for each worker
+    div = npartitions // len(ranks)
+    rank_to_out_part_ids: Dict[int, Set[int]] = {}  # rank -> set of partition id
+    for i, rank in enumerate(ranks):
+        rank_to_out_part_ids[rank] = set(range(div * i, div * (i + 1)))
+    for rank, i in zip(ranks, range(div * len(ranks), npartitions)):
+        rank_to_out_part_ids[rank].add(i)
+
+    parts_per_batch = len(ranks) * batchsize
+    num_rounds = ceil(full_df.npartitions / parts_per_batch)
+    for stage in tqdm(range(num_rounds)):
+        offset = parts_per_batch * stage
+        df = full_df.partitions[offset : offset + parts_per_batch]
+
+        # Execute pre-shuffle function on each batch
+        if callable(pre_shuffle):
+            df = pre_shuffle(df)
+
+        df = df.persist()  # Make sure optimizations are apply on the existing graph
+        wait([df])  # Make sure all keys has been materialized on workers
+        name = (
+            "explicit-comms-shuffle-"
+            f"{tokenize(df, column_names, npartitions, ignore_index)}"
+        )
+
+        # Stage all keys of `df` on the workers and cancel them, which makes it possible
+        # for the shuffle to free memory as the partitions of `df` are consumed.
+        # See CommsContext.stage_keys() for a description of staging.
+        rank_to_inkeys = c.stage_keys(name=name, keys=df.__dask_keys__())
+        max_num_inkeys = max(len(k) for k in rank_to_inkeys.values())
+        c.client.cancel(df)
+
+        # Run a shuffle task on each worker
+        shuffle_result = {}
+        for rank in ranks:
+            shuffle_result[rank] = c.submit(
+                c.worker_addresses[rank],
+                shuffle_task,
+                name,
+                rank_to_inkeys,
+                rank_to_out_part_ids,
+                column_names,
+                npartitions,
+                ignore_index,
+                1,
+                max_num_inkeys,
+                parquet_dir,
+                stage == (num_rounds - 1),
+            )
+        wait(list(shuffle_result.values()))
+
+    return
 
 
 def _use_explicit_comms() -> bool:
