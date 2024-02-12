@@ -144,6 +144,10 @@ def _test_ucx_infiniband_nvlink(
     else:
         skip_queue.put("ok")
 
+    # `ucp.get_active_transports()` call above initializes UCX, we must reset it
+    # so that Dask doesn't try to initialize it again and raise an exception.
+    ucp.reset()
+
     if enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
         enable_tcp_over_ucx = None
         cm_tls = ["all"]
