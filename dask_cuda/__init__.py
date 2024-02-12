@@ -1,8 +1,15 @@
 import sys
+import warnings
 
 if sys.platform != "linux":
     raise ImportError("Only Linux is supported by Dask-CUDA at this time")
 
+# This warning is not specific to dask-cuda
+# See: https://github.com/rapidsai/dask-cuda/issues/1311
+warnings.filterwarnings(
+    "ignore",
+    message="The current Dask DataFrame implementation is deprecated.",
+)
 
 import dask
 import dask.utils
