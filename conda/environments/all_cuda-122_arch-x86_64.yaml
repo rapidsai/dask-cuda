@@ -24,7 +24,7 @@ dependencies:
 - pynvml>=11.0.0,<11.5
 - pytest
 - pytest-cov
-- python>=3.9,<3.11
+- python>=3.9,<3.12
 - rapids-dask-dependency==24.4.*
 - setuptools>=64.0.0
 - sphinx
