@@ -25,6 +25,12 @@ from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
+# Skip these tests when dask-expr is active (for now)
+pytest.mark.skipif(
+    dask.config.get("dataframe.query-planning", None) is not False,
+    reason="https://github.com/rapidsai/dask-cuda/issues/1311",
+)
+
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
 
