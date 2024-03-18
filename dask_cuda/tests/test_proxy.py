@@ -537,10 +537,10 @@ def test_from_cudf_of_proxy_object():
     assert has_parallel_type(df)
 
     ddf = dask_cudf.from_cudf(df, npartitions=1)
-    assert has_parallel_type(ddf)
+    assert has_parallel_type(ddf._meta)
 
     # Notice, the output is a dask-cudf dataframe and not a proxy object
-    assert type(ddf) is dask_cudf.core.DataFrame
+    assert type(ddf._meta) is cudf.DataFrame
 
 
 def test_proxy_object_parquet(tmp_path):
