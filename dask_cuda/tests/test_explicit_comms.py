@@ -28,6 +28,11 @@ ucp = pytest.importorskip("ucp")
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
 
+# Skip these tests when dask-expr is active (for now)
+pytest.mark.skipif(
+    dask.config.get("dataframe.query-planning", None) is not False,
+    reason="https://github.com/rapidsai/dask-cuda/issues/1311",
+)
 
 async def my_rank(state, arg):
     return state["rank"] + arg

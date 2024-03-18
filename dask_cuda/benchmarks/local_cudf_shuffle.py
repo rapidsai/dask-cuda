@@ -8,8 +8,6 @@ import pandas as pd
 
 import dask
 import dask.dataframe
-from dask.dataframe.core import new_dd_object
-from dask.dataframe.shuffle import shuffle
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
@@ -22,6 +20,7 @@ from dask_cuda.benchmarks.utils import (
     print_separator,
     print_throughput_bandwidth,
 )
+from dask_cuda.utils import _make_collection
 
 try:
     import cupy
@@ -33,7 +32,7 @@ except ImportError:
 
 
 def shuffle_dask(df, args):
-    result = shuffle(df, index="data", shuffle="tasks", ignore_index=args.ignore_index)
+    result = df.shuffle("data", shuffle_method="tasks", ignore_index=args.ignore_index)
     if args.backend == "dask-noop":
         result = as_noop(result)
     t1 = perf_counter()
@@ -105,7 +104,7 @@ def create_data(
 
     df_meta = create_df(0, args.type)
     divs = [None] * (len(dsk) + 1)
-    ret = new_dd_object(dsk, name, df_meta, divs).persist()
+    ret = _make_collection(dsk, name, df_meta, divs).persist()
     wait(ret)
 
     data_processed = args.in_parts * args.partition_size

@@ -764,3 +764,18 @@ def get_rmm_device_memory_usage() -> Optional[int]:
         if isinstance(mr, rmm.mr.StatisticsResourceAdaptor):
             return mr.allocation_counts["current_bytes"]
     return None
+
+def _make_collection(graph, name, meta, divisions):
+    # Create a DataFrame collection from a task graph.
+    # Accounts for legacy vs dask-expr API
+    try:
+        # New expression-based API
+        from dask.dataframe import from_graph
+
+        keys = [(name, i) for i in range(len(divisions))]
+        return from_graph(graph, meta, divisions, keys, name)
+    except ImportError:
+        # Legacy API
+        from dask.dataframe.core import new_dd_object
+
+        return new_dd_object(graph, name, meta, divisions)

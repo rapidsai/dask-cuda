@@ -8,7 +8,6 @@ import pandas as pd
 
 import dask
 from dask.base import tokenize
-from dask.dataframe.core import new_dd_object
 from dask.distributed import performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
@@ -20,6 +19,7 @@ from dask_cuda.benchmarks.utils import (
     print_separator,
     print_throughput_bandwidth,
 )
+from dask_cuda.utils import _make_collection
 
 # Benchmarking cuDF merge operation based on
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
@@ -123,7 +123,7 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
         for i, part in enumerate(parts)
     }
 
-    ddf = new_dd_object(graph, name, meta, divisions)
+    ddf = _make_collection(graph, name, meta, divisions)
 
     if chunk_type == "build":
         if not args.no_shuffle:
