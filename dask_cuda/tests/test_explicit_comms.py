@@ -22,14 +22,15 @@ from dask_cuda.explicit_comms import comms
 from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
-mp = mp.get_context("spawn")  # type: ignore
-ucp = pytest.importorskip("ucp")
-
 # Skip these tests when dask-expr is active (for now)
-pytest.mark.skipif(
+pytestmark = pytest.mark.skipif(
     dask.config.get("dataframe.query-planning", None) is not False,
     reason="https://github.com/rapidsai/dask-cuda/issues/1311",
 )
+
+mp = mp.get_context("spawn")  # type: ignore
+ucp = pytest.importorskip("ucp")
+
 
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
