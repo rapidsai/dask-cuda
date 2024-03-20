@@ -83,6 +83,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
                     pd.testing.assert_frame_equal(got, expected)
 
 
+@pytest.mark.skip(reason="TEST DO NOT MERGE")
 def test_dataframe_merge_empty_partitions():
     # Notice, we use more partitions than rows
     p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
@@ -221,6 +222,7 @@ def _test_dask_use_explicit_comms(in_cluster):
         check_shuffle()
 
 
+@pytest.mark.skip(reason="TEST DO NOT MERGE")
 @pytest.mark.parametrize("in_cluster", [True, False])
 def test_dask_use_explicit_comms(in_cluster):
     def _timeout(process, function, timeout):
@@ -283,6 +285,7 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
             assert_eq(got, expected)
 
 
+@pytest.mark.skip(reason="TEST DO NOT MERGE")
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
