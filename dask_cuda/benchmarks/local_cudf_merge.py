@@ -25,12 +25,18 @@ from dask_cuda.utils import _make_collection
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
 
 
+# Set default shuffle method to "tasks"
+if dask.config.get("dataframe.shuffle.method", None) is None:
+    dask.config.set({"dataframe.shuffle.method": "tasks"})
+
+
 def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu):
     # Setting a seed that triggers max amount of comm in the two-GPU case.
     if gpu:
         import cupy as xp
 
         import cudf as xdf
+        import dask_cudf  # noqa: F401
     else:
         import numpy as xp
         import pandas as xdf
