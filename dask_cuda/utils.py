@@ -765,6 +765,7 @@ def get_rmm_device_memory_usage() -> Optional[int]:
             return mr.allocation_counts["current_bytes"]
     return None
 
+
 def _make_collection(graph, name, meta, divisions):
     # Create a DataFrame collection from a task graph.
     # Accounts for legacy vs dask-expr API
