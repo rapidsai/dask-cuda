@@ -14,14 +14,16 @@ import dask.dataframe
 import dask.utils
 import distributed.worker
 from dask.base import tokenize
-from dask.dataframe.core import DataFrame, Series, _concat as dd_concat
+from dask.dataframe import DataFrame, Series
+from dask.dataframe.core import _concat as dd_concat
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 from distributed.worker import Worker
 
-from .. import comms
 from dask_cuda.utils import _make_collection
+
+from .. import comms
 
 T = TypeVar("T")
 
@@ -469,8 +471,9 @@ def shuffle(
         npartitions = df.npartitions
 
     # Step (a):
-    df = df.persist()  # Make sure optimizations are apply on the existing graph
+    df = df.persist()  # Make sure optimizations are applied on the existing graph
     wait([df])  # Make sure all keys has been materialized on workers
+    persisted_keys = [f.key for f in c.client.futures_of(df)]
     name = (
         "explicit-comms-shuffle-"
         f"{tokenize(df, column_names, npartitions, ignore_index)}"
@@ -480,7 +483,7 @@ def shuffle(
     # Stage all keys of `df` on the workers and cancel them, which makes it possible
     # for the shuffle to free memory as the partitions of `df` are consumed.
     # See CommsContext.stage_keys() for a description of staging.
-    rank_to_inkeys = c.stage_keys(name=name, keys=df.__dask_keys__())
+    rank_to_inkeys = c.stage_keys(name=name, keys=persisted_keys)
     c.client.cancel(df)
 
     # Get batchsize
