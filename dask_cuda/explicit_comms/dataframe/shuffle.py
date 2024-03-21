@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 import dask
 import dask.config
 import dask.dataframe
+import dask.dataframe as dd
 import dask.utils
 import distributed.worker
 from dask.base import tokenize
@@ -20,8 +21,6 @@ from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 from distributed.worker import Worker
-
-from dask_cuda.utils import _make_collection
 
 from .. import comms
 
@@ -542,7 +541,7 @@ def shuffle(
 
     # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(dsk) + 1)
-    ret = _make_collection(dsk, name, df_meta, divs).persist()
+    ret = dd.from_delayed(dsk.values(), meta=df_meta, divisions=divs).persist()
     wait([ret])
 
     # Release all temporary dataframes
