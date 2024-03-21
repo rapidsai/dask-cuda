@@ -475,7 +475,7 @@ def shuffle(
     persisted_keys = [f.key for f in c.client.futures_of(df)]
     name = (
         "explicit-comms-shuffle-"
-        f"{tokenize(df, column_names, npartitions, ignore_index)}"
+        f"{tokenize(df, column_names, npartitions, ignore_index, batchsize)}"
     )
     df_meta: DataFrame = df._meta
 
