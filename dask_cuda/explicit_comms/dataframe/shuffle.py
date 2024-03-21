@@ -543,7 +543,14 @@ def shuffle(
 
     # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(futures) + 1)
-    ret = dd.from_delayed(futures, meta=df_meta, divisions=divs).persist()
+    kwargs = {"meta": df_meta, "divisions": divs, "prefix": "explicit-comms-shuffle"}
+    try:
+        ret = dd.from_delayed(futures, **kwargs).persist()
+    except TypeError:
+        # This version of dask may not support `prefix`
+        # See: https://github.com/dask/dask-expr/pull/991
+        kwargs.pop("prefix")
+        ret = dd.from_delayed(futures, **kwargs).persist()
     wait([ret])
 
     # Release all temporary dataframes

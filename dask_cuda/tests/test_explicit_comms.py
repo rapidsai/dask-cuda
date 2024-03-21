@@ -31,7 +31,7 @@ query_planning_skip = pytest.mark.skipif(
     dask.config.get("dataframe.query-planning", None) is not False,
     reason=(
         "The 'explicit-comms' config is not supported "
-        "when query planning is enabled.",
+        "when query planning is enabled."
     ),
 )
 
