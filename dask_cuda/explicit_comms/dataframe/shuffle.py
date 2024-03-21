@@ -529,23 +529,25 @@ def shuffle(
     # TODO: can we do this without using `submit()` to avoid the overhead
     #       of creating a Future for each dataframe partition?
 
-    dsk = {}
+    futures = []
     for rank in ranks:
         for part_id in rank_to_out_part_ids[rank]:
-            dsk[(name, part_id)] = c.client.submit(
-                getitem,
-                shuffle_result[rank],
-                part_id,
-                workers=[c.worker_addresses[rank]],
+            futures.append(
+                c.client.submit(
+                    getitem,
+                    shuffle_result[rank],
+                    part_id,
+                    workers=[c.worker_addresses[rank]],
+                )
             )
 
     # Create a distributed Dataframe from all the pieces
-    divs = [None] * (len(dsk) + 1)
-    ret = dd.from_delayed(dsk.values(), meta=df_meta, divisions=divs).persist()
+    divs = [None] * (len(futures) + 1)
+    ret = dd.from_delayed(futures, meta=df_meta, divisions=divs).persist()
     wait([ret])
 
     # Release all temporary dataframes
-    for fut in [*shuffle_result.values(), *dsk.values()]:
+    for fut in [*shuffle_result.values(), *futures]:
         fut.release()
     return ret
 

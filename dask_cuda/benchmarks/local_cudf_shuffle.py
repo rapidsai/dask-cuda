@@ -20,7 +20,6 @@ from dask_cuda.benchmarks.utils import (
     print_separator,
     print_throughput_bandwidth,
 )
-from dask_cuda.utils import _make_collection
 
 try:
     import cupy
@@ -93,18 +92,24 @@ def create_data(
         )
 
     # Create partition based to the specified partition distribution
-    dsk = {}
+    futures = []
     for i, part_size in enumerate(dist):
         for _ in range(part_size):
             # We use `client.submit` to control placement of the partition.
-            dsk[(name, len(dsk))] = client.submit(
-                create_df, chunksize, args.type, workers=[workers[i]], pure=False
+            futures.append(
+                client.submit(
+                    create_df, chunksize, args.type, workers=[workers[i]], pure=False
+                )
             )
-    wait(dsk.values())
+    wait(futures)
 
     df_meta = create_df(0, args.type)
-    divs = [None] * (len(dsk) + 1)
-    ret = _make_collection(dsk, name, df_meta, divs).persist()
+    divs = [None] * (len(futures) + 1)
+    ret = dask.dataframe.from_delayed(
+        futures,
+        meta=df_meta,
+        divisions=divs,
+    ).persist()
     wait(ret)
 
     data_processed = args.in_parts * args.partition_size
