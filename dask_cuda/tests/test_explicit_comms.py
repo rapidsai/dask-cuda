@@ -26,6 +26,20 @@ mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
 
+# Skip these tests when dask-expr is active (for now)
+query_planning_skip = pytest.mark.skipif(
+    dask.config.get("dataframe.query-planning", None) is not False,
+    reason=(
+        "The 'explicit-comms' config is not supported "
+        "when query planning is enabled.",
+    ),
+)
+
+# Set default shuffle method to "tasks"
+if dask.config.get("dataframe.shuffle.method", None) is None:
+    dask.config.set({"dataframe.shuffle.method": "tasks"})
+
+
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
 
@@ -83,7 +97,7 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
                     pd.testing.assert_frame_equal(got, expected)
 
 
-@pytest.mark.skip(reason="TEST DO NOT MERGE")
+@query_planning_skip
 def test_dataframe_merge_empty_partitions():
     # Notice, we use more partitions than rows
     p = mp.Process(target=_test_dataframe_merge_empty_partitions, args=(2, 4))
@@ -222,7 +236,7 @@ def _test_dask_use_explicit_comms(in_cluster):
         check_shuffle()
 
 
-@pytest.mark.skip(reason="TEST DO NOT MERGE")
+@query_planning_skip
 @pytest.mark.parametrize("in_cluster", [True, False])
 def test_dask_use_explicit_comms(in_cluster):
     def _timeout(process, function, timeout):
@@ -285,7 +299,7 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
             assert_eq(got, expected)
 
 
-@pytest.mark.skip(reason="TEST DO NOT MERGE")
+@query_planning_skip
 @pytest.mark.parametrize("nworkers", [1, 2, 4])
 @pytest.mark.parametrize("backend", ["pandas", "cudf"])
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
