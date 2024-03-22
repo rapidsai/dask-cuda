@@ -187,8 +187,9 @@ def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
         pytest.importorskip("cudf")
 
     if QUERY_PLANNING_ON:
-        # There seem to be problems with dask-expr + dask<2024.2.1
+        # There seem to be problems with dask_expr<1.0 and dask<2024.2.1
         pytest.importorskip("dask", minversion="2024.2.1")
+        pytest.importorskip("dask_expr", minversion="1.0")
 
     p = mp.Process(
         target=_test_dataframe_shuffle, args=(backend, protocol, nworkers, _partitions)
