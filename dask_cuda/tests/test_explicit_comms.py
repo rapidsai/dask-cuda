@@ -25,10 +25,11 @@ from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
+QUERY_PLANNING_ON = dask.config.get("dataframe.query-planning", None) is not False
 
 # Skip these tests when dask-expr is active (for now)
 query_planning_skip = pytest.mark.skipif(
-    dask.config.get("dataframe.query-planning", None) is not False,
+    QUERY_PLANNING_ON,
     reason=(
         "The 'explicit-comms' config is not supported "
         "when query planning is enabled."
@@ -184,6 +185,10 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
 def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
     if backend == "cudf":
         pytest.importorskip("cudf")
+
+    if QUERY_PLANNING_ON:
+        # There seem to be problems with dask-expr + dask<2024.2.1
+        pytest.importorskip("dask", minversion="2024.2.1")
 
     p = mp.Process(
         target=_test_dataframe_shuffle, args=(backend, protocol, nworkers, _partitions)
