@@ -20,6 +20,18 @@ from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
 
+if dask.config.get("dataframe.query-planning", None) is not False and dask.config.get(
+    "explicit-comms", False
+):
+    raise NotImplementedError(
+        "The 'explicit-comms' config is not yet supported when "
+        "query-planning is enabled in dask. Please use the shuffle "
+        "API directly, or use the legacy dask-dataframe API "
+        "(set the 'dataframe.query-planning' config to `False`"
+        "before importing `dask.dataframe`).",
+    )
+
+
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
 dask.dataframe.shuffle.rearrange_by_column = get_rearrange_by_column_wrapper(
     dask.dataframe.shuffle.rearrange_by_column
