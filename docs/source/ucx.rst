@@ -37,7 +37,7 @@ Automatic
 
 Beginning with Dask-CUDA 22.02 and assuming UCX >= 1.11.1, specifying UCX transports is now optional.
 
-A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <examples/ucx.html>`_ for more details examples of UCX usage with automatic configuration.
+A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <../examples/ucx/>`_ for more details examples of UCX usage with automatic configuration.
 
 Configuring transports manually is still possible, please refer to the subsection below.
 
@@ -79,12 +79,12 @@ However, some will affect related libraries, such as RMM:
 .. note::
     These options can be used with mainline Dask.distributed.
     However, some features are exclusive to Dask-CUDA, such as the automatic detection of InfiniBand interfaces.
-    See `Dask-CUDA -- Motivation <index.html#motivation>`_ for more details on the benefits of using Dask-CUDA.
+    See `Dask-CUDA -- Motivation <../#motivation>`_ for more details on the benefits of using Dask-CUDA.
 
 Usage
 -----
 
-See `Enabling UCX communication <examples/ucx.html>`_ for examples of UCX usage with different supported transports.
+See `Enabling UCX communication <../examples/ucx/>`_ for examples of UCX usage with different supported transports.
 
 Running in a fork-starved environment
 -------------------------------------
@@ -97,7 +97,7 @@ this when using Dask-CUDA's UCX integration, processes launched via
 multiprocessing should use the start processes using the
 `"forkserver"
 <https://docs.python.org/dev/library/multiprocessing.html#contexts-and-start-methods>`_
-method. When launching workers using `dask cuda worker <quickstart.html#dask-cuda-worker>`_, this can be
+method. When launching workers using `dask cuda worker <../quickstart/#dask-cuda-worker>`_, this can be
 achieved by passing ``--multiprocessing-method forkserver`` as an
 argument. In user code, the method can be controlled with the
 ``distributed.worker.multiprocessing-method`` configuration key in
