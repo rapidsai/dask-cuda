@@ -59,5 +59,5 @@ sed_runner "s/RAPIDS_VERSION_NUMBER=\".*/RAPIDS_VERSION_NUMBER=\"${NEXT_SHORT_TA
 
 # Docs referencing source code
 find docs/source/ -type f -name *.rst -print0 | while IFS= read -r -d '' filename; do
-    sed_runner "s|/branch-[^/]*/|/branch-${NEXT_SHORT_TAG}/|g" "${FILE}"
+    sed_runner "s|/branch-[^/]*/|/branch-${NEXT_SHORT_TAG}/|g" "${filename}"
 done
