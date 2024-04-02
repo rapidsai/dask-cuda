@@ -258,7 +258,9 @@ def parse_args():
     ]
 
     return parse_benchmark_args(
-        description="Distributed shuffle (dask/cudf) benchmark", args_list=special_args
+        description="Distributed shuffle (dask/cudf) benchmark",
+        args_list=special_args,
+        check_explicit_comms=False,
     )
 
 

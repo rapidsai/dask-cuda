@@ -375,27 +375,9 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    args = parse_args()
-
-    # Raise error early if "explicit-comms" is not allowed
-    if (
-        args.backend == "explicit-comms"
-        and dask.config.get(
-            "dataframe.query-planning",
-            None,
-        )
-        is not False
-    ):
-        raise NotImplementedError(
-            "The 'explicit-comms' config is not yet supported when "
-            "query-planning is enabled in dask. Please use the legacy "
-            "dask-dataframe API (set the 'dataframe.query-planning' "
-            "config to `False` before executing).",
-        )
-
     execute_benchmark(
         Config(
-            args=args,
+            args=parse_args(),
             bench_once=bench_once,
             create_tidy_results=create_tidy_results,
             pretty_print_results=pretty_print_results,
