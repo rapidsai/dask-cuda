@@ -59,5 +59,5 @@ sed_runner "s/RAPIDS_VERSION_NUMBER=\".*/RAPIDS_VERSION_NUMBER=\"${NEXT_SHORT_TA
 
 # Docs referencing source code
 for FILE in docs/source/*.rst; do
-    sed_runner "s/branch-${CURRENT_SHORT_TAG}\//branch-${NEXT_SHORT_TAG}\//g" "${FILE}"
+    sed_runner "s|/branch-[^/]*/|/branch-${NEXT_SHORT_TAG}/|g" "${FILE}"
 done
