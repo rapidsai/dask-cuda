@@ -2,7 +2,7 @@ Enabling UCX communication
 ==========================
 
 A CUDA cluster using UCX communication can be started automatically with LocalCUDACluster or manually with the ``dask cuda worker`` CLI tool.
-In either case, a ``dask.distributed.Client`` must be made for the worker cluster using the same Dask UCX configuration; see `UCX Integration -- Configuration <../ucx.html#configuration>`_ for details on all available options.
+In either case, a ``dask.distributed.Client`` must be made for the worker cluster using the same Dask UCX configuration; see `UCX Integration -- Configuration <../../ucx/#configuration>`_ for details on all available options.
 
 LocalCUDACluster with Automatic Configuration
 ---------------------------------------------
@@ -29,7 +29,7 @@ To connect a client to a cluster with automatically-configured UCX and an RMM po
 LocalCUDACluster with Manual Configuration
 ------------------------------------------
 
-When using LocalCUDACluster with UCX communication and manual configuration, all required UCX configuration is handled through arguments supplied at construction; see `API -- Cluster <../api.html#cluster>`_ for a complete list of these arguments.
+When using LocalCUDACluster with UCX communication and manual configuration, all required UCX configuration is handled through arguments supplied at construction; see `API -- Cluster <../../api/#cluster>`_ for a complete list of these arguments.
 To connect a client to a cluster with all supported transports and an RMM pool:
 
 .. code-block:: python
@@ -148,7 +148,7 @@ We communicate to the scheduler that we will be using UCX with the ``--protocol`
 Workers
 ^^^^^^^
 
-All UCX configuration options have analogous options in ``dask cuda worker``; see `API -- Worker <../api.html#worker>`_ for a complete list of these options.
+All UCX configuration options have analogous options in ``dask cuda worker``; see `API -- Worker <../../api/#worker>`_ for a complete list of these options.
 To start a cluster with all supported transports and an RMM pool:
 
 .. code-block:: bash
@@ -163,7 +163,7 @@ To start a cluster with all supported transports and an RMM pool:
 Client
 ^^^^^^
 
-A client can be configured to use UCX by using ``dask_cuda.initialize``, a utility which takes the same UCX configuring arguments as LocalCUDACluster and adds them to the current Dask configuration used when creating it; see `API -- Client initialization <../api.html#client-initialization>`_ for a complete list of arguments.
+A client can be configured to use UCX by using ``dask_cuda.initialize``, a utility which takes the same UCX configuring arguments as LocalCUDACluster and adds them to the current Dask configuration used when creating it; see `API -- Client initialization <../../api/#client-initialization>`_ for a complete list of arguments.
 To connect a client to the cluster we have made:
 
 .. code-block:: python

@@ -33,3 +33,6 @@ Explicit-comms
 .. currentmodule:: dask_cuda.explicit_comms.comms
 .. autoclass:: CommsContext
    :members:
+
+.. currentmodule:: dask_cuda.explicit_comms.dataframe.shuffle
+.. autofunction:: shuffle
