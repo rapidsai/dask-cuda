@@ -35,7 +35,11 @@ rapids-logger "Check GPU usage"
 nvidia-smi
 
 EXITCODE=0
-trap "EXITCODE=1" ERR
+set_exit_code() {
+    EXITCODE=$?
+    rapids-logger "Test failed with error ${EXITCODE}"
+}
+trap set_exit_code ERR
 set +e
 
 rapids-logger "pytest dask-cuda (dask-expr)"
@@ -110,5 +114,5 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-rapids-logger "Test script exiting with value: $EXITCODE"
+rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}
