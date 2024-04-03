@@ -11,6 +11,7 @@ from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from dask import config
 from dask.distributed import Client, SSHCluster
 from dask.utils import format_bytes, format_time, parse_bytes
 from distributed.comm.addressing import get_address_host
@@ -47,7 +48,11 @@ def as_noop(dsk):
         raise RuntimeError("Requested noop computation but dask-noop not installed.")
 
 
-def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]):
+def parse_benchmark_args(
+    description="Generic dask-cuda Benchmark",
+    args_list=[],
+    check_explicit_comms=True,
+):
     parser = argparse.ArgumentParser(description=description)
     worker_args = parser.add_argument_group(description="Worker configuration")
     worker_args.add_argument(
@@ -316,6 +321,24 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
 
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
+
+    # Raise error early if "explicit-comms" is not allowed
+    if (
+        check_explicit_comms
+        and args.backend == "explicit-comms"
+        and config.get(
+            "dataframe.query-planning",
+            None,
+        )
+        is not False
+    ):
+        raise NotImplementedError(
+            "The 'explicit-comms' config is not yet supported when "
+            "query-planning is enabled in dask. Please use the legacy "
+            "dask-dataframe API by setting the following environment "
+            "variable before executing:",
+            "    DASK_DATAFRAME__QUERY_PLANNING=False",
+        )
 
     return args
 

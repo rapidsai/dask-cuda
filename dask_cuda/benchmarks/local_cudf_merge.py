@@ -7,8 +7,7 @@ import numpy as np
 import pandas as pd
 
 import dask
-from dask.base import tokenize
-from dask.dataframe.core import new_dd_object
+import dask.dataframe as dd
 from dask.distributed import performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
@@ -25,12 +24,20 @@ from dask_cuda.benchmarks.utils import (
 # <https://gist.github.com/rjzamora/0ffc35c19b5180ab04bbf7c793c45955>
 
 
-def generate_chunk(i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu):
+# Set default shuffle method to "tasks"
+if dask.config.get("dataframe.shuffle.method", None) is None:
+    dask.config.set({"dataframe.shuffle.method": "tasks"})
+
+
+def generate_chunk(input):
+    i_chunk, local_size, num_chunks, chunk_type, frac_match, gpu = input
+
     # Setting a seed that triggers max amount of comm in the two-GPU case.
     if gpu:
         import cupy as xp
 
         import cudf as xdf
+        import dask_cudf  # noqa: F401
     else:
         import numpy as xp
         import pandas as xdf
@@ -105,25 +112,25 @@ def get_random_ddf(chunk_size, num_chunks, frac_match, chunk_type, args):
 
     parts = [chunk_size for _ in range(num_chunks)]
     device_type = True if args.type == "gpu" else False
-    meta = generate_chunk(0, 4, 1, chunk_type, None, device_type)
+    meta = generate_chunk((0, 4, 1, chunk_type, None, device_type))
     divisions = [None] * (len(parts) + 1)
 
-    name = "generate-data-" + tokenize(chunk_size, num_chunks, frac_match, chunk_type)
-
-    graph = {
-        (name, i): (
-            generate_chunk,
-            i,
-            part,
-            len(parts),
-            chunk_type,
-            frac_match,
-            device_type,
-        )
-        for i, part in enumerate(parts)
-    }
-
-    ddf = new_dd_object(graph, name, meta, divisions)
+    ddf = dd.from_map(
+        generate_chunk,
+        [
+            (
+                i,
+                part,
+                len(parts),
+                chunk_type,
+                frac_match,
+                device_type,
+            )
+            for i, part in enumerate(parts)
+        ],
+        meta=meta,
+        divisions=divisions,
+    )
 
     if chunk_type == "build":
         if not args.no_shuffle:

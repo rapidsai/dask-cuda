@@ -11,10 +11,12 @@ from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 import dask
 import dask.config
 import dask.dataframe
+import dask.dataframe as dd
 import dask.utils
 import distributed.worker
 from dask.base import tokenize
-from dask.dataframe.core import DataFrame, Series, _concat as dd_concat, new_dd_object
+from dask.dataframe import DataFrame, Series
+from dask.dataframe.core import _concat as dd_concat
 from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
@@ -468,18 +470,19 @@ def shuffle(
         npartitions = df.npartitions
 
     # Step (a):
-    df = df.persist()  # Make sure optimizations are apply on the existing graph
+    df = df.persist()  # Make sure optimizations are applied on the existing graph
     wait([df])  # Make sure all keys has been materialized on workers
+    persisted_keys = [f.key for f in c.client.futures_of(df)]
     name = (
         "explicit-comms-shuffle-"
-        f"{tokenize(df, column_names, npartitions, ignore_index)}"
+        f"{tokenize(df, column_names, npartitions, ignore_index, batchsize)}"
     )
     df_meta: DataFrame = df._meta
 
     # Stage all keys of `df` on the workers and cancel them, which makes it possible
     # for the shuffle to free memory as the partitions of `df` are consumed.
     # See CommsContext.stage_keys() for a description of staging.
-    rank_to_inkeys = c.stage_keys(name=name, keys=df.__dask_keys__())
+    rank_to_inkeys = c.stage_keys(name=name, keys=persisted_keys)
     c.client.cancel(df)
 
     # Get batchsize
@@ -526,23 +529,26 @@ def shuffle(
     # TODO: can we do this without using `submit()` to avoid the overhead
     #       of creating a Future for each dataframe partition?
 
-    dsk = {}
+    futures = []
     for rank in ranks:
         for part_id in rank_to_out_part_ids[rank]:
-            dsk[(name, part_id)] = c.client.submit(
-                getitem,
-                shuffle_result[rank],
-                part_id,
-                workers=[c.worker_addresses[rank]],
+            futures.append(
+                c.client.submit(
+                    getitem,
+                    shuffle_result[rank],
+                    part_id,
+                    workers=[c.worker_addresses[rank]],
+                )
             )
 
     # Create a distributed Dataframe from all the pieces
-    divs = [None] * (len(dsk) + 1)
-    ret = new_dd_object(dsk, name, df_meta, divs).persist()
+    divs = [None] * (len(futures) + 1)
+    kwargs = {"meta": df_meta, "divisions": divs, "prefix": "explicit-comms-shuffle"}
+    ret = dd.from_delayed(futures, **kwargs).persist()
     wait([ret])
 
     # Release all temporary dataframes
-    for fut in [*shuffle_result.values(), *dsk.values()]:
+    for fut in [*shuffle_result.values(), *futures]:
         fut.release()
     return ret
 
