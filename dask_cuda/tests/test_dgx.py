@@ -110,9 +110,7 @@ def test_tcp_over_ucx(protocol):
     elif protocol == "ucxx":
         ucp = pytest.importorskip("ucxx")
     if _is_ucx_116(ucp):
-        pytest.skip(
-            "Wireup may fail in UCX 1.16 in nodes with multiple NICs if TCP is used"
-        )
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
     p = mp.Process(target=_test_tcp_over_ucx, args=(protocol,))
     p.start()
@@ -229,9 +227,7 @@ def test_ucx_infiniband_nvlink(protocol, params):
     elif protocol == "ucxx":
         ucp = pytest.importorskip("ucxx")
     if _is_ucx_116(ucp) and params["enable_infiniband"] is False:
-        pytest.skip(
-            "Wireup may fail in UCX 1.16 in nodes with multiple NICs if TCP is used"
-        )
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
     skip_queue = mp.Queue()
 
