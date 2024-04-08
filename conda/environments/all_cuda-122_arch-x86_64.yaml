@@ -27,6 +27,7 @@ dependencies:
 - python>=3.9,<3.12
 - rapids-dask-dependency==24.6.*
 - setuptools>=64.0.0
+- snappy<1.2
 - sphinx
 - sphinx-click>=2.7.1
 - sphinx-rtd-theme>=0.5.1
