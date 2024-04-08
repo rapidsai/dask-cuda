@@ -8,8 +8,6 @@ import pandas as pd
 
 import dask
 import dask.dataframe
-from dask.dataframe.core import new_dd_object
-from dask.dataframe.shuffle import shuffle
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
@@ -33,7 +31,7 @@ except ImportError:
 
 
 def shuffle_dask(df, args):
-    result = shuffle(df, index="data", shuffle="tasks", ignore_index=args.ignore_index)
+    result = df.shuffle("data", shuffle_method="tasks", ignore_index=args.ignore_index)
     if args.backend == "dask-noop":
         result = as_noop(result)
     t1 = perf_counter()
@@ -94,18 +92,24 @@ def create_data(
         )
 
     # Create partition based to the specified partition distribution
-    dsk = {}
+    futures = []
     for i, part_size in enumerate(dist):
         for _ in range(part_size):
             # We use `client.submit` to control placement of the partition.
-            dsk[(name, len(dsk))] = client.submit(
-                create_df, chunksize, args.type, workers=[workers[i]], pure=False
+            futures.append(
+                client.submit(
+                    create_df, chunksize, args.type, workers=[workers[i]], pure=False
+                )
             )
-    wait(dsk.values())
+    wait(futures)
 
     df_meta = create_df(0, args.type)
-    divs = [None] * (len(dsk) + 1)
-    ret = new_dd_object(dsk, name, df_meta, divs).persist()
+    divs = [None] * (len(futures) + 1)
+    ret = dask.dataframe.from_delayed(
+        futures,
+        meta=df_meta,
+        divisions=divs,
+    ).persist()
     wait(ret)
 
     data_processed = args.in_parts * args.partition_size
@@ -254,7 +258,9 @@ def parse_args():
     ]
 
     return parse_benchmark_args(
-        description="Distributed shuffle (dask/cudf) benchmark", args_list=special_args
+        description="Distributed shuffle (dask/cudf) benchmark",
+        args_list=special_args,
+        check_explicit_comms=False,
     )
 
 
