@@ -35,13 +35,21 @@ function sed_runner() {
 # Centralized version file update
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
-# Bump cudf and dask-cudf testing dependencies
-sed_runner "s/cudf==.*/cudf==${NEXT_SHORT_TAG_PEP440}.*/g" dependencies.yaml
-sed_runner "s/dask-cudf==.*/dask-cudf==${NEXT_SHORT_TAG_PEP440}.*/g" dependencies.yaml
-sed_runner "s/kvikio==.*/kvikio==${NEXT_SHORT_TAG_PEP440}.*/g" dependencies.yaml
+# Bump testing dependencies
 sed_runner "s/ucx-py==.*/ucx-py==${NEXT_UCXPY_VERSION}.*/g" dependencies.yaml
 sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*/g" dependencies.yaml
-sed_runner "s/rapids-dask-dependency==.*/rapids-dask-dependency==${NEXT_SHORT_TAG_PEP440}.*/g" dependencies.yaml
+
+DEPENDENCIES=(
+  cudf
+  dask-cudf
+  kvikio
+  rapids-dask-dependency
+)
+for FILE in dependencies.yaml conda/environments/*.yaml; do
+  for DEP in "${DEPENDENCIES[@]}"; do
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*/g" "${FILE}"
+  done
+done
 
 # CI files
 for FILE in .github/workflows/*.yaml; do
