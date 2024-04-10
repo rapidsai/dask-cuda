@@ -1,3 +1,25 @@
+# dask-cuda 24.04.00 (10 Apr 2024)
+
+## 🐛 Bug Fixes
+
+- handle more RAPIDS version formats in update-version.sh ([#1307](https://github.com/rapidsai/dask-cuda/pull/1307)) [@jameslamb](https://github.com/jameslamb)
+
+## 🚀 New Features
+
+- Allow using pandas 2 ([#1308](https://github.com/rapidsai/dask-cuda/pull/1308)) [@vyasr](https://github.com/vyasr)
+- Support CUDA 12.2 ([#1302](https://github.com/rapidsai/dask-cuda/pull/1302)) [@jameslamb](https://github.com/jameslamb)
+
+## 🛠️ Improvements
+
+- Use `conda env create --yes` instead of `--force` ([#1326](https://github.com/rapidsai/dask-cuda/pull/1326)) [@bdice](https://github.com/bdice)
+- Add upper bound to prevent usage of NumPy 2 ([#1320](https://github.com/rapidsai/dask-cuda/pull/1320)) [@bdice](https://github.com/bdice)
+- Generalize GHA selectors for pure Python testing ([#1318](https://github.com/rapidsai/dask-cuda/pull/1318)) [@jakirkham](https://github.com/jakirkham)
+- Requre NumPy 1.23+ ([#1316](https://github.com/rapidsai/dask-cuda/pull/1316)) [@jakirkham](https://github.com/jakirkham)
+- Add support for Python 3.11 ([#1315](https://github.com/rapidsai/dask-cuda/pull/1315)) [@jameslamb](https://github.com/jameslamb)
+- target branch-24.04 for GitHub Actions workflows ([#1314](https://github.com/rapidsai/dask-cuda/pull/1314)) [@jameslamb](https://github.com/jameslamb)
+- Filter dd deprecation ([#1312](https://github.com/rapidsai/dask-cuda/pull/1312)) [@rjzamora](https://github.com/rjzamora)
+- Update ops-bot.yaml ([#1310](https://github.com/rapidsai/dask-cuda/pull/1310)) [@AyodeAwe](https://github.com/AyodeAwe)
+
 # dask-cuda 24.02.00 (12 Feb 2024)
 
 ## 🚨 Breaking Changes
