@@ -15,6 +15,10 @@ mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
 
 
+def _is_ucx_116(ucp):
+    return ucp.get_ucx_version()[:2] == (1, 16)
+
+
 class DGXVersion(Enum):
     DGX_1 = auto()
     DGX_2 = auto()
@@ -102,9 +106,11 @@ def _test_tcp_over_ucx(protocol):
 )
 def test_tcp_over_ucx(protocol):
     if protocol == "ucx":
-        pytest.importorskip("ucp")
+        ucp = pytest.importorskip("ucp")
     elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+        ucp = pytest.importorskip("ucxx")
+    if _is_ucx_116(ucp):
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
     p = mp.Process(target=_test_tcp_over_ucx, args=(protocol,))
     p.start()
@@ -217,9 +223,11 @@ def _test_ucx_infiniband_nvlink(
 )
 def test_ucx_infiniband_nvlink(protocol, params):
     if protocol == "ucx":
-        pytest.importorskip("ucp")
+        ucp = pytest.importorskip("ucp")
     elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+        ucp = pytest.importorskip("ucxx")
+    if _is_ucx_116(ucp) and params["enable_infiniband"] is False:
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
     skip_queue = mp.Queue()
 
