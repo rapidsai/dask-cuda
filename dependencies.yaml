@@ -75,9 +75,6 @@ dependencies:
       - output_types: [conda, requirements, pyproject]
         packages:
           - setuptools>=64.0.0
-      - output_types: pyproject
-        packages:
-          - tomli ; python_version < '3.11'
   cuda_version:
     specific:
       - output_types: conda
