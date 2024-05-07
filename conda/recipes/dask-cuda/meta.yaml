@@ -29,7 +29,6 @@ requirements:
   host:
     - python
     - pip
-    - tomli
   run:
     - python
     {% for r in data.get("project", {}).get("dependencies", []) %}
