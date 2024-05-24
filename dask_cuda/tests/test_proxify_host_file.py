@@ -272,6 +272,7 @@ async def test_local_cuda_cluster(jit_unspill):
 
 
 def test_dataframes_share_dev_mem(root_dir):
+    # Checking that this test passes CI
     cudf = pytest.importorskip("cudf")
 
     df = cudf.DataFrame({"a": range(10)})
