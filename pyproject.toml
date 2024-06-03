@@ -52,7 +52,6 @@ docs = [
 test = [
     "cudf==24.8.*,>=0.0.0a0",
     "dask-cudf==24.8.*,>=0.0.0a0",
-    "distributed-ucxx==0.39.*,>=0.0.0a0",
     "kvikio==24.8.*,>=0.0.0a0",
     "pytest",
     "pytest-cov",
