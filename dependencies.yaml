@@ -160,15 +160,15 @@ dependencies:
     common:
       - output_types: [conda, requirements, pyproject]
         packages:
-          - kvikio==24.8.*,>=0.0.0a0
           - pytest
           - pytest-cov
       - output_types: [conda]
         packages:
           - &cudf_conda cudf==24.8.*,>=0.0.0a0
           - &dask_cudf_conda dask-cudf==24.8.*,>=0.0.0a0
+          - &distributed_ucxx_conda distributed-ucxx==0.39.*,>=0.0.0a0
+          - &kvikio_conda kvikio==24.8.*,>=0.0.0a0
           - &ucx_py_conda ucx-py==0.39.*,>=0.0.0a0
-          - distributed-ucxx==0.39.*,>=0.0.0a0
           - ucx-proc=*=gpu
           - ucxx==0.39.*,>=0.0.0a0
     specific:
@@ -188,14 +188,20 @@ dependencies:
             packages:
               - cudf-cu12==24.8.*,>=0.0.0a0
               - dask-cudf-cu12==24.8.*,>=0.0.0a0
+              - distributed-ucxx-cu12==24.8.*,>=0.0.0a0
+              - kvikio-cu12==24.8.*,>=0.0.0a0
               - ucx-py-cu12==0.39.*,>=0.0.0a0
           - matrix: {cuda: "11.*"}
             packages:
               - cudf-cu11==24.8.*,>=0.0.0a0
               - dask-cudf-cu11==24.8.*,>=0.0.0a0
+              - distributed-ucxx-cu12==24.8.*,>=0.0.0a0
+              - kvikio-cu12==24.8.*,>=0.0.0a0
               - ucx-py-cu11==0.39.*,>=0.0.0a0
           - matrix:
             packages:
               - *cudf_conda
               - *dask_cudf_conda
+              - *distributed_ucxx_conda
+              - *kvikio_conda
               - *ucx_py_conda
