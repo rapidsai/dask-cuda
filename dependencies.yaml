@@ -39,14 +39,6 @@ files:
     extras:
       table: build-system
     includes:
-      - rapids_build_backend
-  py_rapids_build:
-    output: pyproject
-    pyproject_dir: .
-    extras:
-      table: tool.rapids-build-backend
-      key: requires
-    includes:
       - build_python
   py_run:
     output: pyproject
@@ -82,6 +74,7 @@ dependencies:
     common:
       - output_types: [conda, requirements, pyproject]
         packages:
+          - rapids-build-backend>=0.3.0,<0.4.0dev0
           - setuptools>=64.0.0
   cuda_version:
     specific:
@@ -152,11 +145,6 @@ dependencies:
           - matrix:
             packages:
               - python>=3.9,<3.12
-  rapids_build_backend:
-    common:
-      - output_types: [conda, requirements, pyproject]
-        packages:
-          - rapids-build-backend>=0.3.0,<0.4.0.dev0
   run_python:
     common:
       - output_types: [conda, requirements, pyproject]
