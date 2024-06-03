@@ -132,7 +132,9 @@ filterwarnings = [
 
 [tool.rapids-build-backend]
 build-backend = "setuptools.build_meta"
-commit-file = "dask_cuda/GIT_COMMIT"
+commit-files = [
+    "dask_cuda/GIT_COMMIT"
+]
 dependencies-file = "dependencies.yaml"
 disable-cuda = true
 
