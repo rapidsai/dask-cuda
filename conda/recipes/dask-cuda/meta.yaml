@@ -29,6 +29,7 @@ requirements:
   host:
     - python
     - pip
+    - rapids-build-backend>=0.3.0,<0.4.0.dev0
   run:
     - python
     {% for r in data.get("project", {}).get("dependencies", []) %}
