@@ -1,3 +1,23 @@
+# dask-cuda 24.06.00 (5 Jun 2024)
+
+## 🐛 Bug Fixes
+
+- Fix license name ([#1337](https://github.com/rapidsai/dask-cuda/pull/1337)) [@raydouglass](https://github.com/raydouglass)
+- Skip TCP-only DGX tests with UCX 1.16 ([#1331](https://github.com/rapidsai/dask-cuda/pull/1331)) [@pentschev](https://github.com/pentschev)
+- Update explicit-comms for dask-expr support ([#1323](https://github.com/rapidsai/dask-cuda/pull/1323)) [@rjzamora](https://github.com/rjzamora)
+- Skip explicit-comms tests when dask-expr is active ([#1322](https://github.com/rapidsai/dask-cuda/pull/1322)) [@rjzamora](https://github.com/rjzamora)
+- Relax type-check in ``test_proxy.py`` ([#1321](https://github.com/rapidsai/dask-cuda/pull/1321)) [@rjzamora](https://github.com/rjzamora)
+
+## 📖 Documentation
+
+- Fix broken links in docs ([#1329](https://github.com/rapidsai/dask-cuda/pull/1329)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- remove &#39;tomli&#39; dependency ([#1338](https://github.com/rapidsai/dask-cuda/pull/1338)) [@jameslamb](https://github.com/jameslamb)
+- Trap CI test errors with their original exit codes ([#1330](https://github.com/rapidsai/dask-cuda/pull/1330)) [@pentschev](https://github.com/pentschev)
+- Prevent path conflict in builds ([#1325](https://github.com/rapidsai/dask-cuda/pull/1325)) [@AyodeAwe](https://github.com/AyodeAwe)
+
 # dask-cuda 24.04.00 (10 Apr 2024)
 
 ## 🐛 Bug Fixes
