@@ -21,8 +21,8 @@ build:
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
-    {% for e in data["project"]["scripts"].items() %}
-    - {{ e|join(" = ") }}
+    {% for entrypoint, callable in data["project"]["scripts"].items() %}
+    - {{ entrypoint ~ ' = ' ~ callable }}
     {% endfor %}
 
 requirements:
