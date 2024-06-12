@@ -21,6 +21,7 @@ build:
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
+    {% set data = load_file_data("pyproject.toml") %}
     {% for entrypoint, callable in data["project"]["scripts"].items() %}
     - {{ entrypoint ~ ' = ' ~ callable }}
     {% endfor %}
