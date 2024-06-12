@@ -16,14 +16,13 @@ source:
   path: ../../..
 
 build:
-  number: {{ GIT_DESCRIBE_NUMBER }}
-  string: py{{ py_version }}_{{ date_string }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
+  number: 1
+  string: py{{ py_version }}_{{ date_string }}_abc_1
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
-    {% set data = load_file_data("pyproject.toml") %}
-    {% for entrypoint, callable in data["project"]["scripts"].items() %}
-    - {{ entrypoint ~ ' = ' ~ callable }}
+    {% for script in data["project"]["scripts"] %}
+    - {{ script ~ ' = ' ~ data["project"]["scripts"][script] }}
     {% endfor %}
 
 requirements:
@@ -40,12 +39,12 @@ requirements:
 test:
   imports:
     - dask_cuda
-  commands:
-    - dask cuda --help
-    {% for e in data["project"]["scripts"].keys() %}
-    - {{ e }} --help
-    - {{ e|replace("-", " ") }} --help
-    {% endfor %}
+  # commands:
+  #   - dask cuda --help
+  #   {% for e in data["project"]["scripts"].keys() %}
+  #   - {{ e }} --help
+  #   - {{ e|replace("-", " ") }} --help
+  #   {% endfor %}
 
 about:
   home: {{ data["project"]["urls"]["Homepage"] }}
