@@ -16,13 +16,13 @@ source:
   path: ../../..
 
 build:
-  number: 1
-  string: py{{ py_version }}_{{ date_string }}_abc_1
+  number: {{ GIT_DESCRIBE_NUMBER }}
+  string: py{{ py_version }}_{{ date_string }}_{{ GIT_DESCRIBE_HASH }}_{{ GIT_DESCRIBE_NUMBER }}
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
-    {% for script in data["project"]["scripts"] %}
-    - {{ script ~ ' = ' ~ data["project"]["scripts"][script] }}
+    {% for entrypoint in data["project"]["scripts"] %}
+    - {{ entrypoint ~ ' = ' ~ data["project"]["scripts"][entrypoint] }}
     {% endfor %}
 
 requirements:
@@ -39,12 +39,12 @@ requirements:
 test:
   imports:
     - dask_cuda
-  # commands:
-  #   - dask cuda --help
-  #   {% for e in data["project"]["scripts"].keys() %}
-  #   - {{ e }} --help
-  #   - {{ e|replace("-", " ") }} --help
-  #   {% endfor %}
+  commands:
+    - dask cuda --help
+    {% for entrypoint in data["project"]["scripts"] %}
+    - {{ entrypoint }} --help
+    - {{ entrypoint|replace("-", " ") }} --help
+    {% endfor %}
 
 about:
   home: {{ data["project"]["urls"]["Homepage"] }}
