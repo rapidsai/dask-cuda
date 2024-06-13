@@ -21,8 +21,8 @@ build:
   script:
     - {{ PYTHON }} -m pip install . -vv
   entry_points:
-    {% for e in data.get("project", {}).get("scripts", {}).items() %}
-    - {{ e|join(" = ") }}
+    {% for entrypoint in data["project"]["scripts"] %}
+    - {{ entrypoint ~ ' = ' ~ data["project"]["scripts"][entrypoint] }}
     {% endfor %}
 
 requirements:
@@ -32,7 +32,7 @@ requirements:
     - rapids-build-backend>=0.3.0,<0.4.0.dev0
   run:
     - python
-    {% for r in data.get("project", {}).get("dependencies", []) %}
+    {% for r in data["project"]["dependencies"] %}
     - {{ r }}
     {% endfor %}
 
@@ -41,18 +41,18 @@ test:
     - dask_cuda
   commands:
     - dask cuda --help
-    {% for e in data.get("project", {}).get("scripts", {}).keys() %}
-    - {{ e }} --help
-    - {{ e|replace("-", " ") }} --help
+    {% for entrypoint in data["project"]["scripts"] %}
+    - {{ entrypoint }} --help
+    - {{ entrypoint|replace("-", " ") }} --help
     {% endfor %}
 
 about:
-  home: {{ data.get("project", {}).get("urls", {}).get("Homepage", "") }}
-  license: {{ data.get("project", {}).get("license", {}).get("text", "") }}
+  home: {{ data["project"]["urls"]["Homepage"] }}
+  license: {{ data["project"]["license"]["text"] }}
   license_file:
-    {% for e in data.get("tool", {}).get("setuptools", {}).get("license-files", []) %}
+    {% for e in data["tool"]["setuptools"]["license-files"] %}
     - ../../../{{ e }}
     {% endfor %}
-  summary: {{ data.get("project", {}).get("description", "") }}
-  dev_url: {{ data.get("project", {}).get("urls", {}).get("Source", "") }}
-  doc_url: {{ data.get("project", {}).get("urls", {}).get("Documentation", "") }}
+  summary: {{ data["project"]["description"] }}
+  dev_url: {{ data["project"]["urls"]["Source"] }}
+  doc_url: {{ data["project"]["urls"]["Documentation"] }}
