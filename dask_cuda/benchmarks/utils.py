@@ -17,6 +17,7 @@ from dask.utils import format_bytes, format_time, parse_bytes
 from distributed.comm.addressing import get_address_host
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
+from dask_cuda.utils import parse_device_memory_limit
 
 
 def as_noop(dsk):
@@ -94,14 +95,36 @@ def parse_benchmark_args(
         "after the networking stack has been initialised.",
     )
     cluster_args.add_argument(
+        "--disable-rmm",
+        action="store_true",
+        help="Disable RMM.",
+    )
+    cluster_args.add_argument(
+        "--disable-rmm-pool",
+        action="store_true",
+        help="Uses RMM for allocations but without a memory pool.",
+    )
+    cluster_args.add_argument(
         "--rmm-pool-size",
         default=None,
         type=parse_bytes,
         help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
-        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used."
+        ""
+        ".. note::"
+        "    This size is a per-worker configuration, and not cluster-wide.",
     )
     cluster_args.add_argument(
-        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--rmm-maximum-pool-size",
+        default=None,
+        help="When ``--rmm-pool-size`` is specified, this argument indicates the "
+        "maximum pool size.  Can be an integer (bytes), or a string (like '4GB' or "
+        "'5000M'). By default, the total available memory on the GPU is used. "
+        "``rmm_pool_size`` must be specified to use RMM pool and to set the maximum "
+        "pool size."
+        ""
+        ".. note::"
+        "    This size is a per-worker configuration, and not cluster-wide.",
     )
     cluster_args.add_argument(
         "--enable-rmm-managed",
@@ -407,40 +430,12 @@ def get_worker_device():
         return -1
 
 
-def setup_memory_pool(
-    dask_worker=None,
-    pool_size=None,
-    disable_pool=False,
-    rmm_async=False,
-    rmm_managed=False,
-    release_threshold=None,
-    log_directory=None,
-    statistics=False,
-    rmm_track_allocations=False,
-):
+def setup_rmm_resources(statistics=False, rmm_track_allocations=False):
     import cupy
 
     import rmm
     from rmm.allocators.cupy import rmm_cupy_allocator
 
-    from dask_cuda.utils import get_rmm_log_file_name
-
-    logging = log_directory is not None
-
-    if rmm_async:
-        rmm.mr.set_current_device_resource(
-            rmm.mr.CudaAsyncMemoryResource(
-                initial_pool_size=pool_size, release_threshold=release_threshold
-            )
-        )
-    else:
-        rmm.reinitialize(
-            pool_allocator=not disable_pool,
-            managed_memory=rmm_managed,
-            initial_pool_size=pool_size,
-            logging=logging,
-            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
-        )
     cupy.cuda.set_allocator(rmm_cupy_allocator)
     if statistics:
         rmm.mr.set_current_device_resource(
@@ -452,11 +447,79 @@ def setup_memory_pool(
         )
 
 
+def setup_memory_pool(
+    dask_worker=None,
+    disable_rmm=None,
+    disable_rmm_pool=None,
+    pool_size=None,
+    maximum_pool_size=None,
+    rmm_async=False,
+    rmm_managed=False,
+    release_threshold=None,
+    log_directory=None,
+    statistics=False,
+    rmm_track_allocations=False,
+):
+    import rmm
+
+    from dask_cuda.utils import get_rmm_log_file_name
+
+    logging = log_directory is not None
+
+    if pool_size is not None:
+        pool_size = parse_device_memory_limit(pool_size, alignment_size=256)
+
+    if maximum_pool_size is not None:
+        maximum_pool_size = parse_device_memory_limit(
+            maximum_pool_size, alignment_size=256
+        )
+
+    if release_threshold is not None:
+        release_threshold = parse_device_memory_limit(
+            release_threshold, alignment_size=256
+        )
+
+    if not disable_rmm:
+        if rmm_async:
+            mr = rmm.mr.CudaAsyncMemoryResource(
+                initial_pool_size=pool_size,
+                release_threshold=release_threshold,
+            )
+
+            if maximum_pool_size is not None:
+                mr = rmm.mr.LimitingResourceAdaptor(
+                    mr, allocation_limit=maximum_pool_size
+                )
+
+            rmm.mr.set_current_device_resource(mr)
+
+            setup_rmm_resources(
+                statistics=statistics, rmm_track_allocations=rmm_track_allocations
+            )
+        else:
+            rmm.reinitialize(
+                pool_allocator=not disable_rmm_pool,
+                managed_memory=rmm_managed,
+                initial_pool_size=pool_size,
+                maximum_pool_size=maximum_pool_size,
+                logging=logging,
+                log_file_name=get_rmm_log_file_name(
+                    dask_worker, logging, log_directory
+                ),
+            )
+
+            setup_rmm_resources(
+                statistics=statistics, rmm_track_allocations=rmm_track_allocations
+            )
+
+
 def setup_memory_pools(
     client,
     is_gpu,
+    disable_rmm,
+    disable_rmm_pool,
     pool_size,
-    disable_pool,
+    maximum_pool_size,
     rmm_async,
     rmm_managed,
     release_threshold,
@@ -468,8 +531,10 @@ def setup_memory_pools(
         return
     client.run(
         setup_memory_pool,
+        disable_rmm=disable_rmm,
+        disable_rmm_pool=disable_rmm_pool,
         pool_size=pool_size,
-        disable_pool=disable_pool,
+        maximum_pool_size=maximum_pool_size,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
         release_threshold=release_threshold,
@@ -482,7 +547,9 @@ def setup_memory_pools(
     client.run_on_scheduler(
         setup_memory_pool,
         pool_size=1e9,
-        disable_pool=disable_pool,
+        disable_rmm=disable_rmm,
+        disable_rmm_pool=disable_rmm_pool,
+        maximum_pool_size=maximum_pool_size,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
         release_threshold=release_threshold,
