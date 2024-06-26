@@ -124,6 +124,10 @@ def parse_benchmark_args(
         "pool size."
         ""
         ".. note::"
+        "    When paired with `--enable-rmm-async` the maximum size cannot be "
+        "    guaranteed due to fragmentation."
+        ""
+        ".. note::"
         "    This size is a per-worker configuration, and not cluster-wide.",
     )
     cluster_args.add_argument(
