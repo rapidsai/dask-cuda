@@ -20,7 +20,7 @@ from cudf.core.buffer.spill_manager import (  # noqa: E402
     get_global_manager,
     set_global_manager,
 )
-from cudf.testing._utils import assert_eq  # noqa: E402
+from cudf.testing import assert_eq  # noqa: E402
 
 if get_global_manager() is not None:
     pytest.skip(
