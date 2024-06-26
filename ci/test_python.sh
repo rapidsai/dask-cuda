@@ -136,7 +136,7 @@ DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
-  --rmm-async \
+  --enable-rmm-async \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
@@ -146,7 +146,7 @@ DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
-  --rmm-managed \
+  --enable-rmm-managed \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
