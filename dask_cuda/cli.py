@@ -121,6 +121,10 @@ def cuda():
     to set the maximum pool size.
 
     .. note::
+        When paired with `--enable-rmm-async` the maximum size cannot be guaranteed due
+        to fragmentation.
+
+    .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(

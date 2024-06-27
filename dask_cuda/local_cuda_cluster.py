@@ -115,6 +115,10 @@ class LocalCUDACluster(LocalCluster):
         and to set the maximum pool size.
 
         .. note::
+            When paired with `--enable-rmm-async` the maximum size cannot be guaranteed
+            due to fragmentation.
+
+        .. note::
             This size is a per-worker configuration, and not cluster-wide.
     rmm_managed_memory : bool, default False
         Initialize each worker with RMM and set it to use managed memory. If disabled,
