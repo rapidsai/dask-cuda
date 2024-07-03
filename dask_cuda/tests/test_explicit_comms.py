@@ -109,7 +109,14 @@ def test_dataframe_merge_empty_partitions():
 
 def check_partitions(df, npartitions):
     """Check that all values in `df` hashes to the same"""
-    hashes = partitioning_index(df, npartitions)
+    dtypes = {}
+    for col, dtype in df.dtypes.items():
+        if pd.api.types.is_numeric_dtype(dtype):
+            dtypes[col] = np.float64
+    if not dtypes:
+        dtypes = None
+
+    hashes = partitioning_index(df, npartitions, cast_dtype=dtypes)
     if len(hashes) > 0:
         return len(hashes.unique()) == 1
     else:
@@ -132,7 +139,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
             all_workers = list(client.get_worker_logs().keys())
             comms.default_comms()
             np.random.seed(42)
-            df = pd.DataFrame({"key": np.random.random(100)})
+            df = pd.DataFrame({"key": np.random.randint(0, high=100, size=100)})
             if backend == "cudf":
                 df = cudf.DataFrame.from_pandas(df)
 
@@ -141,7 +148,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
 
             for input_nparts in range(1, 5):
                 for output_nparts in range(1, 5):
-                    ddf = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
+                    ddf1 = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
                         workers=all_workers
                     )
                     # To reduce test runtime, we change the batchsizes here instead
@@ -149,7 +156,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                     for batchsize in (-1, 1, 2):
                         with dask.config.set(explicit_comms_batchsize=batchsize):
                             ddf = explicit_comms_shuffle(
-                                ddf,
+                                ddf1,
                                 ["_partitions"] if _partitions else ["key"],
                                 npartitions=output_nparts,
                                 batchsize=batchsize,
@@ -176,6 +183,32 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                                 expected = df.sort_values("key")
                                 got = ddf.compute().sort_values("key")
                                 assert_eq(got, expected)
+
+                                # Check that partitioning is consistent with "tasks"
+                                ddf_tasks = ddf1.shuffle(
+                                    ["key"],
+                                    npartitions=output_nparts,
+                                    shuffle_method="tasks",
+                                )
+                                for i in range(output_nparts):
+                                    expected_partition = ddf_tasks.partitions[
+                                        i
+                                    ].compute()["key"]
+                                    actual_partition = ddf.partitions[i].compute()[
+                                        "key"
+                                    ]
+                                    if backend == "cudf":
+                                        expected_partition = (
+                                            expected_partition.values_host
+                                        )
+                                        actual_partition = actual_partition.values_host
+                                    else:
+                                        expected_partition = expected_partition.values
+                                        actual_partition = actual_partition.values
+                                    assert all(
+                                        np.sort(expected_partition)
+                                        == np.sort(actual_partition)
+                                    )
 
 
 @pytest.mark.parametrize("nworkers", [1, 2, 3])

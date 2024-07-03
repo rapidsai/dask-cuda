@@ -8,6 +8,9 @@ from math import ceil
 from operator import getitem
 from typing import Any, Callable, Dict, List, Optional, Set, TypeVar
 
+import numpy as np
+import pandas as pd
+
 import dask
 import dask.config
 import dask.dataframe
@@ -155,9 +158,16 @@ def compute_map_index(
     if column_names[0] == "_partitions":
         ind = df[column_names[0]]
     else:
-        ind = hash_object_dispatch(
-            df[column_names] if column_names else df, index=False
-        )
+        # Need to cast numerical dtypes to be consistent
+        # with `dask.dataframe.shuffle.partitioning_index`
+        dtypes = {}
+        index = df[column_names] if column_names else df
+        for col, dtype in index.dtypes.items():
+            if pd.api.types.is_numeric_dtype(dtype):
+                dtypes[col] = np.float64
+        if dtypes:
+            index = index.astype(dtypes, errors="ignore")
+        ind = hash_object_dispatch(index, index=False)
     return ind % npartitions
 
 
@@ -187,15 +197,7 @@ def partition_dataframe(
     partitions
         Dict of dataframe-partitions, mapping partition-ID to dataframe
     """
-    if column_names[0] != "_partitions" and hasattr(df, "partition_by_hash"):
-        return dict(
-            zip(
-                range(npartitions),
-                df.partition_by_hash(
-                    column_names, npartitions, keep_index=not ignore_index
-                ),
-            )
-        )
+    # TODO: Use `partition_by_hash` after dtype-casting is added
     map_index = compute_map_index(df, column_names, npartitions)
     return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
 
@@ -529,17 +531,18 @@ def shuffle(
     # TODO: can we do this without using `submit()` to avoid the overhead
     #       of creating a Future for each dataframe partition?
 
-    futures = []
+    _futures = {}
     for rank in ranks:
         for part_id in rank_to_out_part_ids[rank]:
-            futures.append(
-                c.client.submit(
-                    getitem,
-                    shuffle_result[rank],
-                    part_id,
-                    workers=[c.worker_addresses[rank]],
-                )
+            _futures[part_id] = c.client.submit(
+                getitem,
+                shuffle_result[rank],
+                part_id,
+                workers=[c.worker_addresses[rank]],
             )
+
+    # Make sure partitions are properly ordered
+    futures = [_futures.pop(i) for i in range(npartitions)]
 
     # Create a distributed Dataframe from all the pieces
     divs = [None] * (len(futures) + 1)
