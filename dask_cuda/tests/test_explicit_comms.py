@@ -135,8 +135,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
         worker_class=IncreasedCloseTimeoutNanny,
         processes=True,
     ) as cluster:
-        with Client(cluster) as client:
-            all_workers = list(client.get_worker_logs().keys())
+        with Client(cluster):
             comms.default_comms()
             np.random.seed(42)
             df = pd.DataFrame({"key": np.random.randint(0, high=100, size=100)})
@@ -148,9 +147,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
 
             for input_nparts in range(1, 5):
                 for output_nparts in range(1, 5):
-                    ddf1 = dd.from_pandas(df.copy(), npartitions=input_nparts).persist(
-                        workers=all_workers
-                    )
+                    ddf1 = dd.from_pandas(df.copy(), npartitions=input_nparts)
                     # To reduce test runtime, we change the batchsizes here instead
                     # of using a test parameter.
                     for batchsize in (-1, 1, 2):
