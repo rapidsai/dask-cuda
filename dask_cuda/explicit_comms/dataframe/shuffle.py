@@ -198,7 +198,7 @@ def partition_dataframe(
         Dict of dataframe-partitions, mapping partition-ID to dataframe
     """
     # TODO: Use `partition_by_hash` if/when dtype-casting is added
-    # (See: https://github.com/rapidsai/dask-cuda/pull/1356)
+    # (See: https://github.com/rapidsai/cudf/issues/16221)
     map_index = compute_map_index(df, column_names, npartitions)
     return group_split_dispatch(df, map_index, npartitions, ignore_index=ignore_index)
 
