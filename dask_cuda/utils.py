@@ -1,7 +1,7 @@
-import importlib
 import math
 import operator
 import os
+import pickle
 import time
 import warnings
 from contextlib import suppress
@@ -17,7 +17,7 @@ import dask
 import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
 from dask.utils import format_bytes, parse_bytes
-from distributed import Worker, wait
+from distributed import wait
 from distributed.comm import parse_address
 
 try:
@@ -29,93 +29,6 @@ except ImportError:
     @contextmanager
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
-
-
-class CPUAffinity:
-    def __init__(self, cores):
-        self.cores = cores
-
-    def setup(self, worker=None):
-        os.sched_setaffinity(0, self.cores)
-
-
-class RMMSetup:
-    def __init__(
-        self,
-        initial_pool_size,
-        maximum_pool_size,
-        managed_memory,
-        async_alloc,
-        log_directory,
-        track_allocations,
-    ):
-        if initial_pool_size is None and maximum_pool_size is not None:
-            raise ValueError(
-                "`rmm_maximum_pool_size` was specified without specifying "
-                "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
-            )
-
-        self.initial_pool_size = initial_pool_size
-        self.maximum_pool_size = maximum_pool_size
-        self.managed_memory = managed_memory
-        self.async_alloc = async_alloc
-        self.logging = log_directory is not None
-        self.log_directory = log_directory
-        self.rmm_track_allocations = track_allocations
-
-    def setup(self, worker=None):
-        if self.async_alloc:
-            import rmm
-
-            rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
-            if self.logging:
-                rmm.enable_logging(
-                    log_file_name=get_rmm_log_file_name(
-                        worker, self.logging, self.log_directory
-                    )
-                )
-        elif self.initial_pool_size is not None or self.managed_memory:
-            import rmm
-
-            pool_allocator = False if self.initial_pool_size is None else True
-
-            if self.initial_pool_size is not None:
-                self.initial_pool_size = parse_device_memory_limit(
-                    self.initial_pool_size, alignment_size=256
-                )
-                if self.maximum_pool_size is not None:
-                    self.maximum_pool_size = parse_device_memory_limit(
-                        self.maximum_pool_size, alignment_size=256
-                    )
-
-            rmm.reinitialize(
-                pool_allocator=pool_allocator,
-                managed_memory=self.managed_memory,
-                initial_pool_size=self.initial_pool_size,
-                maximum_pool_size=self.maximum_pool_size,
-                logging=self.logging,
-                log_file_name=get_rmm_log_file_name(
-                    worker, self.logging, self.log_directory
-                ),
-            )
-        if self.rmm_track_allocations:
-            import rmm
-
-            mr = rmm.mr.get_current_device_resource()
-            rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
-
-
-class PreImport:
-    def __init__(self, libraries):
-        if libraries is None:
-            libraries = []
-        elif isinstance(libraries, str):
-            libraries = libraries.split(",")
-        self.libraries = libraries
-
-    def setup(self, worker=None):
-        for l in self.libraries:
-            importlib.import_module(l)
 
 
 def unpack_bitmask(x, mask_bits=64):
@@ -374,7 +287,7 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    if protocol == "ucx":
+    if protocol in ["ucx", "ucxx"]:
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
@@ -422,7 +335,9 @@ def wait_workers(
     client: distributed.Client
         Instance of client, used to query for number of workers connected.
     min_timeout: float
-        Minimum number of seconds to wait before timeout.
+        Minimum number of seconds to wait before timeout. This value may be
+        overridden by setting the `DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT` with
+        a positive integer.
     seconds_per_gpu: float
         Seconds to wait for each GPU on the system. For example, if its
         value is 2 and there is a total of 8 GPUs (workers) being started,
@@ -439,6 +354,8 @@ def wait_workers(
     -------
     True if all workers were started, False if a timeout occurs.
     """
+    min_timeout_env = os.environ.get("DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT", None)
+    min_timeout = min_timeout if min_timeout_env is None else int(min_timeout_env)
     n_gpus = n_gpus or get_n_gpus()
     timeout = max(min_timeout, seconds_per_gpu * n_gpus)
 
@@ -635,27 +552,6 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         return _align(int(device_memory_limit), alignment_size)
 
 
-class MockWorker(Worker):
-    """Mock Worker class preventing NVML from getting used by SystemMonitor.
-
-    By preventing the Worker from initializing NVML in the SystemMonitor, we can
-    mock test multiple devices in `CUDA_VISIBLE_DEVICES` behavior with single-GPU
-    machines.
-    """
-
-    def __init__(self, *args, **kwargs):
-        distributed.diagnostics.nvml.device_get_count = MockWorker.device_get_count
-        self._device_get_count = distributed.diagnostics.nvml.device_get_count
-        super().__init__(*args, **kwargs)
-
-    def __del__(self):
-        distributed.diagnostics.nvml.device_get_count = self._device_get_count
-
-    @staticmethod
-    def device_get_count():
-        return 0
-
-
 def get_gpu_uuid_from_index(device_index=0):
     """Get GPU UUID from CUDA device index.
 
@@ -688,14 +584,20 @@ def get_worker_config(dask_worker):
     # assume homogeneous cluster
     plugin_vals = dask_worker.plugins.values()
     ret = {}
-
     # device and host memory configuration
     for p in plugin_vals:
-        ret[f"[plugin] {type(p).__name__}"] = {
+        config = {
             v: getattr(p, v)
             for v in dir(p)
             if not (v.startswith("_") or v in {"setup", "cores"})
         }
+        # To send this back to the client the data will be serialised
+        # which might fail, so pre-emptively check
+        try:
+            pickle.dumps(config)
+        except TypeError:
+            config = "UNKNOWN CONFIG"
+        ret[f"[plugin] {type(p).__name__}"] = config
 
     for mem in [
         "memory_limit",
@@ -723,6 +625,10 @@ def get_worker_config(dask_worker):
         import ucp
 
         ret["ucx-transports"] = ucp.get_active_transports()
+    elif scheme == "ucxx":
+        import ucxx
+
+        ret["ucx-transports"] = ucxx.get_active_transports()
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")

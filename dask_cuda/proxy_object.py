@@ -19,7 +19,6 @@ import distributed.protocol
 import distributed.utils
 from dask.sizeof import sizeof
 from distributed.protocol.compression import decompress
-from distributed.worker import dumps_function, loads_function
 
 from dask_cuda.disk_io import disk_read
 
@@ -85,7 +84,7 @@ def asproxy(
             subclass = ProxyObject
             subclass_serialized = None
         else:
-            subclass_serialized = dumps_function(subclass)
+            subclass_serialized = pickle.dumps(subclass)
 
         ret = subclass(
             ProxyDetail(
@@ -440,7 +439,7 @@ class ProxyObject:
         pxy = self._pxy_get(copy=True)
         pxy.serialize(serializers=("pickle",))
         if pxy.subclass:
-            subclass = loads_function(pxy.subclass)
+            subclass = pickle.loads(pxy.subclass)
         else:
             subclass = ProxyObject
 
@@ -837,7 +836,10 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
         header, frames = pxy.serialize(serializers=("dask", "pickle"))
     obj._pxy_set(pxy)
 
-    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
+    return {
+        "proxied-header": header,
+        "obj-pxy-detail": pickle.dumps(pxy.get_init_args()),
+    }, frames
 
 
 @distributed.protocol.cuda.cuda_serialize.register(ProxyObject)
@@ -860,7 +862,10 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
         # the worker's data store.
         header, frames = pxy.serialize(serializers=("cuda",))
 
-    return {"proxied-header": header, "obj-pxy-detail": pxy.get_init_args()}, frames
+    return {
+        "proxied-header": header,
+        "obj-pxy-detail": pickle.dumps(pxy.get_init_args()),
+    }, frames
 
 
 @distributed.protocol.dask_deserialize.register(ProxyObject)
@@ -872,11 +877,11 @@ def obj_pxy_dask_deserialize(header, frames):
     deserialized using the same serializers that were used when the object was
     serialized.
     """
-    args = header["obj-pxy-detail"]
+    args = pickle.loads(header["obj-pxy-detail"])
     if args["subclass"] is None:
         subclass = ProxyObject
     else:
-        subclass = loads_function(args["subclass"])
+        subclass = pickle.loads(args["subclass"])
     pxy = ProxyDetail(obj=(header["proxied-header"], frames), **args)
     if pxy.serializer == "disk":
         header, _ = pxy.obj

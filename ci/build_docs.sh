@@ -7,10 +7,10 @@ rapids-logger "Create test conda environment"
 
 rapids-dependency-file-generator \
     --output conda \
-    --file_key docs \
+    --file-key docs \
     --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch);py=${RAPIDS_PY_VERSION}" | tee env.yaml
 
-rapids-mamba-retry env create --force -f env.yaml -n docs
+rapids-mamba-retry env create --yes -f env.yaml -n docs
 conda activate docs
 
 rapids-print-env
@@ -18,21 +18,19 @@ rapids-print-env
 rapids-logger "Downloading artifacts from previous jobs"
 
 PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
-VERSION_NUMBER=$(rapids-get-rapids-version-from-git)
 
 rapids-mamba-retry install \
     --channel "${PYTHON_CHANNEL}" \
     dask-cuda
 
-# Build Python docs
+export RAPIDS_VERSION_NUMBER="24.08"
+export RAPIDS_DOCS_DIR="$(mktemp -d)"
+
 rapids-logger "Build Python docs"
 pushd docs
 sphinx-build -b dirhtml ./source _html
-sphinx-build -b text ./source _text
+mkdir -p "${RAPIDS_DOCS_DIR}/dask-cuda/"html
+mv _html/* "${RAPIDS_DOCS_DIR}/dask-cuda/html"
 popd
 
-if [[ "${RAPIDS_BUILD_TYPE}" == "branch" ]]; then
-  rapids-logger "Upload Docs to S3"
-  aws s3 sync --no-progress --delete docs/_html "s3://rapidsai-docs/dask-cuda/${VERSION_NUMBER}/html"
-  aws s3 sync --no-progress --delete docs/_text "s3://rapidsai-docs/dask-cuda/${VERSION_NUMBER}/txt"
-fi
+rapids-upload-docs

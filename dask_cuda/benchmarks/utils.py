@@ -11,11 +11,13 @@ from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from dask import config
 from dask.distributed import Client, SSHCluster
 from dask.utils import format_bytes, format_time, parse_bytes
 from distributed.comm.addressing import get_address_host
 
 from dask_cuda.local_cuda_cluster import LocalCUDACluster
+from dask_cuda.utils import parse_device_memory_limit
 
 
 def as_noop(dsk):
@@ -47,7 +49,11 @@ def as_noop(dsk):
         raise RuntimeError("Requested noop computation but dask-noop not installed.")
 
 
-def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]):
+def parse_benchmark_args(
+    description="Generic dask-cuda Benchmark",
+    args_list=[],
+    check_explicit_comms=True,
+):
     parser = argparse.ArgumentParser(description=description)
     worker_args = parser.add_argument_group(description="Worker configuration")
     worker_args.add_argument(
@@ -73,7 +79,7 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     cluster_args.add_argument(
         "-p",
         "--protocol",
-        choices=["tcp", "ucx"],
+        choices=["tcp", "ucx", "ucxx"],
         default="tcp",
         type=str,
         help="The communication protocol to use.",
@@ -89,14 +95,40 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "after the networking stack has been initialised.",
     )
     cluster_args.add_argument(
+        "--disable-rmm",
+        action="store_true",
+        help="Disable RMM.",
+    )
+    cluster_args.add_argument(
+        "--disable-rmm-pool",
+        action="store_true",
+        help="Uses RMM for allocations but without a memory pool.",
+    )
+    cluster_args.add_argument(
         "--rmm-pool-size",
         default=None,
         type=parse_bytes,
         help="The size of the RMM memory pool. Can be an integer (bytes) or a string "
-        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used.",
+        "(like '4GB' or '5000M'). By default, 1/2 of the total GPU memory is used."
+        ""
+        ".. note::"
+        "    This size is a per-worker configuration, and not cluster-wide.",
     )
     cluster_args.add_argument(
-        "--disable-rmm-pool", action="store_true", help="Disable the RMM memory pool"
+        "--rmm-maximum-pool-size",
+        default=None,
+        help="When ``--rmm-pool-size`` is specified, this argument indicates the "
+        "maximum pool size.  Can be an integer (bytes), or a string (like '4GB' or "
+        "'5000M'). By default, the total available memory on the GPU is used. "
+        "``rmm_pool_size`` must be specified to use RMM pool and to set the maximum "
+        "pool size."
+        ""
+        ".. note::"
+        "    When paired with `--enable-rmm-async` the maximum size cannot be "
+        "    guaranteed due to fragmentation."
+        ""
+        ".. note::"
+        "    This size is a per-worker configuration, and not cluster-wide.",
     )
     cluster_args.add_argument(
         "--enable-rmm-managed",
@@ -107,6 +139,15 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "--enable-rmm-async",
         action="store_true",
         help="Enable RMM async memory allocator (implies --disable-rmm-pool)",
+    )
+    cluster_args.add_argument(
+        "--rmm-release-threshold",
+        default=None,
+        type=parse_bytes,
+        help="When --enable-rmm-async is set and the pool size grows beyond this "
+        "value, unused memory held by the pool will be released at the next "
+        "synchronization point. Can be an integer (bytes), or a string string (like "
+        "'4GB' or '5000M'). By default, this feature is disabled.",
     )
     cluster_args.add_argument(
         "--rmm-log-directory",
@@ -121,6 +162,17 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
         "This enables spilling implementations such as JIT-Unspill to provides more "
         "information on out-of-memory errors",
+    )
+    cluster_args.add_argument(
+        "--enable-rmm-track-allocations",
+        action="store_true",
+        help="When enabled, wraps the memory resource used by each worker with a "
+        "``rmm.mr.TrackingResourceAdaptor``, which tracks the amount of memory "
+        "allocated."
+        "NOTE: This option enables additional diagnostics to be collected and "
+        "reported by the Dask dashboard. However, there is significant overhead "
+        "associated with this and it should only be used for debugging and memory "
+        "profiling.",
     )
     cluster_args.add_argument(
         "--enable-tcp-over-ucx",
@@ -200,6 +252,13 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
         "If provided, worker configuration options provided to this script are ignored "
         "since the workers are assumed to be started separately. Similarly the other "
         "cluster configuration options have no effect.",
+    )
+    group.add_argument(
+        "--dashboard-address",
+        default=None,
+        type=str,
+        help="Address on which to listen for diagnostics dashboard, ignored if "
+        "either ``--scheduler-address`` or ``--scheduler-file`` is specified.",
     )
     cluster_args.add_argument(
         "--shutdown-external-cluster-on-exit",
@@ -290,6 +349,24 @@ def parse_benchmark_args(description="Generic dask-cuda Benchmark", args_list=[]
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
 
+    # Raise error early if "explicit-comms" is not allowed
+    if (
+        check_explicit_comms
+        and args.backend == "explicit-comms"
+        and config.get(
+            "dataframe.query-planning",
+            None,
+        )
+        is not False
+    ):
+        raise NotImplementedError(
+            "The 'explicit-comms' config is not yet supported when "
+            "query-planning is enabled in dask. Please use the legacy "
+            "dask-dataframe API by setting the following environment "
+            "variable before executing:",
+            "    DASK_DATAFRAME__QUERY_PLANNING=False",
+        )
+
     return args
 
 
@@ -308,7 +385,11 @@ def get_cluster_options(args):
 
         cluster_kwargs = {
             "connect_options": {"known_hosts": None},
-            "scheduler_options": {"protocol": args.protocol, "port": 8786},
+            "scheduler_options": {
+                "protocol": args.protocol,
+                "port": 8786,
+                "dashboard_address": args.dashboard_address,
+            },
             "worker_class": "dask_cuda.CUDAWorker",
             "worker_options": {
                 "protocol": args.protocol,
@@ -325,6 +406,7 @@ def get_cluster_options(args):
         cluster_args = []
         cluster_kwargs = {
             "protocol": args.protocol,
+            "dashboard_address": args.dashboard_address,
             "n_workers": len(args.devs.split(",")),
             "threads_per_worker": args.threads_per_worker,
             "CUDA_VISIBLE_DEVICES": args.devs,
@@ -352,72 +434,132 @@ def get_worker_device():
         return -1
 
 
-def setup_memory_pool(
-    dask_worker=None,
-    pool_size=None,
-    disable_pool=False,
-    rmm_async=False,
-    rmm_managed=False,
-    log_directory=None,
-    statistics=False,
-):
+def setup_rmm_resources(statistics=False, rmm_track_allocations=False):
     import cupy
 
+    import rmm
+    from rmm.allocators.cupy import rmm_cupy_allocator
+
+    cupy.cuda.set_allocator(rmm_cupy_allocator)
+    if statistics:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
+    if rmm_track_allocations:
+        rmm.mr.set_current_device_resource(
+            rmm.mr.TrackingResourceAdaptor(rmm.mr.get_current_device_resource())
+        )
+
+
+def setup_memory_pool(
+    dask_worker=None,
+    disable_rmm=None,
+    disable_rmm_pool=None,
+    pool_size=None,
+    maximum_pool_size=None,
+    rmm_async=False,
+    rmm_managed=False,
+    release_threshold=None,
+    log_directory=None,
+    statistics=False,
+    rmm_track_allocations=False,
+):
     import rmm
 
     from dask_cuda.utils import get_rmm_log_file_name
 
     logging = log_directory is not None
 
-    if rmm_async:
-        rmm.mr.set_current_device_resource(rmm.mr.CudaAsyncMemoryResource())
-        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
-    else:
-        rmm.reinitialize(
-            pool_allocator=not disable_pool,
-            managed_memory=rmm_managed,
-            initial_pool_size=pool_size,
-            logging=logging,
-            log_file_name=get_rmm_log_file_name(dask_worker, logging, log_directory),
+    if pool_size is not None:
+        pool_size = parse_device_memory_limit(pool_size, alignment_size=256)
+
+    if maximum_pool_size is not None:
+        maximum_pool_size = parse_device_memory_limit(
+            maximum_pool_size, alignment_size=256
         )
-        cupy.cuda.set_allocator(rmm.rmm_cupy_allocator)
-    if statistics:
-        rmm.mr.set_current_device_resource(
-            rmm.mr.StatisticsResourceAdaptor(rmm.mr.get_current_device_resource())
+
+    if release_threshold is not None:
+        release_threshold = parse_device_memory_limit(
+            release_threshold, alignment_size=256
         )
+
+    if not disable_rmm:
+        if rmm_async:
+            mr = rmm.mr.CudaAsyncMemoryResource(
+                initial_pool_size=pool_size,
+                release_threshold=release_threshold,
+            )
+
+            if maximum_pool_size is not None:
+                mr = rmm.mr.LimitingResourceAdaptor(
+                    mr, allocation_limit=maximum_pool_size
+                )
+
+            rmm.mr.set_current_device_resource(mr)
+
+            setup_rmm_resources(
+                statistics=statistics, rmm_track_allocations=rmm_track_allocations
+            )
+        else:
+            rmm.reinitialize(
+                pool_allocator=not disable_rmm_pool,
+                managed_memory=rmm_managed,
+                initial_pool_size=pool_size,
+                maximum_pool_size=maximum_pool_size,
+                logging=logging,
+                log_file_name=get_rmm_log_file_name(
+                    dask_worker, logging, log_directory
+                ),
+            )
+
+            setup_rmm_resources(
+                statistics=statistics, rmm_track_allocations=rmm_track_allocations
+            )
 
 
 def setup_memory_pools(
     client,
     is_gpu,
+    disable_rmm,
+    disable_rmm_pool,
     pool_size,
-    disable_pool,
+    maximum_pool_size,
     rmm_async,
     rmm_managed,
+    release_threshold,
     log_directory,
     statistics,
+    rmm_track_allocations,
 ):
     if not is_gpu:
         return
     client.run(
         setup_memory_pool,
+        disable_rmm=disable_rmm,
+        disable_rmm_pool=disable_rmm_pool,
         pool_size=pool_size,
-        disable_pool=disable_pool,
+        maximum_pool_size=maximum_pool_size,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
     # Create an RMM pool on the scheduler due to occasional deserialization
     # of CUDA objects. May cause issues with InfiniBand otherwise.
     client.run_on_scheduler(
         setup_memory_pool,
         pool_size=1e9,
-        disable_pool=disable_pool,
+        disable_rmm=disable_rmm,
+        disable_rmm_pool=disable_rmm_pool,
+        maximum_pool_size=maximum_pool_size,
         rmm_async=rmm_async,
         rmm_managed=rmm_managed,
+        release_threshold=release_threshold,
         log_directory=log_directory,
         statistics=statistics,
+        rmm_track_allocations=rmm_track_allocations,
     )
 
 

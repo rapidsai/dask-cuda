@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import warnings
+from functools import partial
 
 import dask
 from distributed import LocalCluster, Nanny, Worker
@@ -9,11 +10,9 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .plugins import CPUAffinity, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
-    CPUAffinity,
-    PreImport,
-    RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
     get_ucx_config,
@@ -65,9 +64,10 @@ class LocalCUDACluster(LocalCluster):
     threads_per_worker : int, default 1
         Number of threads to be used for each Dask worker process.
     memory_limit : int, float, str, or None, default "auto"
-        Bytes of memory per process that the worker can use. Can be an integer (bytes),
-        float (fraction of total system memory), string (like ``"5GB"`` or ``"5000M"``),
-        or ``"auto"``, 0, or ``None`` for no memory management.
+        Size of the host LRU cache, which is used to determine when the worker
+        starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
+        integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
+        or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.
     device_memory_limit : int, float, str, or None, default 0.8
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
@@ -115,6 +115,10 @@ class LocalCUDACluster(LocalCluster):
         and to set the maximum pool size.
 
         .. note::
+            When paired with `--enable-rmm-async` the maximum size cannot be guaranteed
+            due to fragmentation.
+
+        .. note::
             This size is a per-worker configuration, and not cluster-wide.
     rmm_managed_memory : bool, default False
         Initialize each worker with RMM and set it to use managed memory. If disabled,
@@ -131,6 +135,14 @@ class LocalCUDACluster(LocalCluster):
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
             incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
+    rmm_release_threshold: int, str or None, default None
+        When ``rmm.async is True`` and the pool size grows beyond this value, unused
+        memory held by the pool will be released at the next synchronization point.
+        Can be an integer (bytes), float (fraction of total device memory), string (like
+        ``"5GB"`` or ``"5000M"``) or ``None``. By default, this feature is disabled.
+
+        .. note::
+            This size is a per-worker configuration, and not cluster-wide.
     rmm_log_directory : str or None, default None
         Directory to write per-worker RMM log files to. The client and scheduler are not
         logged here. Can be a string (like ``"/path/to/logs/"``) or ``None`` to
@@ -178,8 +190,12 @@ class LocalCUDACluster(LocalCluster):
     TypeError
         If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
     ValueError
-        If NVLink and RMM managed memory are both enabled, or if RMM pools / managed
-        memory and asynchronous allocator are both enabled.
+        If RMM pool, RMM managed memory or RMM async allocator are requested but RMM
+        cannot be imported.
+        If RMM managed memory and asynchronous allocator are both enabled.
+        If RMM maximum pool size is set but RMM pool size is not.
+        If RMM maximum pool size is set but RMM async allocator is used.
+        If RMM release threshold is set but the RMM async allocator is not being used.
 
     See Also
     --------
@@ -205,6 +221,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
         jit_unspill=None,
@@ -247,7 +264,8 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_maximum_pool_size = rmm_maximum_pool_size
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
-        if rmm_pool_size is not None or rmm_managed_memory:
+        self.rmm_release_threshold = rmm_release_threshold
+        if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
             try:
                 import rmm  # noqa F401
             except ImportError:
@@ -256,18 +274,13 @@ class LocalCUDACluster(LocalCluster):
                     "is not available. For installation instructions, please "
                     "see https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            if rmm_async:
-                raise ValueError(
-                    "RMM pool and managed memory are incompatible with asynchronous "
-                    "allocator"
-                )
         else:
             if enable_nvlink:
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`. Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
-                    "#important-notes for more details"
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "for more details"
                 )
 
         self.rmm_log_directory = rmm_log_directory
@@ -310,8 +323,11 @@ class LocalCUDACluster(LocalCluster):
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
                 protocol = "ucx"
-            elif protocol != "ucx":
-                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
+            elif protocol not in ["ucx", "ucxx"]:
+                raise TypeError(
+                    "Enabling InfiniBand or NVLink requires protocol='ucx' or "
+                    "protocol='ucxx'"
+                )
 
         self.host = kwargs.get("host", None)
 
@@ -324,12 +340,16 @@ class LocalCUDACluster(LocalCluster):
         )
 
         if worker_class is not None:
-            from functools import partial
-
-            worker_class = partial(
-                LoggedNanny if log_spilling is True else Nanny,
-                worker_class=worker_class,
-            )
+            if log_spilling is True:
+                raise ValueError(
+                    "Cannot enable `log_spilling` when `worker_class` is specified. If "
+                    "logging is needed, ensure `worker_class` is a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedNanny` or a subclass of "
+                    "`distributed.local_cuda_cluster.LoggedWorker`, and specify "
+                    "`log_spilling=False`."
+                )
+            if not issubclass(worker_class, Nanny):
+                worker_class = partial(Nanny, worker_class=worker_class)
 
         self.pre_import = pre_import
 
@@ -358,7 +378,7 @@ class LocalCUDACluster(LocalCluster):
         ) + ["dask_cuda.initialize"]
         self.new_spec["options"]["preload_argv"] = self.new_spec["options"].get(
             "preload_argv", []
-        ) + ["--create-cuda-context"]
+        ) + ["--create-cuda-context", "--protocol", protocol]
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)
@@ -385,12 +405,13 @@ class LocalCUDACluster(LocalCluster):
                         get_cpu_affinity(nvml_device_index(0, visible_devices))
                     ),
                     RMMSetup(
-                        self.rmm_pool_size,
-                        self.rmm_maximum_pool_size,
-                        self.rmm_managed_memory,
-                        self.rmm_async,
-                        self.rmm_log_directory,
-                        self.rmm_track_allocations,
+                        initial_pool_size=self.rmm_pool_size,
+                        maximum_pool_size=self.rmm_maximum_pool_size,
+                        managed_memory=self.rmm_managed_memory,
+                        async_alloc=self.rmm_async,
+                        release_threshold=self.rmm_release_threshold,
+                        log_directory=self.rmm_log_directory,
+                        track_allocations=self.rmm_track_allocations,
                     ),
                     PreImport(self.pre_import),
                 },

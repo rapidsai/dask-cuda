@@ -12,7 +12,6 @@ from dask.sizeof import sizeof
 from dask.utils import format_bytes
 from distributed import Client
 from distributed.utils_test import gen_test
-from distributed.worker import get_worker
 
 import dask_cuda
 import dask_cuda.proxify_device_objects
@@ -20,6 +19,7 @@ from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
 from dask_cuda.utils import get_device_total_memory
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 cupy = pytest.importorskip("cupy")
 cupy.cuda.set_allocator(None)
@@ -302,13 +302,24 @@ def test_dataframes_share_dev_mem(root_dir):
 def test_cudf_get_device_memory_objects():
     cudf = pytest.importorskip("cudf")
     objects = [
-        cudf.DataFrame({"a": range(10), "b": range(10)}, index=reversed(range(10))),
+        cudf.DataFrame(
+            {"a": [0, 1, 2, 3, None, 5, 6, 7, 8, 9], "b": range(10)},
+            index=reversed(range(10)),
+        ),
         cudf.MultiIndex(
             levels=[[1, 2], ["blue", "red"]], codes=[[0, 0, 1, 1], [1, 0, 1, 0]]
         ),
     ]
     res = get_device_memory_ids(objects)
-    assert len(res) == 4, "We expect four buffer objects"
+    # Buffers are:
+    # 1. int data for objects[0].a
+    # 2. mask data for objects[0].a
+    # 3. int data for objects[0].b
+    # 4. int data for objects[0].index
+    # 5. int data for objects[1].levels[0]
+    # 6. char data for objects[1].levels[1]
+    # 7. offset data for objects[1].levels[1]
+    assert len(res) == 7, "We expect seven buffer objects"
 
 
 def test_externals(root_dir):
@@ -385,7 +396,7 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
-@gen_test(timeout=20)
+@gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
@@ -394,13 +405,16 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
 
     with dask.config.set(jit_unspill_compatibility_mode=compatibility_mode):
         async with dask_cuda.LocalCUDACluster(
-            n_workers=1, jit_unspill=True, asynchronous=True
+            n_workers=1,
+            jit_unspill=True,
+            worker_class=IncreasedCloseTimeoutNanny,
+            asynchronous=True,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
-                res = ddf.shuffle(on="key", shuffle="tasks").persist()
+                res = ddf.shuffle(on="key", shuffle_method="tasks").persist()
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
@@ -429,9 +443,9 @@ async def test_worker_force_spill_to_disk():
                 ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
                 await ddf
 
-                async def f():
+                async def f(dask_worker):
                     """Trigger a memory_monitor() and reset memory_limit"""
-                    w = get_worker()
+                    w = dask_worker
                     # Set a host memory limit that triggers spilling to disk
                     w.memory_manager.memory_pause_fraction = False
                     memory = w.monitor.proc.memory_info().rss
@@ -443,7 +457,7 @@ async def test_worker_force_spill_to_disk():
                     assert w.monitor.proc.memory_info().rss < memory - 10**7
                     w.memory_manager.memory_limit = memory * 10  # Un-limit
 
-                await client.submit(f)
+                client.run(f)
                 log = str(await client.get_worker_logs())
                 # Check that the worker doesn't complain about unmanaged memory
                 assert "Unmanaged memory use is high" not in log

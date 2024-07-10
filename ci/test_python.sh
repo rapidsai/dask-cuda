@@ -8,10 +8,10 @@ set -euo pipefail
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
-  --file_key test_python \
+  --file-key test_python \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch);py=${RAPIDS_PY_VERSION}" | tee env.yaml
 
-rapids-mamba-retry env create --force -f env.yaml -n test
+rapids-mamba-retry env create --yes -f env.yaml -n test
 
 # Temporarily allow unbound variables for conda activation.
 set +u
@@ -35,17 +35,24 @@ rapids-logger "Check GPU usage"
 nvidia-smi
 
 EXITCODE=0
-trap "EXITCODE=1" ERR
+set_exit_code() {
+    EXITCODE=$?
+    rapids-logger "Test failed with error ${EXITCODE}"
+}
+trap set_exit_code ERR
 set +e
 
-rapids-logger "pytest dask-cuda"
+rapids-logger "pytest dask-cuda (dask-expr)"
 pushd dask_cuda
+DASK_DATAFRAME__QUERY_PLANNING=True \
 DASK_CUDA_TEST_SINGLE_GPU=1 \
+DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
-timeout 30m pytest \
+timeout 60m pytest \
   -vv \
+  --durations=0 \
   --capture=no \
   --cache-clear \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
@@ -53,21 +60,112 @@ timeout 30m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  tests
+  tests -k "not ucxx"
 popd
 
-rapids-logger "Run local benchmark"
+rapids-logger "pytest explicit-comms (legacy dd)"
+pushd dask_cuda
+DASK_DATAFRAME__QUERY_PLANNING=False \
+DASK_CUDA_TEST_SINGLE_GPU=1 \
+DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
+UCXPY_IFNAME=eth0 \
+UCX_WARN_UNUSED_ENV_VARS=n \
+UCX_MEMTYPE_CACHE=n \
+timeout 30m pytest \
+  -vv \
+  --durations=0 \
+  --capture=no \
+  --cache-clear \
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-legacy.xml" \
+  --cov-config=../pyproject.toml \
+  --cov=dask_cuda \
+  --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage-legacy.xml" \
+  --cov-report=term \
+  tests/test_explicit_comms.py -k "not ucxx"
+popd
+
+rapids-logger "Run local benchmark (dask-expr)"
+DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
   --backend dask
 
+DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
   --backend explicit-comms
 
-rapids-logger "Test script exiting with value: $EXITCODE"
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --disable-rmm \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --disable-rmm-pool \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --enable-rmm-async \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --enable-rmm-managed \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+rapids-logger "Run local benchmark (legacy dd)"
+DASK_DATAFRAME__QUERY_PLANNING=False \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend dask
+
+DASK_DATAFRAME__QUERY_PLANNING=False \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}

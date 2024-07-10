@@ -15,6 +15,10 @@ mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
 
 
+def _is_ucx_116(ucp):
+    return ucp.get_ucx_version()[:2] == (1, 16)
+
+
 class DGXVersion(Enum):
     DGX_1 = auto()
     DGX_2 = auto()
@@ -73,10 +77,13 @@ def test_default():
     assert not p.exitcode
 
 
-def _test_tcp_over_ucx():
-    ucp = pytest.importorskip("ucp")
+def _test_tcp_over_ucx(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
 
-    with LocalCUDACluster(enable_tcp_over_ucx=True) as cluster:
+    with LocalCUDACluster(protocol=protocol, enable_tcp_over_ucx=True) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
             res = res.sum().compute()
@@ -93,10 +100,19 @@ def _test_tcp_over_ucx():
             assert all(client.run(check_ucx_options).values())
 
 
-def test_tcp_over_ucx():
-    ucp = pytest.importorskip("ucp")  # NOQA: F841
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+def test_tcp_over_ucx(protocol):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+    if _is_ucx_116(ucp):
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
-    p = mp.Process(target=_test_tcp_over_ucx)
+    p = mp.Process(target=_test_tcp_over_ucx, args=(protocol,))
     p.start()
     p.join()
     assert not p.exitcode
@@ -117,9 +133,26 @@ def test_tcp_only():
     assert not p.exitcode
 
 
-def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm):
+def _test_ucx_infiniband_nvlink(
+    skip_queue, protocol, enable_infiniband, enable_nvlink, enable_rdmacm
+):
     cupy = pytest.importorskip("cupy")
-    ucp = pytest.importorskip("ucp")
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+
+    if enable_infiniband and not any(
+        [at.startswith("rc") for at in ucp.get_active_transports()]
+    ):
+        skip_queue.put("No support available for 'rc' transport in UCX")
+        return
+    else:
+        skip_queue.put("ok")
+
+    # `ucp.get_active_transports()` call above initializes UCX, we must reset it
+    # so that Dask doesn't try to initialize it again and raise an exception.
+    ucp.reset()
 
     if enable_infiniband is None and enable_nvlink is None and enable_rdmacm is None:
         enable_tcp_over_ucx = None
@@ -135,6 +168,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
             cm_tls_priority = ["tcp"]
 
     initialize(
+        protocol=protocol,
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
@@ -142,6 +176,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     )
 
     with LocalCUDACluster(
+        protocol=protocol,
         interface="ib0",
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
@@ -171,6 +206,7 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
             assert all(client.run(check_ucx_options).values())
 
 
+@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
 @pytest.mark.parametrize(
     "params",
     [
@@ -185,16 +221,21 @@ def _test_ucx_infiniband_nvlink(enable_infiniband, enable_nvlink, enable_rdmacm)
     _get_dgx_version() == DGXVersion.DGX_A100,
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
-def test_ucx_infiniband_nvlink(params):
-    ucp = pytest.importorskip("ucp")  # NOQA: F841
+def test_ucx_infiniband_nvlink(protocol, params):
+    if protocol == "ucx":
+        ucp = pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        ucp = pytest.importorskip("ucxx")
+    if _is_ucx_116(ucp) and params["enable_infiniband"] is False:
+        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
-    if params["enable_infiniband"]:
-        if not any([at.startswith("rc") for at in ucp.get_active_transports()]):
-            pytest.skip("No support available for 'rc' transport in UCX")
+    skip_queue = mp.Queue()
 
     p = mp.Process(
         target=_test_ucx_infiniband_nvlink,
         args=(
+            skip_queue,
+            protocol,
             params["enable_infiniband"],
             params["enable_nvlink"],
             params["enable_rdmacm"],
@@ -203,9 +244,8 @@ def test_ucx_infiniband_nvlink(params):
     p.start()
     p.join()
 
-    # Starting a new cluster on the same pytest process after an rdmacm cluster
-    # has been used may cause UCX-Py to complain about being already initialized.
-    if params["enable_rdmacm"] is True:
-        ucp.reset()
+    skip_msg = skip_queue.get()
+    if skip_msg != "ok":
+        pytest.skip(skip_msg)
 
     assert not p.exitcode

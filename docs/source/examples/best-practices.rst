@@ -9,9 +9,7 @@ When choosing between two multi-GPU setups, it is best to pick the one where mos
 `DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for two reasons:
 
 - Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
-- Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated
-networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See
-`Accelerated Networking`_ for more discussion
+- Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See `Accelerated Networking`_ for more discussion.
 
 .. code-block:: python
 

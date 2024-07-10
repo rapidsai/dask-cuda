@@ -3,15 +3,22 @@
 
 set -euo pipefail
 
-source rapids-env-update
+rapids-configure-conda-channels
+
+source rapids-configure-sccache
+
+source rapids-date-string
 
 export CMAKE_GENERATOR=Ninja
 
 rapids-print-env
 
-rapids-logger "Begin py build"
+rapids-generate-version > ./VERSION
 
-rapids-mamba-retry mambabuild \
+rapids-logger "Begin py build"
+conda config --set path_conflict prevent
+
+RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION) rapids-conda-retry mambabuild \
   conda/recipes/dask-cuda
 
 rapids-upload-conda-to-s3 python

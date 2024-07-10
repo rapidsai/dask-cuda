@@ -87,9 +87,10 @@ def cuda():
     "--memory-limit",
     default="auto",
     show_default=True,
-    help="""Bytes of memory per process that the worker can use. Can be an integer
-    (bytes), float (fraction of total system memory), string (like ``"5GB"`` or
-    ``"5000M"``), or ``"auto"`` or 0 for no memory management.""",
+    help="""Size of the host LRU cache, which is used to determine when the worker
+    starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
+    integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
+    or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",
@@ -120,6 +121,10 @@ def cuda():
     to set the maximum pool size.
 
     .. note::
+        When paired with `--enable-rmm-async` the maximum size cannot be guaranteed due
+        to fragmentation.
+
+    .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
@@ -144,6 +149,17 @@ def cuda():
         The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
         incompatible with RMM pools and managed memory, trying to enable both will
         result in failure.""",
+)
+@click.option(
+    "--rmm-release-threshold",
+    default=None,
+    help="""When ``rmm.async`` is ``True`` and the pool size grows beyond this value, unused
+    memory held by the pool will be released at the next synchronization point. Can be
+    an integer (bytes), float (fraction of total device memory), string (like ``"5GB"``
+    or ``"5000M"``) or ``None``. By default, this feature is disabled.
+
+    .. note::
+        This size is a per-worker configuration, and not cluster-wide.""",
 )
 @click.option(
     "--rmm-log-directory",
@@ -233,6 +249,12 @@ def cuda():
     ``"/path/to/foo.py"``.""",
 )
 @click.option(
+    "--death-timeout",
+    type=str,
+    default=None,
+    help="Seconds to wait for a scheduler before closing",
+)
+@click.option(
     "--dashboard-prefix",
     type=str,
     default=None,
@@ -312,6 +334,7 @@ def worker(
     rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
+    rmm_release_threshold,
     rmm_log_directory,
     rmm_track_allocations,
     pid_file,
@@ -383,6 +406,7 @@ def worker(
             rmm_maximum_pool_size,
             rmm_managed_memory,
             rmm_async,
+            rmm_release_threshold,
             rmm_log_directory,
             rmm_track_allocations,
             pid_file,
@@ -480,3 +504,7 @@ def config(
     else:
         client = Client(scheduler, security=security)
     print_cluster_config(client)
+
+
+if __name__ == "__main__":
+    worker()

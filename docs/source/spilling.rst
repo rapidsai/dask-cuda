@@ -37,7 +37,7 @@ JIT-Unspill
 The regular spilling in Dask and Dask-CUDA has some significate issues. Instead of tracking individual objects, it tracks task outputs.
 This means that a task returning a collection of CUDA objects will either spill all of the CUDA objects or none of them.
 Other issues includes *object duplication*, *wrong spilling order*, and *non-tracking of sharing device buffers*
-(see: https://github.com/dask/distributed/issues/4568#issuecomment-805049321).
+(`see discussion <https://github.com/dask/distributed/issues/4568#issuecomment-805049321>`_).
 
 In order to address all of these issues, Dask-CUDA introduces JIT-Unspilling, which can improve performance and memory usage significantly.
 For workloads that require significant spilling

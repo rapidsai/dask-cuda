@@ -1,17 +1,18 @@
+import gc
 import os
 from time import sleep
 
 import pytest
-from zict.file import _safe_key as safe_key
 
 import dask
 from dask import array as da
-from distributed import Client, get_worker, wait
+from distributed import Client, wait
 from distributed.metrics import time
 from distributed.sizeof import sizeof
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 
 from dask_cuda import LocalCUDACluster, utils
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 if utils.get_device_total_memory() < 1e10:
     pytest.skip("Not enough GPU memory", allow_module_level=True)
@@ -31,7 +32,8 @@ def device_host_file_size_matches(
     # `dhf.disk` is only available when Worker's `memory_limit != 0`
     if dhf.disk is not None:
         file_path = [
-            os.path.join(dhf.disk.directory, safe_key(k)) for k in dhf.disk.keys()
+            os.path.join(dhf.disk.directory, fname)
+            for fname in dhf.disk.filenames.values()
         ]
         file_size = [os.path.getsize(f) for f in file_path]
         byte_sum += sum(file_size)
@@ -57,25 +59,47 @@ def assert_device_host_file_size(
     )
 
 
-def worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+def worker_assert(
+    total_size,
+    device_chunk_overhead,
+    serialized_chunk_overhead,
+    dask_worker=None,
+):
     assert_device_host_file_size(
-        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
-def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_overhead):
+def delayed_worker_assert(
+    total_size,
+    device_chunk_overhead,
+    serialized_chunk_overhead,
+    dask_worker=None,
+):
     start = time()
     while not device_host_file_size_matches(
-        get_worker().data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
     ):
         sleep(0.01)
         if time() < start + 3:
             assert_device_host_file_size(
-                get_worker().data,
+                dask_worker.data,
                 total_size,
                 device_chunk_overhead,
                 serialized_chunk_overhead,
             )
+
+
+def assert_host_chunks(spills_to_disk, dask_worker=None):
+    if spills_to_disk is False:
+        assert len(dask_worker.data.host)
+
+
+def assert_disk_chunks(spills_to_disk, dask_worker=None):
+    if spills_to_disk is True:
+        assert len(dask_worker.data.disk or list()) > 0
+    else:
+        assert len(dask_worker.data.disk or list()) == 0
 
 
 @pytest.mark.parametrize(
@@ -99,11 +123,12 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
         },
         {
             # This test setup differs from the one above as Distributed worker
-            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            # spilling fraction is very low and thus forcefully triggers
+            # `DeviceHostFile.evict()`
             "device_memory_limit": int(200e6),
             "memory_limit": int(200e6),
-            "host_target": None,
-            "host_spill": None,
+            "host_target": False,
+            "host_spill": 0.01,
             "host_pause": False,
             "spills_to_disk": True,
         },
@@ -120,7 +145,14 @@ def delayed_worker_assert(total_size, device_chunk_overhead, serialized_chunk_ov
 @gen_test(timeout=30)
 async def test_cupy_cluster_device_spill(params):
     cupy = pytest.importorskip("cupy")
-    with dask.config.set({"distributed.worker.memory.terminate": False}):
+    with dask.config.set(
+        {
+            "distributed.worker.memory.terminate": False,
+            "distributed.worker.memory.pause": params["host_pause"],
+            "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.target": params["host_target"],
+        }
+    ):
         async with LocalCUDACluster(
             n_workers=1,
             scheduler_port=0,
@@ -129,11 +161,11 @@ async def test_cupy_cluster_device_spill(params):
             asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=params["host_pause"],
+            worker_class=IncreasedCloseTimeoutNanny,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
+
+                await client.wait_for_workers(1)
 
                 rs = da.random.RandomState(RandomState=cupy.random.RandomState)
                 x = rs.random(int(50e6), chunks=2e6)
@@ -143,24 +175,32 @@ async def test_cupy_cluster_device_spill(params):
                 await wait(xx)
 
                 # Allow up to 1024 bytes overhead per chunk serialized
-                await client.run(worker_assert, x.nbytes, 1024, 1024)
+                await client.run(
+                    worker_assert,
+                    x.nbytes,
+                    1024,
+                    1024,
+                )
 
                 y = client.compute(x.sum())
                 res = await y
 
                 assert (abs(res / x.size) - 0.5) < 1e-3
 
-                await client.run(worker_assert, x.nbytes, 1024, 1024)
-                host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(
-                    lambda: len(get_worker().data.disk or list())
+                await client.run(
+                    worker_assert,
+                    x.nbytes,
+                    1024,
+                    1024,
                 )
-                for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
-                    if params["spills_to_disk"]:
-                        assert dc > 0
-                    else:
-                        assert hc > 0
-                        assert dc == 0
+                await client.run(
+                    assert_host_chunks,
+                    params["spills_to_disk"],
+                )
+                await client.run(
+                    assert_disk_chunks,
+                    params["spills_to_disk"],
+                )
 
 
 @pytest.mark.parametrize(
@@ -184,11 +224,12 @@ async def test_cupy_cluster_device_spill(params):
         },
         {
             # This test setup differs from the one above as Distributed worker
-            # pausing is enabled and thus triggers `DeviceHostFile.evict()`
+            # spilling fraction is very low and thus forcefully triggers
+            # `DeviceHostFile.evict()`
             "device_memory_limit": int(50e6),
             "memory_limit": int(50e6),
-            "host_target": None,
-            "host_spill": None,
+            "host_target": False,
+            "host_spill": 0.01,
             "host_pause": False,
             "spills_to_disk": True,
         },
@@ -210,18 +251,25 @@ async def test_cudf_cluster_device_spill(params):
         {
             "distributed.comm.compression": False,
             "distributed.worker.memory.terminate": False,
+            "distributed.worker.memory.spill-compression": False,
+            "distributed.worker.memory.pause": params["host_pause"],
+            "distributed.worker.memory.spill": params["host_spill"],
+            "distributed.worker.memory.target": params["host_target"],
         }
     ):
         async with LocalCUDACluster(
             n_workers=1,
+            scheduler_port=0,
+            silence_logs=False,
+            dashboard_address=None,
+            asynchronous=True,
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
-            memory_target_fraction=params["host_target"],
-            memory_spill_fraction=params["host_spill"],
-            memory_pause_fraction=params["host_pause"],
-            asynchronous=True,
+            worker_class=IncreasedCloseTimeoutNanny,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
+
+                await client.wait_for_workers(1)
 
                 # There's a known issue with datetime64:
                 # https://github.com/numpy/numpy/issues/4983#issuecomment-441332940
@@ -244,20 +292,35 @@ async def test_cudf_cluster_device_spill(params):
                 await wait(cdf2)
 
                 del cdf
+                gc.collect()
 
-                host_chunks = await client.run(lambda: len(get_worker().data.host))
-                disk_chunks = await client.run(
-                    lambda: len(get_worker().data.disk or list())
+                await client.run(
+                    assert_host_chunks,
+                    params["spills_to_disk"],
                 )
-                for hc, dc in zip(host_chunks.values(), disk_chunks.values()):
-                    if params["spills_to_disk"]:
-                        assert dc > 0
-                    else:
-                        assert hc > 0
-                        assert dc == 0
+                await client.run(
+                    assert_disk_chunks,
+                    params["spills_to_disk"],
+                )
 
-                await client.run(worker_assert, nbytes, 32, 2048)
+                await client.run(
+                    worker_assert,
+                    nbytes,
+                    32,
+                    2048,
+                )
 
                 del cdf2
 
-                await client.run(delayed_worker_assert, 0, 0, 0)
+                while True:
+                    try:
+                        await client.run(
+                            delayed_worker_assert,
+                            0,
+                            0,
+                            0,
+                        )
+                    except AssertionError:
+                        gc.collect()
+                    else:
+                        break

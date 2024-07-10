@@ -20,11 +20,9 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
+from .plugins import CPUAffinity, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
-    CPUAffinity,
-    PreImport,
-    RMMSetup,
     cuda_visible_devices,
     get_cpu_affinity,
     get_n_gpus,
@@ -47,6 +45,7 @@ class CUDAWorker(Server):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
         pid_file=None,
@@ -138,19 +137,13 @@ class CUDAWorker(Server):
                     "For installation instructions, please see "
                     "https://github.com/rapidsai/rmm"
                 )  # pragma: no cover
-            if rmm_async:
-                raise ValueError(
-                    "RMM pool and managed memory are incompatible with asynchronous "
-                    "allocator"
-                )
-
         else:
             if enable_nvlink:
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`.  Please see: "
-                    "https://dask-cuda.readthedocs.io/en/latest/ucx.html"
-                    "#important-notes for more details"
+                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "for more details"
                 )
 
         if enable_nvlink and rmm_managed_memory:
@@ -215,12 +208,13 @@ class CUDAWorker(Server):
                         get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
                     ),
                     RMMSetup(
-                        rmm_pool_size,
-                        rmm_maximum_pool_size,
-                        rmm_managed_memory,
-                        rmm_async,
-                        rmm_log_directory,
-                        rmm_track_allocations,
+                        initial_pool_size=rmm_pool_size,
+                        maximum_pool_size=rmm_maximum_pool_size,
+                        managed_memory=rmm_managed_memory,
+                        async_alloc=rmm_async,
+                        release_threshold=rmm_release_threshold,
+                        log_directory=rmm_log_directory,
+                        track_allocations=rmm_track_allocations,
                     ),
                     PreImport(pre_import),
                 },

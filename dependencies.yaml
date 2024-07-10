@@ -1,10 +1,14 @@
 # Dependency list for https://github.com/rapidsai/dependency-file-generator
 files:
   all:
-    output: none
+    output: conda
+    matrix:
+      cuda: ["11.4", "11.8", "12.2"]
+      arch: [x86_64]
     includes:
       - build_python
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - develop
       - docs
       - py_version
@@ -13,7 +17,8 @@ files:
   test_python:
     output: none
     includes:
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - py_version
       - test_python
   checks:
@@ -24,9 +29,40 @@ files:
   docs:
     output: none
     includes:
-      - cudatoolkit
+      - cuda
+      - cuda_version
       - docs
       - py_version
+  py_build:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: build-system
+    includes:
+      - build_python
+  py_run:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project
+    includes:
+      - run_python
+  py_test:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test
+    includes:
+      - test_python
+  py_docs:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: docs
+    includes:
+      - docs
 channels:
   - rapidsai
   - rapidsai-nightly
@@ -36,29 +72,47 @@ channels:
 dependencies:
   build_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
+          - rapids-build-backend>=0.3.0,<0.4.0dev0
           - setuptools>=64.0.0
-  cudatoolkit:
+  cuda_version:
     specific:
       - output_types: conda
         matrices:
           - matrix:
-              cuda: "11.2"
-            packages:
-              - cudatoolkit=11.2
-          - matrix:
               cuda: "11.4"
             packages:
-              - cudatoolkit=11.4
+              - cuda-version=11.4
           - matrix:
               cuda: "11.5"
             packages:
-              - cudatoolkit=11.5
+              - cuda-version=11.5
           - matrix:
               cuda: "11.8"
             packages:
-              - cudatoolkit=11.8
+              - cuda-version=11.8
+          - matrix:
+              cuda: "12.0"
+            packages:
+              - cuda-version=12.0
+          - matrix:
+              cuda: "12.2"
+            packages:
+              - cuda-version=12.2
+  cuda:
+    specific:
+      - output_types: conda
+        matrices:
+          - matrix:
+              cuda: "11.*"
+            packages:
+              - cudatoolkit
+          - matrix:
+              cuda: "12.*"
+            packages:
+              - cuda-nvcc-impl
+              - cuda-nvrtc
   develop:
     common:
       - output_types: [conda, requirements]
@@ -66,20 +120,16 @@ dependencies:
           - pre-commit
   docs:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - numpydoc
+          - numpydoc>=1.1.0
           - sphinx
-          - sphinx-click
-          - sphinx_rtd_theme
+          - sphinx-click>=2.7.1
+          - sphinx-rtd-theme>=0.5.1
   py_version:
     specific:
       - output_types: conda
         matrices:
-          - matrix:
-              py: "3.8"
-            packages:
-              - python=3.8
           - matrix:
               py: "3.9"
             packages:
@@ -89,30 +139,38 @@ dependencies:
             packages:
               - python=3.10
           - matrix:
+              py: "3.11"
             packages:
-              - python>=3.8,<3.11
+              - python=3.11
+          - matrix:
+            packages:
+              - python>=3.9,<3.12
   run_python:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - dask>=2023.1.1
-          - distributed>=2023.1.1
-          - numba>=0.54
-          - numpy>=1.18.0
-          - pandas>=1.0
+          - click >=8.1
+          - numba>=0.57
+          - numpy>=1.23,<2.0a0
+          - pandas>=1.3
           - pynvml>=11.0.0
-          - zict>=0.1.3
+          - rapids-dask-dependency==24.8.*,>=0.0.0a0
+          - zict>=2.0.0
   test_python:
     common:
-      - output_types: [conda]
+      - output_types: [conda, requirements, pyproject]
         packages:
-          - cucim=23.04
-          - cudf=23.04
-          - dask-cudf=23.04
           - pytest
           - pytest-cov
+      - output_types: [conda]
+        packages:
+          - &cudf_conda cudf==24.8.*,>=0.0.0a0
+          - &dask_cudf_conda dask-cudf==24.8.*,>=0.0.0a0
+          - distributed-ucxx==0.39.*,>=0.0.0a0
+          - &kvikio_conda kvikio==24.8.*,>=0.0.0a0
+          - &ucx_py_conda ucx-py==0.39.*,>=0.0.0a0
           - ucx-proc=*=gpu
-          - ucx-py=0.31
+          - ucxx==0.39.*,>=0.0.0a0
     specific:
       - output_types: conda
         matrices:
@@ -124,3 +182,23 @@ dependencies:
               arch: aarch64
             packages:
               - numactl-devel-cos7-aarch64
+      - output_types: [requirements, pyproject]
+        matrices:
+          # kvikio should be added to the CUDA-version-specific matrices once there are wheels available
+          # ref: https://github.com/rapidsai/kvikio/pull/369
+          - matrix: {cuda: "12.*"}
+            packages:
+              - cudf-cu12==24.8.*,>=0.0.0a0
+              - dask-cudf-cu12==24.8.*,>=0.0.0a0
+              - ucx-py-cu12==0.39.*,>=0.0.0a0
+          - matrix: {cuda: "11.*"}
+            packages:
+              - cudf-cu11==24.8.*,>=0.0.0a0
+              - dask-cudf-cu11==24.8.*,>=0.0.0a0
+              - ucx-py-cu11==0.39.*,>=0.0.0a0
+          - matrix:
+            packages:
+              - *cudf_conda
+              - *dask_cudf_conda
+              - *kvikio_conda
+              - *ucx_py_conda

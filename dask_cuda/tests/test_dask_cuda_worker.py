@@ -40,7 +40,7 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                 str(nthreads),
                 "--no-dashboard",
                 "--worker-class",
-                "dask_cuda.utils.MockWorker",
+                "dask_cuda.utils_test.MockWorker",
             ]
         ):
             with Client("127.0.0.1:9359", loop=loop) as client:
@@ -131,6 +131,10 @@ def test_rmm_async(loop):  # noqa: F811
                 "--host",
                 "127.0.0.1",
                 "--rmm-async",
+                "--rmm-pool-size",
+                "2 GB",
+                "--rmm-release-threshold",
+                "3 GB",
                 "--no-dashboard",
             ]
         ):
@@ -142,6 +146,61 @@ def test_rmm_async(loop):  # noqa: F811
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.CudaAsyncMemoryResource
+
+                ret = get_cluster_configuration(client)
+                wait(ret)
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
+
+
+def test_rmm_async_with_maximum_pool_size(loop):  # noqa: F811
+    rmm = pytest.importorskip("rmm")
+
+    driver_version = rmm._cuda.gpu.driverGetVersion()
+    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
+    if driver_version < 11020 or runtime_version < 11020:
+        pytest.skip("cudaMallocAsync not supported")
+
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--rmm-async",
+                "--rmm-pool-size",
+                "2 GB",
+                "--rmm-release-threshold",
+                "3 GB",
+                "--rmm-maximum-pool-size",
+                "4 GB",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                memory_resource_types = client.run(
+                    lambda: (
+                        rmm.mr.get_current_device_resource_type(),
+                        type(rmm.mr.get_current_device_resource().get_upstream()),
+                    )
+                )
+                for v in memory_resource_types.values():
+                    memory_resource_type, upstream_memory_resource_type = v
+                    assert memory_resource_type is rmm.mr.LimitingResourceAdaptor
+                    assert (
+                        upstream_memory_resource_type is rmm.mr.CudaAsyncMemoryResource
+                    )
+
+                ret = get_cluster_configuration(client)
+                wait(ret)
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
+                assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 4000000000
 
 
 def test_rmm_logging(loop):  # noqa: F811
@@ -270,7 +329,7 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
                     str(nthreads),
                     "--no-dashboard",
                     "--worker-class",
-                    "dask_cuda.utils.MockWorker",
+                    "dask_cuda.utils_test.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
@@ -305,7 +364,7 @@ def test_cuda_visible_devices_uuid(loop):  # noqa: F811
                     "127.0.0.1",
                     "--no-dashboard",
                     "--worker-class",
-                    "dask_cuda.utils.MockWorker",
+                    "dask_cuda.utils_test.MockWorker",
                 ]
             ):
                 with Client("127.0.0.1:9359", loop=loop) as client:
@@ -422,3 +481,31 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                     ret["[plugin] RMMSetup"]["maximum_pool_size"]
                     == (device_total_memory * 0.3) // 256 * 256
                 )
+
+
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
+def test_worker_timeout():
+    ret = subprocess.run(
+        [
+            "dask",
+            "cuda",
+            "worker",
+            "192.168.1.100:7777",
+            "--death-timeout",
+            "1",
+        ],
+        text=True,
+        encoding="utf8",
+        capture_output=True,
+    )
+
+    assert "closing nanny at" in ret.stderr.lower()
+
+    # Depending on the environment, the error raised may be different
+    try:
+        assert "reason: failure-to-start-" in ret.stderr.lower()
+        assert "timeouterror" in ret.stderr.lower()
+    except AssertionError:
+        assert "reason: nanny-close" in ret.stderr.lower()
+
+    assert ret.returncode == 0

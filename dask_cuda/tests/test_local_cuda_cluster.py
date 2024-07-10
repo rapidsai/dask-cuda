@@ -9,18 +9,17 @@ import pytest
 from dask.distributed import Client
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import gen_test, raises_with_cause
-from distributed.worker import get_worker
 
 from dask_cuda import CUDAWorker, LocalCUDACluster, utils
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import (
-    MockWorker,
     get_cluster_configuration,
     get_device_total_memory,
     get_gpu_count_mig,
     get_gpu_uuid_from_index,
     print_cluster_config,
 )
+from dask_cuda.utils_test import MockWorker
 
 
 @gen_test(timeout=20)
@@ -88,14 +87,40 @@ async def test_with_subset_of_cuda_visible_devices():
                 }
 
 
-@pytest.mark.parametrize("protocol", ["ucx", None])
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @gen_test(timeout=20)
 async def test_ucx_protocol(protocol):
-    pytest.importorskip("ucp")
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
-    initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
-        protocol=protocol, enable_tcp_over_ucx=True, asynchronous=True, data=dict
+        protocol=protocol, asynchronous=True, data=dict
+    ) as cluster:
+        assert all(
+            ws.address.startswith(f"{protocol}://")
+            for ws in cluster.scheduler.workers.values()
+        )
+
+
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+@gen_test(timeout=20)
+async def test_explicit_ucx_with_protocol_none(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
+    initialize(protocol=protocol, enable_tcp_over_ucx=True)
+    async with LocalCUDACluster(
+        protocol=None, enable_tcp_over_ucx=True, asynchronous=True, data=dict
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
@@ -103,11 +128,18 @@ async def test_ucx_protocol(protocol):
 
 
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
 @gen_test(timeout=20)
-async def test_ucx_protocol_type_error():
-    pytest.importorskip("ucp")
+async def test_ucx_protocol_type_error(protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
 
-    initialize(enable_tcp_over_ucx=True)
+    initialize(protocol=protocol, enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
         async with LocalCUDACluster(
             protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict
@@ -140,7 +172,9 @@ async def test_no_memory_limits_cluster():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
 
 
@@ -161,7 +195,9 @@ async def test_no_memory_limits_cudaworker():
             await new_worker
             await client.wait_for_workers(2)
             # Check that all workers use a regular dict as their "data store".
-            res = await client.run(lambda: isinstance(get_worker().data, dict))
+            res = await client.run(
+                lambda dask_worker: isinstance(dask_worker.data, dict)
+            )
             assert all(res.values())
             await new_worker.close()
 
@@ -231,6 +267,8 @@ async def test_rmm_async():
 
     async with LocalCUDACluster(
         rmm_async=True,
+        rmm_pool_size="2GB",
+        rmm_release_threshold="3GB",
         asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
@@ -239,6 +277,44 @@ async def test_rmm_async():
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.CudaAsyncMemoryResource
+
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
+
+
+@gen_test(timeout=20)
+async def test_rmm_async_with_maximum_pool_size():
+    rmm = pytest.importorskip("rmm")
+
+    driver_version = rmm._cuda.gpu.driverGetVersion()
+    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
+    if driver_version < 11020 or runtime_version < 11020:
+        pytest.skip("cudaMallocAsync not supported")
+
+    async with LocalCUDACluster(
+        rmm_async=True,
+        rmm_pool_size="2GB",
+        rmm_release_threshold="3GB",
+        rmm_maximum_pool_size="4GB",
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            memory_resource_types = await client.run(
+                lambda: (
+                    rmm.mr.get_current_device_resource_type(),
+                    type(rmm.mr.get_current_device_resource().get_upstream()),
+                )
+            )
+            for v in memory_resource_types.values():
+                memory_resource_type, upstream_memory_resource_type = v
+                assert memory_resource_type is rmm.mr.LimitingResourceAdaptor
+                assert upstream_memory_resource_type is rmm.mr.CudaAsyncMemoryResource
+
+            ret = await get_cluster_configuration(client)
+            assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+            assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
+            assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 4000000000
 
 
 @gen_test(timeout=20)
@@ -283,6 +359,7 @@ async def test_pre_import():
 
 
 # Intentionally not using @gen_test to skip cleanup checks
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
 def test_pre_import_not_found():
     async def _test_pre_import_not_found():
         with raises_with_cause(RuntimeError, None, ImportError, None):
@@ -400,6 +477,7 @@ async def test_get_cluster_configuration():
 @gen_test(timeout=20)
 async def test_worker_fraction_limits():
     async with LocalCUDACluster(
+        dashboard_address=None,
         device_memory_limit=0.1,
         rmm_pool_size=0.2,
         rmm_maximum_pool_size=0.3,
@@ -422,15 +500,35 @@ async def test_worker_fraction_limits():
             )
 
 
-def test_print_cluster_config(capsys):
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucxx"],
+)
+def test_print_cluster_config(capsys, protocol):
+    if protocol == "ucx":
+        pytest.importorskip("ucp")
+    elif protocol == "ucxx":
+        pytest.importorskip("ucxx")
+
     pytest.importorskip("rich")
     with LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol="ucx"
+        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol=protocol
     ) as cluster:
         with Client(cluster) as client:
             print_cluster_config(client)
             captured = capsys.readouterr()
             assert "Dask Cluster Configuration" in captured.out
-            assert "ucx" in captured.out
+            assert protocol in captured.out
             assert "1 B" in captured.out
             assert "[plugin]" in captured.out
+
+
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
+def test_death_timeout_raises():
+    with pytest.raises(asyncio.exceptions.TimeoutError):
+        with LocalCUDACluster(
+            silence_logs=False,
+            death_timeout=1e-10,
+            dashboard_address=":0",
+        ):
+            pass

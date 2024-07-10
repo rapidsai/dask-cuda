@@ -1,14 +1,13 @@
-import functools
 import itertools
 import logging
 import os
-import sys
 import time
 
 import numpy
-from zict import Buffer, File, Func
+from zict import Buffer, Func
 from zict.common import ZictBase
 
+import dask
 from distributed.protocol import (
     dask_deserialize,
     dask_serialize,
@@ -18,11 +17,19 @@ from distributed.protocol import (
     serialize_bytelist,
 )
 from distributed.sizeof import safe_sizeof
+from distributed.spill import AnyKeyFile as KeyAsStringFile
 from distributed.utils import nbytes
 
 from .is_device_object import is_device_object
 from .is_spillable_object import is_spillable_object
 from .utils import nvtx_annotate
+
+
+def _serialize_bytelist(x, **kwargs):
+    kwargs["on_error"] = "raise"
+
+    compression = dask.config.get("distributed.worker.memory.spill-compression")
+    return serialize_bytelist(x, compression=compression, **kwargs)
 
 
 class LoggedBuffer(Buffer):
@@ -193,9 +200,12 @@ class DeviceHostFile(ZictBase):
 
         self.host_func = dict()
         self.disk_func = Func(
-            functools.partial(serialize_bytelist, on_error="raise"),
+            _serialize_bytelist,
             deserialize_bytes,
-            File(self.disk_func_path),
+            # Task keys are not strings, so this takes care of
+            # converting arbitrary tuple keys into a string before
+            # handing off to zict.File
+            KeyAsStringFile(self.disk_func_path),
         )
 
         host_buffer_kwargs = {}
@@ -239,34 +249,6 @@ class DeviceHostFile(ZictBase):
 
         # Dict of objects that will not be spilled by DeviceHostFile.
         self.others = {}
-
-    if sys.version_info < (3, 9):
-
-        def __new__(
-            cls,
-            # So named such that dask will pass in the worker's local
-            # directory when constructing this through the "data" callback.
-            worker_local_directory,
-            *,
-            device_memory_limit=None,
-            memory_limit=None,
-            log_spilling=False,
-        ):
-            """
-            This is here to support Python 3.8. Right now (to support
-            3.8), ZictBase inherits from typing.MutableMapping through
-            which inspect.signature determines that the signature of
-            __init__ is just (*args, **kwargs). We need to advertise the
-            correct signature so that distributed will correctly figure
-            out that it needs to pass the worker's local directory. In
-            Python 3.9 and later, typing.MutableMapping is just an alias
-            for collections.abc.MutableMapping and we don't need to do
-            anything.
-
-            With this pass-through definition of __new__, the
-            signature of the constructor is correctly determined.
-            """
-            return super().__new__(cls)
 
     def __setitem__(self, key, value):
         if key in self.device_buffer:
