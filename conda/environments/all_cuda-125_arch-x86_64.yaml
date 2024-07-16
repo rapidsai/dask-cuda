@@ -10,7 +10,7 @@ dependencies:
 - click >=8.1
 - cuda-nvcc-impl
 - cuda-nvrtc
-- cuda-version=12.2
+- cuda-version=12.5
 - cudf==24.8.*,>=0.0.0a0
 - dask-cudf==24.8.*,>=0.0.0a0
 - distributed-ucxx==0.39.*,>=0.0.0a0
@@ -35,4 +35,4 @@ dependencies:
 - ucx-py==0.39.*,>=0.0.0a0
 - ucxx==0.39.*,>=0.0.0a0
 - zict>=2.0.0
-name: all_cuda-122_arch-x86_64
+name: all_cuda-125_arch-x86_64
