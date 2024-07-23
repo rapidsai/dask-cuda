@@ -102,6 +102,20 @@ def cuda():
     disable spilling to host (i.e. allow full device memory usage).""",
 )
 @click.option(
+    "--enable-cudf-spill/--disable-cudf-spill",
+    default=False,
+    show_default=True,
+    help="""Enable automatic cuDF spilling. WARNING: This should NOT be used with
+    JIT-Unspill.""",
+)
+@click.option(
+    "--cudf-spill-stats",
+    type=int,
+    default=0,
+    help="""Set the cuDF spilling statistics level. This option has no effect if
+    `--enable-cudf-spill` is not specified."""
+)
+@click.option(
     "--rmm-pool-size",
     default=None,
     help="""RMM pool size to initialize each worker with. Can be an integer (bytes),
@@ -330,6 +344,8 @@ def worker(
     name,
     memory_limit,
     device_memory_limit,
+    enable_cudf_spill,
+    cudf_spill_stats,
     rmm_pool_size,
     rmm_maximum_pool_size,
     rmm_managed_memory,
@@ -402,6 +418,8 @@ def worker(
             name,
             memory_limit,
             device_memory_limit,
+            enable_cudf_spill,
+            cudf_spill_stats,
             rmm_pool_size,
             rmm_maximum_pool_size,
             rmm_managed_memory,

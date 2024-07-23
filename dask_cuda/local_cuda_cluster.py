@@ -10,7 +10,7 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, PreImport, RMMSetup
+from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
@@ -73,6 +73,14 @@ class LocalCUDACluster(LocalCluster):
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
         total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
         or ``None`` to disable spilling to host (i.e. allow full device memory usage).
+    enable_cudf_spill : bool, default False
+        Enable automatic cuDF spilling.
+
+        .. warning::
+            This should NOT be used together with JIT-Unspill.
+    cudf_spill_stats : int, default 0
+        Set the cuDF spilling statistics level. This option has no effect if
+        ``enable_cudf_spill=False``.
     local_directory : str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
@@ -209,6 +217,8 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         memory_limit="auto",
         device_memory_limit=0.8,
+        enable_cudf_spill=False,
+        cudf_spill_stats=0,
         data=None,
         local_directory=None,
         shared_filesystem=None,
@@ -259,6 +269,8 @@ class LocalCUDACluster(LocalCluster):
         self.device_memory_limit = parse_device_memory_limit(
             device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
         )
+        self.enable_cudf_spill = enable_cudf_spill
+        self.cudf_spill_stats = cudf_spill_stats
 
         self.rmm_pool_size = rmm_pool_size
         self.rmm_maximum_pool_size = rmm_maximum_pool_size
@@ -414,6 +426,7 @@ class LocalCUDACluster(LocalCluster):
                         track_allocations=self.rmm_track_allocations,
                     ),
                     PreImport(self.pre_import),
+                    CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
                 },
             }
         )

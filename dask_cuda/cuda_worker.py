@@ -20,7 +20,7 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, PreImport, RMMSetup
+from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
@@ -41,6 +41,8 @@ class CUDAWorker(Server):
         name=None,
         memory_limit="auto",
         device_memory_limit="auto",
+        enable_cudf_spill=False,
+        cudf_spill_stats=0,
         rmm_pool_size=None,
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
@@ -217,6 +219,7 @@ class CUDAWorker(Server):
                         track_allocations=rmm_track_allocations,
                     ),
                     PreImport(pre_import),
+                    CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,
