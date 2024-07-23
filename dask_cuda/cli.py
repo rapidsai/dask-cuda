@@ -113,7 +113,7 @@ def cuda():
     type=int,
     default=0,
     help="""Set the cuDF spilling statistics level. This option has no effect if
-    `--enable-cudf-spill` is not specified."""
+    `--enable-cudf-spill` is not specified.""",
 )
 @click.option(
     "--rmm-pool-size",

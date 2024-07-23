@@ -22,6 +22,7 @@ class CUDFSetup(WorkerPlugin):
     def setup(self, worker=None):
         try:
             import cudf
+
             cudf.set_option("spill", self.spill)
             cudf.set_option("spill_stats", self.spill_stats)
         except ImportError:

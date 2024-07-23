@@ -509,13 +509,15 @@ async def test_cudf_spill_disabled():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             cudf_spill = await client.run(
-                cudf.get_option, "spill",
+                cudf.get_option,
+                "spill",
             )
             for v in cudf_spill.values():
                 assert v is False
 
             cudf_spill_stats = await client.run(
-                cudf.get_option, "spill_stats",
+                cudf.get_option,
+                "spill_stats",
             )
             for v in cudf_spill_stats.values():
                 assert v == 0
@@ -532,13 +534,15 @@ async def test_cudf_spill():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             cudf_spill = await client.run(
-                cudf.get_option, "spill",
+                cudf.get_option,
+                "spill",
             )
             for v in cudf_spill.values():
                 assert v is True
 
             cudf_spill_stats = await client.run(
-                cudf.get_option, "spill_stats",
+                cudf.get_option,
+                "spill_stats",
             )
             for v in cudf_spill_stats.values():
                 assert v == 2

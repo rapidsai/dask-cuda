@@ -249,14 +249,13 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 cudf_spill = client.run(
-                    cudf.get_option, "spill",
+                    cudf.get_option,
+                    "spill",
                 )
                 for v in cudf_spill.values():
                     assert v is False
 
-                cudf_spill_stats = client.run(
-                    cudf.get_option, "spill_stats"
-                )
+                cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
                 for v in cudf_spill_stats.values():
                     assert v == 0
 
@@ -281,15 +280,11 @@ def test_cudf_spill(loop):  # noqa: F811
             with Client("127.0.0.1:9369", loop=loop) as client:
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
-                cudf_spill = client.run(
-                    cudf.get_option, "spill"
-                )
+                cudf_spill = client.run(cudf.get_option, "spill")
                 for v in cudf_spill.values():
                     assert v is True
 
-                cudf_spill_stats = client.run(
-                    cudf.get_option, "spill_stats"
-                )
+                cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
                 for v in cudf_spill_stats.values():
                     assert v == 2
 
