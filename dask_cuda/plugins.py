@@ -14,6 +14,21 @@ class CPUAffinity(WorkerPlugin):
         os.sched_setaffinity(0, self.cores)
 
 
+class CUDFSetup(WorkerPlugin):
+    def __init__(self, spill, spill_stats):
+        self.spill = spill
+        self.spill_stats = spill_stats
+
+    def setup(self, worker=None):
+        try:
+            import cudf
+
+            cudf.set_option("spill", self.spill)
+            cudf.set_option("spill_stats", self.spill_stats)
+        except ImportError:
+            pass
+
+
 class RMMSetup(WorkerPlugin):
     def __init__(
         self,
