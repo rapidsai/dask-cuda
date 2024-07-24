@@ -168,11 +168,11 @@ dependencies:
           - pytest-cov
       - output_types: [conda]
         packages:
-          - &cudf_conda cudf==24.10.*,>=0.0.0a0
-          - &dask_cudf_conda dask-cudf==24.10.*,>=0.0.0a0
+          - &cudf_unsuffixed cudf==24.10.*,>=0.0.0a0
+          - &dask_cudf_unsuffixed dask-cudf==24.10.*,>=0.0.0a0
           - distributed-ucxx==0.40.*,>=0.0.0a0
-          - &kvikio_conda kvikio==24.10.*,>=0.0.0a0
-          - &ucx_py_conda ucx-py==0.40.*,>=0.0.0a0
+          - &kvikio_unsuffixed kvikio==24.10.*,>=0.0.0a0
+          - &ucx_py_unsuffixed ucx-py==0.40.*,>=0.0.0a0
           - ucx-proc=*=gpu
           - ucxx==0.40.*,>=0.0.0a0
     specific:
@@ -190,19 +190,23 @@ dependencies:
         matrices:
           # kvikio should be added to the CUDA-version-specific matrices once there are wheels available
           # ref: https://github.com/rapidsai/kvikio/pull/369
-          - matrix: {cuda: "12.*"}
+          - matrix:
+              cuda: "12.*"
+              cuda_suffixed: "true"
             packages:
               - cudf-cu12==24.10.*,>=0.0.0a0
               - dask-cudf-cu12==24.10.*,>=0.0.0a0
               - ucx-py-cu12==0.40.*,>=0.0.0a0
-          - matrix: {cuda: "11.*"}
+          - matrix:
+              cuda: "11.*"
+              cuda_suffixed: "true"
             packages:
               - cudf-cu11==24.10.*,>=0.0.0a0
               - dask-cudf-cu11==24.10.*,>=0.0.0a0
               - ucx-py-cu11==0.40.*,>=0.0.0a0
           - matrix:
             packages:
-              - *cudf_conda
-              - *dask_cudf_conda
-              - *kvikio_conda
-              - *ucx_py_conda
+              - *cudf_unsuffixed
+              - *dask_cudf_unsuffixed
+              - *kvikio_unsuffixed
+              - *ucx_py_unsuffixed
