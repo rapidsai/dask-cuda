@@ -314,6 +314,12 @@ class LocalCUDACluster(LocalCluster):
             if device_memory_limit is None and memory_limit is None:
                 data = {}
             elif jit_unspill:
+                if enable_cudf_spill:
+                    warnings.warn(
+                        "Enabling cuDF spilling and JIT-Unspill together is not "
+                        "safe, consider disabling JIT-Unspill."
+                    )
+
                 data = (
                     ProxifyHostFile,
                     {
