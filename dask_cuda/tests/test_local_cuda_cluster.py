@@ -500,6 +500,54 @@ async def test_worker_fraction_limits():
             )
 
 
+@gen_test(timeout=20)
+async def test_cudf_spill_disabled():
+    cudf = pytest.importorskip("cudf")
+
+    async with LocalCUDACluster(
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            cudf_spill = await client.run(
+                cudf.get_option,
+                "spill",
+            )
+            for v in cudf_spill.values():
+                assert v is False
+
+            cudf_spill_stats = await client.run(
+                cudf.get_option,
+                "spill_stats",
+            )
+            for v in cudf_spill_stats.values():
+                assert v == 0
+
+
+@gen_test(timeout=20)
+async def test_cudf_spill():
+    cudf = pytest.importorskip("cudf")
+
+    async with LocalCUDACluster(
+        enable_cudf_spill=True,
+        cudf_spill_stats=2,
+        asynchronous=True,
+    ) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            cudf_spill = await client.run(
+                cudf.get_option,
+                "spill",
+            )
+            for v in cudf_spill.values():
+                assert v is True
+
+            cudf_spill_stats = await client.run(
+                cudf.get_option,
+                "spill_stats",
+            )
+            for v in cudf_spill_stats.values():
+                assert v == 2
+
+
 @pytest.mark.parametrize(
     "protocol",
     ["ucx", "ucxx"],
