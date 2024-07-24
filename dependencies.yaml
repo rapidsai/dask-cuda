@@ -190,16 +190,34 @@ dependencies:
         matrices:
           # kvikio should be added to the CUDA-version-specific matrices once there are wheels available
           # ref: https://github.com/rapidsai/kvikio/pull/369
-          - matrix: {cuda: "12.*"}
+          - matrix:
+              cuda: "12.*"
+              cuda_suffixed: "true"
             packages:
               - cudf-cu12==24.8.*,>=0.0.0a0
               - dask-cudf-cu12==24.8.*,>=0.0.0a0
               - ucx-py-cu12==0.39.*,>=0.0.0a0
-          - matrix: {cuda: "11.*"}
+          - matrix:
+              cuda: "12.*"
+              cuda_suffixed: "false"
+            packages:
+              - *cudf_conda
+              - *dask_cudf_conda
+              - *ucx_py_conda
+          - matrix:
+              cuda: "11.*"
+              cuda_suffixed: "true"
             packages:
               - cudf-cu11==24.8.*,>=0.0.0a0
               - dask-cudf-cu11==24.8.*,>=0.0.0a0
               - ucx-py-cu11==0.39.*,>=0.0.0a0
+          - matrix:
+              cuda: "11.*"
+              cuda_suffixed: "false"
+            packages:
+              - *cudf_conda
+              - *dask_cudf_conda
+              - *ucx_py_conda
           - matrix:
             packages:
               - *cudf_conda
