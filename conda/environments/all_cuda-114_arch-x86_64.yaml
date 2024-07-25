@@ -31,7 +31,7 @@ dependencies:
 - sphinx-click>=2.7.1
 - sphinx-rtd-theme>=0.5.1
 - ucx-proc=*=gpu
-- ucx-py==24.10.*,>=0.0.0a0
+- ucx-py==0.40.*,>=0.0.0a0
 - ucxx==0.40.*,>=0.0.0a0
 - zict>=2.0.0
 name: all_cuda-114_arch-x86_64
