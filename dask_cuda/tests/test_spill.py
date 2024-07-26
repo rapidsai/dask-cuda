@@ -243,8 +243,9 @@ async def test_cupy_cluster_device_spill(params):
         },
     ],
 )
+@pytest.mark.parametrize("enable_cudf_spill", [True, False])
 @gen_test(timeout=30)
-async def test_cudf_cluster_device_spill(params):
+async def test_cudf_cluster_device_spill(params, enable_cudf_spill):
     cudf = pytest.importorskip("cudf")
 
     with dask.config.set(
@@ -266,6 +267,7 @@ async def test_cudf_cluster_device_spill(params):
             device_memory_limit=params["device_memory_limit"],
             memory_limit=params["memory_limit"],
             worker_class=IncreasedCloseTimeoutNanny,
+            enable_cudf_spill=enable_cudf_spill,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
 
