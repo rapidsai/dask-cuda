@@ -9,6 +9,8 @@ import dask.dataframe.core
 import dask.dataframe.shuffle
 import dask.dataframe.multi
 import dask.bag.core
+from distributed.protocol.cuda import cuda_deserialize, cuda_serialize
+from distributed.protocol.serialize import dask_deserialize, dask_serialize
 
 from ._version import __git_commit__, __version__
 from .cuda_worker import CUDAWorker
@@ -48,3 +50,17 @@ dask.dataframe.shuffle.shuffle_group = proxify_decorator(
     dask.dataframe.shuffle.shuffle_group
 )
 dask.dataframe.core._concat = unproxify_decorator(dask.dataframe.core._concat)
+
+
+def _register_cudf_spill_aware():
+    import cudf
+
+    # Only enable Dask/cuDF spilling if cuDF spilling is disabled
+    if not cudf.get_option("spill"):
+        from cudf.comm import serialize
+
+
+for registry in [cuda_serialize, cuda_deserialize, dask_serialize, dask_deserialize]:
+    for lib in ["cudf", "dask_cudf"]:
+        if lib in registry._lazy:
+            registry._lazy[lib] = _register_cudf_spill_aware
