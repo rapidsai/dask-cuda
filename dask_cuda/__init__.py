@@ -55,8 +55,11 @@ dask.dataframe.core._concat = unproxify_decorator(dask.dataframe.core._concat)
 def _register_cudf_spill_aware():
     import cudf
 
-    # Only enable Dask/cuDF spilling if cuDF spilling is disabled
+    # Only enable Dask/cuDF spilling if cuDF spilling is disabled, see
+    # https://github.com/rapidsai/dask-cuda/issues/1363
     if not cudf.get_option("spill"):
+        # This reproduces the implementation of `_register_cudf`, see
+        # https://github.com/dask/distributed/blob/40fcd65e991382a956c3b879e438be1b100dff97/distributed/protocol/__init__.py#L106-L115
         from cudf.comm import serialize
 
 
