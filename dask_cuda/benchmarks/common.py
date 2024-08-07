@@ -117,16 +117,18 @@ def run(client: Client, args: Namespace, config: Config):
     wait_for_cluster(client, shutdown_on_failure=True)
     assert len(client.scheduler_info()["workers"]) > 0
     setup_memory_pools(
-        client,
-        args.type == "gpu",
-        args.rmm_pool_size,
-        args.disable_rmm_pool,
-        args.enable_rmm_async,
-        args.enable_rmm_managed,
-        args.rmm_release_threshold,
-        args.rmm_log_directory,
-        args.enable_rmm_statistics,
-        args.enable_rmm_track_allocations,
+        client=client,
+        is_gpu=args.type == "gpu",
+        disable_rmm=args.disable_rmm,
+        disable_rmm_pool=args.disable_rmm_pool,
+        pool_size=args.rmm_pool_size,
+        maximum_pool_size=args.rmm_maximum_pool_size,
+        rmm_async=args.enable_rmm_async,
+        rmm_managed=args.enable_rmm_managed,
+        release_threshold=args.rmm_release_threshold,
+        log_directory=args.rmm_log_directory,
+        statistics=args.enable_rmm_statistics,
+        rmm_track_allocations=args.enable_rmm_track_allocations,
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)

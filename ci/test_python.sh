@@ -8,7 +8,7 @@ set -euo pipefail
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
-  --file_key test_python \
+  --file-key test_python \
   --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch);py=${RAPIDS_PY_VERSION}" | tee env.yaml
 
 rapids-mamba-retry env create --yes -f env.yaml -n test
@@ -94,6 +94,59 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
 
 DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --disable-rmm \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --disable-rmm-pool \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --enable-rmm-async \
+  --partition-size="1 KiB" \
+  -d 0 \
+  --runs 1 \
+  --backend explicit-comms
+
+DASK_DATAFRAME__QUERY_PLANNING=True \
+python dask_cuda/benchmarks/local_cudf_shuffle.py \
+  --rmm-pool-size 2GiB \
+  --rmm-maximum-pool-size 4GiB \
+  --enable-rmm-managed \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \

@@ -36,8 +36,8 @@ function sed_runner() {
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
 # Bump testing dependencies
-sed_runner "s/ucx-py==.*/ucx-py==${NEXT_UCXPY_VERSION}.*/g" dependencies.yaml
-sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*/g" dependencies.yaml
+sed_runner "s/ucx-py==.*/ucx-py==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
+sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
 
 DEPENDENCIES=(
   cudf
@@ -45,10 +45,23 @@ DEPENDENCIES=(
   kvikio
   rapids-dask-dependency
 )
-for FILE in dependencies.yaml conda/environments/*.yaml; do
-  for DEP in "${DEPENDENCIES[@]}"; do
-    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*/g" "${FILE}"
+for DEP in "${DEPENDENCIES[@]}"; do
+  for FILE in dependencies.yaml conda/environments/*.yaml; do
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*,>=0.0.0a0/g" "${FILE}"
   done
+  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_SHORT_TAG_PEP440}.*,>=0.0.0a0\"/g" pyproject.toml
+done
+
+UCX_DEPENDENCIES=(
+  distributed-ucxx
+  ucx-py
+  ucxx
+)
+for DEP in "${UCX_DEPENDENCIES[@]}"; do
+  for FILE in dependencies.yaml conda/environments/*.yaml; do
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" "${FILE}"
+  done
+  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0\"/g" pyproject.toml
 done
 
 # CI files

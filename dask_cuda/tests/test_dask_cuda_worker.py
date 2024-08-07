@@ -231,6 +231,64 @@ def test_rmm_logging(loop):  # noqa: F811
                     assert v is rmm.mr.LoggingResourceAdaptor
 
 
+def test_cudf_spill_disabled(loop):  # noqa: F811
+    cudf = pytest.importorskip("cudf")
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                cudf_spill = client.run(
+                    cudf.get_option,
+                    "spill",
+                )
+                for v in cudf_spill.values():
+                    assert v is False
+
+                cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
+                for v in cudf_spill_stats.values():
+                    assert v == 0
+
+
+def test_cudf_spill(loop):  # noqa: F811
+    cudf = pytest.importorskip("cudf")
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+                "--enable-cudf-spill",
+                "--cudf-spill-stats",
+                "2",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                cudf_spill = client.run(cudf.get_option, "spill")
+                for v in cudf_spill.values():
+                    assert v is True
+
+                cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
+                for v in cudf_spill_stats.values():
+                    assert v == 2
+
+
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_dashboard_address(loop):  # noqa: F811
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
