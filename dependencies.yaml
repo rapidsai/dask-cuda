@@ -158,7 +158,7 @@ dependencies:
           - numpy>=1.23,<2.0a0
           - pandas>=1.3
           - pynvml>=11.0.0,<11.5
-          - rapids-dask-dependency==24.8.*
+          - rapids-dask-dependency==24.8.*,>=0.0.0a0
           - zict>=2.0.0
   test_python:
     common:
@@ -168,13 +168,13 @@ dependencies:
           - pytest-cov
       - output_types: [conda]
         packages:
-          - &cudf_unsuffixed cudf==24.8.*
-          - &dask_cudf_unsuffixed dask-cudf==24.8.*
-          - distributed-ucxx==0.39.*
-          - &kvikio_unsuffixed kvikio==24.8.*
-          - &ucx_py_unsuffixed ucx-py==0.39.*
+          - &cudf_unsuffixed cudf==24.8.*,>=0.0.0a0
+          - &dask_cudf_unsuffixed dask-cudf==24.8.*,>=0.0.0a0
+          - distributed-ucxx==0.39.*,>=0.0.0a0
+          - &kvikio_unsuffixed kvikio==24.8.*,>=0.0.0a0
+          - &ucx_py_unsuffixed ucx-py==0.39.*,>=0.0.0a0
           - ucx-proc=*=gpu
-          - ucxx==0.39.*
+          - ucxx==0.39.*,>=0.0.0a0
     specific:
       - output_types: conda
         matrices:
@@ -194,16 +194,16 @@ dependencies:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu12==24.8.*
-              - dask-cudf-cu12==24.8.*
-              - ucx-py-cu12==0.39.*
+              - cudf-cu12==24.8.*,>=0.0.0a0
+              - dask-cudf-cu12==24.8.*,>=0.0.0a0
+              - ucx-py-cu12==0.39.*,>=0.0.0a0
           - matrix:
               cuda: "11.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu11==24.8.*
-              - dask-cudf-cu11==24.8.*
-              - ucx-py-cu11==0.39.*
+              - cudf-cu11==24.8.*,>=0.0.0a0
+              - dask-cudf-cu11==24.8.*,>=0.0.0a0
+              - ucx-py-cu11==0.39.*,>=0.0.0a0
           - matrix:
             packages:
               - *cudf_unsuffixed
