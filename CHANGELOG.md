@@ -1,3 +1,29 @@
+# dask-cuda 24.08.00 (7 Aug 2024)
+
+## 🐛 Bug Fixes
+
+- Fix partitioning in explicit-comms shuffle ([#1356](https://github.com/rapidsai/dask-cuda/pull/1356)) [@rjzamora](https://github.com/rjzamora)
+- Update cuDF&#39;s `assert_eq` import ([#1353](https://github.com/rapidsai/dask-cuda/pull/1353)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Add arguments to enable cuDF spilling and set statistics ([#1362](https://github.com/rapidsai/dask-cuda/pull/1362)) [@pentschev](https://github.com/pentschev)
+- Allow disabling RMM in benchmarks ([#1352](https://github.com/rapidsai/dask-cuda/pull/1352)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- consolidate cuda_suffixed=false blocks in dependencies.yaml, fix update-version.sh ([#1367](https://github.com/rapidsai/dask-cuda/pull/1367)) [@jameslamb](https://github.com/jameslamb)
+- split up CUDA-suffixed dependencies in dependencies.yaml ([#1364](https://github.com/rapidsai/dask-cuda/pull/1364)) [@jameslamb](https://github.com/jameslamb)
+- Use verify-alpha-spec hook ([#1360](https://github.com/rapidsai/dask-cuda/pull/1360)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Use workflow branch 24.08 again ([#1359](https://github.com/rapidsai/dask-cuda/pull/1359)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Build and test with CUDA 12.5.1 ([#1357](https://github.com/rapidsai/dask-cuda/pull/1357)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Drop `setup.py` ([#1354](https://github.com/rapidsai/dask-cuda/pull/1354)) [@jakirkham](https://github.com/jakirkham)
+- remove .gitattributes ([#1350](https://github.com/rapidsai/dask-cuda/pull/1350)) [@jameslamb](https://github.com/jameslamb)
+- make conda recipe data-loading stricter ([#1349](https://github.com/rapidsai/dask-cuda/pull/1349)) [@jameslamb](https://github.com/jameslamb)
+- Adopt CI/packaging codeowners ([#1347](https://github.com/rapidsai/dask-cuda/pull/1347)) [@bdice](https://github.com/bdice)
+- Remove text builds of documentation ([#1346](https://github.com/rapidsai/dask-cuda/pull/1346)) [@vyasr](https://github.com/vyasr)
+- use rapids-build-backend ([#1343](https://github.com/rapidsai/dask-cuda/pull/1343)) [@jameslamb](https://github.com/jameslamb)
+
 # dask-cuda 24.06.00 (5 Jun 2024)
 
 ## 🐛 Bug Fixes

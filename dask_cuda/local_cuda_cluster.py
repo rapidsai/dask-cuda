@@ -244,6 +244,13 @@ class LocalCUDACluster(LocalCluster):
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
 
+        if enable_cudf_spill:
+            import cudf
+
+            # cuDF spilling must be enabled in the client/scheduler process too.
+            cudf.set_option("spill", enable_cudf_spill)
+            cudf.set_option("spill_stats", cudf_spill_stats)
+
         if threads_per_worker < 1:
             raise ValueError("threads_per_worker must be higher than 0.")
 

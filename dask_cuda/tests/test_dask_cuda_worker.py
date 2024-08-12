@@ -567,3 +567,30 @@ def test_worker_timeout():
         assert "reason: nanny-close" in ret.stderr.lower()
 
     assert ret.returncode == 0
+
+
+@pytest.mark.parametrize("enable_cudf_spill_warning", [False, True])
+def test_worker_cudf_spill_warning(enable_cudf_spill_warning):  # noqa: F811
+    pytest.importorskip("rmm")
+
+    environ = {"CUDA_VISIBLE_DEVICES": "0"}
+    if not enable_cudf_spill_warning:
+        environ["DASK_CUDF_SPILL_WARNING"] = "False"
+
+    with patch.dict(os.environ, environ):
+        ret = subprocess.run(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--enable-cudf-spill",
+                "--death-timeout",
+                "1",
+            ],
+            capture_output=True,
+        )
+        if enable_cudf_spill_warning:
+            assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
+        else:
+            assert b"UserWarning: cuDF spilling is enabled" not in ret.stderr
