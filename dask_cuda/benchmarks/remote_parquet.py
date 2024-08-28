@@ -32,29 +32,22 @@ def read_data(
     path = DEFAULT_DATASET_PATH
     columns = DEFAULT_COLUMNS
     with dask.config.set({"dataframe.backend": backend}):
-        if filesystem == "arrow" and backend == "cudf":
-            df = custom_read_parquet(
-                path,
-                columns=columns,
-                blocksize=blocksize,
-            )
+        if filesystem == "arrow":
+            # TODO: Warn user that blocksize and aggregate_files
+            # are ingored when `filesystem == "arrow"`
+            _blocksize = {}
+            _aggregate_files = {}
         else:
-            if filesystem == "arrow":
-                # TODO: Warn user that blocksize and aggregate_files
-                # are ingored when `filesystem == "arrow"`
-                _blocksize = {}
-                _aggregate_files = {}
-            else:
-                _blocksize = {"blocksize": blocksize}
-                _aggregate_files = {"aggregate_files": aggregate_files}
+            _blocksize = {"blocksize": blocksize}
+            _aggregate_files = {"aggregate_files": aggregate_files}
 
-            df = dd.read_parquet(
-                path,
-                columns=columns,
-                filesystem=filesystem,
-                **_blocksize,
-                **_aggregate_files,
-            )
+        df = dd.read_parquet(
+            path,
+            columns=columns,
+            filesystem=filesystem,
+            **_blocksize,
+            **_aggregate_files,
+        )
         return df.memory_usage().compute().sum()
 
 
