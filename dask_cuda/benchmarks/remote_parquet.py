@@ -10,7 +10,6 @@ from dask.distributed import performance_report
 from dask.utils import format_bytes, parse_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
-from dask_cuda.benchmarks.custom import custom_read_parquet
 from dask_cuda.benchmarks.utils import (
     parse_benchmark_args,
     print_key_value,
@@ -34,7 +33,7 @@ def read_data(
     with dask.config.set({"dataframe.backend": backend}):
         if filesystem == "arrow":
             # TODO: Warn user that blocksize and aggregate_files
-            # are ingored when `filesystem == "arrow"`
+            # are ignored when `filesystem == "arrow"`
             _blocksize = {}
             _aggregate_files = {}
         else:
