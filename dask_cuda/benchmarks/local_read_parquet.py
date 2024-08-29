@@ -135,7 +135,7 @@ def bench_once(client, args, write_profile=None):
 def pretty_print_results(args, address_to_index, p2p_bw, results):
     if args.markdown:
         print("```")
-    print("Remote Parquet benchmark")
+    print("Parquet read benchmark")
     data_processed, row_count, durations = zip(*results)
     print_separator(separator="-")
     backend = "cudf" if args.type == "gpu" else "pandas"
