@@ -58,9 +58,12 @@ def get_fs_paths_kwargs(args):
             s3_args[_mapping[k]] = v
 
         fs = pa_fs.FileSystem.from_uri(args.path)[0]
-        kwargs["filesystem"] = type(fs)(**s3_args)
+        try:
+            region = {"region": fs.region}
+        except AttributeError:
+            region = {}
+        kwargs["filesystem"] = type(fs)(**region, **s3_args)
         fsspec_fs = ArrowFSWrapper(kwargs["filesystem"])
-        paths = fsspec_fs.glob(f"{args.path}/*.parquet")
 
         if args.type == "gpu":
             kwargs["blocksize"] = args.blocksize
@@ -74,11 +77,14 @@ def get_fs_paths_kwargs(args):
             args.path, mode="rb", storage_options=storage_options
         )[0]
         kwargs["filesystem"] = fsspec_fs
-        paths = fsspec_fs.glob(f"{args.path}/*.parquet")
-
         kwargs["blocksize"] = args.blocksize
         kwargs["aggregate_files"] = args.aggregate_files
 
+    # Collect list of paths
+    stripped_url_path = fsspec_fs._strip_protocol(args.path)
+    if stripped_url_path.endswith("/"):
+        stripped_url_path = stripped_url_path[:-1]
+    paths = fsspec_fs.glob(f"{stripped_url_path}/*.parquet")
     if args.file_count:
         paths = paths[: args.file_count]
 
