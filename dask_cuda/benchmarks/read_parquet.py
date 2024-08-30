@@ -188,7 +188,6 @@ def parse_args():
     special_args = [
         {
             "name": "path",
-            # "required": True,
             "type": str,
             "help": "Parquet directory to read from (must be a flat directory).",
         },
