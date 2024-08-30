@@ -9,7 +9,7 @@ import pandas as pd
 import dask
 import dask.dataframe as dd
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -334,13 +334,6 @@ def parse_args():
             "name": "--shuffle-join",
             "action": "store_true",
             "help": "Use shuffle join (takes precedence over '--broadcast-join').",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
         },
         {
             "name": "--frac-match",

@@ -203,7 +203,6 @@ def parse_args():
         },
         {
             "name": "--path",
-            "default": "s3://dask-cudf-parquet-testing/dedup_parquet",
             "type": str,
             "help": "Parquet directory to read from (must be a flat directory).",
         },
@@ -249,14 +248,6 @@ def parse_args():
             "default": 3,
             "type": int,
             "help": "Number of runs",
-        },
-        # NOTE: The following args are not relevant to this benchmark
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
         },
     ]
 
