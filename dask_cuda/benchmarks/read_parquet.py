@@ -67,11 +67,6 @@ def get_fs_paths_kwargs(args):
 
         if args.type == "gpu":
             kwargs["blocksize"] = args.blocksize
-
-        if args.aggregate_files:
-            raise NotImplementedError(
-                "aggregate-files is not supported for filesystem='arrow'"
-            )
     else:
         fsspec_fs = fsspec.core.get_fs_token_paths(
             args.path, mode="rb", storage_options=storage_options
@@ -155,9 +150,11 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_key_value(key="Size on disk", value=f"{format_bytes(data_processed[0])}")
     if args.markdown:
         print("\n```")
+    args.no_show_p2p_bandwidth = True
     print_throughput_bandwidth(
         args, durations, data_processed, p2p_bw, address_to_index
     )
+    print_separator(separator="=")
 
 
 def create_tidy_results(args, p2p_bw, results):
@@ -190,6 +187,12 @@ def create_tidy_results(args, p2p_bw, results):
 def parse_args():
     special_args = [
         {
+            "name": "path",
+            # "required": True,
+            "type": str,
+            "help": "Parquet directory to read from (must be a flat directory).",
+        },
+        {
             "name": "--blocksize",
             "default": "256MB",
             "type": parse_bytes,
@@ -200,11 +203,6 @@ def parse_args():
             "default": False,
             "action": "store_true",
             "help": "How to set the aggregate_files option",
-        },
-        {
-            "name": "--path",
-            "type": str,
-            "help": "Parquet directory to read from (must be a flat directory).",
         },
         {
             "name": "--file-count",
@@ -251,11 +249,13 @@ def parse_args():
         },
     ]
 
-    return parse_benchmark_args(
+    args = parse_benchmark_args(
         description="Parquet read benchmark",
         args_list=special_args,
         check_explicit_comms=False,
     )
+    args.no_show_p2p_bandwidth = True
+    return args
 
 
 if __name__ == "__main__":
