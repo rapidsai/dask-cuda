@@ -342,7 +342,7 @@ def parse_benchmark_args(
         default="1 MiB",
         metavar="nbytes",
         type=parse_bytes,
-        help="Ignore messages smaller than this (default '1 MB')",
+        help="Bandwidth statistics: ignore messages smaller than this (default '1 MB')",
     )
 
     for args in args_list:
