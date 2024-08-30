@@ -229,13 +229,6 @@ def parse_args():
             "help": "Do shuffle with GPU or CPU dataframes (default 'gpu')",
         },
         {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
-        },
-        {
             "name": "--runs",
             "default": 3,
             "type": int,

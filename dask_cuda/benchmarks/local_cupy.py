@@ -8,7 +8,7 @@ from nvtx import end_range, start_range
 
 from dask import array as da
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -296,13 +296,6 @@ def parse_args():
             "default": "2500",
             "type": int,
             "help": "Chunk size (default 2500).",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB').",
         },
         {
             "name": "--runs",

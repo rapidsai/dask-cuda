@@ -337,6 +337,13 @@ def parse_benchmark_args(
         "If the files already exist, new files are created with a uniquified "
         "BASENAME.",
     )
+    parser.add_argument(
+        "--ignore-size",
+        default="1 MiB",
+        metavar="nbytes",
+        type=parse_bytes,
+        help="Bandwidth statistics: ignore messages smaller than this (default '1 MB')",
+    )
 
     for args in args_list:
         name = args.pop("name")
