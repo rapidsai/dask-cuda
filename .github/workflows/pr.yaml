@@ -18,26 +18,29 @@ jobs:
       - docs-build
       - wheel-build
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@python-3.12
   checks:
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@python-3.12
   conda-python-build:
     needs: checks
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@python-3.12
     with:
       build_type: pull-request
   conda-python-tests:
     needs: conda-python-build
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@python-3.12
     with:
       build_type: pull-request
+      # TODO: remove this matrix_filter once there are Python 3.12 ucxx and cudf wheels
+      #       (this helps publish dask-cuda wheels to resolve a circular dependency between those projects)
+      matrix_filter: map(select(.PY_VER != "3.12"))
   docs-build:
     needs: conda-python-build
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@python-3.12
     with:
       build_type: pull-request
       node_type: "gpu-v100-latest-1"
@@ -46,7 +49,7 @@ jobs:
       run_script: "ci/build_docs.sh"
   wheel-build:
     secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@branch-24.10
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@python-3.12
     with:
       build_type: pull-request
       # Package is pure Python and only ever requires one build.
