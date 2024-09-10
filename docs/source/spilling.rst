@@ -169,4 +169,4 @@ Although cuDF spilling is the best option for most Dask cuDF ETL workflows,
 it will be much less effective if that workflow converts between ``cudf.DataFrame``
 and other data formats (e.g. ``cupy.ndarray``). Once the underlying device buffers
 are "exposed" to external memory references, they become "unspillable" by cuDF.
-In cases like this (e.g. Dask CUDA + XGBoost), JIT-Unspill is usually a better choice.
+In cases like this (e.g., Dask-CUDA + XGBoost), JIT-Unspill is usually a better choice.
