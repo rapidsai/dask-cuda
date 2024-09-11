@@ -1,3 +1,5 @@
+.. _spilling-from-device:
+
 Spilling from device
 ====================
 
@@ -110,7 +112,7 @@ to enable compatibility mode, which automatically calls ``unproxy()`` on all fun
 cuDF Spilling
 -------------
 
-When executing a `Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
+When executing a `Dask-cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
 (i.e. Dask DataFrame) ETL workflow, it is usually best to leverage `native spilling support in
 cuDF <https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`.
 
@@ -145,14 +147,23 @@ Statistics
 ~~~~~~~~~~
 
 When cuDF spilling is enabled, it is also possible to have cuDF collect basic
-spill statistics. This information can be a useful way to understand the
-performance of Dask cuDF workflows with high memory utilization:
+spill statistics. Collecting this information can be a useful way to understand
+the performance of Dask-cuDF workflows with high memory utilization.
+
+When deploying a ``LocalCUDACluster``, cuDF spilling can be enabled with the
+``cudf_spill_stats`` argument:
+
+.. code-block::
+
+    >>> cluster = LocalCUDACluster(n_workers=10, enable_cudf_spill=True, cudf_spill_stats=1)​
+
+The same applies for ``dask cuda worker``:
 
 .. code-block::
 
     $ dask cuda worker --enable-cudf-spill --cudf-spill-stats 1
 
-To have each dask-cuda worker print spill statistics, do something like:
+To have each dask-cuda worker print spill statistics within the workflow, do something like:
 
 .. code-block::
 
@@ -161,11 +172,14 @@ To have each dask-cuda worker print spill statistics, do something like:
         print(get_global_manager().statistics)
     client.submit(spill_info)
 
+See the `cuDF spilling documentation
+<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#statistics>`_
+for more information on the available spill-statistics options.
 
 Limitations
 ~~~~~~~~~~~
 
-Although cuDF spilling is the best option for most Dask cuDF ETL workflows,
+Although cuDF spilling is the best option for most Dask-cuDF ETL workflows,
 it will be much less effective if that workflow converts between ``cudf.DataFrame``
 and other data formats (e.g. ``cupy.ndarray``). Once the underlying device buffers
 are "exposed" to external memory references, they become "unspillable" by cuDF.
