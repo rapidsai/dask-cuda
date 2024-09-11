@@ -44,6 +44,14 @@ We also recommend allocating most, though not all, of the GPU memory space. We d
 
 Additionally, when using `Accelerated Networking`_ , we only need to register a single IPC handle for the whole pool (which is expensive, but only done once) since from the IPC point of viewer there's only a single allocation. As opposed to just using RMM without a pool where each new allocation must be registered with IPC.
 
+Spilling from Device
+~~~~~~~~~~~~~~~~~~~~
+
+Dask-CUDA offers several different ways to enable automatic spilling from device memory.
+The best method often depends on the specific workflow. For classic ETL workloads using
+`Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_, cuDF spilling is usually the
+best place to start. See :ref:`Spilling from device <spilling-from-device>` for more details.
+
 Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
 
