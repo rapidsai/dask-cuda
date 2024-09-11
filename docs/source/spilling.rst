@@ -112,9 +112,9 @@ to enable compatibility mode, which automatically calls ``unproxy()`` on all fun
 cuDF Spilling
 -------------
 
-When executing a `Dask-cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
-(i.e. Dask DataFrame) ETL workflow, it is usually best to leverage `native spilling support in
-cuDF <https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`.
+When executing an ETL workflow with `Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
+(i.e. Dask DataFrame), it is usually best to leverage `native spilling support in cuDF
+<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`.
 
 Native cuDF spilling has an important advantage over the other methodologies mentioned
 above. When JIT-unspill or default spilling are used, the worker is only able to spill
@@ -148,7 +148,7 @@ Statistics
 
 When cuDF spilling is enabled, it is also possible to have cuDF collect basic
 spill statistics. Collecting this information can be a useful way to understand
-the performance of Dask-cuDF workflows with high memory utilization.
+the performance of memory-intensive workflows using cuDF.
 
 When deploying a ``LocalCUDACluster``, cuDF spilling can be enabled with the
 ``cudf_spill_stats`` argument:
@@ -179,7 +179,7 @@ for more information on the available spill-statistics options.
 Limitations
 ~~~~~~~~~~~
 
-Although cuDF spilling is the best option for most Dask-cuDF ETL workflows,
+Although cuDF spilling is the best option for most ETL workflows using Dask cuDF,
 it will be much less effective if that workflow converts between ``cudf.DataFrame``
 and other data formats (e.g. ``cupy.ndarray``). Once the underlying device buffers
 are "exposed" to external memory references, they become "unspillable" by cuDF.
