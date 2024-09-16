@@ -49,8 +49,9 @@ Spilling from Device
 
 Dask-CUDA offers several different ways to enable automatic spilling from device memory.
 The best method often depends on the specific workflow. For classic ETL workloads using
-`Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_, cuDF spilling is usually the
-best place to start. See :ref:`Spilling from device <spilling-from-device>` for more details.
+`Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_, native cuDF spilling is usually
+the best place to start. See :ref:`Dask-CUDA's spilling documentation <spilling-from-device>`
+for more details.
 
 Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
