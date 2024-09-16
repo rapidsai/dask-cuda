@@ -114,7 +114,7 @@ cuDF Spilling
 
 When executing an ETL workflow with `Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
 (i.e. Dask DataFrame), it is usually best to leverage `native spilling support in cuDF
-<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`.
+<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>_`.
 
 Native cuDF spilling has an important advantage over the other methodologies mentioned
 above. When JIT-unspill or default spilling are used, the worker is only able to spill
