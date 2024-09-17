@@ -252,7 +252,7 @@ async def test_local_cuda_cluster(jit_unspill):
             assert "ProxyObject" in str(type(x))
             assert x._pxy_get().serializer == "dask"
         else:
-            assert type(x) == cudf.DataFrame
+            assert type(x) is cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
         return x
 

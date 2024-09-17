@@ -772,7 +772,7 @@ def print_throughput_bandwidth(
     )
     print_key_value(
         key="Wall clock",
-        value=f"{format_time(durations.mean())} +/- {format_time(durations.std()) }",
+        value=f"{format_time(durations.mean())} +/- {format_time(durations.std())}",
     )
     if not args.no_show_p2p_bandwidth:
         print_separator(separator="=")
