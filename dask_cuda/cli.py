@@ -13,7 +13,7 @@ from distributed.security import Security
 from distributed.utils import import_term
 
 from .cuda_worker import CUDAWorker
-from .utils import print_cluster_config
+from .utils import CommaSeparatedChoice, print_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +167,7 @@ def cuda():
 @click.option(
     "--set-rmm-allocator-for-libs",
     "rmm_allocator_external_lib_list",
+    type=CommaSeparatedChoice(["cupy", "torch"]),
     default=None,
     show_default=True,
     help="""

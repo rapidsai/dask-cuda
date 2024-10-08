@@ -203,9 +203,6 @@ class CUDAWorker(Server):
                 "processes set `CUDF_SPILL=on` as well. To disable this warning "
                 "set `DASK_CUDF_SPILL_WARNING=False`."
             )
-        
-        if rmm_allocator_external_lib_list is not None:
-            rmm_allocator_external_lib_list = [s.strip() for s in rmm_allocator_external_lib_list.split(',')]
 
         self.nannies = [
             Nanny(

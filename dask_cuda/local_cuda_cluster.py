@@ -143,10 +143,10 @@ class LocalCUDACluster(LocalCluster):
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
             incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
-    rmm_allocator_external_lib_list: str or list or None, default None
-        Set RMM as the allocator for external libraries. Can be a comma-separated
-        string (like "torch,cupy").
-
+    rmm_allocator_external_lib_list: list or None, default None
+        List of external libraries for which to set RMM as the allocator.
+        Supported options are: ``["torch", "cupy"]``. If None, no external
+        libraries will use RMM as their allocator.
     rmm_release_threshold: int, str or None, default None
         When ``rmm.async is True`` and the pool size grows beyond this value, unused
         memory held by the pool will be released at the next synchronization point.
@@ -289,12 +289,6 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         self.rmm_release_threshold = rmm_release_threshold
-        if rmm_allocator_external_lib_list is not None and isinstance(
-            rmm_allocator_external_lib_list, str
-        ):
-            rmm_allocator_external_lib_list = [
-                s.strip() for s in rmm_allocator_external_lib_list.split(",")
-            ]
         self.rmm_allocator_external_lib_list = rmm_allocator_external_lib_list
 
         if rmm_pool_size is not None or rmm_managed_memory or rmm_async:

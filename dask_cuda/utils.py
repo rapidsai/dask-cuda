@@ -7,8 +7,9 @@ import warnings
 from contextlib import suppress
 from functools import singledispatch
 from multiprocessing import cpu_count
-from typing import Optional, Callable, Dict
+from typing import Callable, Dict, Optional
 
+import click
 import numpy as np
 import pynvml
 import toolz
@@ -771,7 +772,7 @@ def enable_rmm_memory_for_library(lib_name: str) -> None:
     Enable RMM memory pool support for a specified third-party library.
 
     This function allows the given library to utilize RMM's memory pool if it supports
-    integration with RMM. The library name is passed as a string argument, and if the 
+    integration with RMM. The library name is passed as a string argument, and if the
     library is compatible, its memory allocator will be configured to use RMM.
 
     Parameters
@@ -794,7 +795,7 @@ def enable_rmm_memory_for_library(lib_name: str) -> None:
     }
 
     if lib_name not in setup_functions:
-        supported_libs = ', '.join(setup_functions.keys())
+        supported_libs = ", ".join(setup_functions.keys())
         raise ValueError(
             f"The library '{lib_name}' is not supported for RMM integration. "
             f"Supported libraries are: {supported_libs}."
@@ -802,6 +803,7 @@ def enable_rmm_memory_for_library(lib_name: str) -> None:
 
     # Call the setup function for the specified library
     setup_functions[lib_name]()
+
 
 def _setup_rmm_for_torch() -> None:
     try:
@@ -813,6 +815,7 @@ def _setup_rmm_for_torch() -> None:
 
     torch.cuda.memory.change_current_allocator(rmm_torch_allocator)
 
+
 def _setup_rmm_for_cupy() -> None:
     try:
         import cupy
@@ -820,4 +823,15 @@ def _setup_rmm_for_cupy() -> None:
         raise ImportError("CuPy is not installed.") from e
 
     from rmm.allocators.cupy import rmm_cupy_allocator
+
     cupy.cuda.set_allocator(rmm_cupy_allocator)
+
+
+class CommaSeparatedChoice(click.Choice):
+    def convert(self, value, param, ctx):
+        values = [v.strip() for v in value.split(",")]
+        for v in values:
+            if v not in self.choices:
+                choices_str = ", ".join(f"'{c}'" for c in self.choices)
+                self.fail(f"invalid choice(s): {v}. (choices are: {choices_str})")
+        return values
