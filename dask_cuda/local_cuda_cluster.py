@@ -270,6 +270,9 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
+
+        if isinstance(rmm_allocator_external_lib_list, str):
+            rmm_allocator_external_lib_list = []
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
         logger = logging.getLogger(__name__)
         self.memory_limit = parse_memory_limit(
