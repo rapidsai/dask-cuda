@@ -47,6 +47,7 @@ class CUDAWorker(Server):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_allocator_external_lib_list=None,
         rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
@@ -202,6 +203,9 @@ class CUDAWorker(Server):
                 "processes set `CUDF_SPILL=on` as well. To disable this warning "
                 "set `DASK_CUDF_SPILL_WARNING=False`."
             )
+        
+        if rmm_allocator_external_lib_list is not None:
+            rmm_allocator_external_lib_list = [s.strip() for s in rmm_allocator_external_lib_list.split(',')]
 
         self.nannies = [
             Nanny(
@@ -231,6 +235,7 @@ class CUDAWorker(Server):
                         release_threshold=rmm_release_threshold,
                         log_directory=rmm_log_directory,
                         track_allocations=rmm_track_allocations,
+                        external_lib_list=rmm_allocator_external_lib_list,
                     ),
                     PreImport(pre_import),
                     CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),

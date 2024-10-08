@@ -3,7 +3,7 @@ import os
 
 from distributed import WorkerPlugin
 
-from .utils import get_rmm_log_file_name, parse_device_memory_limit
+from .utils import get_rmm_log_file_name, parse_device_memory_limit, enable_rmm_memory_for_library
 
 
 class CPUAffinity(WorkerPlugin):
@@ -39,6 +39,7 @@ class RMMSetup(WorkerPlugin):
         release_threshold,
         log_directory,
         track_allocations,
+        external_lib_list,
     ):
         if initial_pool_size is None and maximum_pool_size is not None:
             raise ValueError(
@@ -61,6 +62,8 @@ class RMMSetup(WorkerPlugin):
         self.logging = log_directory is not None
         self.log_directory = log_directory
         self.rmm_track_allocations = track_allocations
+        self.external_lib_list = external_lib_list
+
 
     def setup(self, worker=None):
         if self.initial_pool_size is not None:
@@ -122,6 +125,10 @@ class RMMSetup(WorkerPlugin):
 
             mr = rmm.mr.get_current_device_resource()
             rmm.mr.set_current_device_resource(rmm.mr.TrackingResourceAdaptor(mr))
+        
+        if self.external_lib_list is not None:
+            for lib in self.external_lib_list:
+                enable_rmm_memory_for_library(lib)
 
 
 class PreImport(WorkerPlugin):
