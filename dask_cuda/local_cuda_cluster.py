@@ -289,9 +289,12 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         self.rmm_release_threshold = rmm_release_threshold
-        if rmm_allocator_external_lib_list is not None:
-            rmm_allocator_external_lib_list = [s.strip() for s in  
-                                                    rmm_allocator_external_lib_list.split(',')]
+        if rmm_allocator_external_lib_list is not None and isinstance(
+            rmm_allocator_external_lib_list, str
+        ):
+            rmm_allocator_external_lib_list = [
+                s.strip() for s in rmm_allocator_external_lib_list.split(",")
+            ]
         self.rmm_allocator_external_lib_list = rmm_allocator_external_lib_list
 
         if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
@@ -447,7 +450,7 @@ class LocalCUDACluster(LocalCluster):
                         release_threshold=self.rmm_release_threshold,
                         log_directory=self.rmm_log_directory,
                         track_allocations=self.rmm_track_allocations,
-                        external_lib_list=self.rmm_allocator_external_lib_list
+                        external_lib_list=self.rmm_allocator_external_lib_list,
                     ),
                     PreImport(self.pre_import),
                     CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
