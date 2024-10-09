@@ -7,7 +7,7 @@ import pandas as pd
 import dask
 import dask.dataframe as dd
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -259,13 +259,6 @@ def parse_args():
             "default": "gpu",
             "type": str,
             "help": "Do shuffle with GPU or CPU dataframes (default 'gpu')",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
         },
         {
             "name": "--runs",

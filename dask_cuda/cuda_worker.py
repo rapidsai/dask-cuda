@@ -195,6 +195,14 @@ class CUDAWorker(Server):
                 },
             )
 
+        cudf_spill_warning = dask.config.get("cudf-spill-warning", default=True)
+        if enable_cudf_spill and cudf_spill_warning:
+            warnings.warn(
+                "cuDF spilling is enabled, please ensure the client and scheduler "
+                "processes set `CUDF_SPILL=on` as well. To disable this warning "
+                "set `DASK_CUDF_SPILL_WARNING=False`."
+            )
+
         self.nannies = [
             Nanny(
                 scheduler,
