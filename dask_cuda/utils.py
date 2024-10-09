@@ -7,7 +7,7 @@ import warnings
 from contextlib import suppress
 from functools import singledispatch
 from multiprocessing import cpu_count
-from typing import Callable, Dict, Optional
+from typing import Optional
 
 import click
 import numpy as np
@@ -765,66 +765,6 @@ def get_rmm_device_memory_usage() -> Optional[int]:
         if isinstance(mr, rmm.mr.StatisticsResourceAdaptor):
             return mr.allocation_counts["current_bytes"]
     return None
-
-
-def enable_rmm_memory_for_library(lib_name: str) -> None:
-    """
-    Enable RMM memory pool support for a specified third-party library.
-
-    This function allows the given library to utilize RMM's memory pool if it supports
-    integration with RMM. The library name is passed as a string argument, and if the
-    library is compatible, its memory allocator will be configured to use RMM.
-
-    Parameters
-    ----------
-    lib_name : str
-        The name of the third-party library to enable RMM memory pool support for.
-
-    Raises
-    ------
-    ValueError
-        If the library name is not supported or does not have RMM integration.
-    ImportError
-        If the required library is not installed.
-    """
-
-    # Mapping of supported libraries to their respective setup functions
-    setup_functions: Dict[str, Callable[[], None]] = {
-        "torch": _setup_rmm_for_torch,
-        "cupy": _setup_rmm_for_cupy,
-    }
-
-    if lib_name not in setup_functions:
-        supported_libs = ", ".join(setup_functions.keys())
-        raise ValueError(
-            f"The library '{lib_name}' is not supported for RMM integration. "
-            f"Supported libraries are: {supported_libs}."
-        )
-
-    # Call the setup function for the specified library
-    setup_functions[lib_name]()
-
-
-def _setup_rmm_for_torch() -> None:
-    try:
-        import torch
-    except ImportError as e:
-        raise ImportError("PyTorch is not installed.") from e
-
-    from rmm.allocators.torch import rmm_torch_allocator
-
-    torch.cuda.memory.change_current_allocator(rmm_torch_allocator)
-
-
-def _setup_rmm_for_cupy() -> None:
-    try:
-        import cupy
-    except ImportError as e:
-        raise ImportError("CuPy is not installed.") from e
-
-    from rmm.allocators.cupy import rmm_cupy_allocator
-
-    cupy.cuda.set_allocator(rmm_cupy_allocator)
 
 
 class CommaSeparatedChoice(click.Choice):

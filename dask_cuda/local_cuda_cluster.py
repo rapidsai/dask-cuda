@@ -145,7 +145,7 @@ class LocalCUDACluster(LocalCluster):
             result in an exception.
     rmm_allocator_external_lib_list: list or None, default None
         List of external libraries for which to set RMM as the allocator.
-        Supported options are: ``["torch", "cupy"]``. If None, no external
+        Supported options are: ``["torch", "cupy"]``. If ``None``, no external
         libraries will use RMM as their allocator.
     rmm_release_threshold: int, str or None, default None
         When ``rmm.async is True`` and the pool size grows beyond this value, unused
@@ -271,8 +271,16 @@ class LocalCUDACluster(LocalCluster):
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
 
-        if isinstance(rmm_allocator_external_lib_list, str):
-            rmm_allocator_external_lib_list = []
+        if rmm_allocator_external_lib_list is not None and not isinstance(
+            rmm_allocator_external_lib_list, list
+        ):
+            raise ValueError(
+                "rmm_allocator_external_lib_list must be a list of strings. "
+                "Valid examples: ['torch'], ['cupy'], or ['torch', 'cupy']. "
+                f"Received: {type(rmm_allocator_external_lib_list)} "
+                f"with value: {rmm_allocator_external_lib_list}"
+            )
+
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
         logger = logging.getLogger(__name__)
         self.memory_limit = parse_memory_limit(

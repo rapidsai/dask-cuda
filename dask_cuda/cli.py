@@ -172,8 +172,7 @@ def cuda():
     show_default=True,
     help="""
     Set RMM as the allocator for external libraries. Provide a comma-separated
-    list of libraries to set, e.g., "torch,cupy".
-    Supported options are: torch, cupy.""",
+    list of libraries to set, e.g., "torch,cupy".""",
 )
 @click.option(
     "--rmm-release-threshold",
