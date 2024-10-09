@@ -52,7 +52,7 @@ UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
 timeout 60m pytest \
   -vv \
-  --durations=0 \
+  --durations=50 \
   --capture=no \
   --cache-clear \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
@@ -73,7 +73,7 @@ UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
 timeout 30m pytest \
   -vv \
-  --durations=0 \
+  --durations=50 \
   --capture=no \
   --cache-clear \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-legacy.xml" \
