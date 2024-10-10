@@ -5,6 +5,8 @@ set -euo pipefail
 
 . /opt/conda/etc/profile.d/conda.sh
 
+RAPIDS_VERSION="$(rapids-version)"
+
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
   --output conda \
@@ -29,7 +31,7 @@ rapids-print-env
 
 rapids-mamba-retry install \
   --channel "${PYTHON_CHANNEL}" \
-  dask-cuda
+  "dask-cuda=${RAPIDS_VERSION}"
 
 rapids-logger "Check GPU usage"
 nvidia-smi
