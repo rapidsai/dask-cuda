@@ -52,7 +52,7 @@ DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
-timeout 60m pytest \
+timeout 90m pytest \
   -vv \
   --durations=50 \
   --capture=no \
@@ -62,7 +62,7 @@ timeout 60m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  tests -k "not ucxx"
+  tests
 popd
 
 rapids-logger "pytest explicit-comms (legacy dd)"
@@ -73,7 +73,7 @@ DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
 UCX_WARN_UNUSED_ENV_VARS=n \
 UCX_MEMTYPE_CACHE=n \
-timeout 30m pytest \
+timeout 60m pytest \
   -vv \
   --durations=50 \
   --capture=no \
@@ -83,7 +83,7 @@ timeout 30m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage-legacy.xml" \
   --cov-report=term \
-  tests/test_explicit_comms.py -k "not ucxx"
+  tests/test_explicit_comms.py
 popd
 
 rapids-logger "Run local benchmark (dask-expr)"
