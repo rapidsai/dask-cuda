@@ -61,7 +61,8 @@ timeout 90m pytest \
   --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
-  --cov-report=term
+  --cov-report=term \
+  tests
 popd
 
 rapids-logger "pytest explicit-comms (legacy dd)"
