@@ -143,6 +143,11 @@ class LocalCUDACluster(LocalCluster):
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
             incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
+    rmm_allocator_external_lib_list: str, list or None, default None
+        List of external libraries for which to set RMM as the allocator.
+        Supported options are: ``["torch", "cupy"]``. Can be a comma-separated string
+        (like ``"torch,cupy"``) or a list of strings (like ``["torch", "cupy"]``).
+        If ``None``, no external libraries will use RMM as their allocator.
     rmm_release_threshold: int, str or None, default None
         When ``rmm.async is True`` and the pool size grows beyond this value, unused
         memory held by the pool will be released at the next synchronization point.
@@ -231,6 +236,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_allocator_external_lib_list=None,
         rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
@@ -265,6 +271,19 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
+
+        if rmm_allocator_external_lib_list is not None:
+            if isinstance(rmm_allocator_external_lib_list, str):
+                rmm_allocator_external_lib_list = [
+                    v.strip() for v in rmm_allocator_external_lib_list.split(",")
+                ]
+            elif not isinstance(rmm_allocator_external_lib_list, list):
+                raise ValueError(
+                    "rmm_allocator_external_lib_list must be either a comma-separated "
+                    "string or a list of strings. Examples: 'torch,cupy' "
+                    "or ['torch', 'cupy']"
+                )
+
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
         logger = logging.getLogger(__name__)
         self.memory_limit = parse_memory_limit(
@@ -284,6 +303,8 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         self.rmm_release_threshold = rmm_release_threshold
+        self.rmm_allocator_external_lib_list = rmm_allocator_external_lib_list
+
         if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
             try:
                 import rmm  # noqa F401
@@ -437,6 +458,7 @@ class LocalCUDACluster(LocalCluster):
                         release_threshold=self.rmm_release_threshold,
                         log_directory=self.rmm_log_directory,
                         track_allocations=self.rmm_track_allocations,
+                        external_lib_list=self.rmm_allocator_external_lib_list,
                     ),
                     PreImport(self.pre_import),
                     CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
