@@ -1,0 +1,1082 @@
+2024-10-21 09:02:25,447 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45901'
+2024-10-21 09:02:25,455 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:35649'
+2024-10-21 09:02:25,457 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:46833'
+2024-10-21 09:02:25,459 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:41713'
+2024-10-21 09:02:25,461 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45107'
+2024-10-21 09:02:25,463 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:39163'
+2024-10-21 09:02:25,465 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:35905'
+2024-10-21 09:02:25,468 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:33351'
+2024-10-21 09:02:25,470 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:36513'
+2024-10-21 09:02:25,472 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:36129'
+2024-10-21 09:02:25,475 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:34699'
+2024-10-21 09:02:25,477 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:39355'
+2024-10-21 09:02:25,479 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:32793'
+2024-10-21 09:02:25,481 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:41091'
+2024-10-21 09:02:25,484 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:43309'
+2024-10-21 09:02:25,486 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:44185'
+2024-10-21 09:02:25,488 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:36863'
+2024-10-21 09:02:25,490 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:33575'
+2024-10-21 09:02:25,492 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:35589'
+2024-10-21 09:02:25,495 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:34413'
+2024-10-21 09:02:25,497 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:39671'
+2024-10-21 09:02:25,499 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:44713'
+2024-10-21 09:02:25,540 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:46843'
+2024-10-21 09:02:25,543 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:35045'
+2024-10-21 09:02:25,546 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:41409'
+2024-10-21 09:02:25,548 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:46207'
+2024-10-21 09:02:25,550 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:41003'
+2024-10-21 09:02:25,553 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:33295'
+2024-10-21 09:02:25,555 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:36585'
+2024-10-21 09:02:25,558 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45757'
+2024-10-21 09:02:25,561 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:46493'
+2024-10-21 09:02:25,564 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:34203'
+2024-10-21 09:02:25,566 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45321'
+2024-10-21 09:02:25,569 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:42623'
+2024-10-21 09:02:25,572 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45855'
+2024-10-21 09:02:25,573 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:41411'
+2024-10-21 09:02:25,577 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:45245'
+2024-10-21 09:02:25,581 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:43255'
+2024-10-21 09:02:25,584 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:39021'
+2024-10-21 09:02:25,587 - distributed.nanny - INFO -         Start Nanny at: 'tcp://127.0.0.1:39627'
+2024-10-21 09:02:27,173 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:44405
+2024-10-21 09:02:27,173 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:35275
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:44405
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:35275
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42955
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          dashboard at:            127.0.0.1:38223
+2024-10-21 09:02:27,173 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:44271
+2024-10-21 09:02:27,174 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,174 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,173 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:42429
+2024-10-21 09:02:27,174 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,174 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:44271
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42179
+2024-10-21 09:02:27,174 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:42429
+2024-10-21 09:02:27,174 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,174 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:36753
+2024-10-21 09:02:27,174 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,175 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,175 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,175 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42307
+2024-10-21 09:02:27,175 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-lay_j0ui
+2024-10-21 09:02:27,175 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,175 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-2hpop8vl
+2024-10-21 09:02:27,175 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:36753
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42893
+2024-10-21 09:02:27,175 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,175 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,175 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,175 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,175 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-f1rzd_p8
+2024-10-21 09:02:27,175 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-t62z_p11
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,175 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,176 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-r2mhq1_l
+2024-10-21 09:02:27,176 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,175 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:35273
+2024-10-21 09:02:27,176 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:35273
+2024-10-21 09:02:27,176 - distributed.worker - INFO -          dashboard at:            127.0.0.1:37589
+2024-10-21 09:02:27,176 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,176 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,176 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:36481
+2024-10-21 09:02:27,177 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,176 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:42947
+2024-10-21 09:02:27,177 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:36481
+2024-10-21 09:02:27,177 - distributed.worker - INFO -          dashboard at:            127.0.0.1:41983
+2024-10-21 09:02:27,177 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:42947
+2024-10-21 09:02:27,177 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,177 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,177 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-ks_22wcc
+2024-10-21 09:02:27,177 - distributed.worker - INFO -          dashboard at:            127.0.0.1:46563
+2024-10-21 09:02:27,178 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,178 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,178 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,178 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,178 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,178 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,178 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-e3crkg0t
+2024-10-21 09:02:27,178 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,178 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,179 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,179 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-ivmvg54k
+2024-10-21 09:02:27,179 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,181 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:35549
+2024-10-21 09:02:27,182 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:35549
+2024-10-21 09:02:27,182 - distributed.worker - INFO -          dashboard at:            127.0.0.1:34519
+2024-10-21 09:02:27,182 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,182 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,182 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,182 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,182 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-df9hj_9g
+2024-10-21 09:02:27,183 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,210 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:41231
+2024-10-21 09:02:27,210 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:41231
+2024-10-21 09:02:27,210 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42225
+2024-10-21 09:02:27,211 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,211 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,211 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,211 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,211 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-a_w7csdu
+2024-10-21 09:02:27,211 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,219 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:44485
+2024-10-21 09:02:27,219 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:44485
+2024-10-21 09:02:27,219 - distributed.worker - INFO -          dashboard at:            127.0.0.1:33207
+2024-10-21 09:02:27,219 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,219 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,219 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,220 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,220 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-v1or_a50
+2024-10-21 09:02:27,220 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,224 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:39661
+2024-10-21 09:02:27,225 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:39661
+2024-10-21 09:02:27,225 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42963
+2024-10-21 09:02:27,225 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,225 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,225 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,225 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,226 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-085uuaap
+2024-10-21 09:02:27,226 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,254 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:40627
+2024-10-21 09:02:27,254 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:40627
+2024-10-21 09:02:27,254 - distributed.worker - INFO -          dashboard at:            127.0.0.1:45075
+2024-10-21 09:02:27,254 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,255 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,255 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,255 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,255 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-xoq6u752
+2024-10-21 09:02:27,255 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,262 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:33281
+2024-10-21 09:02:27,262 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:33281
+2024-10-21 09:02:27,262 - distributed.worker - INFO -          dashboard at:            127.0.0.1:36589
+2024-10-21 09:02:27,262 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,263 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,263 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,263 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,263 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-9stgid5j
+2024-10-21 09:02:27,263 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,267 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:44037
+2024-10-21 09:02:27,267 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:44037
+2024-10-21 09:02:27,267 - distributed.worker - INFO -          dashboard at:            127.0.0.1:34001
+2024-10-21 09:02:27,267 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,267 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,267 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,268 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,268 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-a4igugzm
+2024-10-21 09:02:27,268 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,280 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:42563
+2024-10-21 09:02:27,280 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:42563
+2024-10-21 09:02:27,281 - distributed.worker - INFO -          dashboard at:            127.0.0.1:34293
+2024-10-21 09:02:27,281 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,281 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,281 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,282 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,282 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-izl1j8dn
+2024-10-21 09:02:27,282 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,292 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:44773
+2024-10-21 09:02:27,292 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:44773
+2024-10-21 09:02:27,292 - distributed.worker - INFO -          dashboard at:            127.0.0.1:41531
+2024-10-21 09:02:27,292 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,293 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,293 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,293 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,293 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-9bhcal08
+2024-10-21 09:02:27,293 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,300 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:39437
+2024-10-21 09:02:27,300 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:39437
+2024-10-21 09:02:27,300 - distributed.worker - INFO -          dashboard at:            127.0.0.1:41341
+2024-10-21 09:02:27,301 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,301 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,301 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,301 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,301 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-n51a4c6y
+2024-10-21 09:02:27,301 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,305 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:40357
+2024-10-21 09:02:27,306 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:40357
+2024-10-21 09:02:27,306 - distributed.worker - INFO -          dashboard at:            127.0.0.1:41293
+2024-10-21 09:02:27,306 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,306 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,306 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,306 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,306 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-_p1obr2a
+2024-10-21 09:02:27,306 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,306 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:34937
+2024-10-21 09:02:27,307 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:34937
+2024-10-21 09:02:27,307 - distributed.worker - INFO -          dashboard at:            127.0.0.1:44465
+2024-10-21 09:02:27,307 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,307 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,307 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,307 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,308 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-uzbzcf0m
+2024-10-21 09:02:27,308 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,329 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:34581
+2024-10-21 09:02:27,329 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:34581
+2024-10-21 09:02:27,329 - distributed.worker - INFO -          dashboard at:            127.0.0.1:44157
+2024-10-21 09:02:27,330 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,330 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,330 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,330 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,330 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-7yui4dzr
+2024-10-21 09:02:27,330 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,337 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:39053
+2024-10-21 09:02:27,338 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:39053
+2024-10-21 09:02:27,338 - distributed.worker - INFO -          dashboard at:            127.0.0.1:43663
+2024-10-21 09:02:27,338 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,338 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,338 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,338 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,338 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-w78r8aa9
+2024-10-21 09:02:27,338 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,344 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:39921
+2024-10-21 09:02:27,344 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:39921
+2024-10-21 09:02:27,344 - distributed.worker - INFO -          dashboard at:            127.0.0.1:37609
+2024-10-21 09:02:27,344 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,344 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,345 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,345 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,345 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-lw6norfg
+2024-10-21 09:02:27,345 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,351 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:41579
+2024-10-21 09:02:27,351 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:41579
+2024-10-21 09:02:27,351 - distributed.worker - INFO -          dashboard at:            127.0.0.1:36867
+2024-10-21 09:02:27,352 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,352 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,352 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,352 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,352 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-isw9y7dq
+2024-10-21 09:02:27,353 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,356 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:42473
+2024-10-21 09:02:27,357 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:42473
+2024-10-21 09:02:27,357 - distributed.worker - INFO -          dashboard at:            127.0.0.1:38695
+2024-10-21 09:02:27,357 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,357 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,357 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,357 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,358 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-evo5vopk
+2024-10-21 09:02:27,358 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,360 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:39459
+2024-10-21 09:02:27,361 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:39459
+2024-10-21 09:02:27,361 - distributed.worker - INFO -          dashboard at:            127.0.0.1:35829
+2024-10-21 09:02:27,361 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,361 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,361 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,361 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,362 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-8gddawbz
+2024-10-21 09:02:27,362 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,377 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:36025
+2024-10-21 09:02:27,377 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:36025
+2024-10-21 09:02:27,377 - distributed.worker - INFO -          dashboard at:            127.0.0.1:39887
+2024-10-21 09:02:27,377 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,377 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,378 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,378 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,378 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-l9gllcbw
+2024-10-21 09:02:27,378 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,385 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:35557
+2024-10-21 09:02:27,385 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:35557
+2024-10-21 09:02:27,385 - distributed.worker - INFO -          dashboard at:            127.0.0.1:35409
+2024-10-21 09:02:27,385 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,385 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,385 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,385 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,386 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-h28_2mvh
+2024-10-21 09:02:27,386 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,385 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:43573
+2024-10-21 09:02:27,386 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:43573
+2024-10-21 09:02:27,386 - distributed.worker - INFO -          dashboard at:            127.0.0.1:40069
+2024-10-21 09:02:27,386 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,386 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,387 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,387 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,387 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-qgg8z_8j
+2024-10-21 09:02:27,387 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,394 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:37715
+2024-10-21 09:02:27,395 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:37715
+2024-10-21 09:02:27,395 - distributed.worker - INFO -          dashboard at:            127.0.0.1:37201
+2024-10-21 09:02:27,395 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,395 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,395 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,396 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,396 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-x6zt7f1e
+2024-10-21 09:02:27,396 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,410 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:40089
+2024-10-21 09:02:27,410 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:40089
+2024-10-21 09:02:27,410 - distributed.worker - INFO -          dashboard at:            127.0.0.1:43075
+2024-10-21 09:02:27,411 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,411 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,411 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,411 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,411 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-q6u_ylpn
+2024-10-21 09:02:27,411 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,443 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:38943
+2024-10-21 09:02:27,443 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:38943
+2024-10-21 09:02:27,443 - distributed.worker - INFO -          dashboard at:            127.0.0.1:37771
+2024-10-21 09:02:27,443 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,443 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,443 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,444 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,444 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-ioh4jpp5
+2024-10-21 09:02:27,444 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,448 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:40881
+2024-10-21 09:02:27,449 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:40881
+2024-10-21 09:02:27,449 - distributed.worker - INFO -          dashboard at:            127.0.0.1:33055
+2024-10-21 09:02:27,449 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,449 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,449 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,450 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,450 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-dj6y8bp6
+2024-10-21 09:02:27,450 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,492 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:35591
+2024-10-21 09:02:27,493 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:35591
+2024-10-21 09:02:27,493 - distributed.worker - INFO -          dashboard at:            127.0.0.1:33663
+2024-10-21 09:02:27,493 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,493 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,494 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,494 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,494 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-zgy03j4o
+2024-10-21 09:02:27,494 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,496 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:36603
+2024-10-21 09:02:27,497 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:36603
+2024-10-21 09:02:27,497 - distributed.worker - INFO -          dashboard at:            127.0.0.1:43703
+2024-10-21 09:02:27,497 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,497 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,497 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,497 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,497 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-ngf24s9z
+2024-10-21 09:02:27,498 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,560 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:46607
+2024-10-21 09:02:27,560 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:46607
+2024-10-21 09:02:27,560 - distributed.worker - INFO -          dashboard at:            127.0.0.1:37227
+2024-10-21 09:02:27,560 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,560 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,561 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,561 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,561 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-mia68_fl
+2024-10-21 09:02:27,561 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,569 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:37017
+2024-10-21 09:02:27,570 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:37017
+2024-10-21 09:02:27,570 - distributed.worker - INFO -          dashboard at:            127.0.0.1:34623
+2024-10-21 09:02:27,570 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,570 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,570 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,571 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,571 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-c544t232
+2024-10-21 09:02:27,571 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,639 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:43767
+2024-10-21 09:02:27,639 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:43767
+2024-10-21 09:02:27,639 - distributed.worker - INFO -          dashboard at:            127.0.0.1:44079
+2024-10-21 09:02:27,639 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,640 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,640 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,640 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,640 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-exbwi9db
+2024-10-21 09:02:27,640 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,700 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:40029
+2024-10-21 09:02:27,701 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:40029
+2024-10-21 09:02:27,701 - distributed.worker - INFO -          dashboard at:            127.0.0.1:42001
+2024-10-21 09:02:27,701 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,701 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,701 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,702 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,702 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-tyh5mol6
+2024-10-21 09:02:27,702 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,702 - distributed.worker - INFO -       Start worker at:      tcp://127.0.0.1:45205
+2024-10-21 09:02:27,703 - distributed.worker - INFO -          Listening to:      tcp://127.0.0.1:45205
+2024-10-21 09:02:27,703 - distributed.worker - INFO -          dashboard at:            127.0.0.1:34291
+2024-10-21 09:02:27,703 - distributed.worker - INFO - Waiting to connect to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,703 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,703 - distributed.worker - INFO -               Threads:                          2
+2024-10-21 09:02:27,703 - distributed.worker - INFO -                Memory:                  25.19 GiB
+2024-10-21 09:02:27,703 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-95aba9ad-2e55-4b4b-b200-0baf0a3ef4c7 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:27,704 - distributed.worker - INFO -       Local Directory: /raid/dask-space/rzamora/dask-space/dask-scratch-space/worker-dihbe5j9
+2024-10-21 09:02:27,704 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,704 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:27,704 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,704 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,705 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:27,748 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-ef02d7c8-d64f-487a-b935-035bd107184d | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:27,749 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:27,750 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,750 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,750 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:27,795 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-8abfb34b-510d-42e7-a475-f7c726245adc | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:27,795 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:27,796 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,796 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,796 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:27,943 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-76bc94cc-47db-4156-b7a5-b81c58a91944 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:27,943 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:27,944 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:27,944 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:27,945 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,028 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-8eb6b5af-423d-4dc9-94e9-4c68107737c2 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,028 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,029 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,029 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,029 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,099 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-d2d8aa66-1d02-4184-a367-f69ede3dcce6 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,099 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,100 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,100 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,101 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,197 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-dc6cd9ad-f391-47d0-adfc-12ccd3193381 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,197 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,198 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,198 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,199 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,238 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-752dc228-7b60-47cf-b720-92dae044c233 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,238 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,239 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,239 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,240 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,326 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-c6f03398-41f5-42af-be82-4836bd40bbac | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,327 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,327 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,327 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,328 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,332 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-ed5a4eae-dc13-49c3-aa96-d2f152a621cd | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,332 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,333 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,333 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,334 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,646 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-31c5b454-e572-4160-995d-c41fb6261913 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,647 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,647 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,648 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,648 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,654 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-6ad976d5-3216-47a5-8ff5-88ed1f4308a9 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,654 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,655 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,655 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,656 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,711 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-06c6549b-414e-49c3-ab6c-640b9fa255ac | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,711 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,712 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,713 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,713 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,735 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-3901a774-ff88-4b67-9888-aa2838f35c7d | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,736 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,736 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,737 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,737 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,748 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-054cd40e-aaad-4fde-aa98-3dfb78879017 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,749 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,749 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,750 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,750 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,750 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-cec84251-7fe4-4827-8760-1f38b9724daf | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,751 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,752 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,752 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,753 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,764 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-6dd46fca-b250-47aa-9b51-cf9a5e459ac5 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,765 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,765 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,765 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,766 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,767 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-fe7a244c-6d45-4211-b9a5-6d8bdfa5a325 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,768 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,768 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,769 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,769 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,770 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-06980c61-7337-4946-9608-640333761ca7 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,770 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,771 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,771 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,772 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,785 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-47241079-8268-4e40-ba71-8b6fd4fd38f4 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,785 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,786 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,786 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,787 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,795 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-a91e9168-6232-4c32-8c74-3ad60d3da0d3 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,795 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,796 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,796 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,796 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,816 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-b4235e1c-2df1-4290-9e91-a69472a58aab | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,816 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,817 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,817 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,818 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,821 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-9dbedeec-4b04-4a99-a55e-b9af417a8f93 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,822 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,823 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,823 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,824 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,833 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-2e71dbf8-20ef-43ae-a0bd-4ff245fb8b39 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,833 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,834 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,834 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,835 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,837 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-af384ce8-36ec-4940-ad7e-97607518add3 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,838 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,839 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-8aeb2057-da1d-4489-9e69-be72688eeb8c | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,839 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,840 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,840 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,841 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,841 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,841 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,841 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-753b4874-ce9f-413b-bdb5-ff92701f6e11 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,842 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,843 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,843 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,844 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,845 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,859 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-4ea41c5d-73a9-4a2a-9bfd-f437e7b5d510 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,860 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,861 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,861 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,862 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,871 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-79d7c47c-25a7-4208-b9aa-8eb5f6fe03df | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,871 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,872 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,872 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,873 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,874 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-3dc46e99-f8cb-421b-9109-2116c945f93d | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,875 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,876 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,876 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,877 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,878 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-abdb4405-c663-4f37-a2a1-37bb2bf88837 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,878 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-4e81fbc4-c943-4137-9eb9-96936c4e6d4c | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,879 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,879 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,880 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,880 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,880 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,882 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,882 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,884 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,900 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-4ebb51a7-563f-4f25-b084-e561dc9e933e | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,900 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,901 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,901 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,902 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,906 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-b6f1ecab-c75a-4890-be7e-dd7c8518943d | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,906 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-968ca425-3c38-4539-a619-f9a142290a03 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,907 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,907 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,908 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,908 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,908 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,910 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,910 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,912 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,915 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-86d44546-13ca-4e98-9d30-6834aece0b57 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,916 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,918 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,918 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,919 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,921 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-2402726e-3423-4815-9730-517df235966e | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,921 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,922 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,922 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,922 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-cd155273-86ec-4772-990a-82f89dd60de2 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,923 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,923 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,924 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,924 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,925 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,925 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-b34824b1-fbc7-49e4-901a-8259842ed507 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,926 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,926 - distributed.worker - WARNING - Mismatched versions found
+
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| Package     | Worker-c1778709-7717-4860-92ff-cc99c77d8750 | Scheduler      | Workers                              |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+| cloudpickle | 3.1.0                                       | 3.0.0          | {'3.1.0', '3.0.0'}                   |
+| pandas      | 2.2.3                                       | 2.2.2          | {'2.2.3', '2.2.2'}                   |
+| python      | 3.12.7.final.0                              | 3.12.6.final.0 | {'3.12.7.final.0', '3.12.6.final.0'} |
+| toolz       | 1.0.0                                       | 0.12.1         | {'0.12.1', '1.0.0'}                  |
++-------------+---------------------------------------------+----------------+--------------------------------------+
+2024-10-21 09:02:28,926 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,926 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,926 - distributed.worker - INFO - Starting Worker plugin shuffle
+2024-10-21 09:02:28,927 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:02:28,927 - distributed.worker - INFO -         Registered to:      tcp://127.0.0.1:41571
+2024-10-21 09:02:28,928 - distributed.worker - INFO - -------------------------------------------------
+2024-10-21 09:02:28,928 - distributed.core - INFO - Starting established connection to tcp://127.0.0.1:41571
+2024-10-21 09:03:58,585 - distributed._signals - INFO - Received signal SIGTERM (15)
+2024-10-21 09:03:58,588 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:34699'. Reason: signal-15
+2024-10-21 09:03:58,592 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,594 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:39355'. Reason: signal-15
+2024-10-21 09:03:58,597 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,598 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:32793'. Reason: signal-15
+2024-10-21 09:03:58,598 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,599 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:41091'. Reason: signal-15
+2024-10-21 09:03:58,599 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,599 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:43309'. Reason: signal-15
+2024-10-21 09:03:58,600 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,600 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:44185'. Reason: signal-15
+2024-10-21 09:03:58,600 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,600 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:36863'. Reason: signal-15
+2024-10-21 09:03:58,601 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,601 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:33575'. Reason: signal-15
+2024-10-21 09:03:58,601 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,601 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:35589'. Reason: signal-15
+2024-10-21 09:03:58,602 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,602 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:34413'. Reason: signal-15
+2024-10-21 09:03:58,603 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,603 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:39671'. Reason: signal-15
+2024-10-21 09:03:58,603 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,604 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:44713'. Reason: signal-15
+2024-10-21 09:03:58,604 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,604 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:46843'. Reason: signal-15
+2024-10-21 09:03:58,605 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,605 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:35045'. Reason: signal-15
+2024-10-21 09:03:58,606 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,606 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:41409'. Reason: signal-15
+2024-10-21 09:03:58,606 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,607 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:46207'. Reason: signal-15
+2024-10-21 09:03:58,607 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,608 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:41003'. Reason: signal-15
+2024-10-21 09:03:58,608 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,608 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:33295'. Reason: signal-15
+2024-10-21 09:03:58,609 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,609 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:36585'. Reason: signal-15
+2024-10-21 09:03:58,609 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,609 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45757'. Reason: signal-15
+2024-10-21 09:03:58,610 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,610 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:46493'. Reason: signal-15
+2024-10-21 09:03:58,610 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,611 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:34203'. Reason: signal-15
+2024-10-21 09:03:58,611 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,611 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45321'. Reason: signal-15
+2024-10-21 09:03:58,612 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,612 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:42623'. Reason: signal-15
+2024-10-21 09:03:58,612 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,612 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45855'. Reason: signal-15
+2024-10-21 09:03:58,613 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,613 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:41411'. Reason: signal-15
+2024-10-21 09:03:58,613 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,614 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45245'. Reason: signal-15
+2024-10-21 09:03:58,614 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,614 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:43255'. Reason: signal-15
+2024-10-21 09:03:58,614 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,615 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:39021'. Reason: signal-15
+2024-10-21 09:03:58,615 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,615 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:39627'. Reason: signal-15
+2024-10-21 09:03:58,616 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,616 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45901'. Reason: signal-15
+2024-10-21 09:03:58,616 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,617 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:35649'. Reason: signal-15
+2024-10-21 09:03:58,617 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,617 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:46833'. Reason: signal-15
+2024-10-21 09:03:58,617 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,618 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:41713'. Reason: signal-15
+2024-10-21 09:03:58,618 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,618 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:45107'. Reason: signal-15
+2024-10-21 09:03:58,618 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,619 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:39163'. Reason: signal-15
+2024-10-21 09:03:58,619 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,619 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:35905'. Reason: signal-15
+2024-10-21 09:03:58,620 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,620 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:33351'. Reason: signal-15
+2024-10-21 09:03:58,620 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,620 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:36513'. Reason: signal-15
+2024-10-21 09:03:58,621 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,621 - distributed.nanny - INFO - Closing Nanny at 'tcp://127.0.0.1:36129'. Reason: signal-15
+2024-10-21 09:03:58,621 - distributed.nanny - INFO - Nanny asking worker to close. Reason: signal-15
+2024-10-21 09:03:58,649 - distributed.nanny - INFO - Worker process 2593215 was killed by signal 15
+2024-10-21 09:03:58,651 - distributed.nanny - INFO - Worker process 2593149 was killed by signal 15
+2024-10-21 09:03:58,652 - distributed.nanny - INFO - Worker process 2593154 was killed by signal 15
+2024-10-21 09:03:58,653 - distributed.nanny - INFO - Worker process 2593209 was killed by signal 15
+2024-10-21 09:03:58,655 - distributed.nanny - INFO - Worker process 2593214 was killed by signal 15
+2024-10-21 09:03:58,658 - distributed.nanny - INFO - Worker process 2593197 was killed by signal 15
+2024-10-21 09:03:58,660 - distributed.nanny - INFO - Worker process 2593178 was killed by signal 15
+2024-10-21 09:03:58,662 - distributed.nanny - INFO - Worker process 2593130 was killed by signal 15
+2024-10-21 09:03:58,665 - distributed.nanny - INFO - Worker process 2593145 was killed by signal 15
+2024-10-21 09:03:58,669 - distributed.nanny - INFO - Worker process 2593105 was killed by signal 15
+2024-10-21 09:03:58,672 - distributed.nanny - INFO - Worker process 2593116 was killed by signal 15
+2024-10-21 09:03:58,675 - distributed.nanny - INFO - Worker process 2593190 was killed by signal 15
+2024-10-21 09:03:58,678 - distributed.nanny - INFO - Worker process 2593108 was killed by signal 15
+2024-10-21 09:03:58,688 - distributed.nanny - INFO - Worker process 2593096 was killed by signal 15
+2024-10-21 09:03:58,763 - distributed.nanny - INFO - Worker process 2593094 was killed by signal 15
+2024-10-21 09:03:58,764 - distributed.nanny - INFO - Worker process 2593139 was killed by signal 15
+2024-10-21 09:03:58,765 - distributed.nanny - INFO - Worker process 2593067 was killed by signal 15
+2024-10-21 09:03:58,765 - distributed.nanny - INFO - Worker process 2593194 was killed by signal 15
+2024-10-21 09:03:58,766 - distributed.nanny - INFO - Worker process 2593182 was killed by signal 15
+2024-10-21 09:03:58,766 - distributed.nanny - INFO - Worker process 2593064 was killed by signal 15
+2024-10-21 09:03:58,767 - distributed.nanny - INFO - Worker process 2593165 was killed by signal 15
+2024-10-21 09:03:58,768 - distributed.nanny - INFO - Worker process 2593184 was killed by signal 15
+2024-10-21 09:03:58,768 - distributed.nanny - INFO - Worker process 2593086 was killed by signal 15
+2024-10-21 09:03:58,769 - distributed.nanny - INFO - Worker process 2593200 was killed by signal 15
+2024-10-21 09:03:58,769 - distributed.nanny - INFO - Worker process 2593134 was killed by signal 15
+2024-10-21 09:03:58,770 - distributed.nanny - INFO - Worker process 2593156 was killed by signal 15
+2024-10-21 09:03:58,771 - distributed.nanny - INFO - Worker process 2593170 was killed by signal 15
+2024-10-21 09:03:58,771 - distributed.nanny - INFO - Worker process 2593173 was killed by signal 15
+2024-10-21 09:03:58,772 - distributed.nanny - INFO - Worker process 2593138 was killed by signal 15
+2024-10-21 09:03:58,773 - distributed.nanny - INFO - Worker process 2593060 was killed by signal 15
+2024-10-21 09:03:58,773 - distributed.nanny - INFO - Worker process 2593122 was killed by signal 15
+2024-10-21 09:03:58,774 - distributed.nanny - INFO - Worker process 2593072 was killed by signal 15
+2024-10-21 09:03:58,774 - distributed.nanny - INFO - Worker process 2593081 was killed by signal 15
+2024-10-21 09:03:58,775 - distributed.nanny - INFO - Worker process 2593162 was killed by signal 15
+2024-10-21 09:03:58,775 - distributed.nanny - INFO - Worker process 2593114 was killed by signal 15
+2024-10-21 09:03:58,776 - distributed.nanny - INFO - Worker process 2593206 was killed by signal 15
+2024-10-21 09:03:58,777 - distributed.nanny - INFO - Worker process 2593089 was killed by signal 15
+2024-10-21 09:03:58,777 - distributed.nanny - INFO - Worker process 2593101 was killed by signal 15
+2024-10-21 09:03:58,778 - distributed.nanny - INFO - Worker process 2593076 was killed by signal 15
+2024-10-21 09:03:58,779 - distributed.nanny - INFO - Worker process 2593125 was killed by signal 15
+2024-10-21 09:03:58,787 - distributed.dask_worker - INFO - End worker
