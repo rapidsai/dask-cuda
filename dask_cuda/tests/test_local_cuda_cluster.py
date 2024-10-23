@@ -218,6 +218,26 @@ async def test_all_to_all():
 
 
 @gen_test(timeout=20)
+async def test_worker_gpu_resource():
+    async with LocalCUDACluster(asynchronous=True) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            workers = client.scheduler_info()["workers"]
+            for v in workers.values():
+                assert "GPU" in v["resources"]
+                assert v["resources"]["GPU"] == 1
+
+
+@gen_test(timeout=20)
+async def test_worker_gpu_resource_user_defined():
+    async with LocalCUDACluster(asynchronous=True, resources={"GPU": 55}) as cluster:
+        async with Client(cluster, asynchronous=True) as client:
+            workers = client.scheduler_info()["workers"]
+            for v in workers.values():
+                assert "GPU" in v["resources"]
+                assert v["resources"]["GPU"] == 55
+
+
+@gen_test(timeout=20)
 async def test_rmm_pool():
     rmm = pytest.importorskip("rmm")
 
