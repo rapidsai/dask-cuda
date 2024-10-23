@@ -3,7 +3,6 @@
 
 set -euo pipefail
 
-source rapids-configure-sccache
 source rapids-date-string
 
 rapids-generate-version > ./VERSION
