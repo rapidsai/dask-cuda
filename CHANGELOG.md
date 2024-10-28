@@ -1,3 +1,32 @@
+# dask-cuda 24.10.00 (9 Oct 2024)
+
+## 🚨 Breaking Changes
+
+- Replace cuDF (de)serializer with cuDF spill-aware (de)serializer ([#1369](https://github.com/rapidsai/dask-cuda/pull/1369)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Fix typo in spilling documentation ([#1384](https://github.com/rapidsai/dask-cuda/pull/1384)) [@rjzamora](https://github.com/rjzamora)
+- Add notes on cudf spilling to docs ([#1383](https://github.com/rapidsai/dask-cuda/pull/1383)) [@rjzamora](https://github.com/rjzamora)
+
+## 🚀 New Features
+
+- [Benchmark] Add  parquet read benchmark ([#1371](https://github.com/rapidsai/dask-cuda/pull/1371)) [@rjzamora](https://github.com/rjzamora)
+- Replace cuDF (de)serializer with cuDF spill-aware (de)serializer ([#1369](https://github.com/rapidsai/dask-cuda/pull/1369)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Update update-version.sh to use packaging lib ([#1387](https://github.com/rapidsai/dask-cuda/pull/1387)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Use CI workflow branch &#39;branch-24.10&#39; again ([#1386](https://github.com/rapidsai/dask-cuda/pull/1386)) [@jameslamb](https://github.com/jameslamb)
+- Update to flake8 7.1.1. ([#1385](https://github.com/rapidsai/dask-cuda/pull/1385)) [@bdice](https://github.com/bdice)
+- enable Python 3.12 tests on PRs ([#1382](https://github.com/rapidsai/dask-cuda/pull/1382)) [@jameslamb](https://github.com/jameslamb)
+- Add support for Python 3.12 ([#1380](https://github.com/rapidsai/dask-cuda/pull/1380)) [@jameslamb](https://github.com/jameslamb)
+- Update rapidsai/pre-commit-hooks ([#1379](https://github.com/rapidsai/dask-cuda/pull/1379)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Drop Python 3.9 support ([#1377](https://github.com/rapidsai/dask-cuda/pull/1377)) [@jameslamb](https://github.com/jameslamb)
+- Remove NumPy &lt;2 pin ([#1375](https://github.com/rapidsai/dask-cuda/pull/1375)) [@seberg](https://github.com/seberg)
+- Update pre-commit hooks ([#1373](https://github.com/rapidsai/dask-cuda/pull/1373)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Merge branch-24.08 into branch-24.10 ([#1368](https://github.com/rapidsai/dask-cuda/pull/1368)) [@jameslamb](https://github.com/jameslamb)
+
 # dask-cuda 24.08.00 (7 Aug 2024)
 
 ## 🐛 Bug Fixes
