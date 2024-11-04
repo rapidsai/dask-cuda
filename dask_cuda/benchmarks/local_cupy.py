@@ -141,12 +141,11 @@ def bench_once(client, args, write_profile=None):
     chunksize = x.chunksize
     data_processed = sum(arg.nbytes for arg in func_args)
 
-    # Execute the operations to benchmark
-    if args.profile is not None and write_profile is not None:
-        ctx = performance_report(filename=args.profile)
-    else:
-        ctx = contextlib.nullcontext()
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
+    # Execute the operations to benchmark
     with ctx:
         rng = start_range(message=args.operation, color="purple")
         result = func(*func_args)

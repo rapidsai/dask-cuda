@@ -323,7 +323,16 @@ def parse_benchmark_args(
         metavar="PATH",
         default=None,
         type=str,
-        help="Write dask profile report (E.g. dask-report.html)",
+        help="Write dask profile report (E.g. dask-report.html) on all "
+        "iterations (excluding warmup).",
+    )
+    parser.add_argument(
+        "--profile-last",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Write dask profile report (E.g. dask-report.html) on last "
+        "iteration only.",
     )
     # See save_benchmark_data for more information
     parser.add_argument(

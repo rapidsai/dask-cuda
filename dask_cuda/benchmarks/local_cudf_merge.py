@@ -190,7 +190,7 @@ def bench_once(client, args, write_profile=None):
     if args.backend == "explicit-comms":
         ctx1 = dask.config.set(explicit_comms=True)
     if write_profile is not None:
-        ctx2 = performance_report(filename=args.profile)
+        ctx2 = performance_report(filename=write_profile)
 
     with ctx1:
         with ctx2:

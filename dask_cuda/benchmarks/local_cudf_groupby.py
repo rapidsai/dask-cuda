@@ -98,10 +98,9 @@ def bench_once(client, args, write_profile=None):
         "False": False,
     }.get(args.shuffle, args.shuffle)
 
-    if write_profile is None:
-        ctx = contextlib.nullcontext()
-    else:
-        ctx = performance_report(filename=args.profile)
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
     with ctx:
         t1 = clock()

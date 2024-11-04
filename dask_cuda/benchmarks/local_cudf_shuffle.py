@@ -121,10 +121,9 @@ def create_data(
 def bench_once(client, args, write_profile=None):
     data_processed, df = create_data(client, args)
 
-    if write_profile is None:
-        ctx = contextlib.nullcontext()
-    else:
-        ctx = performance_report(filename=args.profile)
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
     with ctx:
         if args.backend in {"dask", "dask-noop"}:
