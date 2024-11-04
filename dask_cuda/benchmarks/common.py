@@ -88,6 +88,8 @@ def run_benchmark(client: Client, args: Namespace, config: Config):
     If ``args.profile`` is set, the final run is profiled.
     """
     results = []
+    for _ in range(max(0, args.warmup_runs)):
+        config.bench_once(client, args, write_profile=None)
     for _ in range(max(1, args.runs) - 1):
         res = config.bench_once(client, args, write_profile=None)
         results.append(res)

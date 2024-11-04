@@ -304,6 +304,12 @@ def parse_args():
             "help": "Number of runs (default 3).",
         },
         {
+            "name": "--warmup-runs",
+            "default": 3,
+            "type": int,
+            "help": "Number of warmup runs",
+        },
+        {
             "name": [
                 "-b",
                 "--backend",
