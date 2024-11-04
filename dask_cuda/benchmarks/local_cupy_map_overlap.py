@@ -169,18 +169,6 @@ def parse_args():
             "help": "Kernel size, 2*k+1, in each dimension (default 1)",
         },
         {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
-        },
-        {
-            "name": "--warmup-runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of warmup runs",
-        },
-        {
             "name": [
                 "-b",
                 "--backend",

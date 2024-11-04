@@ -260,18 +260,6 @@ def parse_args():
             "type": str,
             "help": "Do shuffle with GPU or CPU dataframes (default 'gpu')",
         },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
-        },
-        {
-            "name": "--warmup-runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of warmup runs",
-        },
     ]
 
     return parse_benchmark_args(

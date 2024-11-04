@@ -344,6 +344,18 @@ def parse_benchmark_args(
         type=parse_bytes,
         help="Bandwidth statistics: ignore messages smaller than this (default '1 MB')",
     )
+    parser.add_argument(
+        "--runs",
+        default=3,
+        type=int,
+        help="Number of runs",
+    )
+    parser.add_argument(
+        "--warmup-runs",
+        default=1,
+        type=int,
+        help="Number of warmup runs",
+    )
 
     for args in args_list:
         name = args.pop("name")

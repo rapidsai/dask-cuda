@@ -347,18 +347,6 @@ def parse_args():
             "help": "Don't shuffle the keys of the left (base) dataframe.",
         },
         {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
-        },
-        {
-            "name": "--warmup-runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of warmup runs",
-        },
-        {
             "name": [
                 "-s",
                 "--set-index",
