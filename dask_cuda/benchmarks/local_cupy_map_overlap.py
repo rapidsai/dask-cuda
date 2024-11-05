@@ -42,12 +42,11 @@ def bench_once(client, args, write_profile=None):
 
     data_processed = x.nbytes
 
-    # Execute the operations to benchmark
-    if args.profile is not None and write_profile is not None:
-        ctx = performance_report(filename=args.profile)
-    else:
-        ctx = contextlib.nullcontext()
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
+    # Execute the operations to benchmark
     with ctx:
         result = x.map_overlap(mean_filter, args.kernel_size, shape=ks)
         if args.backend == "dask-noop":
@@ -167,12 +166,6 @@ def parse_args():
             "metavar": "k",
             "type": int,
             "help": "Kernel size, 2*k+1, in each dimension (default 1)",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
         },
         {
             "name": [
