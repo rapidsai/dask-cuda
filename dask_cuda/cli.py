@@ -13,7 +13,7 @@ from distributed.security import Security
 from distributed.utils import import_term
 
 from .cuda_worker import CUDAWorker
-from .utils import print_cluster_config
+from .utils import CommaSeparatedChoice, print_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,20 @@ def cuda():
     disable spilling to host (i.e. allow full device memory usage).""",
 )
 @click.option(
+    "--enable-cudf-spill/--disable-cudf-spill",
+    default=False,
+    show_default=True,
+    help="""Enable automatic cuDF spilling. WARNING: This should NOT be used with
+    JIT-Unspill.""",
+)
+@click.option(
+    "--cudf-spill-stats",
+    type=int,
+    default=0,
+    help="""Set the cuDF spilling statistics level. This option has no effect if
+    `--enable-cudf-spill` is not specified.""",
+)
+@click.option(
     "--rmm-pool-size",
     default=None,
     help="""RMM pool size to initialize each worker with. Can be an integer (bytes),
@@ -151,12 +165,23 @@ def cuda():
         result in failure.""",
 )
 @click.option(
+    "--set-rmm-allocator-for-libs",
+    "rmm_allocator_external_lib_list",
+    type=CommaSeparatedChoice(["cupy", "torch"]),
+    default=None,
+    show_default=True,
+    help="""
+    Set RMM as the allocator for external libraries. Provide a comma-separated
+    list of libraries to set, e.g., "torch,cupy".""",
+)
+@click.option(
     "--rmm-release-threshold",
     default=None,
-    help="""When ``rmm.async`` is ``True`` and the pool size grows beyond this value, unused
-    memory held by the pool will be released at the next synchronization point. Can be
-    an integer (bytes), float (fraction of total device memory), string (like ``"5GB"``
-    or ``"5000M"``) or ``None``. By default, this feature is disabled.
+    help="""When ``rmm.async`` is ``True`` and the pool size grows beyond this
+    value, unused memory held by the pool will be released at the next
+    synchronization point. Can be an integer (bytes), float (fraction of total
+    device memory), string (like ``"5GB"`` or ``"5000M"``) or ``None``. By
+    default, this feature is disabled.
 
     .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
@@ -330,10 +355,13 @@ def worker(
     name,
     memory_limit,
     device_memory_limit,
+    enable_cudf_spill,
+    cudf_spill_stats,
     rmm_pool_size,
     rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
+    rmm_allocator_external_lib_list,
     rmm_release_threshold,
     rmm_log_directory,
     rmm_track_allocations,
@@ -402,10 +430,13 @@ def worker(
             name,
             memory_limit,
             device_memory_limit,
+            enable_cudf_spill,
+            cudf_spill_stats,
             rmm_pool_size,
             rmm_maximum_pool_size,
             rmm_managed_memory,
             rmm_async,
+            rmm_allocator_external_lib_list,
             rmm_release_threshold,
             rmm_log_directory,
             rmm_track_allocations,

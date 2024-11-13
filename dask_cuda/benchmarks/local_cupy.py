@@ -8,7 +8,7 @@ from nvtx import end_range, start_range
 
 from dask import array as da
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -141,12 +141,11 @@ def bench_once(client, args, write_profile=None):
     chunksize = x.chunksize
     data_processed = sum(arg.nbytes for arg in func_args)
 
-    # Execute the operations to benchmark
-    if args.profile is not None and write_profile is not None:
-        ctx = performance_report(filename=args.profile)
-    else:
-        ctx = contextlib.nullcontext()
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
+    # Execute the operations to benchmark
     with ctx:
         rng = start_range(message=args.operation, color="purple")
         result = func(*func_args)
@@ -296,19 +295,6 @@ def parse_args():
             "default": "2500",
             "type": int,
             "help": "Chunk size (default 2500).",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB').",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs (default 3).",
         },
         {
             "name": [

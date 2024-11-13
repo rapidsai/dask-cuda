@@ -22,7 +22,7 @@ CURRENT_SHORT_TAG=${CURRENT_MAJOR}.${CURRENT_MINOR}
 NEXT_MAJOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[1]}')
 NEXT_MINOR=$(echo $NEXT_FULL_TAG | awk '{split($0, a, "."); print a[2]}')
 NEXT_SHORT_TAG=${NEXT_MAJOR}.${NEXT_MINOR}
-NEXT_SHORT_TAG_PEP440=$(python -c "from setuptools.extern import packaging; print(packaging.version.Version('${NEXT_SHORT_TAG}'))")
+NEXT_SHORT_TAG_PEP440=$(python -c "from packaging.version import Version; print(Version('${NEXT_SHORT_TAG}'))")
 NEXT_UCXPY_VERSION="$(curl -s https://version.gpuci.io/rapids/${NEXT_SHORT_TAG})"
 
 echo "Preparing release $CURRENT_TAG => $NEXT_FULL_TAG"
@@ -45,17 +45,29 @@ DEPENDENCIES=(
   kvikio
   rapids-dask-dependency
 )
-for FILE in dependencies.yaml conda/environments/*.yaml; do
-  for DEP in "${DEPENDENCIES[@]}"; do
+for DEP in "${DEPENDENCIES[@]}"; do
+  for FILE in dependencies.yaml conda/environments/*.yaml; do
     sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_SHORT_TAG_PEP440}.*,>=0.0.0a0/g" "${FILE}"
   done
+  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_SHORT_TAG_PEP440}.*,>=0.0.0a0\"/g" pyproject.toml
+done
+
+UCX_DEPENDENCIES=(
+  distributed-ucxx
+  ucx-py
+  ucxx
+)
+for DEP in "${UCX_DEPENDENCIES[@]}"; do
+  for FILE in dependencies.yaml conda/environments/*.yaml; do
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" "${FILE}"
+  done
+  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0\"/g" pyproject.toml
 done
 
 # CI files
 for FILE in .github/workflows/*.yaml; do
   sed_runner "/shared-workflows/ s/@.*/@branch-${NEXT_SHORT_TAG}/g" "${FILE}"
 done
-sed_runner "s/RAPIDS_VERSION_NUMBER=\".*/RAPIDS_VERSION_NUMBER=\"${NEXT_SHORT_TAG}\"/g" ci/build_docs.sh
 
 # Docs referencing source code
 find docs/source/ -type f -name *.rst -print0 | while IFS= read -r -d '' filename; do

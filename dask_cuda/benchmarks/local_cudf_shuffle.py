@@ -121,10 +121,9 @@ def create_data(
 def bench_once(client, args, write_profile=None):
     data_processed, df = create_data(client, args)
 
-    if write_profile is None:
-        ctx = contextlib.nullcontext()
-    else:
-        ctx = performance_report(filename=args.profile)
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
     with ctx:
         if args.backend in {"dask", "dask-noop"}:
@@ -227,19 +226,6 @@ def parse_args():
             "default": "gpu",
             "type": str,
             "help": "Do shuffle with GPU or CPU dataframes (default 'gpu')",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
         },
         {
             "name": "--ignore-index",

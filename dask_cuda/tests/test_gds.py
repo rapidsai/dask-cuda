@@ -38,7 +38,7 @@ def test_gds(gds_enabled, cuda_lib):
         a = data_create()
         header, frames = serialize(a, serializers=("disk",))
         b = deserialize(header, frames)
-        assert type(a) == type(b)
+        assert type(a) is type(b)
         assert data_compare(a, b)
     finally:
         ProxifyHostFile.register_disk_spilling()  # Reset disk spilling options

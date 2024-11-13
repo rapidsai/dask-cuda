@@ -9,6 +9,7 @@ from functools import singledispatch
 from multiprocessing import cpu_count
 from typing import Optional
 
+import click
 import numpy as np
 import pynvml
 import toolz
@@ -764,3 +765,13 @@ def get_rmm_device_memory_usage() -> Optional[int]:
         if isinstance(mr, rmm.mr.StatisticsResourceAdaptor):
             return mr.allocation_counts["current_bytes"]
     return None
+
+
+class CommaSeparatedChoice(click.Choice):
+    def convert(self, value, param, ctx):
+        values = [v.strip() for v in value.split(",")]
+        for v in values:
+            if v not in self.choices:
+                choices_str = ", ".join(f"'{c}'" for c in self.choices)
+                self.fail(f"invalid choice(s): {v}. (choices are: {choices_str})")
+        return values

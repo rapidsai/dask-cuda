@@ -10,7 +10,7 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, PreImport, RMMSetup
+from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
@@ -73,6 +73,14 @@ class LocalCUDACluster(LocalCluster):
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
         total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
         or ``None`` to disable spilling to host (i.e. allow full device memory usage).
+    enable_cudf_spill : bool, default False
+        Enable automatic cuDF spilling.
+
+        .. warning::
+            This should NOT be used together with JIT-Unspill.
+    cudf_spill_stats : int, default 0
+        Set the cuDF spilling statistics level. This option has no effect if
+        ``enable_cudf_spill=False``.
     local_directory : str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
@@ -135,6 +143,11 @@ class LocalCUDACluster(LocalCluster):
             The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
             incompatible with RMM pools and managed memory. Trying to enable both will
             result in an exception.
+    rmm_allocator_external_lib_list: str, list or None, default None
+        List of external libraries for which to set RMM as the allocator.
+        Supported options are: ``["torch", "cupy"]``. Can be a comma-separated string
+        (like ``"torch,cupy"``) or a list of strings (like ``["torch", "cupy"]``).
+        If ``None``, no external libraries will use RMM as their allocator.
     rmm_release_threshold: int, str or None, default None
         When ``rmm.async is True`` and the pool size grows beyond this value, unused
         memory held by the pool will be released at the next synchronization point.
@@ -209,6 +222,8 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         memory_limit="auto",
         device_memory_limit=0.8,
+        enable_cudf_spill=False,
+        cudf_spill_stats=0,
         data=None,
         local_directory=None,
         shared_filesystem=None,
@@ -221,6 +236,7 @@ class LocalCUDACluster(LocalCluster):
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_allocator_external_lib_list=None,
         rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
@@ -233,6 +249,13 @@ class LocalCUDACluster(LocalCluster):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
         os.environ["RAPIDS_NO_INITIALIZE"] = "True"
+
+        if enable_cudf_spill:
+            import cudf
+
+            # cuDF spilling must be enabled in the client/scheduler process too.
+            cudf.set_option("spill", enable_cudf_spill)
+            cudf.set_option("spill_stats", cudf_spill_stats)
 
         if threads_per_worker < 1:
             raise ValueError("threads_per_worker must be higher than 0.")
@@ -248,6 +271,19 @@ class LocalCUDACluster(LocalCluster):
             n_workers = len(CUDA_VISIBLE_DEVICES)
         if n_workers < 1:
             raise ValueError("Number of workers cannot be less than 1.")
+
+        if rmm_allocator_external_lib_list is not None:
+            if isinstance(rmm_allocator_external_lib_list, str):
+                rmm_allocator_external_lib_list = [
+                    v.strip() for v in rmm_allocator_external_lib_list.split(",")
+                ]
+            elif not isinstance(rmm_allocator_external_lib_list, list):
+                raise ValueError(
+                    "rmm_allocator_external_lib_list must be either a comma-separated "
+                    "string or a list of strings. Examples: 'torch,cupy' "
+                    "or ['torch', 'cupy']"
+                )
+
         # Set nthreads=1 when parsing mem_limit since it only depends on n_workers
         logger = logging.getLogger(__name__)
         self.memory_limit = parse_memory_limit(
@@ -259,12 +295,16 @@ class LocalCUDACluster(LocalCluster):
         self.device_memory_limit = parse_device_memory_limit(
             device_memory_limit, device_index=nvml_device_index(0, CUDA_VISIBLE_DEVICES)
         )
+        self.enable_cudf_spill = enable_cudf_spill
+        self.cudf_spill_stats = cudf_spill_stats
 
         self.rmm_pool_size = rmm_pool_size
         self.rmm_maximum_pool_size = rmm_maximum_pool_size
         self.rmm_managed_memory = rmm_managed_memory
         self.rmm_async = rmm_async
         self.rmm_release_threshold = rmm_release_threshold
+        self.rmm_allocator_external_lib_list = rmm_allocator_external_lib_list
+
         if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
             try:
                 import rmm  # noqa F401
@@ -302,6 +342,12 @@ class LocalCUDACluster(LocalCluster):
             if device_memory_limit is None and memory_limit is None:
                 data = {}
             elif jit_unspill:
+                if enable_cudf_spill:
+                    warnings.warn(
+                        "Enabling cuDF spilling and JIT-Unspill together is not "
+                        "safe, consider disabling JIT-Unspill."
+                    )
+
                 data = (
                     ProxifyHostFile,
                     {
@@ -412,8 +458,10 @@ class LocalCUDACluster(LocalCluster):
                         release_threshold=self.rmm_release_threshold,
                         log_directory=self.rmm_log_directory,
                         track_allocations=self.rmm_track_allocations,
+                        external_lib_list=self.rmm_allocator_external_lib_list,
                     ),
                     PreImport(self.pre_import),
+                    CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
                 },
             }
         )

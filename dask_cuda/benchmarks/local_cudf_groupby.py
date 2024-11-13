@@ -7,7 +7,7 @@ import pandas as pd
 import dask
 import dask.dataframe as dd
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -98,10 +98,9 @@ def bench_once(client, args, write_profile=None):
         "False": False,
     }.get(args.shuffle, args.shuffle)
 
-    if write_profile is None:
-        ctx = contextlib.nullcontext()
-    else:
-        ctx = performance_report(filename=args.profile)
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
     with ctx:
         t1 = clock()
@@ -259,19 +258,6 @@ def parse_args():
             "default": "gpu",
             "type": str,
             "help": "Do shuffle with GPU or CPU dataframes (default 'gpu')",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
         },
     ]
 

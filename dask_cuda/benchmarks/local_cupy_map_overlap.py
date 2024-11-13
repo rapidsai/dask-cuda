@@ -10,7 +10,7 @@ from scipy.ndimage import convolve as sp_convolve
 
 from dask import array as da
 from dask.distributed import performance_report, wait
-from dask.utils import format_bytes, parse_bytes
+from dask.utils import format_bytes
 
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
@@ -42,12 +42,11 @@ def bench_once(client, args, write_profile=None):
 
     data_processed = x.nbytes
 
-    # Execute the operations to benchmark
-    if args.profile is not None and write_profile is not None:
-        ctx = performance_report(filename=args.profile)
-    else:
-        ctx = contextlib.nullcontext()
+    ctx = contextlib.nullcontext()
+    if write_profile is not None:
+        ctx = performance_report(filename=write_profile)
 
+    # Execute the operations to benchmark
     with ctx:
         result = x.map_overlap(mean_filter, args.kernel_size, shape=ks)
         if args.backend == "dask-noop":
@@ -167,19 +166,6 @@ def parse_args():
             "metavar": "k",
             "type": int,
             "help": "Kernel size, 2*k+1, in each dimension (default 1)",
-        },
-        {
-            "name": "--ignore-size",
-            "default": "1 MiB",
-            "metavar": "nbytes",
-            "type": parse_bytes,
-            "help": "Ignore messages smaller than this (default '1 MB')",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
         },
         {
             "name": [

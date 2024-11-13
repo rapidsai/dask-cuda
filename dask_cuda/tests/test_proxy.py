@@ -114,7 +114,7 @@ def test_proxy_object_of_array(serializers, backend):
         pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
         expect = op(org)
         got = op(pxy)
-        assert type(expect) == type(got)
+        assert type(expect) is type(got)
         assert expect == got
 
     # Check unary operators
@@ -124,7 +124,7 @@ def test_proxy_object_of_array(serializers, backend):
         pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
         expect = op(org)
         got = op(pxy)
-        assert type(expect) == type(got)
+        assert type(expect) is type(got)
         assert all(expect == got)
 
     # Check binary operators that takes a scalar as second argument
@@ -134,7 +134,7 @@ def test_proxy_object_of_array(serializers, backend):
         pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
         expect = op(org, 2)
         got = op(pxy, 2)
-        assert type(expect) == type(got)
+        assert type(expect) is type(got)
         assert all(expect == got)
 
     # Check binary operators
@@ -192,7 +192,7 @@ def test_proxy_object_of_array(serializers, backend):
         pxy = proxy_object.asproxy(org.copy(), serializers=serializers)
         expect = op(org)
         got = op(pxy)
-        assert type(expect) == type(got)
+        assert type(expect) is type(got)
         assert expect == got
 
     # Check reflected methods
@@ -297,7 +297,7 @@ async def test_spilling_local_cuda_cluster(jit_unspill):
             assert "ProxyObject" in str(type(x))
             assert x._pxy_get().serializer == "dask"
         else:
-            assert type(x) == cudf.DataFrame
+            assert type(x) is cudf.DataFrame
         assert len(x) == 10  # Trigger deserialization
         return x
 

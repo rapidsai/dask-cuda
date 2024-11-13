@@ -323,7 +323,16 @@ def parse_benchmark_args(
         metavar="PATH",
         default=None,
         type=str,
-        help="Write dask profile report (E.g. dask-report.html)",
+        help="Write dask profile report (E.g. dask-report.html) on all "
+        "iterations (excluding warmup).",
+    )
+    parser.add_argument(
+        "--profile-last",
+        metavar="PATH",
+        default=None,
+        type=str,
+        help="Write dask profile report (E.g. dask-report.html) on last "
+        "iteration only.",
     )
     # See save_benchmark_data for more information
     parser.add_argument(
@@ -336,6 +345,25 @@ def parse_benchmark_args(
         "BASENAME.address_map.json (mapping from worker addresses to indices). "
         "If the files already exist, new files are created with a uniquified "
         "BASENAME.",
+    )
+    parser.add_argument(
+        "--ignore-size",
+        default="1 MiB",
+        metavar="nbytes",
+        type=parse_bytes,
+        help="Bandwidth statistics: ignore messages smaller than this (default '1 MB')",
+    )
+    parser.add_argument(
+        "--runs",
+        default=3,
+        type=int,
+        help="Number of runs",
+    )
+    parser.add_argument(
+        "--warmup-runs",
+        default=1,
+        type=int,
+        help="Number of warmup runs",
     )
 
     for args in args_list:
@@ -765,7 +793,7 @@ def print_throughput_bandwidth(
     )
     print_key_value(
         key="Wall clock",
-        value=f"{format_time(durations.mean())} +/- {format_time(durations.std()) }",
+        value=f"{format_time(durations.mean())} +/- {format_time(durations.std())}",
     )
     if not args.no_show_p2p_bandwidth:
         print_separator(separator="=")

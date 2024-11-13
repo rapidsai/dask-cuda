@@ -20,7 +20,7 @@ from distributed.worker_memory import parse_memory_limit
 
 from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, PreImport, RMMSetup
+from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
@@ -41,10 +41,13 @@ class CUDAWorker(Server):
         name=None,
         memory_limit="auto",
         device_memory_limit="auto",
+        enable_cudf_spill=False,
+        cudf_spill_stats=0,
         rmm_pool_size=None,
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
         rmm_async=False,
+        rmm_allocator_external_lib_list=None,
         rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
@@ -166,6 +169,12 @@ class CUDAWorker(Server):
         if device_memory_limit is None and memory_limit is None:
             data = lambda _: {}
         elif jit_unspill:
+            if enable_cudf_spill:
+                warnings.warn(
+                    "Enabling cuDF spilling and JIT-Unspill together is not "
+                    "safe, consider disabling JIT-Unspill."
+                )
+
             data = lambda i: (
                 ProxifyHostFile,
                 {
@@ -185,6 +194,14 @@ class CUDAWorker(Server):
                     ),
                     "memory_limit": memory_limit,
                 },
+            )
+
+        cudf_spill_warning = dask.config.get("cudf-spill-warning", default=True)
+        if enable_cudf_spill and cudf_spill_warning:
+            warnings.warn(
+                "cuDF spilling is enabled, please ensure the client and scheduler "
+                "processes set `CUDF_SPILL=on` as well. To disable this warning "
+                "set `DASK_CUDF_SPILL_WARNING=False`."
             )
 
         self.nannies = [
@@ -215,8 +232,10 @@ class CUDAWorker(Server):
                         release_threshold=rmm_release_threshold,
                         log_directory=rmm_log_directory,
                         track_allocations=rmm_track_allocations,
+                        external_lib_list=rmm_allocator_external_lib_list,
                     ),
                     PreImport(pre_import),
+                    CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
                 },
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,
