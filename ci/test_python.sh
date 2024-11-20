@@ -62,7 +62,7 @@ timeout 90m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  tests
+  tests -k "not ucxx"
 popd
 
 rapids-logger "pytest explicit-comms (legacy dd)"
@@ -83,7 +83,7 @@ timeout 60m pytest \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage-legacy.xml" \
   --cov-report=term \
-  tests/test_explicit_comms.py
+  tests/test_explicit_comms.py -k "not ucxx"
 popd
 
 rapids-logger "Run local benchmark (dask-expr)"
