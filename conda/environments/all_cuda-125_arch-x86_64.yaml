@@ -21,7 +21,7 @@ dependencies:
 - numpydoc>=1.1.0
 - pandas>=1.3
 - pre-commit
-- pynvml>=11.0.0,<11.5
+- pynvml>=11.0.0,<12.0.0a0
 - pytest
 - pytest-cov
 - python>=3.10,<3.13
