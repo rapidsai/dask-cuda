@@ -23,8 +23,8 @@ from .utils import (
 
 
 class LoggedWorker(Worker):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, **worker_kwargs):
+        super().__init__(*args, **worker_kwargs)
 
     async def start(self):
         await super().start()
@@ -32,8 +32,8 @@ class LoggedWorker(Worker):
 
 
 class LoggedNanny(Nanny):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, worker_class=LoggedWorker, **kwargs)
+    def __init__(self, *args, **worker_kwargs):
+        super().__init__(*args, worker_class=LoggedWorker, **worker_kwargs)
 
 
 class LocalCUDACluster(LocalCluster):
@@ -244,7 +244,7 @@ class LocalCUDACluster(LocalCluster):
         log_spilling=False,
         worker_class=None,
         pre_import=None,
-        **kwargs,
+        **worker_kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
         # initialization happens before we can set CUDA_VISIBLE_DEVICES
@@ -326,7 +326,7 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_log_directory = rmm_log_directory
         self.rmm_track_allocations = rmm_track_allocations
 
-        if not kwargs.pop("processes", True):
+        if not worker_kwargs.pop("processes", True):
             raise ValueError(
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
@@ -337,7 +337,7 @@ class LocalCUDACluster(LocalCluster):
 
         if jit_unspill is None:
             jit_unspill = dask.config.get("jit-unspill", default=False)
-        data = kwargs.pop("data", None)
+        data = worker_kwargs.pop("data", None)
         if data is None:
             if device_memory_limit is None and memory_limit is None:
                 data = {}
@@ -375,7 +375,7 @@ class LocalCUDACluster(LocalCluster):
                     "protocol='ucxx'"
                 )
 
-        self.host = kwargs.get("host", None)
+        self.host = worker_kwargs.get("host", None)
 
         initialize(
             create_cuda_context=False,
@@ -399,6 +399,12 @@ class LocalCUDACluster(LocalCluster):
 
         self.pre_import = pre_import
 
+        if "resources" in worker_kwargs:
+            if "GPU" not in worker_kwargs["resources"]:
+                worker_kwargs["GPU"] = 1
+        else:
+            worker_kwargs["resources"] = {"GPU": 1}
+
         super().__init__(
             n_workers=0,
             threads_per_worker=threads_per_worker,
@@ -416,7 +422,7 @@ class LocalCUDACluster(LocalCluster):
                     enable_rdmacm=enable_rdmacm,
                 )
             },
-            **kwargs,
+            **worker_kwargs,
         )
 
         self.new_spec["options"]["preload"] = self.new_spec["options"].get(
