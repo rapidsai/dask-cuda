@@ -1,3 +1,4 @@
+import contextlib
 from argparse import Namespace
 from functools import partial
 from typing import Any, Callable, List, Mapping, NamedTuple, Optional, Tuple
@@ -7,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 import dask
-from distributed import Client
+from distributed import Client, performance_report
 
 from dask_cuda.benchmarks.utils import (
     address_to_index,
@@ -87,12 +88,20 @@ def run_benchmark(client: Client, args: Namespace, config: Config):
 
     If ``args.profile`` is set, the final run is profiled.
     """
+
     results = []
-    for _ in range(max(1, args.runs) - 1):
-        res = config.bench_once(client, args, write_profile=None)
-        results.append(res)
-    results.append(config.bench_once(client, args, write_profile=args.profile))
-    return results
+    for _ in range(max(0, args.warmup_runs)):
+        config.bench_once(client, args, write_profile=None)
+
+    ctx = contextlib.nullcontext()
+    if args.profile is not None:
+        ctx = performance_report(filename=args.profile)
+    with ctx:
+        for _ in range(max(1, args.runs) - 1):
+            res = config.bench_once(client, args, write_profile=None)
+            results.append(res)
+        results.append(config.bench_once(client, args, write_profile=args.profile_last))
+        return results
 
 
 def gather_bench_results(client: Client, args: Namespace, config: Config):

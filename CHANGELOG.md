@@ -1,3 +1,29 @@
+# dask-cuda 24.12.00 (11 Dec 2024)
+
+## 🚨 Breaking Changes
+
+- Add warmup runs and profile all iterations to benchmarks ([#1402](https://github.com/rapidsai/dask-cuda/pull/1402)) [@pentschev](https://github.com/pentschev)
+
+## 🐛 Bug Fixes
+
+- Disable UCXX tests in CI ([#1406](https://github.com/rapidsai/dask-cuda/pull/1406)) [@pentschev](https://github.com/pentschev)
+- Ignore legacy Dask dataframe warnings ([#1397](https://github.com/rapidsai/dask-cuda/pull/1397)) [@pentschev](https://github.com/pentschev)
+- Reenable UCXX in CI ([#1396](https://github.com/rapidsai/dask-cuda/pull/1396)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Enable Pytorch to share same memory pool as RMM via cli ([#1392](https://github.com/rapidsai/dask-cuda/pull/1392)) [@VibhuJawa](https://github.com/VibhuJawa)
+
+## 🛠️ Improvements
+
+- enforce wheel size limits, README formatting in CI ([#1404](https://github.com/rapidsai/dask-cuda/pull/1404)) [@jameslamb](https://github.com/jameslamb)
+- Add warmup runs and profile all iterations to benchmarks ([#1402](https://github.com/rapidsai/dask-cuda/pull/1402)) [@pentschev](https://github.com/pentschev)
+- remove unnecessary cmake and sccache configuration ([#1400](https://github.com/rapidsai/dask-cuda/pull/1400)) [@jameslamb](https://github.com/jameslamb)
+- make conda installs in CI stricter ([#1395](https://github.com/rapidsai/dask-cuda/pull/1395)) [@jameslamb](https://github.com/jameslamb)
+- Limit output of pytest durations ([#1393](https://github.com/rapidsai/dask-cuda/pull/1393)) [@pentschev](https://github.com/pentschev)
+- Switch pytest `traceback` to `native` ([#1389](https://github.com/rapidsai/dask-cuda/pull/1389)) [@galipremsagar](https://github.com/galipremsagar)
+- Update PyNVML and set upper pin ([#1130](https://github.com/rapidsai/dask-cuda/pull/1130)) [@wence-](https://github.com/wence-)
+
 # dask-cuda 24.10.00 (9 Oct 2024)
 
 ## 🚨 Breaking Changes

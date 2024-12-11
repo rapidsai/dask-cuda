@@ -13,7 +13,7 @@ from distributed.security import Security
 from distributed.utils import import_term
 
 from .cuda_worker import CUDAWorker
-from .utils import print_cluster_config
+from .utils import CommaSeparatedChoice, print_cluster_config
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,16 @@ def cuda():
         The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
         incompatible with RMM pools and managed memory, trying to enable both will
         result in failure.""",
+)
+@click.option(
+    "--set-rmm-allocator-for-libs",
+    "rmm_allocator_external_lib_list",
+    type=CommaSeparatedChoice(["cupy", "torch"]),
+    default=None,
+    show_default=True,
+    help="""
+    Set RMM as the allocator for external libraries. Provide a comma-separated
+    list of libraries to set, e.g., "torch,cupy".""",
 )
 @click.option(
     "--rmm-release-threshold",
@@ -351,6 +361,7 @@ def worker(
     rmm_maximum_pool_size,
     rmm_managed_memory,
     rmm_async,
+    rmm_allocator_external_lib_list,
     rmm_release_threshold,
     rmm_log_directory,
     rmm_track_allocations,
@@ -425,6 +436,7 @@ def worker(
             rmm_maximum_pool_size,
             rmm_managed_memory,
             rmm_async,
+            rmm_allocator_external_lib_list,
             rmm_release_threshold,
             rmm_log_directory,
             rmm_track_allocations,

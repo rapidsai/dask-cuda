@@ -190,7 +190,7 @@ def bench_once(client, args, write_profile=None):
     if args.backend == "explicit-comms":
         ctx1 = dask.config.set(explicit_comms=True)
     if write_profile is not None:
-        ctx2 = performance_report(filename=args.profile)
+        ctx2 = performance_report(filename=write_profile)
 
     with ctx1:
         with ctx2:
@@ -345,12 +345,6 @@ def parse_args():
             "name": "--no-shuffle",
             "action": "store_true",
             "help": "Don't shuffle the keys of the left (base) dataframe.",
-        },
-        {
-            "name": "--runs",
-            "default": 3,
-            "type": int,
-            "help": "Number of runs",
         },
         {
             "name": [
