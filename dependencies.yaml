@@ -188,14 +188,13 @@ dependencies:
               - numactl-devel-cos7-aarch64
       - output_types: [requirements, pyproject]
         matrices:
-          # kvikio should be added to the CUDA-version-specific matrices once there are wheels available
-          # ref: https://github.com/rapidsai/kvikio/pull/369
           - matrix:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages:
               - cudf-cu12==25.2.*,>=0.0.0a0
               - dask-cudf-cu12==25.2.*,>=0.0.0a0
+              - kvikio-cu12==25.2.*,>=0.0.0a0
               - ucx-py-cu12==0.42.*,>=0.0.0a0
           - matrix:
               cuda: "11.*"
@@ -203,6 +202,7 @@ dependencies:
             packages:
               - cudf-cu11==25.2.*,>=0.0.0a0
               - dask-cudf-cu11==25.2.*,>=0.0.0a0
+              - kvikio-cu11==25.2.*,>=0.0.0a0
               - ucx-py-cu11==0.42.*,>=0.0.0a0
           - matrix:
             packages:
