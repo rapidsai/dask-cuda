@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
-import inspect
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -570,33 +568,6 @@ def _use_explicit_comms() -> bool:
     return False
 
 
-def get_rearrange_by_column_wrapper(func):
-    """Returns a function wrapper that dispatch the shuffle to explicit-comms.
-
-    Notice, this is monkey patched into Dask at dask_cuda import
-    """
-
-    func_sig = inspect.signature(func)
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        if _use_explicit_comms():
-            # Convert `*args, **kwargs` to a dict of `keyword -> values`
-            kw = func_sig.bind(*args, **kwargs)
-            kw.apply_defaults()
-            kw = kw.arguments
-            # Notice, we only overwrite the default and the "tasks" shuffle
-            # algorithm. The "disk" and "p2p" algorithm, we don't touch.
-            if kw["shuffle_method"] in ("tasks", None):
-                col = kw["col"]
-                if isinstance(col, str):
-                    col = [col]
-                return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 def get_default_shuffle_method() -> str:
     """Return the default shuffle algorithm used by Dask
 
@@ -607,3 +578,31 @@ def get_default_shuffle_method() -> str:
     if ret is None and _use_explicit_comms():
         return "tasks"
     return dask.utils.get_default_shuffle_method()
+
+
+def patch_shuffle_expression() -> None:
+    """Patch Dasks Shuffle expression.
+
+    This changes ``Shuffle._lower`` to apply explicit-comms
+    shuffling when the 'explicit-comms' config is enabled.
+    """
+    from dask_expr._collection import new_collection
+    from dask_expr._shuffle import Shuffle as DXShuffle
+
+    _base_lower = DXShuffle._lower
+
+    def _lower(self):
+        if self.method in ("tasks", None) and _use_explicit_comms():
+            on = self.partitioning_index
+            on = [on] if isinstance(on, str) else on
+            return shuffle(
+                new_collection(self.frame),
+                on,
+                self.npartitions_out,
+                self.ignore_index,
+            ).expr
+        else:
+            # Use upstream lowering logic
+            return _base_lower(self)
+
+    DXShuffle._lower = _lower
