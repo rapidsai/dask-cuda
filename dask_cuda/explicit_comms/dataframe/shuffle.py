@@ -584,62 +584,35 @@ def patch_shuffle_expression() -> None:
     """Patch Dasks Shuffle expression.
 
     Notice, this is monkey patched into Dask at dask_cuda
-    import, and it changes `Shuffle._lower` to wrap the
-    original shuffle expression in `ExplicitCommsShuffle`.
+    import, and it changes `TaskShuffle._layer` to execute
+    an explicit-comms shuffle.
     """
     from dask_expr._collection import new_collection
-    from dask_expr._expr import Expr
-    from dask_expr._shuffle import Shuffle as DXShuffle
+    from dask_expr._shuffle import TaskShuffle
 
-    class ExplicitCommsShuffle(Expr):
-        """Explicit Comms Shuffle."""
+    _base_layer = TaskShuffle._layer
 
-        _parameters = ["wrapped"]
-
-        @property
-        def original(self):
-            assert len(self.wrapped) == 1, f"Unexpected parameters: {self.wrapped[1:]}"
-            return self.wrapped[0]
-
-        @property
-        def _meta(self):
-            return self.original.frame._meta
-
-        def _lower(self):
-            return None
-
-        def _divisions(self):
-            return (None,) * (self.original.frame.npartitions + 1)
-
-        def _layer(self):
-            if not hasattr(self, "_shuffle_cache"):
-                self._shuffle_cache = {}
-            try:
-                expr = self._shuffle_cache[self._name]
-            except KeyError:
-                on = self.original.partitioning_index
-                expr = shuffle(
-                    new_collection(self.original.frame),
+    def _layer(self):
+        with open("debug.txt", "a") as f:
+            f.write(f"USING: {_use_explicit_comms()}\n")
+        if _use_explicit_comms():
+            # Execute an explicit-comms shuffle
+            if not hasattr(self, "_ec_shuffled"):
+                on = self.partitioning_index
+                df = new_collection(self.frame)
+                self._ec_shuffled = shuffle(
+                    df,
                     [on] if isinstance(on, str) else on,
-                    self.original.npartitions_out,
-                    self.original.ignore_index,
+                    self.npartitions_out,
+                    self.ignore_index,
                 )
-                self._shuffle_cache[self._name] = expr
-            graph = expr.dask.copy()
-            graph.update(
-                {(self._name, i): (expr._name, i) for i in range(self.npartitions)}
-            )
+            graph = self._ec_shuffled.dask.copy()
+            shuffled_name = self._ec_shuffled._name
+            for i in range(self.npartitions_out):
+                graph[(self._name, i)] = graph[(shuffled_name, i)]
             return graph
-
-    _base_lower = DXShuffle._lower
-
-    def _lower(self):
-        if self.method in ("tasks", None) and _use_explicit_comms():
-            # Wrap the original Shuffle in an ExplicitCommsShuffle
-            # (Use list argument to encapsulate dependencies)
-            return ExplicitCommsShuffle([self])
         else:
             # Use upstream lowering logic
-            return _base_lower(self)
+            return _base_layer(self)
 
-    DXShuffle._lower = _lower
+    TaskShuffle._layer = _layer
