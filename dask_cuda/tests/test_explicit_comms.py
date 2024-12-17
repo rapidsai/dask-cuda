@@ -239,7 +239,7 @@ def _test_dask_use_explicit_comms(in_cluster):
             ):
                 dask.config.refresh()  # Trigger re-read of the environment variables
                 with pytest.raises(ValueError, match="explicit-comms-batchsize"):
-                    ddf.shuffle(on="key", npartitions=4)
+                    ddf.shuffle(on="key", npartitions=4).dask
 
     if in_cluster:
         with LocalCluster(
