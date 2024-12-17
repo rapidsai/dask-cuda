@@ -593,8 +593,6 @@ def patch_shuffle_expression() -> None:
     _base_layer = TaskShuffle._layer
 
     def _layer(self):
-        with open("debug.txt", "a") as f:
-            f.write(f"USING: {_use_explicit_comms()}\n")
         if _use_explicit_comms():
             # Execute an explicit-comms shuffle
             if not hasattr(self, "_ec_shuffled"):
