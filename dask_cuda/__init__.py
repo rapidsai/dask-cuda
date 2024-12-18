@@ -7,24 +7,28 @@ import dask
 import dask.utils
 import dask.dataframe.core
 import dask.dataframe.shuffle
-import dask.dataframe.multi
-import dask.bag.core
+from .explicit_comms.dataframe.shuffle import patch_shuffle_expression
+from dask.dataframe import DASK_EXPR_ENABLED
 from distributed.protocol.cuda import cuda_deserialize, cuda_serialize
 from distributed.protocol.serialize import dask_deserialize, dask_serialize
 
 from ._version import __git_commit__, __version__
 from .cuda_worker import CUDAWorker
-from .explicit_comms.dataframe.shuffle import (
-    patch_shuffle_expression,
-)
+
 from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
 
+if not DASK_EXPR_ENABLED:
+    raise ValueError(
+        "Dask-CUDA no longer supports the legacy Dask DataFrame API. "
+        "Please set the 'dataframe.query-planning' config to `True` "
+        "or None, or downgrade RAPIDS to <=24.12."
+    )
+
+
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
 patch_shuffle_expression()
-
-
 # Monkey patching Dask to make use of proxify and unproxify in compatibility mode
 dask.dataframe.shuffle.shuffle_group = proxify_decorator(
     dask.dataframe.shuffle.shuffle_group
