@@ -44,9 +44,8 @@ set_exit_code() {
 trap set_exit_code ERR
 set +e
 
-rapids-logger "pytest dask-cuda (dask-expr)"
+rapids-logger "pytest dask-cuda"
 pushd dask_cuda
-DASK_DATAFRAME__QUERY_PLANNING=True \
 DASK_CUDA_TEST_SINGLE_GPU=1 \
 DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
 UCXPY_IFNAME=eth0 \
@@ -65,43 +64,19 @@ timeout 90m pytest \
   tests -k "not ucxx"
 popd
 
-rapids-logger "pytest explicit-comms (legacy dd)"
-pushd dask_cuda
-DASK_DATAFRAME__QUERY_PLANNING=False \
-DASK_CUDA_TEST_SINGLE_GPU=1 \
-DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
-UCXPY_IFNAME=eth0 \
-UCX_WARN_UNUSED_ENV_VARS=n \
-UCX_MEMTYPE_CACHE=n \
-timeout 60m pytest \
-  -vv \
-  --durations=50 \
-  --capture=no \
-  --cache-clear \
-  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-legacy.xml" \
-  --cov-config=../pyproject.toml \
-  --cov=dask_cuda \
-  --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage-legacy.xml" \
-  --cov-report=term \
-  tests/test_explicit_comms.py -k "not ucxx"
-popd
-
-rapids-logger "Run local benchmark (dask-expr)"
-DASK_DATAFRAME__QUERY_PLANNING=True \
+rapids-logger "Run local benchmark"
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
   --backend dask
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --disable-rmm \
   --partition-size="1 KiB" \
@@ -109,7 +84,6 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --disable-rmm-pool \
   --partition-size="1 KiB" \
@@ -117,7 +91,6 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --partition-size="1 KiB" \
@@ -125,7 +98,6 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
@@ -134,7 +106,6 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
@@ -144,26 +115,10 @@ python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --runs 1 \
   --backend explicit-comms
 
-DASK_DATAFRAME__QUERY_PLANNING=True \
 python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
   --enable-rmm-managed \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-rapids-logger "Run local benchmark (legacy dd)"
-DASK_DATAFRAME__QUERY_PLANNING=False \
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend dask
-
-DASK_DATAFRAME__QUERY_PLANNING=False \
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
