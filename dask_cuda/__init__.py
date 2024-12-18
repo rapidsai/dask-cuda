@@ -15,7 +15,6 @@ from distributed.protocol.serialize import dask_deserialize, dask_serialize
 from ._version import __git_commit__, __version__
 from .cuda_worker import CUDAWorker
 from .explicit_comms.dataframe.shuffle import (
-    get_default_shuffle_method,
     patch_shuffle_expression,
 )
 from .local_cuda_cluster import LocalCUDACluster
@@ -24,11 +23,6 @@ from .proxify_device_objects import proxify_decorator, unproxify_decorator
 
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`
 patch_shuffle_expression()
-# We have to replace all modules that imports Dask's `get_default_shuffle_method()`
-# TODO: introduce a shuffle-algorithm dispatcher in Dask so we don't need this hack
-dask.dataframe.shuffle.get_default_shuffle_method = get_default_shuffle_method
-dask.dataframe.multi.get_default_shuffle_method = get_default_shuffle_method
-dask.bag.core.get_default_shuffle_method = get_default_shuffle_method
 
 
 # Monkey patching Dask to make use of proxify and unproxify in compatibility mode

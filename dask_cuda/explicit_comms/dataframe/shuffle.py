@@ -568,31 +568,20 @@ def _use_explicit_comms() -> bool:
     return False
 
 
-def get_default_shuffle_method() -> str:
-    """Return the default shuffle algorithm used by Dask
-
-    This changes the default shuffle algorithm from "p2p" to "tasks"
-    when explicit comms is enabled.
-    """
-    ret = dask.config.get("dataframe.shuffle.algorithm", None)
-    if ret is None and _use_explicit_comms():
-        return "tasks"
-    return dask.utils.get_default_shuffle_method()
-
-
 def patch_shuffle_expression() -> None:
     """Patch Dasks Shuffle expression.
 
     Notice, this is monkey patched into Dask at dask_cuda
-    import, and it changes `TaskShuffle._layer` to execute
-    an explicit-comms shuffle.
+    import, and it changes `Shuffle._layer` to lower into
+    an `ECShuffle` expression when the 'explicit-comms'
+    config is set to `True`.
     """
     import dask_expr
 
-    _base_layer = dask_expr._shuffle.TaskShuffle._layer
+    class ECShuffle(dask_expr._shuffle.TaskShuffle):
+        """Explicit-Comms Shuffle Expression."""
 
-    def _patched_layer(self):
-        if _use_explicit_comms():
+        def _layer(self):
             # Execute an explicit-comms shuffle
             if not hasattr(self, "_ec_shuffled"):
                 on = self.partitioning_index
@@ -608,8 +597,20 @@ def patch_shuffle_expression() -> None:
             for i in range(self.npartitions_out):
                 graph[(self._name, i)] = graph[(shuffled_name, i)]
             return graph
-        else:
-            # Use upstream lowering logic
-            return _base_layer(self)
 
-    dask_expr._shuffle.TaskShuffle._layer = _patched_layer
+    _base_lower = dask_expr._shuffle.Shuffle._lower
+
+    def _patched_lower(self):
+        if self.method in (None, "tasks") and _use_explicit_comms():
+            return ECShuffle(
+                self.frame,
+                self.partitioning_index,
+                self.npartitions_out,
+                self.ignore_index,
+                self.options,
+                self.original_partitioning_index,
+            )
+        else:
+            return _base_lower(self)
+
+    dask_expr._shuffle.Shuffle._lower = _patched_lower
