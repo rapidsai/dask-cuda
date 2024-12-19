@@ -1,4 +1,5 @@
 import importlib
+import logging
 import os
 from typing import Callable, Dict
 
@@ -12,7 +13,15 @@ class CPUAffinity(WorkerPlugin):
         self.cores = cores
 
     def setup(self, worker=None):
-        os.sched_setaffinity(0, self.cores)
+        try:
+            os.sched_setaffinity(0, self.cores)
+        except Exception:
+            logger = logging.getLogger("distributed.worker")
+            logger.warning(
+                "Setting CPU affinity for GPU failed. Please refer to the following "
+                "link for troubleshooting information: "
+                "https://docs.rapids.ai/api/dask-cuda/nightly/troubleshooting/#setting-cpu-affinity-failure"  # noqa: E501
+            )
 
 
 class CUDFSetup(WorkerPlugin):
