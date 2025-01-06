@@ -47,14 +47,6 @@ files:
       table: project
     includes:
       - run_python
-  py_test:
-    output: pyproject
-    pyproject_dir: .
-    extras:
-      table: project.optional-dependencies
-      key: test
-    includes:
-      - test_python
   py_docs:
     output: pyproject
     pyproject_dir: .
