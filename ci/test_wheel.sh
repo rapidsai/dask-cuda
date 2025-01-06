@@ -3,7 +3,7 @@
 
 set -eou pipefail
 
-RAPIDS_PY_WHEEL_NAME="dask-cuda" rapids-download-wheels-from-s3 python ./dist
+RAPIDS_PY_WHEEL_NAME="dask-cuda" RAPIDS_PY_WHEEL_PURE="1" rapids-download-wheels-from-s3 python ./dist
 
 # echo to expand wildcard before adding `[extra]` requires for pip
 python -m pip install $(echo ./dist/dask_cuda*.whl)[test]
