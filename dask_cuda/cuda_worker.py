@@ -6,7 +6,7 @@ import logging
 import os
 import warnings
 
-from toolz import valmap
+from toolz import itemfilter, valmap
 
 import dask
 from distributed import Nanny
@@ -103,11 +103,15 @@ class CUDAWorker(Server):
             atexit.register(del_pid_file)
 
         if resources:
-            resources = resources.replace(",", " ").split()
+            resources = resources.replace(",", " ").replace("'", "").split()
             resources = dict(pair.split("=") for pair in resources)
-            resources = valmap(float, resources)
+            gpu_resources = valmap(int, itemfilter(lambda x: x != "GPU", resources))
+            resources = valmap(float, itemfilter(lambda x: x == "GPU", resources))
+            resources.update(gpu_resources)
+            if "GPU" not in resources:
+                resources["GPU"] = 1
         else:
-            resources = None
+            resources = {"GPU": 1}
 
         preload_argv = kwargs.pop("preload_argv", [])
         kwargs = {"worker_port": None, "listen_address": None, **kwargs}

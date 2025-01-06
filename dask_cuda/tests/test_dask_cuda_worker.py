@@ -594,3 +594,45 @@ def test_worker_cudf_spill_warning(enable_cudf_spill_warning):  # noqa: F811
             assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
         else:
             assert b"UserWarning: cuDF spilling is enabled" not in ret.stderr
+
+
+def test_worker_gpu_resource(loop):  # noqa: F811
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                workers = client.scheduler_info()["workers"]
+                for v in workers.values():
+                    assert "GPU" in v["resources"]
+                    assert v["resources"]["GPU"] == 1
+
+
+def test_worker_gpu_resource_user_defined(loop):  # noqa: F811
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--resources",
+                "'GPU=55'",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                workers = client.scheduler_info()["workers"]
+                for v in workers.values():
+                    assert "GPU" in v["resources"]
+                    assert v["resources"]["GPU"] == 55
