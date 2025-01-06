@@ -1,6 +1,7 @@
 import os
 from unittest.mock import patch
 
+import pynvml
 import pytest
 from numba import cuda
 
@@ -197,7 +198,6 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, enable_nvlink):
 
 
 def test_parse_visible_devices():
-    pynvml = pytest.importorskip("pynvml")
     pynvml.nvmlInit()
     indices = []
     uuids = []
@@ -250,7 +250,6 @@ def test_parse_device_memory_limit():
 
 
 def test_parse_visible_mig_devices():
-    pynvml = pytest.importorskip("pynvml")
     pynvml.nvmlInit()
     for index in range(get_gpu_count()):
         handle = pynvml.nvmlDeviceGetHandleByIndex(index)
