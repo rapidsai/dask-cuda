@@ -13,9 +13,7 @@ rapids-dependency-file-generator \
 | tee /tmp/requirements-test.txt
 
 rapids-logger "Installing test dependencies"
-python -m pip install -v --prefer-binary -r /tmp/requirements-test.txt
-
-# echo to expand wildcard before adding `[extra]` requires for pip
-python -m pip install $(echo ./dist/dask_cuda*.whl)
+# echo to expand wildcard
+python -m pip install -v --prefer-binary -r /tmp/requirements-test.txt $(echo ./dist/dask_cuda*.whl)
 
 python -m pytest ./python/dask_cuda/tests
