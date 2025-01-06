@@ -17,6 +17,7 @@ jobs:
       - conda-python-tests
       - docs-build
       - wheel-build
+      - wheel-tests
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@branch-25.02
   checks:
@@ -53,3 +54,10 @@ jobs:
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
       matrix_filter: map(select(.ARCH == "amd64")) | max_by([(.PY_VER|split(".")|map(tonumber)), (.CUDA_VER|split(".")|map(tonumber))]) | [.]
       script: "ci/build_wheel.sh"
+  wheel-tests:
+    needs: wheel-build
+    secrets: inherit
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@branch-25.02
+    with:
+      build_type: pull-request
+      script: "ci/test_wheel.sh"
