@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
-import inspect
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -570,40 +568,49 @@ def _use_explicit_comms() -> bool:
     return False
 
 
-def get_rearrange_by_column_wrapper(func):
-    """Returns a function wrapper that dispatch the shuffle to explicit-comms.
+def patch_shuffle_expression() -> None:
+    """Patch Dasks Shuffle expression.
 
-    Notice, this is monkey patched into Dask at dask_cuda import
+    Notice, this is monkey patched into Dask at dask_cuda
+    import, and it changes `Shuffle._layer` to lower into
+    an `ECShuffle` expression when the 'explicit-comms'
+    config is set to `True`.
     """
+    import dask_expr
 
-    func_sig = inspect.signature(func)
+    class ECShuffle(dask_expr._shuffle.TaskShuffle):
+        """Explicit-Comms Shuffle Expression."""
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        if _use_explicit_comms():
-            # Convert `*args, **kwargs` to a dict of `keyword -> values`
-            kw = func_sig.bind(*args, **kwargs)
-            kw.apply_defaults()
-            kw = kw.arguments
-            # Notice, we only overwrite the default and the "tasks" shuffle
-            # algorithm. The "disk" and "p2p" algorithm, we don't touch.
-            if kw["shuffle_method"] in ("tasks", None):
-                col = kw["col"]
-                if isinstance(col, str):
-                    col = [col]
-                return shuffle(kw["df"], col, kw["npartitions"], kw["ignore_index"])
-        return func(*args, **kwargs)
+        def _layer(self):
+            # Execute an explicit-comms shuffle
+            if not hasattr(self, "_ec_shuffled"):
+                on = self.partitioning_index
+                df = dask_expr._collection.new_collection(self.frame)
+                self._ec_shuffled = shuffle(
+                    df,
+                    [on] if isinstance(on, str) else on,
+                    self.npartitions_out,
+                    self.ignore_index,
+                )
+            graph = self._ec_shuffled.dask.copy()
+            shuffled_name = self._ec_shuffled._name
+            for i in range(self.npartitions_out):
+                graph[(self._name, i)] = graph[(shuffled_name, i)]
+            return graph
 
-    return wrapper
+    _base_lower = dask_expr._shuffle.Shuffle._lower
 
+    def _patched_lower(self):
+        if self.method in (None, "tasks") and _use_explicit_comms():
+            return ECShuffle(
+                self.frame,
+                self.partitioning_index,
+                self.npartitions_out,
+                self.ignore_index,
+                self.options,
+                self.original_partitioning_index,
+            )
+        else:
+            return _base_lower(self)
 
-def get_default_shuffle_method() -> str:
-    """Return the default shuffle algorithm used by Dask
-
-    This changes the default shuffle algorithm from "p2p" to "tasks"
-    when explicit comms is enabled.
-    """
-    ret = dask.config.get("dataframe.shuffle.algorithm", None)
-    if ret is None and _use_explicit_comms():
-        return "tasks"
-    return dask.utils.get_default_shuffle_method()
+    dask_expr._shuffle.Shuffle._lower = _patched_lower

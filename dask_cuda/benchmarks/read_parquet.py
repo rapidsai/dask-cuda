@@ -251,7 +251,6 @@ def parse_args():
     args = parse_benchmark_args(
         description="Parquet read benchmark",
         args_list=special_args,
-        check_explicit_comms=False,
     )
     args.no_show_p2p_bandwidth = True
     return args
