@@ -5,7 +5,6 @@ if sys.platform != "linux":
 
 import dask
 import dask.utils
-import dask.dataframe as dd
 import dask.dataframe.shuffle
 from .explicit_comms.dataframe.shuffle import patch_shuffle_expression
 from distributed.protocol.cuda import cuda_deserialize, cuda_serialize
@@ -16,17 +15,6 @@ from .cuda_worker import CUDAWorker
 
 from .local_cuda_cluster import LocalCUDACluster
 from .proxify_device_objects import proxify_decorator, unproxify_decorator
-
-
-try:
-    if not dd._dask_expr_enabled():
-        raise ValueError(
-            "Dask-CUDA no longer supports the legacy Dask DataFrame API. "
-            "Please set the 'dataframe.query-planning' config to `True` "
-            "or None, or downgrade RAPIDS to <=24.12."
-        )
-except AttributeError:
-    pass
 
 
 # Monkey patching Dask to make use of explicit-comms when `DASK_EXPLICIT_COMMS=True`

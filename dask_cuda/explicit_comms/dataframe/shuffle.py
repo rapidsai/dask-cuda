@@ -31,6 +31,20 @@ T = TypeVar("T")
 Proxify = Callable[[T], T]
 
 
+try:
+    from dask.dataframe import dask_expr
+
+except ImportError:
+    # TODO: Remove when pinned to dask>2024.12.1
+    import dask_expr
+
+    if not dd._dask_expr_enabled():
+        raise ValueError(
+            "The legacy DataFrame API is not supported in dask_cudf>24.12. "
+            "Please enable query-planning, or downgrade to dask_cudf<=24.12"
+        )
+
+
 def get_proxify(worker: Worker) -> Proxify:
     """Get function to proxify objects"""
     from dask_cuda.proxify_host_file import ProxifyHostFile
@@ -576,7 +590,6 @@ def patch_shuffle_expression() -> None:
     an `ECShuffle` expression when the 'explicit-comms'
     config is set to `True`.
     """
-    import dask_expr
 
     class ECShuffle(dask_expr._shuffle.TaskShuffle):
         """Explicit-Comms Shuffle Expression."""
