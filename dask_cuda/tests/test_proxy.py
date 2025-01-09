@@ -504,27 +504,27 @@ def test_pandas():
     df1 = pandas.DataFrame({"a": range(10)})
     df2 = pandas.DataFrame({"a": range(10)})
 
-    res = dask.dataframe.methods.concat([df1, df2])
-    got = dask.dataframe.methods.concat([df1, df2])
+    res = dask.dataframe.dispatch.concat([df1, df2])
+    got = dask.dataframe.dispatch.concat([df1, df2])
     assert_frame_equal(res, got)
 
-    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    got = dask.dataframe.dispatch.concat([proxy_object.asproxy(df1), df2])
     assert_frame_equal(res, got)
 
-    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    got = dask.dataframe.dispatch.concat([df1, proxy_object.asproxy(df2)])
     assert_frame_equal(res, got)
 
     df1 = pandas.Series(range(10))
     df2 = pandas.Series(range(10))
 
-    res = dask.dataframe.methods.concat([df1, df2])
-    got = dask.dataframe.methods.concat([df1, df2])
+    res = dask.dataframe.dispatch.concat([df1, df2])
+    got = dask.dataframe.dispatch.concat([df1, df2])
     assert all(res == got)
 
-    got = dask.dataframe.methods.concat([proxy_object.asproxy(df1), df2])
+    got = dask.dataframe.dispatch.concat([proxy_object.asproxy(df1), df2])
     assert all(res == got)
 
-    got = dask.dataframe.methods.concat([df1, proxy_object.asproxy(df2)])
+    got = dask.dataframe.dispatch.concat([df1, proxy_object.asproxy(df2)])
     assert all(res == got)
 
 

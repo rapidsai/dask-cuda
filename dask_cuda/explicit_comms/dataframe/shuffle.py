@@ -18,7 +18,7 @@ import distributed.worker
 from dask.base import tokenize
 from dask.dataframe import DataFrame, Series
 from dask.dataframe.core import _concat as dd_concat
-from dask.dataframe.shuffle import group_split_dispatch, hash_object_dispatch
+from dask.dataframe.dispatch import group_split_dispatch, hash_object_dispatch
 from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 from distributed.worker import Worker
@@ -29,6 +29,20 @@ T = TypeVar("T")
 
 
 Proxify = Callable[[T], T]
+
+
+try:
+    from dask.dataframe import dask_expr
+
+except ImportError:
+    # TODO: Remove when pinned to dask>2024.12.1
+    import dask_expr
+
+    if not dd._dask_expr_enabled():
+        raise ValueError(
+            "The legacy DataFrame API is not supported in dask_cudf>24.12. "
+            "Please enable query-planning, or downgrade to dask_cudf<=24.12"
+        )
 
 
 def get_proxify(worker: Worker) -> Proxify:
@@ -576,7 +590,6 @@ def patch_shuffle_expression() -> None:
     an `ECShuffle` expression when the 'explicit-comms'
     config is set to `True`.
     """
-    import dask_expr
 
     class ECShuffle(dask_expr._shuffle.TaskShuffle):
         """Explicit-Comms Shuffle Expression."""
@@ -585,7 +598,7 @@ def patch_shuffle_expression() -> None:
             # Execute an explicit-comms shuffle
             if not hasattr(self, "_ec_shuffled"):
                 on = self.partitioning_index
-                df = dask_expr._collection.new_collection(self.frame)
+                df = dask_expr.new_collection(self.frame)
                 self._ec_shuffled = shuffle(
                     df,
                     [on] if isinstance(on, str) else on,
