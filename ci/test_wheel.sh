@@ -14,6 +14,6 @@ rapids-dependency-file-generator \
 
 rapids-logger "Installing test dependencies"
 # echo to expand wildcard
-python -m pip install -v --prefer-binary -r /tmp/requirements-test.txt $(echo ./dist/dask_cuda*.whl)
+python -m pip install -v --prefer-binary -r /tmp/requirements-test.txt "$(echo ./dist/dask_cuda*.whl)"
 
 python -m pytest ./dask_cuda/tests -k "not ucxx"

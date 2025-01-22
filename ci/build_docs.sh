@@ -25,7 +25,8 @@ rapids-mamba-retry install \
     --channel "${PYTHON_CHANNEL}" \
     "dask-cuda=${RAPIDS_VERSION}"
 
-export RAPIDS_DOCS_DIR="$(mktemp -d)"
+RAPIDS_DOCS_DIR="$(mktemp -d)"
+export RAPIDS_DOCS_DIR
 
 rapids-logger "Build Python docs"
 pushd docs
