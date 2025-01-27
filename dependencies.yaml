@@ -165,7 +165,6 @@ dependencies:
           - distributed-ucxx==0.43.*,>=0.0.0a0
           - &kvikio_unsuffixed kvikio==25.4.*,>=0.0.0a0
           - &ucx_py_unsuffixed ucx-py==0.43.*,>=0.0.0a0
-          - ucx-proc=*=gpu
           - ucxx==0.43.*,>=0.0.0a0
     specific:
       - output_types: conda

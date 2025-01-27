@@ -30,7 +30,6 @@ dependencies:
 - sphinx
 - sphinx-click>=2.7.1
 - sphinx-rtd-theme>=0.5.1
-- ucx-proc=*=gpu
 - ucx-py==0.43.*,>=0.0.0a0
 - ucxx==0.43.*,>=0.0.0a0
 - zict>=2.0.0
