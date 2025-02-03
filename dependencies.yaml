@@ -162,6 +162,7 @@ dependencies:
         packages:
           - pytest
           - pytest-cov
+          - pytest-timeout
       - output_types: [conda]
         packages:
           - &cudf_unsuffixed cudf==25.4.*,>=0.0.0a0
