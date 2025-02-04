@@ -7,7 +7,6 @@ set -euo pipefail
 cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../dask_cuda
 
 rapids-logger "pytest dask-cuda"
-pushd dask_cuda
 DASK_CUDA_TEST_SINGLE_GPU=1 \
   DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
   UCXPY_IFNAME=eth0 \
@@ -20,4 +19,3 @@ DASK_CUDA_TEST_SINGLE_GPU=1 \
   "$@" \
   -k "not ucxx" \
   tests
-popd
