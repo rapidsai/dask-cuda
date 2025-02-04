@@ -3,7 +3,7 @@ files:
   all:
     output: conda
     matrix:
-      cuda: ["11.4", "11.8", "12.5"]
+      cuda: ["11.4", "11.8", "12.8"]
       arch: [x86_64]
     includes:
       - build_python
@@ -96,6 +96,10 @@ dependencies:
               cuda: "12.5"
             packages:
               - cuda-version=12.5
+          - matrix:
+              cuda: "12.8"
+            packages:
+              - cuda-version=12.8
   cuda:
     specific:
       - output_types: conda
@@ -165,7 +169,6 @@ dependencies:
           - distributed-ucxx==0.42.*,>=0.0.0a0
           - &kvikio_unsuffixed kvikio==25.2.*,>=0.0.0a0
           - &ucx_py_unsuffixed ucx-py==0.42.*,>=0.0.0a0
-          - ucx-proc=*=gpu
           - ucxx==0.42.*,>=0.0.0a0
     specific:
       - output_types: conda
