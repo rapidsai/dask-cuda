@@ -45,6 +45,7 @@ set_exit_code() {
 trap set_exit_code ERR
 set +e
 
+rapids-logger "pytest dask-cuda"
 ./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
   --cov-config=../pyproject.toml \
@@ -52,6 +53,7 @@ set +e
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term
 
+rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh
 
 rapids-logger "Test script exiting with latest error code: $EXITCODE"

@@ -6,7 +6,6 @@ set -euo pipefail
 # Support invoking run_benchmarks.sh outside the script directory
 cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../dask_cuda
 
-rapids-logger "Run local benchmark"
 python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
