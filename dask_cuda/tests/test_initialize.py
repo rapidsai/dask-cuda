@@ -217,25 +217,36 @@ def test_initialize_ucx_all(protocol):
     assert not p.exitcode
 
 
-def _test_dask_cuda_import(monkeypatch):
+def _test_dask_cuda_import():
     # Check that importing `dask_cuda` does NOT
     # require `dask.dataframe` or `dask.array`.
 
     # Patch sys.modules so that `dask.dataframe`
     # and `dask.array` cannot be found.
-    for k in list(sys.modules):
-        if k.startswith("dask.dataframe") or k.startswith("dask.array"):
-            monkeypatch.setitem(sys.modules, k, None)
-    monkeypatch.delitem(sys.modules, "dask_cuda")
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        for k in list(sys.modules):
+            if k.startswith("dask.dataframe") or k.startswith("dask.array"):
+                monkeypatch.setitem(sys.modules, k, None)
+        monkeypatch.delitem(sys.modules, "dask_cuda")
 
-    # Check that top-level imports still succeed.
-    import dask_cuda  # noqa: F401
-    from dask_cuda import CUDAWorker  # noqa: F401
-    from dask_cuda import LocalCUDACluster  # noqa: F401
+        # Check that top-level imports still succeed.
+        import dask_cuda  # noqa: F401
+        from dask_cuda import CUDAWorker  # noqa: F401
+        from dask_cuda import LocalCUDACluster
+
+        with LocalCUDACluster(
+            dashboard_address=None,
+            n_workers=1,
+            threads_per_worker=1,
+            processes=True,
+            worker_class=IncreasedCloseTimeoutNanny,
+        ) as cluster:
+            with Client(cluster) as client:
+                client.run(lambda *args: None)
 
 
-def test_dask_cuda_import(monkeypatch):
-    p = mp.Process(target=_test_dask_cuda_import, args=(monkeypatch,))
+def test_dask_cuda_import():
+    p = mp.Process(target=_test_dask_cuda_import)
     p.start()
     p.join()
     assert not p.exitcode
