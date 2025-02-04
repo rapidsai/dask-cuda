@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import sys
 
 import numpy
 import psutil
@@ -211,6 +212,30 @@ def test_initialize_ucx_all(protocol):
         pytest.importorskip("ucxx")
 
     p = mp.Process(target=_test_initialize_ucx_all, args=(protocol,))
+    p.start()
+    p.join()
+    assert not p.exitcode
+
+
+def _test_dask_cuda_import(monkeypatch):
+    # Check that importing `dask_cuda` does NOT
+    # require `dask.dataframe` or `dask.array`.
+
+    # Patch sys.modules so that `dask.dataframe`
+    # and `dask.array` cannot be found.
+    for k in list(sys.modules):
+        if k.startswith("dask.dataframe") or k.startswith("dask.array"):
+            monkeypatch.setitem(sys.modules, k, None)
+    monkeypatch.delitem(sys.modules, "dask_cuda")
+
+    # Check that top-level imports still succeed.
+    import dask_cuda  # noqa: F401
+    from dask_cuda import CUDAWorker  # noqa: F401
+    from dask_cuda import LocalCUDACluster  # noqa: F401
+
+
+def test_dask_cuda_import(monkeypatch):
+    p = mp.Process(target=_test_dask_cuda_import, args=(monkeypatch,))
     p.start()
     p.join()
     assert not p.exitcode
