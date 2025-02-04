@@ -39,91 +39,20 @@ nvidia-smi
 EXITCODE=0
 # shellcheck disable=SC2317
 set_exit_code() {
-    EXITCODE=$?
-    rapids-logger "Test failed with error ${EXITCODE}"
+  EXITCODE=$?
+  rapids-logger "Test failed with error ${EXITCODE}"
 }
 trap set_exit_code ERR
 set +e
 
-rapids-logger "pytest dask-cuda"
-pushd dask_cuda
-DASK_CUDA_TEST_SINGLE_GPU=1 \
-DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT=20 \
-UCXPY_IFNAME=eth0 \
-UCX_WARN_UNUSED_ENV_VARS=n \
-UCX_MEMTYPE_CACHE=n \
-timeout 90m pytest \
-  -vv \
-  --durations=50 \
-  --capture=no \
-  --cache-clear \
+./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
   --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
-  --cov-report=term \
-  tests -k "not ucxx"
-popd
+  --cov-report=term
 
-rapids-logger "Run local benchmark"
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend dask
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --disable-rmm \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --disable-rmm-pool \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --rmm-maximum-pool-size 4GiB \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --rmm-maximum-pool-size 4GiB \
-  --enable-rmm-async \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
-
-python dask_cuda/benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --rmm-maximum-pool-size 4GiB \
-  --enable-rmm-managed \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms
+./ci/run_benchmarks.sh
 
 rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}
