@@ -16,4 +16,9 @@ rapids-logger "Installing test dependencies"
 # echo to expand wildcard
 python -m pip install -v --prefer-binary -r /tmp/requirements-test.txt "$(echo ./dist/dask_cuda*.whl)"
 
-python -m pytest ./dask_cuda/tests -k "not ucxx"
+rapids-logger "pytest dask-cuda"
+./ci/run_pytest.sh \
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml"
+
+rapids-logger "Run local benchmark"
+./ci/run_benchmarks.sh
