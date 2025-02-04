@@ -11,10 +11,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Tuple, Type, Un
 import pandas
 
 import dask
-import dask.array.core
-import dask.dataframe.backends
-import dask.dataframe.dispatch
-import dask.dataframe.utils
 import dask.utils
 import distributed.protocol
 import distributed.utils
@@ -28,6 +24,22 @@ from .is_device_object import is_device_object
 
 if TYPE_CHECKING:
     from .proxify_host_file import ProxyManager
+
+
+try:
+    import dask.dataframe as dask_dataframe
+    import dask.dataframe.backends
+    import dask.dataframe.dispatch
+    import dask.dataframe.utils
+except ImportError:
+    dask_dataframe = None
+
+
+try:
+    import dask.array as dask_array
+    import dask.array.core
+except ImportError:
+    dask_array = None
 
 
 # List of attributes that should be copied to the proxy at creation, which makes
@@ -884,14 +896,6 @@ def obj_pxy_dask_deserialize(header, frames):
     return subclass(pxy)
 
 
-@dask.dataframe.dispatch.get_parallel_type.register(ProxyObject)
-def get_parallel_type_proxy_object(obj: ProxyObject):
-    # Notice, `get_parallel_type()` needs a instance not a type object
-    return dask.dataframe.dispatch.get_parallel_type(
-        obj.__class__.__new__(obj.__class__)
-    )
-
-
 def unproxify_input_wrapper(func):
     """Unproxify the input of `func`"""
 
@@ -904,26 +908,42 @@ def unproxify_input_wrapper(func):
     return wrapper
 
 
-# Register dispatch of ProxyObject on all known dispatch objects
-for dispatch in (
-    dask.dataframe.dispatch.hash_object_dispatch,
-    dask.dataframe.dispatch.make_meta_dispatch,
-    dask.dataframe.utils.make_scalar,
-    dask.dataframe.dispatch.group_split_dispatch,
-    dask.array.core.tensordot_lookup,
-    dask.array.core.einsum_lookup,
-    dask.array.core.concatenate_lookup,
-):
-    dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
+if dask_array is not None:
 
-dask.dataframe.dispatch.concat_dispatch.register(
-    ProxyObject, unproxify_input_wrapper(dask.dataframe.dispatch.concat)
-)
+    # Register dispatch of ProxyObject on all known dispatch objects
+    for dispatch in (
+        dask.array.core.tensordot_lookup,
+        dask.array.core.einsum_lookup,
+        dask.array.core.concatenate_lookup,
+    ):
+        dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
 
 
-# We overwrite the Dask dispatch of Pandas objects in order to
-# deserialize all ProxyObjects before concatenating
-dask.dataframe.dispatch.concat_dispatch.register(
-    (pandas.DataFrame, pandas.Series, pandas.Index),
-    unproxify_input_wrapper(dask.dataframe.backends.concat_pandas),
-)
+if dask_dataframe is not None:
+
+    @dask.dataframe.dispatch.get_parallel_type.register(ProxyObject)
+    def get_parallel_type_proxy_object(obj: ProxyObject):
+        # Notice, `get_parallel_type()` needs a instance not a type object
+        return dask.dataframe.dispatch.get_parallel_type(
+            obj.__class__.__new__(obj.__class__)
+        )
+
+    # Register dispatch of ProxyObject on all known dispatch objects
+    for dispatch in (
+        dask.dataframe.dispatch.hash_object_dispatch,
+        dask.dataframe.dispatch.make_meta_dispatch,
+        dask.dataframe.utils.make_scalar,
+        dask.dataframe.dispatch.group_split_dispatch,
+    ):
+        dispatch.register(ProxyObject, unproxify_input_wrapper(dispatch))
+
+    dask.dataframe.dispatch.concat_dispatch.register(
+        ProxyObject, unproxify_input_wrapper(dask.dataframe.dispatch.concat)
+    )
+
+    # We overwrite the Dask dispatch of Pandas objects in order to
+    # deserialize all ProxyObjects before concatenating
+    dask.dataframe.dispatch.concat_dispatch.register(
+        (pandas.DataFrame, pandas.Series, pandas.Index),
+        unproxify_input_wrapper(dask.dataframe.backends.concat_pandas),
+    )
