@@ -15,7 +15,6 @@ from .local_cuda_cluster import LocalCUDACluster
 
 
 try:
-    import lasdfbg
     import dask.dataframe as dask_dataframe
 except ImportError:
     # Dask DataFrame (optional) isn't installed
