@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2023, NVIDIA CORPORATION.
+# Copyright (c) 2019-2025, NVIDIA CORPORATION.
 
 # Usage:
 #   conda build -c conda-forge .
@@ -50,7 +50,7 @@ test:
 
 about:
   home: {{ data["project"]["urls"]["Homepage"] }}
-  license: {{ data["project"]["license"]["text"] }}
+  license: {{ data["project"]["license"] }}
   license_file:
     {% for e in data["tool"]["setuptools"]["license-files"] %}
     - ../../../{{ e }}
