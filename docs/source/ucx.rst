@@ -131,3 +131,13 @@ therefore do something like the following:
    ``UCX_IB_FORK_INIT=n``. UCX will produce a warning ``UCX  WARN  IB:
    ibv_fork_init() was disabled or failed, yet a fork() has been
    issued.`` if the application calls ``fork()``.
+
+Troubleshooting
+---------------
+
+Timeouts
+~~~~~~~~
+
+Depending on the cluster size and GPU architecture timeouts may occur when establishing endpoints between Dask workers. For those cases it is possible to increase the default timeout via the ``distributed.comm.ucx.connect-timeout`` configuration, or the respective ``DASK_DISTRIBUTED__COMM__UCX__CONNECT_TIMEOUT`` environment variable. The value represents the timeout in seconds.
+
+Note that the timeout is designed to prevent workers from hanging indefinitely if something goes wrong, so increasing the timeout to a value that is too high may cause workers to seemingly freeze. Therefore, make sure to increase this value with caution and keeping it to reasonably short amounts of time. As of now, no cases have been observed where increasing this value to 60 seconds didn't suffice.

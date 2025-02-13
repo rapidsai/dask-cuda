@@ -1,3 +1,39 @@
+# dask-cuda 25.02.00 (13 Feb 2025)
+
+## 🚨 Breaking Changes
+
+- Remove legacy Dask-cuDF handling ([#1417](https://github.com/rapidsai/dask-cuda/pull/1417)) [@rjzamora](https://github.com/rjzamora)
+
+## 🐛 Bug Fixes
+
+- Reorganize CI tests and benchmarks ([#1440](https://github.com/rapidsai/dask-cuda/pull/1440)) [@pentschev](https://github.com/pentschev)
+- Clean up imports for `dask&gt;2024.12.1` support ([#1424](https://github.com/rapidsai/dask-cuda/pull/1424)) [@rjzamora](https://github.com/rjzamora)
+- Add warnings and docs for affinity set failure ([#1420](https://github.com/rapidsai/dask-cuda/pull/1420)) [@pentschev](https://github.com/pentschev)
+- Add missing `setuptools` to conda recipe ([#1418](https://github.com/rapidsai/dask-cuda/pull/1418)) [@pentschev](https://github.com/pentschev)
+
+## 📖 Documentation
+
+- Introduce UCX connect timeouts in docs ([#1428](https://github.com/rapidsai/dask-cuda/pull/1428)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Remove legacy Dask-cuDF handling ([#1417](https://github.com/rapidsai/dask-cuda/pull/1417)) [@rjzamora](https://github.com/rjzamora)
+
+## 🛠️ Improvements
+
+- Revert CUDA 12.8 shared workflow branch changes ([#1436](https://github.com/rapidsai/dask-cuda/pull/1436)) [@vyasr](https://github.com/vyasr)
+- Build and test with CUDA 12.8.0 ([#1432](https://github.com/rapidsai/dask-cuda/pull/1432)) [@bdice](https://github.com/bdice)
+- remove ucx-proc dependency ([#1429](https://github.com/rapidsai/dask-cuda/pull/1429)) [@jameslamb](https://github.com/jameslamb)
+- Add shellcheck to pre-commit and fix warnings ([#1427](https://github.com/rapidsai/dask-cuda/pull/1427)) [@gforsyth](https://github.com/gforsyth)
+- Add upper bound to prevent usage of numba 0.61.0 ([#1426](https://github.com/rapidsai/dask-cuda/pull/1426)) [@galipremsagar](https://github.com/galipremsagar)
+- Template Conda recipe&#39;s `requirements/host` ([#1425](https://github.com/rapidsai/dask-cuda/pull/1425)) [@jakirkham](https://github.com/jakirkham)
+- Always test `pynvml` ([#1421](https://github.com/rapidsai/dask-cuda/pull/1421)) [@pentschev](https://github.com/pentschev)
+- Use PyNVML 12 ([#1419](https://github.com/rapidsai/dask-cuda/pull/1419)) [@jakirkham](https://github.com/jakirkham)
+- Add wheel tests to CI ([#1416](https://github.com/rapidsai/dask-cuda/pull/1416)) [@gforsyth](https://github.com/gforsyth)
+- Update version references in workflow ([#1413](https://github.com/rapidsai/dask-cuda/pull/1413)) [@AyodeAwe](https://github.com/AyodeAwe)
+- Require approval to run CI on draft PRs ([#1412](https://github.com/rapidsai/dask-cuda/pull/1412)) [@bdice](https://github.com/bdice)
+- Add breaking change workflow trigger ([#1403](https://github.com/rapidsai/dask-cuda/pull/1403)) [@AyodeAwe](https://github.com/AyodeAwe)
+
 # dask-cuda 24.12.00 (11 Dec 2024)
 
 ## 🚨 Breaking Changes

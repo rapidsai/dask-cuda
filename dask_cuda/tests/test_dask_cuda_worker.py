@@ -320,6 +320,7 @@ def test_unknown_argument():
     assert b"Scheduler address: --my-argument" in ret.stderr
 
 
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1441")
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_pre_import(loop):  # noqa: F811
     module = None
