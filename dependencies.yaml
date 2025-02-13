@@ -21,6 +21,7 @@ files:
       - cuda_version
       - py_version
       - test_python
+      - depends_on_dask_cuda
   checks:
     output: none
     includes:
@@ -206,3 +207,8 @@ dependencies:
               - *dask_cudf_unsuffixed
               - *kvikio_unsuffixed
               - *ucx_py_unsuffixed
+  depends_on_dask_cuda:
+    common:
+      - output_types: conda
+        packages:
+          - dask-cuda==25.4.*,>=0.0.0a0
