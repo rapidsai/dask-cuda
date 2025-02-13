@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020, NVIDIA CORPORATION.
+# Copyright (c) 2020-2025, NVIDIA CORPORATION.
 ################################################################################
 # dask-cuda version updater
 ################################################################################
@@ -37,6 +37,7 @@ sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.y
 
 DEPENDENCIES=(
   cudf
+  dask-cuda
   dask-cudf
   kvikio
   rapids-dask-dependency
