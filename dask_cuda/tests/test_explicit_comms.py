@@ -1,3 +1,5 @@
+# Copyright (c) 2021-2025 NVIDIA CORPORATION.
+
 import asyncio
 import multiprocessing as mp
 import os
@@ -415,3 +417,79 @@ def test_lock_workers():
             p.join()
 
         assert all(p.exitcode == 0 for p in ps)
+
+
+def test_create_destroy_create():
+    # https://github.com/rapidsai/dask-cuda/issues/1450
+    assert len(comms._comms_cache) == 0
+    with LocalCluster(n_workers=1) as cluster:
+        with Client(cluster) as client:
+            context = comms.default_comms()
+            scheduler_addresses_old = list(client.scheduler_info()["workers"].keys())
+            comms_addresses_old = list(comms.default_comms().worker_addresses)
+            assert comms.default_comms() is context
+            assert len(comms._comms_cache) == 1
+
+            # Add a worker, which should have a new comms object
+            cluster.scale(2)
+            client.wait_for_workers(2)
+            context2 = comms.default_comms()
+            assert context is not context2
+            assert len(comms._comms_cache) == 2
+
+    del context
+    del context2
+    assert len(comms._comms_cache) == 0
+    assert scheduler_addresses_old == comms_addresses_old
+
+    # A new cluster should have a new comms object. Previously, this failed
+    # because we referenced the old cluster's addresses.
+    with LocalCluster(n_workers=1) as cluster:
+        with Client(cluster) as client:
+            scheduler_addresses_new = list(client.scheduler_info()["workers"].keys())
+            comms_addresses_new = list(comms.default_comms().worker_addresses)
+
+    assert scheduler_addresses_new == comms_addresses_new
+
+
+def test_update():
+    cluster = LocalCluster(n_workers=2)
+    client = cluster.get_client()
+    context_1 = comms.default_comms()
+
+    def check(dask_worker, session_id: int):
+        has_state = hasattr(dask_worker, "_explicit_comm_state")
+        has_state_for_session = (
+            has_state and session_id in dask_worker._explicit_comm_state
+        )
+        if has_state_for_session:
+            n_workers = dask_worker._explicit_comm_state[session_id]["nworkers"]
+        else:
+            n_workers = None
+        return {
+            "has_state": has_state,
+            "has_state_for_session": has_state_for_session,
+            "n_workers": n_workers,
+        }
+
+    result_1 = client.run(check, session_id=context_1.sessionId)
+    expected_values = {
+        "has_state": True,
+        "has_state_for_session": True,
+        "n_workers": 2,
+    }
+    expected_1 = {k: expected_values for k in client.scheduler_info()["workers"]}
+    assert result_1 == expected_1
+
+    cluster.scale(3)
+    client.wait_for_workers(3, timeout=5)
+
+    context_2 = comms.default_comms()
+    result_2 = client.run(check, session_id=context_2.sessionId)
+    expected_values = {
+        "has_state": True,
+        "has_state_for_session": True,
+        "n_workers": 3,
+    }
+    expected_2 = {k: expected_values for k in client.scheduler_info()["workers"]}
+    assert result_2 == expected_2

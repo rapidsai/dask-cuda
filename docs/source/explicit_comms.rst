@@ -2,7 +2,7 @@ Explicit-comms
 ==============
 
 Communication and scheduling overhead can be a major bottleneck in Dask/Distributed. Dask-CUDA addresses this by introducing an API for explicit communication in Dask tasks.
-The idea is that Dask/Distributed spawns workers and distribute data as usually while the user can submit tasks on the workers that communicate explicitly.
+The idea is that Dask/Distributed spawns workers and distribute data as usual while the user can submit tasks on the workers that communicate explicitly.
 
 This makes it possible to bypass Distributed's scheduler and write hand-tuned computation and communication patterns. Currently, Dask-CUDA includes an explicit-comms
 implementation of the Dataframe `shuffle <../api/#dask_cuda.explicit_comms.dataframe.shuffle.shuffle>`_ operation used for merging and sorting.
