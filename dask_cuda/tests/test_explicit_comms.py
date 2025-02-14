@@ -453,43 +453,48 @@ def test_create_destroy_create():
 
 
 def test_update():
-    cluster = LocalCluster(n_workers=2)
-    client = cluster.get_client()
-    context_1 = comms.default_comms()
+    # https://github.com/rapidsai/dask-cuda/issues/1450
+    with LocalCluster(n_workers=2) as cluster:
+        with Client(cluster) as client:
+            context_1 = comms.default_comms()
 
-    def check(dask_worker, session_id: int):
-        has_state = hasattr(dask_worker, "_explicit_comm_state")
-        has_state_for_session = (
-            has_state and session_id in dask_worker._explicit_comm_state
-        )
-        if has_state_for_session:
-            n_workers = dask_worker._explicit_comm_state[session_id]["nworkers"]
-        else:
-            n_workers = None
-        return {
-            "has_state": has_state,
-            "has_state_for_session": has_state_for_session,
-            "n_workers": n_workers,
-        }
+            def check(dask_worker, session_id: int):
+                has_state = hasattr(dask_worker, "_explicit_comm_state")
+                has_state_for_session = (
+                    has_state and session_id in dask_worker._explicit_comm_state
+                )
+                if has_state_for_session:
+                    n_workers = dask_worker._explicit_comm_state[session_id]["nworkers"]
+                else:
+                    n_workers = None
+                return {
+                    "has_state": has_state,
+                    "has_state_for_session": has_state_for_session,
+                    "n_workers": n_workers,
+                }
 
-    result_1 = client.run(check, session_id=context_1.sessionId)
-    expected_values = {
-        "has_state": True,
-        "has_state_for_session": True,
-        "n_workers": 2,
-    }
-    expected_1 = {k: expected_values for k in client.scheduler_info()["workers"]}
-    assert result_1 == expected_1
+            result_1 = client.run(check, session_id=context_1.sessionId)
+            expected_values = {
+                "has_state": True,
+                "has_state_for_session": True,
+                "n_workers": 2,
+            }
+            expected_1 = {
+                k: expected_values for k in client.scheduler_info()["workers"]
+            }
+            assert result_1 == expected_1
 
-    cluster.scale(3)
-    client.wait_for_workers(3, timeout=5)
+            cluster.scale(3)
+            client.wait_for_workers(3, timeout=5)
 
-    context_2 = comms.default_comms()
-    result_2 = client.run(check, session_id=context_2.sessionId)
-    expected_values = {
-        "has_state": True,
-        "has_state_for_session": True,
-        "n_workers": 3,
-    }
-    expected_2 = {k: expected_values for k in client.scheduler_info()["workers"]}
-    assert result_2 == expected_2
+            context_2 = comms.default_comms()
+            result_2 = client.run(check, session_id=context_2.sessionId)
+            expected_values = {
+                "has_state": True,
+                "has_state_for_session": True,
+                "n_workers": 3,
+            }
+            expected_2 = {
+                k: expected_values for k in client.scheduler_info()["workers"]
+            }
+            assert result_2 == expected_2
