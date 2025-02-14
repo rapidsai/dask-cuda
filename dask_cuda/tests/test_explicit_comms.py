@@ -432,7 +432,7 @@ def test_create_destroy_create():
 
             # Add a worker, which should have a new comms object
             cluster.scale(2)
-            client.wait_for_workers(2)
+            client.wait_for_workers(2, timeout=5)
             context2 = comms.default_comms()
             assert context is not context2
             assert len(comms._comms_cache) == 2
@@ -452,8 +452,15 @@ def test_create_destroy_create():
     assert scheduler_addresses_new == comms_addresses_new
 
 
-def test_update():
+def test_scaled_cluster_gets_new_comms_context():
+    # Ensure that if we create a CommsContext, scale the cluster,
+    # and create a new CommsContext, then the new CommsContext
+    # should include the new worker.
     # https://github.com/rapidsai/dask-cuda/issues/1450
+
+    name = "explicit-comms-shuffle"
+    ddf = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
+
     with LocalCluster(n_workers=2) as cluster:
         with Client(cluster) as client:
             context_1 = comms.default_comms()
@@ -484,6 +491,19 @@ def test_update():
             }
             assert result_1 == expected_1
 
+            # Run a shuffle with the initial setup as a sanity test
+            with dask.config.set(explicit_comms=True):
+                shuffled = ddf.shuffle(on="key", npartitions=4)
+                assert any(name in str(key) for key in shuffled.dask)
+                result = shuffled.compute()
+
+            with dask.config.set(explicit_comms=False):
+                shuffled = ddf.shuffle(on="key", npartitions=4)
+                expected = shuffled.compute()
+
+            assert_eq(result, expected)
+
+            # --- Scale the cluster ---
             cluster.scale(3)
             client.wait_for_workers(3, timeout=5)
 
@@ -498,3 +518,15 @@ def test_update():
                 k: expected_values for k in client.scheduler_info()["workers"]
             }
             assert result_2 == expected_2
+
+            # Run a shuffle with the new setup
+            with dask.config.set(explicit_comms=True):
+                shuffled = ddf.shuffle(on="key", npartitions=4)
+                assert any(name in str(key) for key in shuffled.dask)
+                result = shuffled.compute()
+
+            with dask.config.set(explicit_comms=False):
+                shuffled = ddf.shuffle(on="key", npartitions=4)
+                expected = shuffled.compute()
+
+            assert_eq(result, expected)
