@@ -1,2 +1,3 @@
+include dask_cuda/GIT_COMMIT
 include dask_cuda/_version.py
 include dask_cuda/VERSION
