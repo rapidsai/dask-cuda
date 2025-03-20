@@ -69,6 +69,9 @@ jobs:
       # Package is pure Python and only ever requires one build.
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
       matrix_filter: map(select(.ARCH == "amd64")) | max_by([(.PY_VER|split(".")|map(tonumber)), (.CUDA_VER|split(".")|map(tonumber))]) | [.]
+      package-type: python
+      wheel-name: dask-cuda
+      pure-wheel: true
   wheel-publish:
     needs: wheel-build
     secrets: inherit
