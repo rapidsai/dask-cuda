@@ -8,6 +8,8 @@ rapids-configure-conda-channels
 # Setting channel priority per-repo until all RAPIDS can build using strict channel priority
 # This will be replaced when we port this recipe to `rattler-build`
 conda config --set channel_priority strict
+# `rapids-configure-conda-channels` should only insert `rapidsai` channel into release builds
+conda config --remove channels rapidsai
 
 source rapids-date-string
 
