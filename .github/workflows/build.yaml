@@ -72,6 +72,7 @@ jobs:
       package-type: python
       wheel-name: dask-cuda
       pure-wheel: true
+      append-cuda-suffix: false
   wheel-publish:
     needs: wheel-build
     secrets: inherit
