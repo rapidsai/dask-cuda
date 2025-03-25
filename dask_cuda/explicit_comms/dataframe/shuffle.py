@@ -1,3 +1,5 @@
+# Copyright (c) 2021-2025 NVIDIA CORPORATION.
+
 from __future__ import annotations
 
 import asyncio
@@ -599,12 +601,13 @@ def patch_shuffle_expression() -> None:
             if not hasattr(self, "_ec_shuffled"):
                 on = self.partitioning_index
                 df = dask_expr.new_collection(self.frame)
-                self._ec_shuffled = shuffle(
+                ec_shuffled = shuffle(
                     df,
                     [on] if isinstance(on, str) else on,
                     self.npartitions_out,
                     self.ignore_index,
                 )
+                object.__setattr__(self, "_ec_shuffled", ec_shuffled)
             graph = self._ec_shuffled.dask.copy()
             shuffled_name = self._ec_shuffled._name
             for i in range(self.npartitions_out):
