@@ -6,7 +6,11 @@ set -euo pipefail
 . /opt/conda/etc/profile.d/conda.sh
 
 rapids-logger "Downloading artifacts from previous jobs"
-PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
+
+# rapids-download-conda-from-s3 doesn't have handling for noarch packages
+# these are uncommon enough for RAPIDS that we handle this one as a special case
+PYTHON_CHANNEL="/tmp/python_channel"
+rapids-download-from-s3 "dask-cuda_conda_python_noarch.tar.gz" "${PYTHON_CHANNEL}"
 
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
