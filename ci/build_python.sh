@@ -14,7 +14,7 @@ export RAPIDS_PACKAGE_VERSION
 # populates `RATTLER_CHANNELS` array
 source rapids-rattler-channel-string
 
-rapids-logger "Building cuxfilter"
+rapids-logger "Building dask-cuda"
 
 rattler-build build --recipe conda/recipes/dask-cuda \
                     --experimental \
