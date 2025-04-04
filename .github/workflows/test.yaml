@@ -29,7 +29,7 @@ jobs:
     if: inputs.build_type == 'nightly'
     steps:
       - name: Checkout code repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ inputs.sha }}
           fetch-depth: 0 # unshallow fetch for setuptools-scm
