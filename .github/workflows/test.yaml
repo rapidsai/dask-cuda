@@ -26,17 +26,23 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
   ucxx-python-tests:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@branch-25.06
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-      script: ci/test_python.sh
-      env:
-        GHA_DASK_UCXX_ONLY: true
-    continue-on-error: true
+    if: inputs.build_type == 'nightly'
+    steps:
+      - name: Checkout code repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0 # unshallow fetch for setuptools-scm
+          persist-credentials: false
+      - name: Test Dask-CUDA with UCXX
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run test_ucxx.yaml \
+            -f branch=${{ inputs.branch }} \
+            -f sha=${{ inputs.sha }} \
+            -f date=${{ inputs.date }} \
+            -f build_type=${{ inputs.build_type }}
   wheel-tests:
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@branch-25.06

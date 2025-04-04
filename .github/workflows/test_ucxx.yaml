@@ -1,0 +1,27 @@
+name: Test Dask-CUDA with UCXX
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        type: string
+      date:
+        type: string
+      sha:
+        type: string
+      build_type:
+        type: string
+
+jobs:
+  ucxx-python-tests:
+    secrets: inherit
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@branch-25.06
+    with:
+      build_type: ${{ inputs.build_type }}
+      branch: ${{ inputs.branch }}
+      date: ${{ inputs.date }}
+      sha: ${{ inputs.sha }}
+      script: ci/test_python.sh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GHA_DASK_UCXX_ONLY: true
