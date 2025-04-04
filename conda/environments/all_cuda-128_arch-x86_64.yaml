@@ -15,6 +15,7 @@ dependencies:
 - dask-cudf==25.6.*,>=0.0.0a0
 - distributed-ucxx==0.44.*,>=0.0.0a0
 - kvikio==25.6.*,>=0.0.0a0
+- libxml2<2.14
 - numactl-devel-cos7-x86_64
 - numba>=0.59.1,<0.61.0a0
 - numpy>=1.23,<3.0a0
