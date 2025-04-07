@@ -602,7 +602,11 @@ def _contains_shuffle_expr(*args) -> bool:
         if isinstance(collection, dask.dataframe.DataFrame):
             shuffle_ops = list(
                 collection.expr.find_operations(
-                    (dask_expr._shuffle.RearrangeByColumn, dask_expr.SetIndex)
+                    (
+                        dask_expr._shuffle.RearrangeByColumn,
+                        dask_expr.SetIndex,
+                        dask_expr._shuffle.Shuffle,
+                    )
                 )
             )
             if len(shuffle_ops) > 0:
