@@ -26,6 +26,4 @@ rattler-build build --recipe conda/recipes/dask-cuda \
 # tracked in https://github.com/prefix-dev/rattler-build/issues/1424
 rm -rf "$RAPIDS_CONDA_BLD_OUTPUT_DIR"/build_cache
 
-# rapids-upload-conda-to-s3 doesn't have handling for noarch packages
-# these are uncommon enough for RAPIDS that we handle this one as a special case
-rapids-upload-to-s3 "dask-cuda_conda_python_noarch.tar.gz" "${RAPIDS_CONDA_BLD_OUTPUT_DIR}"
+rapids-upload-conda-to-s3 python
