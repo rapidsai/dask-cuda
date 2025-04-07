@@ -31,11 +31,6 @@ mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
 
 
-# Set default shuffle method to "tasks"
-if dask.config.get("dataframe.shuffle.method", None) is None:
-    dask.config.set({"dataframe.shuffle.method": "tasks"})
-
-
 # Notice, all of the following tests is executed in a new process such
 # that UCX options of the different tests doesn't conflict.
 
