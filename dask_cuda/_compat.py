@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 NVIDIA CORPORATION.
+# Copyright (c) 2025 NVIDIA CORPORATION.
 
 import functools
 import importlib.metadata
