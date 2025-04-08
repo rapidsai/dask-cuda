@@ -531,7 +531,6 @@ def test_scaled_cluster_gets_new_comms_context():
 
 
 def test_contains_shuffle_expr():
-    # a regular
     df = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
     assert not _contains_shuffle_expr(
         df,
