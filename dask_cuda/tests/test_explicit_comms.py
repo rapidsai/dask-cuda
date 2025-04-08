@@ -532,24 +532,16 @@ def test_scaled_cluster_gets_new_comms_context():
 
 def test_contains_shuffle_expr():
     df = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
-    assert not _contains_shuffle_expr(
-        df,
-    )
+    assert not _contains_shuffle_expr(df)
 
     with dask.config.set(explicit_comms=True):
         shuffled = df.shuffle(on="key")
 
-        assert _contains_shuffle_expr(
-            shuffled,
-        )
-        assert not _contains_shuffle_expr(
-            df,
-        )
+        assert _contains_shuffle_expr(shuffled)
+        assert not _contains_shuffle_expr(df)
 
         # this requires an active client.
         with LocalCluster(n_workers=1) as cluster:
             with Client(cluster):
                 explict_shuffled = explicit_comms_shuffle(df, ["key"])
-                assert not _contains_shuffle_expr(
-                    explict_shuffled,
-                )
+                assert not _contains_shuffle_expr(explict_shuffled)
