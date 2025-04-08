@@ -34,7 +34,7 @@ requirements:
     - rapids-build-backend >=0.3.0,<0.4.0dev0
     - setuptools >=64.0.0
   run:
-    - python
+    - python ${{ load_from_file("pyproject.toml").project.requires-python }}
     - click >=8.1
     - numba >=0.59.1,<0.61.0a0
     - numpy >=1.23,<3.0a0
