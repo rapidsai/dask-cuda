@@ -1,15 +1,21 @@
+# Copyright (c) 2021-2025 NVIDIA CORPORATION.
 import asyncio
 import concurrent.futures
 import contextlib
 import time
 import uuid
+import weakref
 from typing import Any, Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
+from dask.tokenize import tokenize
 from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
-_default_comms = None
+# Mapping tokenize(client ID, [worker addresses]) to CommsContext
+_comms_cache: weakref.WeakValueDictionary[
+    str, "CommsContext"
+] = weakref.WeakValueDictionary()
 
 
 def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
@@ -38,9 +44,10 @@ def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
 
 
 def default_comms(client: Optional[Client] = None) -> "CommsContext":
-    """Return the default comms object
+    """Return the default comms object for ``client``.
 
-    Creates a new default comms object if no one exist.
+    Creates a new default comms object if one does not already exist
+    for ``client``.
 
     Parameters
     ----------
@@ -52,11 +59,31 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     -------
     comms: CommsContext
         The default comms object
+
+    Notes
+    -----
+    There are some subtle points around explicit-comms and the lifecycle
+    of a Dask Cluster.
+
+    A :class:`CommsContext` establishes explicit communication channels
+    between the workers *at the time it's created*. If workers are added
+    or removed, they will not be included in the communication channels
+    with the other workers.
+
+    If you need to refresh the explicit communications channels, then
+    create a new :class:`CommsContext` object or call ``default_comms``
+    again after workers have been added to or removed from the cluster.
     """
-    global _default_comms
-    if _default_comms is None:
-        _default_comms = CommsContext(client=client)
-    return _default_comms
+    # Comms are unique to a {client, [workers]} pair, so we key our
+    # cache by the token of that.
+    client = client or default_client()
+    token = tokenize(client.id, list(client.scheduler_info()["workers"].keys()))
+    maybe_comms = _comms_cache.get(token)
+    if maybe_comms is None:
+        maybe_comms = CommsContext(client=client)
+        _comms_cache[token] = maybe_comms
+
+    return maybe_comms
 
 
 def worker_state(sessionId: Optional[int] = None) -> dict:
