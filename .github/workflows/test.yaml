@@ -27,6 +27,7 @@ jobs:
       sha: ${{ inputs.sha }}
   ucxx-python-tests:
     if: inputs.build_type == 'nightly'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code repo
         uses: actions/checkout@v4
