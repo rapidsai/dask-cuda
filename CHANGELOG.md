@@ -1,3 +1,26 @@
+# dask-cuda 25.04.00 (9 Apr 2025)
+
+## 🐛 Bug Fixes
+
+- Avoid stale CommContext in explicit comms ([#1451](https://github.com/rapidsai/dask-cuda/pull/1451)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Added pytest-timeout to test dependencies ([#1433](https://github.com/rapidsai/dask-cuda/pull/1433)) [@TomAugspurger](https://github.com/TomAugspurger)
+
+## 🛠️ Improvements
+
+- Use conda-build instead of conda-mambabuild ([#1454](https://github.com/rapidsai/dask-cuda/pull/1454)) [@bdice](https://github.com/bdice)
+- ensure dask_cuda.__git_commit__ is populated ([#1453](https://github.com/rapidsai/dask-cuda/pull/1453)) [@jameslamb](https://github.com/jameslamb)
+- Consolidate more Conda solves in CI ([#1452](https://github.com/rapidsai/dask-cuda/pull/1452)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Create Conda CI test env in one step ([#1448](https://github.com/rapidsai/dask-cuda/pull/1448)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Use shared-workflows branch-25.04 ([#1446](https://github.com/rapidsai/dask-cuda/pull/1446)) [@bdice](https://github.com/bdice)
+- add telemetry ([#1445](https://github.com/rapidsai/dask-cuda/pull/1445)) [@msarahan](https://github.com/msarahan)
+- Add build_type input field for `test.yaml` ([#1444](https://github.com/rapidsai/dask-cuda/pull/1444)) [@gforsyth](https://github.com/gforsyth)
+- Use `rapids-pip-retry` in CI jobs that might need retries ([#1443](https://github.com/rapidsai/dask-cuda/pull/1443)) [@gforsyth](https://github.com/gforsyth)
+- Make `dask.dataframe` optional ([#1439](https://github.com/rapidsai/dask-cuda/pull/1439)) [@rjzamora](https://github.com/rjzamora)
+- Forward-merge branch-25.02 to branch-25.04 ([#1437](https://github.com/rapidsai/dask-cuda/pull/1437)) [@bdice](https://github.com/bdice)
+- Migrate to NVKS for amd64 CI runners ([#1435](https://github.com/rapidsai/dask-cuda/pull/1435)) [@bdice](https://github.com/bdice)
+- Merge branch-25.02 into branch-25.04 ([#1431](https://github.com/rapidsai/dask-cuda/pull/1431)) [@gforsyth](https://github.com/gforsyth)
+- Add verify-copyright pre-commit hook ([#1423](https://github.com/rapidsai/dask-cuda/pull/1423)) [@gforsyth](https://github.com/gforsyth)
+
 # dask-cuda 25.02.00 (13 Feb 2025)
 
 ## 🚨 Breaking Changes
