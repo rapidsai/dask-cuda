@@ -21,16 +21,14 @@ from distributed.deploy.local import LocalCluster
 
 import dask_cuda
 from dask_cuda.explicit_comms import comms
-from dask_cuda.explicit_comms.dataframe.shuffle import shuffle as explicit_comms_shuffle
+from dask_cuda.explicit_comms.dataframe.shuffle import (
+    _contains_shuffle_expr,
+    shuffle as explicit_comms_shuffle,
+)
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
-
-
-# Set default shuffle method to "tasks"
-if dask.config.get("dataframe.shuffle.method", None) is None:
-    dask.config.set({"dataframe.shuffle.method": "tasks"})
 
 
 # Notice, all of the following tests is executed in a new process such
@@ -530,3 +528,20 @@ def test_scaled_cluster_gets_new_comms_context():
                 expected = shuffled.compute()
 
             assert_eq(result, expected)
+
+
+def test_contains_shuffle_expr():
+    df = dd.from_pandas(pd.DataFrame({"key": np.arange(10)}), npartitions=2)
+    assert not _contains_shuffle_expr(df)
+
+    with dask.config.set(explicit_comms=True):
+        shuffled = df.shuffle(on="key")
+
+        assert _contains_shuffle_expr(shuffled)
+        assert not _contains_shuffle_expr(df)
+
+        # this requires an active client.
+        with LocalCluster(n_workers=1) as cluster:
+            with Client(cluster):
+                explict_shuffled = explicit_comms_shuffle(df, ["key"])
+                assert not _contains_shuffle_expr(explict_shuffled)
