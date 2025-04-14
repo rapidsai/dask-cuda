@@ -3,27 +3,27 @@
 
 set -euo pipefail
 
-rapids-configure-conda-channels
-
-# Setting channel priority per-repo until all RAPIDS can build using strict channel priority
-# This will be replaced when we port this recipe to `rattler-build`
-if [[ "$RAPIDS_CUDA_VERSION" == 11.* ]]; then
-  rapids-logger "Channel priority disabled for CUDA 11 builds"
-else
-  rapids-logger "Setting strict channel priority for CUDA 12 builds"
-  conda config --set channel_priority strict
-fi
-
 source rapids-date-string
 
 rapids-print-env
 
 rapids-generate-version > ./VERSION
+RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION)
+export RAPIDS_PACKAGE_VERSION
 
-rapids-logger "Begin py build"
-conda config --set path_conflict prevent
+# populates `RATTLER_CHANNELS` array
+source rapids-rattler-channel-string
 
-RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION) rapids-conda-retry build \
-  conda/recipes/dask-cuda
+rapids-logger "Building dask-cuda"
+
+rattler-build build --recipe conda/recipes/dask-cuda \
+                    --experimental \
+                    --channel-priority disabled \
+                    --output-dir "$RAPIDS_CONDA_BLD_OUTPUT_DIR" \
+                    "${RATTLER_CHANNELS[@]}"
+
+# remove build_cache directory to avoid uploading the entire source tree
+# tracked in https://github.com/prefix-dev/rattler-build/issues/1424
+rm -rf "$RAPIDS_CONDA_BLD_OUTPUT_DIR"/build_cache
 
 rapids-upload-conda-to-s3 python

@@ -41,13 +41,22 @@ set_exit_code() {
 trap set_exit_code ERR
 set +e
 
+# Set pytest filter based on GHA_DASK_UCXX_ONLY environment variable
+PYTEST_FILTER=()
+if [ "${GHA_DASK_UCXX_ONLY:-}" = "true" ]; then
+    PYTEST_FILTER=(-k "ucxx")
+else
+    PYTEST_FILTER=(-k "not ucxx")
+fi
+
 rapids-logger "pytest dask-cuda"
 ./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
   --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
-  --cov-report=term
+  --cov-report=term \
+  "${PYTEST_FILTER[@]}"
 
 rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh
