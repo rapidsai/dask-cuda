@@ -1,3 +1,4 @@
+# Copyright (c) 2025 NVIDIA CORPORATION.
 from typing import Set
 
 from dask.sizeof import sizeof

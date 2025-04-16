@@ -1,3 +1,4 @@
+# Copyright (c) 2025 NVIDIA CORPORATION.
 from __future__ import absolute_import, division, print_function
 
 from typing import Optional
@@ -28,7 +29,6 @@ def _(o):
 @is_spillable_object.register_lazy("cudf")
 def register_cudf():
     import cudf
-    from cudf.core.frame import Frame
 
     @is_spillable_object.register(cudf.DataFrame)
     @is_spillable_object.register(cudf.Series)
