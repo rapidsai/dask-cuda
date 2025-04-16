@@ -242,7 +242,9 @@ def _register_cudf():
 
     @dispatch.register(cudf.DataFrame)
     @dispatch.register(cudf.Series)
-    @dispatch.register(cudf.BaseIndex)
+    @dispatch.register(cudf.RangeIndex)
+    @dispatch.register(cudf.Index)
+    @dispatch.register(cudf.MultiIndex)
     def proxify_device_object_cudf_dataframe(
         obj, proxied_id_to_proxy, found_proxies, excl_proxies
     ):

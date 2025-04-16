@@ -30,11 +30,14 @@ def register_cudf():
     import cudf
     from cudf.core.frame import Frame
 
-    @is_spillable_object.register(Frame)
+    @is_spillable_object.register(cudf.DataFrame)
+    @is_spillable_object.register(cudf.Series)
     def is_device_object_cudf_dataframe(df):
         return cudf_spilling_status()
 
-    @is_spillable_object.register(cudf.BaseIndex)
+    @is_spillable_object.register(cudf.RangeIndex)
+    @is_spillable_object.register(cudf.Index)
+    @is_spillable_object.register(cudf.MultiIndex)
     def is_device_object_cudf_index(s):
         return cudf_spilling_status()
 

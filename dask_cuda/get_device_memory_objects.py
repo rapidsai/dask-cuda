@@ -89,38 +89,28 @@ def get_device_memory_objects_register_cupy():
 
 @dispatch.register_lazy("cudf")
 def get_device_memory_objects_register_cudf():
-    import cudf.core.frame
-    import cudf.core.index
-    import cudf.core.multiindex
-    import cudf.core.series
+    import cudf
 
-    @dispatch.register(cudf.core.frame.Frame)
-    def get_device_memory_objects_cudf_frame(obj):
-        ret = []
-        for col in obj._data.columns:
-            ret += dispatch(col)
-        return ret
+    @dispatch.register(cudf.DataFrame)
+    def get_device_memory_objects_cudf_dataframe(obj):
+        return dispatch(obj.index) + dispatch(obj._columns)
 
-    @dispatch.register(cudf.core.indexed_frame.IndexedFrame)
-    def get_device_memory_objects_cudf_indexed_frame(obj):
-        return dispatch(obj._index) + get_device_memory_objects_cudf_frame(obj)
-
-    @dispatch.register(cudf.core.series.Series)
+    @dispatch.register(cudf.Series)
     def get_device_memory_objects_cudf_series(obj):
-        return dispatch(obj._index) + dispatch(obj._column)
+        return dispatch(obj.index) + dispatch(obj._column)
 
-    @dispatch.register(cudf.core.index.RangeIndex)
+    @dispatch.register(cudf.RangeIndex)
     def get_device_memory_objects_cudf_range_index(obj):
         # Avoid materializing RangeIndex. This introduce some inaccuracies
         # in total device memory usage, which we accept because the memory
         # use of RangeIndexes are limited.
         return []
 
-    @dispatch.register(cudf.core.index.Index)
+    @dispatch.register(cudf.Index)
     def get_device_memory_objects_cudf_index(obj):
-        return dispatch(obj._values)
+        return dispatch(obj._column)
 
-    @dispatch.register(cudf.core.multiindex.MultiIndex)
+    @dispatch.register(cudf.MultiIndex)
     def get_device_memory_objects_cudf_multiindex(obj):
         return dispatch(obj._columns)
 
