@@ -146,11 +146,11 @@ def register_cupy():  # NB: this overwrites dask.sizeof.register_cupy()
 
 @sizeof.register_lazy("pylibcudf")
 def register_pylibcudf():
-    import cupy
     import pylibcudf
 
     @sizeof.register(pylibcudf.column.OwnerWithCAI)
     def sizeof_owner_with_cai(x):
-        # OwnerWithCAI implements __cuda_array_interface__
-        # so this should always be zero-copy
-        return cupy.array(x, copy=False).nbytes
+        # OwnerWithCAI implements __cuda_array_interface__ so this should always
+        # be zero-copy
+        col = pylibcudf.column.Column.from_cuda_array_interface(x)
+        return col.data().nbytes
