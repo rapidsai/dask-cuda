@@ -153,5 +153,5 @@ def register_pylibcudf():
         # OwnerWithCAI implements __cuda_array_interface__ so this should always
         # be zero-copy
         col = pylibcudf.column.Column.from_cuda_array_interface(x)
-        # col.data() returns a gpumemoryview, which knows the size in bytes 
+        # col.data() returns a gpumemoryview, which knows the size in bytes
         return col.data().nbytes
