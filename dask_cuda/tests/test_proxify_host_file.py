@@ -1,3 +1,5 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.
+
 from typing import Iterable
 from unittest.mock import patch
 
@@ -498,3 +500,14 @@ def test_on_demand_debug_info():
             assert f"WARNING - RMM allocation of {size} failed" in log
             assert f"RMM allocs: {size}" in log
             assert "traceback:" in log
+
+
+def test_sizeof_owner_with_cai():
+    cudf = pytest.importorskip("cudf")
+    s = cudf.Series([1, 2, 3])
+
+    items = dask_cuda.get_device_memory_objects.dispatch(s)
+    assert len(items) == 1
+    item = items[0]
+    result = dask.sizeof.sizeof(item)
+    assert result == 24

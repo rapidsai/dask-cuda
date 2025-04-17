@@ -1,3 +1,5 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.
+
 from typing import Set
 
 from dask.sizeof import sizeof
@@ -140,3 +142,15 @@ def register_cupy():  # NB: this overwrites dask.sizeof.register_cupy()
     @sizeof.register(cupy.ndarray)
     def sizeof_cupy_ndarray(x):
         return int(x.nbytes)
+
+
+@sizeof.register_lazy("pylibcudf")
+def register_pylibcudf():
+    import cupy
+    import pylibcudf
+
+    @sizeof.register(pylibcudf.column.OwnerWithCAI)
+    def sizeof_owner_with_cai(x):
+        # OwnerWithCAI implements __cuda_array_interface__
+        # so this should always be zero-copy
+        return cupy.array(x, copy=False).nbytes
