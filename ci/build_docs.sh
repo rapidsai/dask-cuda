@@ -4,7 +4,7 @@
 set -euo pipefail
 
 rapids-logger "Downloading artifacts from previous jobs"
-PYTHON_CHANNEL=$(rapids-download-conda-from-s3 python)
+PYTHON_CHANNEL=$(rapids-download-conda-from-github python)
 
 rapids-logger "Create test conda environment"
 . /opt/conda/etc/profile.d/conda.sh
