@@ -48,7 +48,7 @@ rapids-logger "pytest dask-cuda"
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  -k "not ucxx"
+  -k "ucxx"
 
 rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh

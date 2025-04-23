@@ -18,7 +18,8 @@ rapids-pip-retry install -v --prefer-binary -r /tmp/requirements-test.txt "$(ech
 
 rapids-logger "pytest dask-cuda"
 ./ci/run_pytest.sh \
-  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml"
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
+  -k "not ucxx"
 
 rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh
