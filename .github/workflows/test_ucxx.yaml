@@ -25,5 +25,4 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
-      gh_token: ${{ github.token }}
       script: ci/test_python_ucxx.sh
