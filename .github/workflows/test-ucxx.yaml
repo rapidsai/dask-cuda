@@ -39,4 +39,5 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
+      run_codecov: false
       script: ci/test_python_ucxx.sh
