@@ -15,6 +15,20 @@ on:
       build_type:
         type: string
         default: nightly
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      date:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      build_type:
+        type: string
+        required: true
 
 jobs:
   conda-python-ucxx-tests:
