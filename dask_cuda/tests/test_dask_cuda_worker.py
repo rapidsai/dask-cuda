@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -16,7 +19,7 @@ from dask_cuda.utils import (
     get_cluster_configuration,
     get_device_total_memory,
     get_gpu_count_mig,
-    get_gpu_uuid_from_index,
+    get_gpu_uuid,
     get_n_gpus,
     wait_workers,
 )
@@ -409,7 +412,7 @@ def test_cuda_mig_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: 
 
 
 def test_cuda_visible_devices_uuid(loop):  # noqa: F811
-    gpu_uuid = get_gpu_uuid_from_index(0)
+    gpu_uuid = get_gpu_uuid(0)
 
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": gpu_uuid}):
         with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):

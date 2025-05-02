@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import math
 import operator
 import os
@@ -86,6 +89,38 @@ def get_gpu_count():
     return pynvml.nvmlDeviceGetCount()
 
 
+def get_gpu_handle(device_index=0):
+    """Get GPU handle from device index or UUID.
+
+    Parameters
+    ----------
+    device_index: int or str
+        The index or UUID of the device from which to obtain the handle.
+
+    Examples
+    --------
+    >>> get_gpu_handle(device_index=0)
+
+    >>> get_gpu_handle(device_index="GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
+    """
+    pynvml.nvmlInit()
+
+    try:
+        if device_index and not str(device_index).isnumeric():
+            # This means device_index is UUID.
+            # This works for both MIG and non-MIG device UUIDs.
+            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_index))
+            if pynvml.nvmlDeviceIsMigDeviceHandle(handle):
+                # Additionally get parent device handle
+                # if the device itself is a MIG instance
+                handle = pynvml.nvmlDeviceGetDeviceHandleFromMigDeviceHandle(handle)
+        else:
+            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+        return handle
+    except pynvml.NVMLError:
+        raise ValueError(f"Invalid device index: {device_index}")
+
+
 @toolz.memoize
 def get_gpu_count_mig(return_uuids=False):
     """Return the number of MIG instances available
@@ -129,7 +164,7 @@ def get_cpu_affinity(device_index=None):
     Parameters
     ----------
     device_index: int or str
-        Index or UUID of the GPU device
+        The index or UUID of the device from which to obtain the CPU affinity.
 
     Examples
     --------
@@ -148,19 +183,8 @@ def get_cpu_affinity(device_index=None):
      40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
      60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     """
-    pynvml.nvmlInit()
-
     try:
-        if device_index and not str(device_index).isnumeric():
-            # This means device_index is UUID.
-            # This works for both MIG and non-MIG device UUIDs.
-            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_index))
-            if pynvml.nvmlDeviceIsMigDeviceHandle(handle):
-                # Additionally get parent device handle
-                # if the device itself is a MIG instance
-                handle = pynvml.nvmlDeviceGetDeviceHandleFromMigDeviceHandle(handle)
-        else:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+        handle = get_gpu_handle(device_index)
         # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
         affinity = pynvml.nvmlDeviceGetCpuAffinity(
             handle,
@@ -182,18 +206,15 @@ def get_n_gpus():
         return get_gpu_count()
 
 
-def get_device_total_memory(index=0):
-    """
-    Return total memory of CUDA device with index or with device identifier UUID
-    """
-    pynvml.nvmlInit()
+def get_device_total_memory(device_index=0):
+    """Return total memory of CUDA device with index or with device identifier UUID.
 
-    if index and not str(index).isnumeric():
-        # This means index is UUID. This works for both MIG and non-MIG device UUIDs.
-        handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(str(index)))
-    else:
-        # This is a device index
-        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+    Parameters
+    ----------
+    device_index: int or str
+        The index or UUID of the device from which to obtain the CPU affinity.
+    """
+    handle = get_gpu_handle(device_index)
     return pynvml.nvmlDeviceGetMemoryInfo(handle).total
 
 
@@ -553,26 +574,26 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         return _align(int(device_memory_limit), alignment_size)
 
 
-def get_gpu_uuid_from_index(device_index=0):
+def get_gpu_uuid(device_index=0):
     """Get GPU UUID from CUDA device index.
 
     Parameters
     ----------
     device_index: int or str
-        The index of the device from which to obtain the UUID. Default: 0.
+        The index or UUID of the device from which to obtain the UUID.
 
     Examples
     --------
-    >>> get_gpu_uuid_from_index()
+    >>> get_gpu_uuid()
     'GPU-9baca7f5-0f2f-01ac-6b05-8da14d6e9005'
 
-    >>> get_gpu_uuid_from_index(3)
+    >>> get_gpu_uuid(3)
+    'GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6'
+
+    >>> get_gpu_uuid("GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
     'GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6'
     """
-    import pynvml
-
-    pynvml.nvmlInit()
-    handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+    handle = get_gpu_handle(device_index)
     try:
         return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
     except AttributeError:
