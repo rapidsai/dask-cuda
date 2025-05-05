@@ -89,36 +89,43 @@ def get_gpu_count():
     return pynvml.nvmlDeviceGetCount()
 
 
-def get_gpu_handle(device_index=0):
+def get_gpu_handle(device_id=0):
     """Get GPU handle from device index or UUID.
 
     Parameters
     ----------
-    device_index: int or str
+    device_id: int or str
         The index or UUID of the device from which to obtain the handle.
+
+    Raises
+    ------
+    ValueError
+        If acquiring the device handle for the device specified failed.
+    pynvml.NVMLError
+        If any NVML error occurred while initializing.
 
     Examples
     --------
-    >>> get_gpu_handle(device_index=0)
+    >>> get_gpu_handle(device_id=0)
 
-    >>> get_gpu_handle(device_index="GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
+    >>> get_gpu_handle(device_id="GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
     """
     pynvml.nvmlInit()
 
     try:
-        if device_index and not str(device_index).isnumeric():
-            # This means device_index is UUID.
+        if device_id and not str(device_id).isnumeric():
+            # This means device_id is UUID.
             # This works for both MIG and non-MIG device UUIDs.
-            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_index))
+            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_id))
             if pynvml.nvmlDeviceIsMigDeviceHandle(handle):
                 # Additionally get parent device handle
                 # if the device itself is a MIG instance
                 handle = pynvml.nvmlDeviceGetDeviceHandleFromMigDeviceHandle(handle)
         else:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(device_index)
+            handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
         return handle
     except pynvml.NVMLError:
-        raise ValueError(f"Invalid device index: {device_index}")
+        raise ValueError(f"Invalid device index or UUID: {device_id}")
 
 
 @toolz.memoize
