@@ -416,7 +416,7 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                 ddf = dask.dataframe.from_pandas(
                     cudf.DataFrame({"key": np.arange(10)}), npartitions=npartitions
                 )
-                res = ddf.shuffle(on="key", shuffle_method="tasks").persist()
+                [res] = client.persist([ddf.shuffle(on="key", shuffle_method="tasks")])
 
                 # With compatibility mode on, we shouldn't encounter any proxy objects
                 if compatibility_mode:
@@ -442,7 +442,7 @@ async def test_worker_force_spill_to_disk():
             async with Client(cluster, asynchronous=True) as client:
                 # Create a df that are spilled to host memory immediately
                 df = cudf.DataFrame({"key": np.arange(10**8)})
-                ddf = dask.dataframe.from_pandas(df, npartitions=1).persist()
+                [ddf] = client.persist([dask.dataframe.from_pandas(df, npartitions=1)])
                 await ddf
 
                 async def f(dask_worker):
