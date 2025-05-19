@@ -1,3 +1,5 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.
+
 import gc
 import os
 from time import sleep
@@ -224,8 +226,8 @@ async def test_cupy_cluster_device_spill(params):
                 x = rs.random(int(50e6), chunks=2e6)
                 await wait(x)
 
-                xx = x.persist()
-                await wait(xx)
+                [xx] = client.persist([x])
+                await xx
 
                 # Allow up to 1024 bytes overhead per chunk serialized
                 await client.run(
@@ -344,8 +346,8 @@ async def test_cudf_cluster_device_spill(params, cudf_spill):
                 sizes = sizes.to_arrow().to_pylist()
                 nbytes = sum(sizes)
 
-                cdf2 = cdf.persist()
-                await wait(cdf2)
+                [cdf2] = client.persist([cdf])
+                await cdf2
 
                 del cdf
                 gc.collect()
@@ -419,8 +421,8 @@ async def test_cudf_spill_cluster(cudf_spill):
                 }
             )
 
-            ddf = dask_cudf.from_cudf(cdf, npartitions=2).sum().persist()
-            await wait(ddf)
+            [ddf] = client.persist([dask_cudf.from_cudf(cdf, npartitions=2).sum()])
+            await ddf
 
             await client.run(_assert_cudf_spill_stats, enable_cudf_spill)
             _assert_cudf_spill_stats(enable_cudf_spill)
