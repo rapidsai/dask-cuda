@@ -10,34 +10,39 @@ python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend dask
+  --backend dask \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --disable-rmm \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --disable-rmm-pool \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
@@ -45,7 +50,8 @@ python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
@@ -54,7 +60,8 @@ python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
 
 python benchmarks/local_cudf_shuffle.py \
   --rmm-pool-size 2GiB \
@@ -63,4 +70,5 @@ python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
   --runs 1 \
-  --backend explicit-comms
+  --backend explicit-comms \
+  "$@"
