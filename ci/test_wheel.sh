@@ -3,6 +3,8 @@
 
 set -eou pipefail
 
+source rapids-init-pip
+
 DASK_CUDA_WHEELHOUSE=$(RAPIDS_PY_WHEEL_NAME="dask-cuda" RAPIDS_PY_WHEEL_PURE="1" rapids-download-wheels-from-github python)
 
 # Install cuda-suffixed dependencies b/c while `dask-cuda` has no cuda suffix, the test dependencies do
