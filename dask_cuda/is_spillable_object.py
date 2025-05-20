@@ -1,3 +1,4 @@
+# Copyright (c) 2025 NVIDIA CORPORATION.
 from __future__ import absolute_import, division, print_function
 
 from typing import Optional
@@ -34,7 +35,9 @@ def register_cudf():
     def is_device_object_cudf_dataframe(df):
         return cudf_spilling_status()
 
-    @is_spillable_object.register(cudf.BaseIndex)
+    @is_spillable_object.register(cudf.Index)
+    @is_spillable_object.register(cudf.RangeIndex)
+    @is_spillable_object.register(cudf.MultiIndex)
     def is_device_object_cudf_index(s):
         return cudf_spilling_status()
 
