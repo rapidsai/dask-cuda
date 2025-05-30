@@ -222,7 +222,11 @@ def get_device_total_memory(device_index=0):
         The index or UUID of the device from which to obtain the CPU affinity.
     """
     handle = get_gpu_handle(device_index)
-    return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+
+    try:
+        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return None
 
 
 def get_ucx_config(
