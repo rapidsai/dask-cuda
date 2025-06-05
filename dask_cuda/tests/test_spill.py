@@ -1,14 +1,18 @@
+# Copyright (c) 2025, NVIDIA CORPORATION.
+
 import gc
 import os
 from time import sleep
+from typing import TypedDict
 
 import pytest
 
 import dask
 from dask import array as da
-from distributed import Client, wait
+from distributed import Client, Worker, wait
 from distributed.metrics import time
 from distributed.sizeof import sizeof
+from distributed.utils import Deadline
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 
 import dask_cudf
@@ -72,24 +76,66 @@ def cudf_spill(request):
 
 
 def device_host_file_size_matches(
-    dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
+    dask_worker: Worker,
+    total_bytes,
+    device_chunk_overhead=0,
+    serialized_chunk_overhead=1024,
 ):
-    byte_sum = dhf.device_buffer.fast.total_weight
+    worker_data_sizes = collect_device_host_file_size(
+        dask_worker,
+        device_chunk_overhead=device_chunk_overhead,
+        serialized_chunk_overhead=serialized_chunk_overhead,
+    )
+    byte_sum = (
+        worker_data_sizes["device_fast"]
+        + worker_data_sizes["host_fast"]
+        + worker_data_sizes["host_buffer"]
+        + worker_data_sizes["disk"]
+    )
+    return (
+        byte_sum >= total_bytes
+        and byte_sum
+        <= total_bytes
+        + worker_data_sizes["device_overhead"]
+        + worker_data_sizes["host_overhead"]
+        + worker_data_sizes["disk_overhead"]
+    )
 
-    # `dhf.host_buffer.fast` is only available when Worker's `memory_limit != 0`
+
+class WorkerDataSizes(TypedDict):
+    device_fast: int
+    host_fast: int
+    host_buffer: int
+    disk: int
+    device_overhead: int
+    host_overhead: int
+    disk_overhead: int
+
+
+def collect_device_host_file_size(
+    dask_worker: Worker,
+    device_chunk_overhead: int,
+    serialized_chunk_overhead: int,
+) -> WorkerDataSizes:
+    dhf = dask_worker.data
+
+    device_fast = dhf.device_buffer.fast.total_weight or 0
     if hasattr(dhf.host_buffer, "fast"):
-        byte_sum += dhf.host_buffer.fast.total_weight
+        host_fast = dhf.host_buffer.fast.total_weight or 0
+        host_buffer = 0
     else:
-        byte_sum += sum([sizeof(b) for b in dhf.host_buffer.values()])
+        host_buffer = sum([sizeof(b) for b in dhf.host_buffer.values()])
+        host_fast = 0
 
-    # `dhf.disk` is only available when Worker's `memory_limit != 0`
     if dhf.disk is not None:
         file_path = [
             os.path.join(dhf.disk.directory, fname)
             for fname in dhf.disk.filenames.values()
         ]
         file_size = [os.path.getsize(f) for f in file_path]
-        byte_sum += sum(file_size)
+        disk = sum(file_size)
+    else:
+        disk = 0
 
     # Allow up to chunk_overhead bytes overhead per chunk
     device_overhead = len(dhf.device) * device_chunk_overhead
@@ -98,17 +144,25 @@ def device_host_file_size_matches(
         len(dhf.disk) * serialized_chunk_overhead if dhf.disk is not None else 0
     )
 
-    return (
-        byte_sum >= total_bytes
-        and byte_sum <= total_bytes + device_overhead + host_overhead + disk_overhead
+    return WorkerDataSizes(
+        device_fast=device_fast,
+        host_fast=host_fast,
+        host_buffer=host_buffer,
+        disk=disk,
+        device_overhead=device_overhead,
+        host_overhead=host_overhead,
+        disk_overhead=disk_overhead,
     )
 
 
 def assert_device_host_file_size(
-    dhf, total_bytes, device_chunk_overhead=0, serialized_chunk_overhead=1024
+    dask_worker: Worker,
+    total_bytes,
+    device_chunk_overhead=0,
+    serialized_chunk_overhead=1024,
 ):
     assert device_host_file_size_matches(
-        dhf, total_bytes, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker, total_bytes, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
@@ -119,7 +173,7 @@ def worker_assert(
     dask_worker=None,
 ):
     assert_device_host_file_size(
-        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker, total_size, device_chunk_overhead, serialized_chunk_overhead
     )
 
 
@@ -131,12 +185,12 @@ def delayed_worker_assert(
 ):
     start = time()
     while not device_host_file_size_matches(
-        dask_worker.data, total_size, device_chunk_overhead, serialized_chunk_overhead
+        dask_worker, total_size, device_chunk_overhead, serialized_chunk_overhead
     ):
         sleep(0.01)
         if time() < start + 3:
             assert_device_host_file_size(
-                dask_worker.data,
+                dask_worker,
                 total_size,
                 device_chunk_overhead,
                 serialized_chunk_overhead,
@@ -224,8 +278,8 @@ async def test_cupy_cluster_device_spill(params):
                 x = rs.random(int(50e6), chunks=2e6)
                 await wait(x)
 
-                xx = x.persist()
-                await wait(xx)
+                [xx] = client.persist([x])
+                await xx
 
                 # Allow up to 1024 bytes overhead per chunk serialized
                 await client.run(
@@ -344,19 +398,38 @@ async def test_cudf_cluster_device_spill(params, cudf_spill):
                 sizes = sizes.to_arrow().to_pylist()
                 nbytes = sum(sizes)
 
-                cdf2 = cdf.persist()
-                await wait(cdf2)
+                [cdf2] = client.persist([cdf])
+                await cdf2
 
                 del cdf
                 gc.collect()
 
                 if enable_cudf_spill:
-                    await client.run(
-                        worker_assert,
-                        0,
-                        0,
-                        0,
+                    expected_data = WorkerDataSizes(
+                        device_fast=0,
+                        host_fast=0,
+                        host_buffer=0,
+                        disk=0,
+                        device_overhead=0,
+                        host_overhead=0,
+                        disk_overhead=0,
                     )
+
+                    deadline = Deadline.after(duration=3)
+                    while not deadline.expired:
+                        data = await client.run(
+                            collect_device_host_file_size,
+                            device_chunk_overhead=0,
+                            serialized_chunk_overhead=0,
+                        )
+                        expected = {k: expected_data for k in data}
+                        if data == expected:
+                            break
+                        sleep(0.01)
+
+                    # final assertion for pytest to reraise with a nice traceback
+                    assert data == expected
+
                 else:
                     await client.run(
                         assert_host_chunks,
@@ -419,8 +492,8 @@ async def test_cudf_spill_cluster(cudf_spill):
                 }
             )
 
-            ddf = dask_cudf.from_cudf(cdf, npartitions=2).sum().persist()
-            await wait(ddf)
+            [ddf] = client.persist([dask_cudf.from_cudf(cdf, npartitions=2).sum()])
+            await ddf
 
             await client.run(_assert_cudf_spill_stats, enable_cudf_spill)
             _assert_cudf_spill_stats(enable_cudf_spill)

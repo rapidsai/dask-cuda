@@ -1,4 +1,4 @@
-name: test
+name: Test Dask-CUDA with UCXX
 
 on:
   workflow_dispatch:
@@ -15,23 +15,29 @@ on:
       build_type:
         type: string
         default: nightly
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      date:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+      build_type:
+        type: string
+        required: true
 
 jobs:
-  conda-python-tests:
+  conda-python-ucxx-tests:
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@branch-25.06
     with:
       build_type: ${{ inputs.build_type }}
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
-      script: ci/test_python.sh
       sha: ${{ inputs.sha }}
-  wheel-tests:
-    secrets: inherit
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@branch-25.06
-    with:
-      build_type: ${{ inputs.build_type }}
-      branch: ${{ inputs.branch }}
-      date: ${{ inputs.date }}
-      sha: ${{ inputs.sha }}
-      script: ci/test_wheel.sh
+      run_codecov: false
+      script: ci/test_python_ucxx.sh

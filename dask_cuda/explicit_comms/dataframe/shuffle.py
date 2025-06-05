@@ -1,6 +1,9 @@
+# Copyright (c) 2021-2025 NVIDIA CORPORATION.
+
 from __future__ import annotations
 
 import asyncio
+import functools
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -23,6 +26,7 @@ from distributed import wait
 from distributed.protocol import nested_deserialize, to_serialize
 from distributed.worker import Worker
 
+from ..._compat import DASK_2025_4_0
 from .. import comms
 
 T = TypeVar("T")
@@ -582,6 +586,128 @@ def _use_explicit_comms() -> bool:
     return False
 
 
+_base_lower = dask_expr._shuffle.Shuffle._lower
+_base_compute = dask.base.compute
+
+
+def _contains_shuffle_expr(*args) -> bool:
+    """
+    Check whether any of the arguments is a Shuffle expression.
+
+    This is called by `compute`, which is given a sequence of Dask Collections
+    to process. For each of those, we'll check whether the expresion contains a
+    Shuffle operation.
+    """
+    for collection in args:
+        if isinstance(collection, dask.dataframe.DataFrame):
+            shuffle_ops = list(
+                collection.expr.find_operations(
+                    (
+                        dask_expr._shuffle.RearrangeByColumn,
+                        dask_expr.SetIndex,
+                        dask_expr._shuffle.Shuffle,
+                    )
+                )
+            )
+            if len(shuffle_ops) > 0:
+                return True
+    return False
+
+
+@functools.wraps(_base_compute)
+def _patched_compute(
+    *args,
+    traverse=True,
+    optimize_graph=True,
+    scheduler=None,
+    get=None,
+    **kwargs,
+):
+    # A patched version of dask.compute that explicitly materializes the task
+    # graph when we're using explicit-comms and the expression contains a
+    # Shuffle operation.
+    # https://github.com/rapidsai/dask-upstream-testing/issues/37#issuecomment-2779798670
+    # contains more details on the issue.
+    if DASK_2025_4_0() and _use_explicit_comms() and _contains_shuffle_expr(*args):
+        from dask.base import (
+            collections_to_expr,
+            flatten,
+            get_scheduler,
+            shorten_traceback,
+            unpack_collections,
+        )
+
+        collections, repack = unpack_collections(*args, traverse=traverse)
+        if not collections:
+            return args
+
+        schedule = get_scheduler(
+            scheduler=scheduler,
+            collections=collections,
+            get=get,
+        )
+        from dask._expr import FinalizeCompute
+
+        expr = collections_to_expr(collections, optimize_graph)
+        expr = FinalizeCompute(expr)
+
+        with shorten_traceback():
+            expr = expr.optimize()
+            keys = list(flatten(expr.__dask_keys__()))
+
+            # materialize the HLG here
+            expr = dict(expr.__dask_graph__())
+
+            results = schedule(expr, keys, **kwargs)
+            return repack(results)
+
+    else:
+        return _base_compute(
+            *args,
+            traverse=traverse,
+            optimize_graph=optimize_graph,
+            scheduler=scheduler,
+            get=get,
+            **kwargs,
+        )
+
+
+class ECShuffle(dask_expr._shuffle.TaskShuffle):
+    """Explicit-Comms Shuffle Expression."""
+
+    def _layer(self):
+        # Execute an explicit-comms shuffle
+        if not hasattr(self, "_ec_shuffled"):
+            on = self.partitioning_index
+            df = dask_expr.new_collection(self.frame)
+            ec_shuffled = shuffle(
+                df,
+                [on] if isinstance(on, str) else on,
+                self.npartitions_out,
+                self.ignore_index,
+            )
+            object.__setattr__(self, "_ec_shuffled", ec_shuffled)
+        graph = self._ec_shuffled.dask.copy()
+        shuffled_name = self._ec_shuffled._name
+        for i in range(self.npartitions_out):
+            graph[(self._name, i)] = graph[(shuffled_name, i)]
+        return graph
+
+
+def _patched_lower(self):
+    if self.method in (None, "tasks") and _use_explicit_comms():
+        return ECShuffle(
+            self.frame,
+            self.partitioning_index,
+            self.npartitions_out,
+            self.ignore_index,
+            self.options,
+            self.original_partitioning_index,
+        )
+    else:
+        return _base_lower(self)
+
+
 def patch_shuffle_expression() -> None:
     """Patch Dasks Shuffle expression.
 
@@ -590,40 +716,6 @@ def patch_shuffle_expression() -> None:
     an `ECShuffle` expression when the 'explicit-comms'
     config is set to `True`.
     """
-
-    class ECShuffle(dask_expr._shuffle.TaskShuffle):
-        """Explicit-Comms Shuffle Expression."""
-
-        def _layer(self):
-            # Execute an explicit-comms shuffle
-            if not hasattr(self, "_ec_shuffled"):
-                on = self.partitioning_index
-                df = dask_expr.new_collection(self.frame)
-                self._ec_shuffled = shuffle(
-                    df,
-                    [on] if isinstance(on, str) else on,
-                    self.npartitions_out,
-                    self.ignore_index,
-                )
-            graph = self._ec_shuffled.dask.copy()
-            shuffled_name = self._ec_shuffled._name
-            for i in range(self.npartitions_out):
-                graph[(self._name, i)] = graph[(shuffled_name, i)]
-            return graph
-
-    _base_lower = dask_expr._shuffle.Shuffle._lower
-
-    def _patched_lower(self):
-        if self.method in (None, "tasks") and _use_explicit_comms():
-            return ECShuffle(
-                self.frame,
-                self.partitioning_index,
-                self.npartitions_out,
-                self.ignore_index,
-                self.options,
-                self.original_partitioning_index,
-            )
-        else:
-            return _base_lower(self)
+    dask.base.compute = _patched_compute
 
     dask_expr._shuffle.Shuffle._lower = _patched_lower

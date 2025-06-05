@@ -16,5 +16,4 @@ DASK_CUDA_TEST_SINGLE_GPU=1 \
   --capture=no \
   --cache-clear \
   "$@" \
-  -k "not ucxx" \
   tests

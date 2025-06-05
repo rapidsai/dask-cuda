@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 import os
 import pkgutil
@@ -16,7 +19,7 @@ from dask_cuda.utils import (
     get_cluster_configuration,
     get_device_total_memory,
     get_gpu_count_mig,
-    get_gpu_uuid_from_index,
+    get_gpu_uuid,
     print_cluster_config,
 )
 from dask_cuda.utils_test import MockWorker
@@ -419,7 +422,7 @@ async def test_available_mig_workers():
 
 @gen_test(timeout=20)
 async def test_gpu_uuid():
-    gpu_uuid = get_gpu_uuid_from_index(0)
+    gpu_uuid = get_gpu_uuid(0)
 
     async with LocalCUDACluster(
         CUDA_VISIBLE_DEVICES=gpu_uuid,

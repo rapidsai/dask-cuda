@@ -3,18 +3,25 @@
 
 set -euo pipefail
 
-rapids-configure-conda-channels
-
 source rapids-date-string
 
 rapids-print-env
 
 rapids-generate-version > ./VERSION
+RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION)
+export RAPIDS_PACKAGE_VERSION
 
-rapids-logger "Begin py build"
-conda config --set path_conflict prevent
+# populates `RATTLER_CHANNELS` array and `RATTLER_ARGS` array
+source rapids-rattler-channel-string
 
-RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION) rapids-conda-retry build \
-  conda/recipes/dask-cuda
+rapids-logger "Building dask-cuda"
+
+rattler-build build --recipe conda/recipes/dask-cuda \
+                    "${RATTLER_ARGS[@]}" \
+                    "${RATTLER_CHANNELS[@]}"
+
+# remove build_cache directory to avoid uploading the entire source tree
+# tracked in https://github.com/prefix-dev/rattler-build/issues/1424
+rm -rf "$RAPIDS_CONDA_BLD_OUTPUT_DIR"/build_cache
 
 rapids-upload-conda-to-s3 python

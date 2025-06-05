@@ -3,8 +3,8 @@ files:
   all:
     output: conda
     matrix:
-      cuda: ["11.4", "11.8", "12.8"]
-      arch: [x86_64]
+      cuda: ["11.4", "11.8", "12.9"]
+      arch: [x86_64, aarch64]
     includes:
       - build_python
       - cuda
@@ -102,6 +102,10 @@ dependencies:
               cuda: "12.8"
             packages:
               - cuda-version=12.8
+          - matrix:
+              cuda: "12.9"
+            packages:
+              - cuda-version=12.9
   cuda:
     specific:
       - output_types: conda
@@ -145,18 +149,22 @@ dependencies:
             packages:
               - python=3.12
           - matrix:
+              py: "3.13"
             packages:
-              - python>=3.10,<3.13
+              - python=3.13
+          - matrix:
+            packages:
+              - python>=3.10,<3.14
   run_python:
     common:
       - output_types: [conda, requirements, pyproject]
         packages:
           - click >=8.1
-          - numba>=0.59.1,<0.61.0a0
+          - numba>=0.59.1,<0.62.0a0
           - numpy>=1.23,<3.0a0
           - pandas>=1.3
           - pynvml>=12.0.0,<13.0.0a0
-          - rapids-dask-dependency==25.4.*
+          - rapids-dask-dependency==25.6.*,>=0.0.0a0
           - zict>=2.0.0
   test_python:
     common:
@@ -167,12 +175,12 @@ dependencies:
           - pytest-timeout
       - output_types: [conda]
         packages:
-          - &cudf_unsuffixed cudf==25.4.*
-          - &dask_cudf_unsuffixed dask-cudf==25.4.*
-          - distributed-ucxx==0.43.*
-          - &kvikio_unsuffixed kvikio==25.4.*
-          - &ucx_py_unsuffixed ucx-py==0.43.*
-          - ucxx==0.43.*
+          - &cudf_unsuffixed cudf==25.6.*,>=0.0.0a0
+          - &dask_cudf_unsuffixed dask-cudf==25.6.*,>=0.0.0a0
+          - distributed-ucxx==0.44.*,>=0.0.0a0
+          - &kvikio_unsuffixed kvikio==25.6.*,>=0.0.0a0
+          - &ucx_py_unsuffixed ucx-py==0.44.*,>=0.0.0a0
+          - ucxx==0.44.*,>=0.0.0a0
     specific:
       - output_types: conda
         matrices:
@@ -190,18 +198,18 @@ dependencies:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu12==25.4.*
-              - dask-cudf-cu12==25.4.*
-              - kvikio-cu12==25.4.*
-              - ucx-py-cu12==0.43.*
+              - cudf-cu12==25.6.*,>=0.0.0a0
+              - dask-cudf-cu12==25.6.*,>=0.0.0a0
+              - kvikio-cu12==25.6.*,>=0.0.0a0
+              - ucx-py-cu12==0.44.*,>=0.0.0a0
           - matrix:
               cuda: "11.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu11==25.4.*
-              - dask-cudf-cu11==25.4.*
-              - kvikio-cu11==25.4.*
-              - ucx-py-cu11==0.43.*
+              - cudf-cu11==25.6.*,>=0.0.0a0
+              - dask-cudf-cu11==25.6.*,>=0.0.0a0
+              - kvikio-cu11==25.6.*,>=0.0.0a0
+              - ucx-py-cu11==0.44.*,>=0.0.0a0
           - matrix:
             packages:
               - *cudf_unsuffixed
@@ -212,4 +220,4 @@ dependencies:
     common:
       - output_types: conda
         packages:
-          - dask-cuda==25.4.*
+          - dask-cuda==25.6.*,>=0.0.0a0

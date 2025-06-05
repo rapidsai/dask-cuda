@@ -8,8 +8,9 @@ channels:
 - nvidia
 dependencies:
 - click >=8.1
-- cuda-version=11.8
-- cudatoolkit
+- cuda-nvcc-impl
+- cuda-nvrtc
+- cuda-version=12.9
 - cudf==25.6.*,>=0.0.0a0
 - dask-cudf==25.6.*,>=0.0.0a0
 - distributed-ucxx==0.44.*,>=0.0.0a0
@@ -34,4 +35,4 @@ dependencies:
 - ucx-py==0.44.*,>=0.0.0a0
 - ucxx==0.44.*,>=0.0.0a0
 - zict>=2.0.0
-name: all_cuda-118_arch-x86_64
+name: all_cuda-129_arch-x86_64
