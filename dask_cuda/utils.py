@@ -220,9 +220,19 @@ def get_device_total_memory(device_index=0):
     ----------
     device_index: int or str
         The index or UUID of the device from which to obtain the CPU affinity.
+
+    Returns
+    -------
+    The total memory of the CUDA Device in bytes, or `None` for devices that do not
+    have a dedicated memory resource, as is usually the case for system on a chip (SoC)
+    devices.
     """
     handle = get_gpu_handle(device_index)
-    return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+
+    try:
+        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return None
 
 
 def get_ucx_config(
