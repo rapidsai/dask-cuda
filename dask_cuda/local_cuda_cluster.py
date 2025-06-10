@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import copy
 import logging
 import os
@@ -8,10 +11,8 @@ import dask
 from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
-from .device_host_file import DeviceHostFile
 from .initialize import initialize
 from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
-from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
     get_cpu_affinity,
@@ -20,6 +21,7 @@ from .utils import (
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
+from .worker_common import worker_data_function
 
 
 class LoggedWorker(Worker):
@@ -337,34 +339,15 @@ class LocalCUDACluster(LocalCluster):
 
         if jit_unspill is None:
             jit_unspill = dask.config.get("jit-unspill", default=False)
-        data = kwargs.pop("data", None)
-        if data is None:
-            if device_memory_limit is None and memory_limit is None:
-                data = {}
-            elif jit_unspill:
-                if enable_cudf_spill:
-                    warnings.warn(
-                        "Enabling cuDF spilling and JIT-Unspill together is not "
-                        "safe, consider disabling JIT-Unspill."
-                    )
-
-                data = (
-                    ProxifyHostFile,
-                    {
-                        "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.memory_limit,
-                        "shared_filesystem": shared_filesystem,
-                    },
-                )
-            else:
-                data = (
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.memory_limit,
-                        "log_spilling": log_spilling,
-                    },
-                )
+        self.data = kwargs.pop("data", None)
+        if self.data is None:
+            self.data = worker_data_function(
+                device_memory_limit=self.device_memory_limit,
+                memory_limit=self.memory_limit,
+                jit_unspill=jit_unspill,
+                enable_cudf_spill=enable_cudf_spill,
+                shared_filesystem=shared_filesystem,
+            )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
@@ -404,7 +387,6 @@ class LocalCUDACluster(LocalCluster):
             threads_per_worker=threads_per_worker,
             memory_limit=self.memory_limit,
             processes=True,
-            data=data,
             local_directory=local_directory,
             protocol=protocol,
             worker_class=worker_class,
@@ -441,15 +423,15 @@ class LocalCUDACluster(LocalCluster):
         spec = copy.deepcopy(self.new_spec)
         worker_count = self.cuda_visible_devices.index(name)
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
+        device_index = nvml_device_index(0, visible_devices)
         spec["options"].update(
             {
                 "env": {
                     "CUDA_VISIBLE_DEVICES": visible_devices,
                 },
+                "data": self.data(device_index),
                 "plugins": {
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(0, visible_devices))
-                    ),
+                    CPUAffinity(get_cpu_affinity(device_index)),
                     RMMSetup(
                         initial_pool_size=self.rmm_pool_size,
                         maximum_pool_size=self.rmm_maximum_pool_size,
