@@ -1,3 +1,45 @@
+# dask-cuda 25.06.00 (5 Jun 2025)
+
+## 🚨 Breaking Changes
+
+- Add function to get device handle and fix MIG handle ([#1476](https://github.com/rapidsai/dask-cuda/pull/1476)) [@pentschev](https://github.com/pentschev)
+
+## 🐛 Bug Fixes
+
+- Disable codecov step in custom `test-ucxx` workflow ([#1473](https://github.com/rapidsai/dask-cuda/pull/1473)) [@pentschev](https://github.com/pentschev)
+- Add separate `build-ucxx` workflow ([#1472](https://github.com/rapidsai/dask-cuda/pull/1472)) [@pentschev](https://github.com/pentschev)
+- Make workflows reusable ([#1471](https://github.com/rapidsai/dask-cuda/pull/1471)) [@pentschev](https://github.com/pentschev)
+- Register OwnerWithCAI with dask.utils.sizeof ([#1468](https://github.com/rapidsai/dask-cuda/pull/1468)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Add missing `runs-on` to `ucxx-python-tests` ([#1463](https://github.com/rapidsai/dask-cuda/pull/1463)) [@pentschev](https://github.com/pentschev)
+- Workaround hang with dask main and explicit comms ([#1462](https://github.com/rapidsai/dask-cuda/pull/1462)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Updated shuffle for new setattr ([#1459](https://github.com/rapidsai/dask-cuda/pull/1459)) [@TomAugspurger](https://github.com/TomAugspurger)
+
+## 🚀 New Features
+
+- Add UCXX blocking tests in nightly CI runs ([#1494](https://github.com/rapidsai/dask-cuda/pull/1494)) [@pentschev](https://github.com/pentschev)
+- Add UCXX tests as separate nightly workflow ([#1470](https://github.com/rapidsai/dask-cuda/pull/1470)) [@pentschev](https://github.com/pentschev)
+- Enable UCXX nightly tests ([#1461](https://github.com/rapidsai/dask-cuda/pull/1461)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- provide input &#39;script&#39; for build workflow ([#1499](https://github.com/rapidsai/dask-cuda/pull/1499)) [@jameslamb](https://github.com/jameslamb)
+- use &#39;rapids-init-pip&#39; in wheel CI, other CI changes ([#1496](https://github.com/rapidsai/dask-cuda/pull/1496)) [@jameslamb](https://github.com/jameslamb)
+- Fixed flaky `test_cudf_cluster_device_spill` test ([#1492](https://github.com/rapidsai/dask-cuda/pull/1492)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Prepare for removal of cudf.BaseIndex ([#1488](https://github.com/rapidsai/dask-cuda/pull/1488)) [@mroeschke](https://github.com/mroeschke)
+- Fix persist usage in tests ([#1487](https://github.com/rapidsai/dask-cuda/pull/1487)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Finish CUDA 12.9 migration and use branch-25.06 workflows ([#1485](https://github.com/rapidsai/dask-cuda/pull/1485)) [@bdice](https://github.com/bdice)
+- Quote head_rev in conda recipes ([#1482](https://github.com/rapidsai/dask-cuda/pull/1482)) [@bdice](https://github.com/bdice)
+- Build and test with CUDA 12.9.0 ([#1481](https://github.com/rapidsai/dask-cuda/pull/1481)) [@bdice](https://github.com/bdice)
+- chore: set remaining workflows to python3.13 ([#1480](https://github.com/rapidsai/dask-cuda/pull/1480)) [@gforsyth](https://github.com/gforsyth)
+- chore: bump upper bound of numba for python 3.13 support ([#1479](https://github.com/rapidsai/dask-cuda/pull/1479)) [@gforsyth](https://github.com/gforsyth)
+- Add function to get device handle and fix MIG handle ([#1476](https://github.com/rapidsai/dask-cuda/pull/1476)) [@pentschev](https://github.com/pentschev)
+- feat: add support for Python 3.13 ([#1475](https://github.com/rapidsai/dask-cuda/pull/1475)) [@gforsyth](https://github.com/gforsyth)
+- Download build artifacts from Github for CI ([#1469](https://github.com/rapidsai/dask-cuda/pull/1469)) [@VenkateshJaya](https://github.com/VenkateshJaya)
+- Add ARM conda environments ([#1466](https://github.com/rapidsai/dask-cuda/pull/1466)) [@bdice](https://github.com/bdice)
+- Port all conda recipes to `rattler-build` ([#1460](https://github.com/rapidsai/dask-cuda/pull/1460)) [@gforsyth](https://github.com/gforsyth)
+- chore(conda): enable strict channel priority for conda build ([#1458](https://github.com/rapidsai/dask-cuda/pull/1458)) [@gforsyth](https://github.com/gforsyth)
+- Moving wheel builds to specified location and uploading build artifacts to Github ([#1457](https://github.com/rapidsai/dask-cuda/pull/1457)) [@VenkateshJaya](https://github.com/VenkateshJaya)
+
 # dask-cuda 25.04.00 (9 Apr 2025)
 
 ## 🐛 Bug Fixes
