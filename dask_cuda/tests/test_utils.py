@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from unittest.mock import patch
 
@@ -237,8 +240,14 @@ def test_parse_visible_devices():
 def test_parse_device_memory_limit():
     total = get_device_total_memory(0)
 
-    assert parse_device_memory_limit(None) == total
-    assert parse_device_memory_limit(0) == total
+    assert parse_device_memory_limit(None) is None
+
+    assert parse_device_memory_limit(0) == 0
+    assert parse_device_memory_limit(0.0) == 0
+    assert parse_device_memory_limit("0") == 0
+    assert parse_device_memory_limit("0 GiB") == 0
+
+    assert parse_device_memory_limit(1.0) == total
     assert parse_device_memory_limit("auto") == total
 
     assert parse_device_memory_limit(0.8) == int(total * 0.8)
