@@ -1,4 +1,5 @@
-# Copyright (c) 2021-2025 NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import multiprocessing as mp
@@ -97,7 +98,7 @@ def test_dataframe_merge_empty_partitions():
 
 
 def check_partitions(df, npartitions):
-    """Check that all values in `df` hashes to the same"""
+    """Check that all values in ``df`` hashes to the same"""
     dtypes = {}
     for col, dtype in df.dtypes.items():
         if pd.api.types.is_numeric_dtype(dtype):
@@ -384,7 +385,7 @@ def _test_lock_workers(scheduler_address, ranks):
 
 def test_lock_workers():
     """
-    Testing `run(...,lock_workers=True)` by spawning 30 runs with overlapping
+    Testing ``run(...,lock_workers=True)`` by spawning 30 runs with overlapping
     and non-overlapping worker sets.
     """
     try:

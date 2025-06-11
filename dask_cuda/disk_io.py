@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import itertools
 import os
 import os.path
@@ -106,7 +109,7 @@ class SpillToDiskProperties:
         root_dir : os.PathLike
             Path to the root directory to write serialized data.
         shared_filesystem: bool or None, default None
-            Whether the `root_dir` above is shared between all workers or not.
+            Whether the ``root_dir`` above is shared between all workers or not.
             If ``None``, the "jit-unspill-shared-fs" config value are used, which
             defaults to False.
         gds: bool
@@ -154,10 +157,10 @@ def disk_write(path: str, frames: Iterable, shared_filesystem: bool, gds=False) 
         The frames to write to disk
     shared_filesystem: bool
         Whether the target filesystem is shared between all workers or not.
-        If True, the filesystem must support the `os.link()` operation.
+        If True, the filesystem must support the ``os.link()`` operation.
     gds: bool
         Enable the use of GPUDirect Storage. Notice, the consecutive
-        `disk_read()` must enable GDS as well.
+        ``disk_read()`` must enable GDS as well.
 
     Returns
     -------
@@ -196,7 +199,7 @@ def disk_read(header: Mapping, gds=False) -> list:
         The metadata of the frames to read
     gds: bool
         Enable the use of GPUDirect Storage. Notice, this must
-        match the GDS option set by the prior `disk_write()` call.
+        match the GDS option set by the prior ``disk_write()`` call.
 
     Returns
     -------
