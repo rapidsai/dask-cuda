@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import itertools
 import logging
 import os
@@ -35,7 +38,7 @@ def _serialize_bytelist(x, **kwargs):
 class LoggedBuffer(Buffer):
     """Extends zict.Buffer with logging capabilities
 
-    Two arguments `fast_name` and `slow_name` are passed to constructor that
+    Two arguments ``fast_name`` and ``slow_name`` are passed to constructor that
     identify a user-friendly name for logging of where spilling is going from/to.
     For example, their names can be "Device" and "Host" to identify that spilling
     is happening from a CUDA device into system memory.
@@ -112,7 +115,7 @@ class DeviceSerialized:
 
     This stores a device-side object as
     1.  A msgpack encodable header
-    2.  A list of `bytes`-like objects (like NumPy arrays)
+    2.  A list of ``bytes``-like objects (like NumPy arrays)
         that are in host memory
     """
 
@@ -174,7 +177,7 @@ class DeviceHostFile(ZictBase):
         spills to host cache once filled.
     memory_limit: int
         Number of bytes of host memory for host LRU cache, spills to
-        disk once filled. Setting this to `0` or `None` means unlimited
+        disk once filled. Setting this to ``0`` or ``None`` means unlimited
         host memory, implies no spilling to disk.
     log_spilling: bool
         If True, all spilling operations will be logged directly to

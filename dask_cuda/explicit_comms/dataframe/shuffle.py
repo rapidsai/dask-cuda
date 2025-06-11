@@ -65,13 +65,13 @@ def get_no_comm_postprocess(
 ) -> Callable[[DataFrame], DataFrame]:
     """Get function for post-processing partitions not communicated
 
-    In cuDF, the `group_split_dispatch` uses `scatter_by_map` to create
+    In cuDF, the ``group_split_dispatch`` uses ``scatter_by_map`` to create
     the partitions, which is implemented by splitting a single base dataframe
     into multiple partitions. This means that memory are not freed until
     ALL partitions are deleted.
 
     In order to free memory ASAP, we can deep copy partitions NOT being
-    communicated. We do this when `num_rounds != batchsize`.
+    communicated. We do this when ``num_rounds != batchsize``.
 
     Parameters
     ----------
@@ -116,7 +116,7 @@ async def send(
     rank_to_out_part_ids: Dict[int, Set[int]],
     out_part_id_to_dataframe: Dict[int, DataFrame],
 ) -> None:
-    """Notice, items sent are removed from `out_part_id_to_dataframe`"""
+    """Notice, items sent are removed from ``out_part_id_to_dataframe``"""
     futures = []
     for rank, out_part_ids in rank_to_out_part_ids.items():
         if rank != myrank:
@@ -135,7 +135,7 @@ async def recv(
     out_part_id_to_dataframe_list: Dict[int, List[DataFrame]],
     proxify: Proxify,
 ) -> None:
-    """Notice, received items are appended to `out_parts_list`"""
+    """Notice, received items are appended to ``out_parts_list``"""
 
     async def read_msg(rank: int) -> None:
         msg: Dict[int, DataFrame] = nested_deserialize(await eps[rank].read())
@@ -150,11 +150,11 @@ async def recv(
 def compute_map_index(
     df: DataFrame, column_names: List[str], npartitions: int
 ) -> Series:
-    """Return a Series that maps each row `df` to a partition ID
+    """Return a Series that maps each row ``df`` to a partition ID
 
     The partitions are determined by hashing the columns given by column_names
-    unless if `column_names[0] == "_partitions"`, in which case the values of
-    `column_names[0]` are used as index.
+    unless if ``column_names[0] == "_partitions"``, in which case the values of
+    ``column_names[0]`` are used as index.
 
     Parameters
     ----------
@@ -168,7 +168,7 @@ def compute_map_index(
     Returns
     -------
     Series
-        Series that maps each row `df` to a partition ID
+        Series that maps each row ``df`` to a partition ID
     """
 
     if column_names[0] == "_partitions":
@@ -193,8 +193,8 @@ def partition_dataframe(
     """Partition dataframe to a dict of dataframes
 
     The partitions are determined by hashing the columns given by column_names
-    unless `column_names[0] == "_partitions"`, in which case the values of
-    `column_names[0]` are used as index.
+    unless ``column_names[0] == "_partitions"``, in which case the values of
+    ``column_names[0]`` are used as index.
 
     Parameters
     ----------
@@ -301,13 +301,13 @@ async def send_recv_partitions(
     rank_to_out_part_ids
         dict that for each worker rank specifies a set of output partition IDs.
         If the worker shouldn't return any partitions, it is excluded from the
-        dict. Partition IDs are global integers `0..npartitions` and corresponds
-        to the dict keys returned by `group_split_dispatch`.
+        dict. Partition IDs are global integers ``0..npartitions`` and corresponds
+        to the dict keys returned by ``group_split_dispatch``.
     out_part_id_to_dataframe
         Mapping from partition ID to dataframe. This dict is cleared on return.
     no_comm_postprocess
         Function to post-process partitions not communicated.
-        See `get_no_comm_postprocess`
+        See ``get_no_comm_postprocess``
     proxify
         Function to proxify object.
     out_part_id_to_dataframe_list
@@ -365,8 +365,8 @@ async def shuffle_task(
     rank_to_out_part_ids: dict
         dict that for each worker rank specifies a set of output partition IDs.
         If the worker shouldn't return any partitions, it is excluded from the
-        dict. Partition IDs are global integers `0..npartitions` and corresponds
-        to the dict keys returned by `group_split_dispatch`.
+        dict. Partition IDs are global integers ``0..npartitions`` and corresponds
+        to the dict keys returned by ``group_split_dispatch``.
     column_names: list of strings
         List of column names on which we want to split.
     npartitions: int
@@ -449,7 +449,7 @@ def shuffle(
         List of column names on which we want to split.
     npartitions: int or None
         The desired number of output partitions. If None, the number of output
-        partitions equals `df.npartitions`
+        partitions equals ``df.npartitions``
     ignore_index: bool
         Ignore index during shuffle. If True, performance may improve,
         but index values will not be preserved.
@@ -460,7 +460,7 @@ def shuffle(
         If -1, each worker will handle all its partitions in a single round and
         all techniques to reduce memory usage are disabled, which might be faster
         when memory pressure isn't an issue.
-        If None, the value of `DASK_EXPLICIT_COMMS_BATCHSIZE` is used or 1 if not
+        If None, the value of ``DASK_EXPLICIT_COMMS_BATCHSIZE`` is used or 1 if not
         set thus by default, we prioritize robustness over performance.
 
     Returns
@@ -471,12 +471,12 @@ def shuffle(
     Developer Notes
     ---------------
     The implementation consist of three steps:
-      (a) Stage the partitions of `df` on all workers and then cancel them
+      (a) Stage the partitions of ``df`` on all workers and then cancel them
           thus at this point the Dask Scheduler doesn't know about any of the
           the partitions.
       (b) Submit a task on each worker that shuffle (all-to-all communicate)
           the staged partitions and return a list of dataframe-partitions.
-      (c) Submit a dask graph that extract (using `getitem()`) individual
+      (c) Submit a dask graph that extract (using ``getitem()``) individual
           dataframe-partitions from (b).
     """
     c = comms.default_comms()
@@ -594,7 +594,7 @@ def _contains_shuffle_expr(*args) -> bool:
     """
     Check whether any of the arguments is a Shuffle expression.
 
-    This is called by `compute`, which is given a sequence of Dask Collections
+    This is called by ``compute``, which is given a sequence of Dask Collections
     to process. For each of those, we'll check whether the expresion contains a
     Shuffle operation.
     """
@@ -712,9 +712,9 @@ def patch_shuffle_expression() -> None:
     """Patch Dasks Shuffle expression.
 
     Notice, this is monkey patched into Dask at dask_cuda
-    import, and it changes `Shuffle._layer` to lower into
-    an `ECShuffle` expression when the 'explicit-comms'
-    config is set to `True`.
+    import, and it changes ``Shuffle._layer`` to lower into
+    an ``ECShuffle`` expression when the 'explicit-comms'
+    config is set to ``True``.
     """
     dask.base.compute = _patched_compute
 

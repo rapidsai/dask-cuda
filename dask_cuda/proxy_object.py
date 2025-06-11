@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import copy as _copy
 import functools
 import operator
@@ -52,21 +55,21 @@ def asproxy(
     serializers: Optional[Iterable[str]] = None,
     subclass: Optional[Type["ProxyObject"]] = None,
 ) -> "ProxyObject":
-    """Wrap `obj` in a ProxyObject object if it isn't already.
+    """Wrap ``obj`` in a ProxyObject object if it isn't already.
 
     Parameters
     ----------
     obj: object
         Object to wrap in a ProxyObject object.
     serializers: Iterable[str], optional
-        Serializers to use to serialize `obj`. If None, no serialization is done.
+        Serializers to use to serialize ``obj``. If None, no serialization is done.
     subclass: class, optional
         Specify a subclass of ProxyObject to create instead of ProxyObject.
-        `subclass` must be pickable.
+        ``subclass`` must be pickable.
 
     Returns
     -------
-    The ProxyObject proxying `obj`
+    The ProxyObject proxying ``obj``
     """
     if isinstance(obj, ProxyObject):  # Already a proxy object
         ret = obj
@@ -119,7 +122,7 @@ def unproxy(obj):
 
     Returns
     -------
-    The proxied object or `obj` itself if it isn't a ProxyObject
+    The proxied object or ``obj`` itself if it isn't a ProxyObject
     """
     try:
         obj = obj._pxy_deserialize()
@@ -185,16 +188,16 @@ class ProxyDetail:
         Dictionary of attributes that are accessible without deserializing
         the proxied object.
     type_serialized: bytes
-        Pickled type of `obj`.
+        Pickled type of ``obj``.
     typename: str
-        Name of the type of `obj`.
+        Name of the type of ``obj``.
     is_cuda_object: boolean
-        Whether `obj` is a CUDA object or not.
+        Whether ``obj`` is a CUDA object or not.
     subclass: bytes
         Pickled type to use instead of ProxyObject when deserializing. The type
         must inherit from ProxyObject.
     serializers: str, optional
-        Serializers to use to serialize `obj`. If None, no serialization is done.
+        Serializers to use to serialize ``obj``. If None, no serialization is done.
     explicit_proxy: bool
         Mark the proxy object as "explicit", which means that the user allows it
         as input argument to dask tasks even in compatibility-mode.
@@ -258,7 +261,7 @@ class ProxyDetail:
         return self.serializer is not None
 
     def serialize(self, serializers: Iterable[str]) -> Tuple[dict, list]:
-        """Inplace serialization of the proxied object using the `serializers`
+        """Inplace serialization of the proxied object using the ``serializers``
 
         Parameters
         ----------
@@ -333,7 +336,7 @@ class ProxyObject:
     ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
     Thus, if encountering problems remember that it is always possible to use unproxy()
     to access the proxied object directly or disable JIT deserialization completely
-    with `jit_unspill=False`.
+    with ``jit_unspill=False``.
 
     Type checking using instance() works as expected but direct type checking
     doesn't:
@@ -386,7 +389,7 @@ class ProxyObject:
         serializers: Iterable[str],
         proxy_detail: Optional[ProxyDetail] = None,
     ) -> None:
-        """Inplace serialization of the proxied object using the `serializers`
+        """Inplace serialization of the proxied object using the ``serializers``
 
         Parameters
         ----------
@@ -787,8 +790,8 @@ class ProxyObject:
 def obj_pxy_is_device_object(obj: ProxyObject):
     """
     In order to avoid de-serializing the proxied object,
-    we check `is_cuda_object` instead of the default
-    `hasattr(o, "__cuda_array_interface__")` check.
+    we check ``is_cuda_object`` instead of the default
+    ``hasattr(o, "__cuda_array_interface__")`` check.
     """
     return obj._pxy_get().is_cuda_object
 
@@ -830,7 +833,7 @@ def obj_pxy_dask_serialize(obj: ProxyObject):
 
     As serializers, it uses "dask" or "pickle", which means that proxied CUDA objects
     are spilled to main memory before communicated. Deserialization is needed, unless
-    obj is serialized to disk on a shared filesystem see `handle_disk_serialized()`.
+    obj is serialized to disk on a shared filesystem see ``handle_disk_serialized()``.
     """
     pxy = obj._pxy_get(copy=True)
     if pxy.serializer == "disk":
@@ -851,7 +854,7 @@ def obj_pxy_cuda_serialize(obj: ProxyObject):
 
     As serializers, it uses "cuda", which means that proxied CUDA objects are _not_
     spilled to main memory before communicated. However, we still have to handle disk
-    serialized proxied like in `obj_pxy_dask_serialize()`
+    serialized proxied like in ``obj_pxy_dask_serialize()``
     """
     pxy = obj._pxy_get(copy=True)
     if pxy.serializer in ("dask", "pickle"):
@@ -897,7 +900,7 @@ def obj_pxy_dask_deserialize(header, frames):
 
 
 def unproxify_input_wrapper(func):
-    """Unproxify the input of `func`"""
+    """Unproxify the input of ``func``"""
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):

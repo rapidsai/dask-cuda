@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import copy
 import logging
 import os
@@ -87,7 +90,7 @@ class LocalCUDACluster(LocalCluster):
         ``dask.temporary-directory`` in the local Dask configuration, using the current
         working directory if this is not set.
     shared_filesystem: bool or None, default None
-        Whether the `local_directory` above is shared between all workers or not.
+        Whether the ``local_directory`` above is shared between all workers or not.
         If ``None``, the "jit-unspill-shared-fs" config value are used, which
         defaults to True. Notice, in all other cases this option defaults to False,
         but on a local cluster it defaults to True -- we assume all workers use the
@@ -123,8 +126,8 @@ class LocalCUDACluster(LocalCluster):
         and to set the maximum pool size.
 
         .. note::
-            When paired with `--enable-rmm-async` the maximum size cannot be guaranteed
-            due to fragmentation.
+            When paired with ``--enable-rmm-async`` the maximum size cannot be
+            guaranteed due to fragmentation.
 
         .. note::
             This size is a per-worker configuration, and not cluster-wide.

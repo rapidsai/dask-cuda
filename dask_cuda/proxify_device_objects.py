@@ -1,4 +1,6 @@
-# Copyright (c) 2025 NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import functools
 import pydoc
 from collections import defaultdict
@@ -59,9 +61,9 @@ def proxify_device_objects(
 ) -> T:
     """Wrap device objects in ProxyObject
 
-    Search through `obj` and wraps all CUDA device objects in ProxyObject.
-    It uses `proxied_id_to_proxy` to make sure that identical CUDA device
-    objects found in `obj` are wrapped by the same ProxyObject.
+    Search through ``obj`` and wraps all CUDA device objects in ProxyObject.
+    It uses ``proxied_id_to_proxy`` to make sure that identical CUDA device
+    objects found in ``obj`` are wrapped by the same ProxyObject.
 
     Parameters
     ----------
@@ -69,11 +71,11 @@ def proxify_device_objects(
         Object to search through or wrap in a ProxyObject.
     proxied_id_to_proxy: MutableMapping[int, ProxyObject]
         Dict mapping the id() of proxied objects (CUDA device objects) to
-        their proxy and is updated with all new proxied objects found in `obj`.
+        their proxy and is updated with all new proxied objects found in ``obj``.
         If None, use an empty dict.
     found_proxies: List[ProxyObject]
-        List of found proxies in `obj`. Notice, this includes all proxies found,
-        including those already in `proxied_id_to_proxy`.
+        List of found proxies in ``obj``. Notice, this includes all proxies found,
+        including those already in ``proxied_id_to_proxy``.
         If None, use an empty list.
     excl_proxies: bool
         Don't add found objects that are already ProxyObject to found_proxies.
@@ -84,7 +86,7 @@ def proxify_device_objects(
     Returns
     -------
     ret: Any
-        A copy of `obj` where all CUDA device objects are wrapped in ProxyObject
+        A copy of ``obj`` where all CUDA device objects are wrapped in ProxyObject
     """
     _register_incompatible_types()
 
@@ -103,7 +105,7 @@ def unproxify_device_objects(
 ) -> T:
     """Unproxify device objects
 
-    Search through `obj` and un-wraps all CUDA device objects.
+    Search through ``obj`` and un-wraps all CUDA device objects.
 
     Parameters
     ----------
@@ -118,7 +120,7 @@ def unproxify_device_objects(
     Returns
     -------
     ret: Any
-        A copy of `obj` where all CUDA device objects are unproxify
+        A copy of ``obj`` where all CUDA device objects are unproxify
     """
     if isinstance(obj, dict):
         return {

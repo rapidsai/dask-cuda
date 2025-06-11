@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import operator
 import os
 import pickle
@@ -242,7 +245,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_fixed_attribute_length(backend):
-    """Test fixed attribute `x.__len__` access
+    """Test fixed attribute ``x.__len__`` access
 
     Notice, accessing fixed attributes shouldn't de-serialize the proxied object
     """
@@ -263,7 +266,7 @@ def test_fixed_attribute_length(backend):
 
 
 def test_fixed_attribute_name():
-    """Test fixed attribute `x.name` access
+    """Test fixed attribute ``x.name`` access
 
     Notice, accessing fixed attributes shouldn't de-serialize the proxied object
     """
@@ -386,8 +389,8 @@ def test_serializing_array_to_disk(backend, serializers, size):
 class _PxyObjTest(proxy_object.ProxyObject):
     """
     A class that:
-        - defines `__dask_tokenize__` in order to avoid deserialization when
-          calling `client.scatter()`
+        - defines ``__dask_tokenize__`` in order to avoid deserialization when
+          calling ``client.scatter()``
         - Asserts that no deserialization is performaned when communicating.
     """
 
