@@ -558,11 +558,24 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         Number of bytes of alignment to use, i.e., allocation must be a multiple of
         that size. RMM pool requires 256 bytes alignment.
 
+    Returns
+    -------
+    The parsed memory limit in bytes, or `None` as convenience if `device_memory_limit`
+    is `None`.
+
     Examples
     --------
     >>> # On a 32GB CUDA device
     >>> parse_device_memory_limit(None)
-    34089730048
+    None
+    >>> parse_device_memory_limit(0)
+    0
+    >>> parse_device_memory_limit(0.0)
+    0
+    >>> parse_device_memory_limit("0 MiB")
+    0
+    >>> parse_device_memory_limit(1.0)
+    27271784038
     >>> parse_device_memory_limit(0.8)
     27271784038
     >>> parse_device_memory_limit(1000000000)
@@ -574,8 +587,18 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     def _align(size, alignment_size):
         return size // alignment_size * alignment_size
 
-    if device_memory_limit in {0, "0", None, "auto"}:
+    # Special cases for "auto" and anything else that evaluates to `None`
+    if device_memory_limit == "auto":
         return _align(get_device_total_memory(device_index), alignment_size)
+    elif device_memory_limit is None:
+        return None
+    elif device_memory_limit == 0.0:
+        return 0
+    elif (
+        not isinstance(device_memory_limit, float)
+        and parse_bytes(device_memory_limit) == 0
+    ):
+        return 0
 
     with suppress(ValueError, TypeError):
         device_memory_limit = float(device_memory_limit)
