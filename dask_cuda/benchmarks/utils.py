@@ -834,7 +834,7 @@ def bandwidth_statistics(
     -------
     dict
 
-        mapping worker names to a :class:``BandwidthStats``
+        mapping worker names to a :class:`BandwidthStats`
         object summarising incoming messages (bandwidth and total bytes)
 
     """

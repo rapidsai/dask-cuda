@@ -65,13 +65,13 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     There are some subtle points around explicit-comms and the lifecycle
     of a Dask Cluster.
 
-    A :class:``CommsContext`` establishes explicit communication channels
+    A :class:`CommsContext` establishes explicit communication channels
     between the workers *at the time it's created*. If workers are added
     or removed, they will not be included in the communication channels
     with the other workers.
 
     If you need to refresh the explicit communications channels, then
-    create a new :class:``CommsContext`` object or call ``default_comms``
+    create a new :class:`CommsContext` object or call ``default_comms``
     again after workers have been added to or removed from the cluster.
     """
     # Comms are unique to a {client, [workers]} pair, so we key our
