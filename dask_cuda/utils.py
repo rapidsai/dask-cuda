@@ -549,8 +549,7 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     ----------
     device_memory_limit: float, int, str or None
         This can be a float (fraction of total device memory), an integer (bytes),
-        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
-        size.
+        a string (like 5GB or 5000M), and "auto" for the total device size.
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
@@ -575,7 +574,7 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     >>> parse_device_memory_limit("0 MiB")
     0
     >>> parse_device_memory_limit(1.0)
-    27271784038
+    34089730048
     >>> parse_device_memory_limit(0.8)
     27271784038
     >>> parse_device_memory_limit(1000000000)
