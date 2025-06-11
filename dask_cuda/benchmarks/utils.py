@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import argparse
 import itertools
 import json
@@ -122,7 +125,7 @@ def parse_benchmark_args(
         "pool size."
         ""
         ".. note::"
-        "    When paired with `--enable-rmm-async` the maximum size cannot be "
+        "    When paired with ``--enable-rmm-async`` the maximum size cannot be "
         "    guaranteed due to fragmentation."
         ""
         ".. note::"
@@ -831,7 +834,7 @@ def bandwidth_statistics(
     -------
     dict
 
-        mapping worker names to a :class:`BandwidthStats`
+        mapping worker names to a :class:``BandwidthStats``
         object summarising incoming messages (bandwidth and total bytes)
 
     """

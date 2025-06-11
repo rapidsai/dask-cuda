@@ -33,7 +33,7 @@ def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
     Returns
     -------
     context: context
-        Either `MultiLock(*args, **kwargs)` or a NULL context
+        Either ``MultiLock(*args, **kwargs)`` or a NULL context
     """
     if multi_lock_context:
         from distributed import MultiLock
@@ -52,7 +52,7 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     Parameters
     ----------
     client: Client, optional
-        If no default comm object exists, create the new comm on `client`
+        If no default comm object exists, create the new comm on ``client``
         are returned.
 
     Returns
@@ -65,13 +65,13 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     There are some subtle points around explicit-comms and the lifecycle
     of a Dask Cluster.
 
-    A :class:`CommsContext` establishes explicit communication channels
+    A :class:``CommsContext`` establishes explicit communication channels
     between the workers *at the time it's created*. If workers are added
     or removed, they will not be included in the communication channels
     with the other workers.
 
     If you need to refresh the explicit communications channels, then
-    create a new :class:`CommsContext` object or call ``default_comms``
+    create a new :class:``CommsContext`` object or call ``default_comms``
     again after workers have been added to or removed from the cluster.
     """
     # Comms are unique to a {client, [workers]} pair, so we key our
@@ -248,7 +248,7 @@ class CommsContext:
         Returns
         -------
         ret: object or Future
-            If wait=True, the result of `coroutine`
+            If wait=True, the result of ``coroutine``
             If wait=False, Future that can be waited on later.
         """
         ret = self.client.submit(
@@ -305,7 +305,7 @@ class CommsContext:
     def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
         """Staging keys on workers under the given name
 
-        In an explicit-comms task, use `pop_staging_area(..., name)` to access
+        In an explicit-comms task, use ``pop_staging_area(..., name)`` to access
         the staged keys and the associated data.
 
         Notes
@@ -335,7 +335,7 @@ class CommsContext:
 
 
 def pop_staging_area(session_state: dict, name: str) -> Dict[str, Any]:
-    """Pop the staging area called `name`
+    """Pop the staging area called ``name``
 
     This function must be called within a running explicit-comms task.
 

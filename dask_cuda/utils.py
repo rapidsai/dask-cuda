@@ -43,7 +43,7 @@ def unpack_bitmask(x, mask_bits=64):
     x: list of int
         A list of integers
     mask_bits: int
-        An integer determining the bitwidth of `x`
+        An integer determining the bitwidth of ``x``
 
     Examples
     --------
@@ -223,7 +223,7 @@ def get_device_total_memory(device_index=0):
 
     Returns
     -------
-    The total memory of the CUDA Device in bytes, or `None` for devices that do not
+    The total memory of the CUDA Device in bytes, or ``None`` for devices that do not
     have a dedicated memory resource, as is usually the case for system on a chip (SoC)
     devices.
     """
@@ -375,7 +375,7 @@ def wait_workers(
         Instance of client, used to query for number of workers connected.
     min_timeout: float
         Minimum number of seconds to wait before timeout. This value may be
-        overridden by setting the `DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT` with
+        overridden by setting the ``DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT`` with
         a positive integer.
     seconds_per_gpu: float
         Seconds to wait for each GPU on the system. For example, if its
@@ -384,7 +384,7 @@ def wait_workers(
         used as timeout when larger than min_timeout.
     n_gpus: None or int
         If specified, will wait for a that amount of GPUs (i.e., Dask workers)
-        to come online, else waits for a total of `get_n_gpus` workers.
+        to come online, else waits for a total of ``get_n_gpus`` workers.
     timeout_callback: None or callable
         A callback function to be executed if a timeout occurs, ignored if
         None.
@@ -503,8 +503,8 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
     """Get the device index for NVML addressing
 
     NVML expects the index of the physical device, unlike CUDA runtime which
-    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
-    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    expects the address relative to ``CUDA_VISIBLE_DEVICES``. This function
+    returns the i-th device index from the ``CUDA_VISIBLE_DEVICES``
     comma-separated string of devices or list.
 
     Examples
@@ -777,7 +777,7 @@ def get_rmm_device_memory_usage() -> Optional[int]:
     """Get current bytes allocated on current device through RMM
 
     Check the current RMM resource stack for resources such as
-    `StatisticsResourceAdaptor` and `TrackingResourceAdaptor`
+    ``StatisticsResourceAdaptor`` and ``TrackingResourceAdaptor``
     that can report the current allocated bytes. Returns None,
     if no such resources exist.
 
