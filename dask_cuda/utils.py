@@ -560,7 +560,7 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     Returns
     -------
     The parsed memory limit in bytes, or ``None`` as convenience if
-    ``device_memory_limit`` is ``None``.
+    ``device_memory_limit`` is ``None`` or any value that would evaluate to ``0``.
 
     Examples
     --------
@@ -568,11 +568,11 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     >>> parse_device_memory_limit(None)
     None
     >>> parse_device_memory_limit(0)
-    0
+    None
     >>> parse_device_memory_limit(0.0)
-    0
+    None
     >>> parse_device_memory_limit("0 MiB")
-    0
+    None
     >>> parse_device_memory_limit(1.0)
     34089730048
     >>> parse_device_memory_limit(0.8)
@@ -634,12 +634,12 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     if device_memory_limit is None:
         return None
     elif device_memory_limit == 0.0:
-        return 0
+        return None
     elif (
         not isinstance(device_memory_limit, float)
         and parse_bytes(device_memory_limit) == 0
     ):
-        return 0
+        return None
 
     if isinstance(device_memory_limit, str):
         return _align(parse_bytes(device_memory_limit), alignment_size)

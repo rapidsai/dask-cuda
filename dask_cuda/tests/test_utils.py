@@ -241,12 +241,11 @@ def test_parse_device_memory_limit():
     total = get_device_total_memory(0)
 
     assert parse_device_memory_limit(None) is None
-
-    assert parse_device_memory_limit(0) == 0
-    assert parse_device_memory_limit(0.0) == 0
-    assert parse_device_memory_limit("0") == 0
-    assert parse_device_memory_limit("0.0") == 0
-    assert parse_device_memory_limit("0 GiB") == 0
+    assert parse_device_memory_limit(0) is None
+    assert parse_device_memory_limit(0.0) is None
+    assert parse_device_memory_limit("0") is None
+    assert parse_device_memory_limit("0.0") is None
+    assert parse_device_memory_limit("0 GiB") is None
 
     assert parse_device_memory_limit(1) == 1
     assert parse_device_memory_limit("1") == 1
