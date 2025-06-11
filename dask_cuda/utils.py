@@ -559,8 +559,8 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
 
     Returns
     -------
-    The parsed memory limit in bytes, or `None` as convenience if `device_memory_limit`
-    is `None`.
+    The parsed memory limit in bytes, or ``None`` as convenience if
+    ``device_memory_limit`` is ``None``.
 
     Examples
     --------
