@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import importlib
 import logging
 import os
@@ -75,28 +78,26 @@ class RMMSetup(WorkerPlugin):
         self.external_lib_list = external_lib_list
 
     def setup(self, worker=None):
-        if self.initial_pool_size is not None:
-            self.initial_pool_size = parse_device_memory_limit(
-                self.initial_pool_size, alignment_size=256
-            )
+        self.initial_pool_size = parse_device_memory_limit(
+            self.initial_pool_size, alignment_size=256
+        )
 
         if self.async_alloc:
             import rmm
 
-            if self.release_threshold is not None:
-                self.release_threshold = parse_device_memory_limit(
-                    self.release_threshold, alignment_size=256
-                )
+            self.release_threshold = parse_device_memory_limit(
+                self.release_threshold, alignment_size=256
+            )
 
             mr = rmm.mr.CudaAsyncMemoryResource(
                 initial_pool_size=self.initial_pool_size,
                 release_threshold=self.release_threshold,
             )
 
+            self.maximum_pool_size = parse_device_memory_limit(
+                self.maximum_pool_size, alignment_size=256
+            )
             if self.maximum_pool_size is not None:
-                self.maximum_pool_size = parse_device_memory_limit(
-                    self.maximum_pool_size, alignment_size=256
-                )
                 mr = rmm.mr.LimitingResourceAdaptor(
                     mr, allocation_limit=self.maximum_pool_size
                 )
@@ -114,10 +115,9 @@ class RMMSetup(WorkerPlugin):
             pool_allocator = False if self.initial_pool_size is None else True
 
             if self.initial_pool_size is not None:
-                if self.maximum_pool_size is not None:
-                    self.maximum_pool_size = parse_device_memory_limit(
-                        self.maximum_pool_size, alignment_size=256
-                    )
+                self.maximum_pool_size = parse_device_memory_limit(
+                    self.maximum_pool_size, alignment_size=256
+                )
 
             rmm.reinitialize(
                 pool_allocator=pool_allocator,
@@ -129,6 +129,7 @@ class RMMSetup(WorkerPlugin):
                     worker, self.logging, self.log_directory
                 ),
             )
+
         if self.rmm_track_allocations:
             import rmm
 
