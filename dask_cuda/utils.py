@@ -574,7 +574,9 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     ----------
     device_memory_limit: float, int, str or None
         This can be a float (fraction of total device memory), an integer (bytes),
-        a string (like 5GB or 5000M), and "auto" for the total device size.
+        a string (like 5GB or 5000M), or the special "auto" for the total device size
+        on devices with a dedicated device resource and ``None`` for devices that do not
+        have a dedicated memory resource.
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
@@ -606,6 +608,14 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     1000000000
     >>> parse_device_memory_limit("1GB")
     1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    >>> parse_device_memory_limit("auto") == (
+    ...    parse_device_memory_limit(1.0)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
     """
 
     def _align(size, alignment_size):
@@ -641,6 +651,8 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
 
     # Special cases for "auto".
     if device_memory_limit == "auto":
+        if not has_device_memory_resource():
+            return None
         return _align(get_device_total_memory(device_index), alignment_size)
 
     # Special case for fractional limit. This comes before `0` special cases because
