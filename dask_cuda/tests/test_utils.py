@@ -80,8 +80,11 @@ def test_get_device_total_memory():
     for i in range(get_n_gpus()):
         with cuda.gpus[i]:
             total_mem = get_device_total_memory(i)
-            assert type(total_mem) is int
-            assert total_mem > 0
+            if has_device_memory_resource():
+                assert type(total_mem) is int
+                assert total_mem > 0
+            else:
+                assert total_mem is None
 
 
 @pytest.mark.parametrize(
