@@ -226,7 +226,6 @@ class LocalCUDACluster(LocalCluster):
         device_memory_limit=0.8,
         enable_cudf_spill=False,
         cudf_spill_stats=0,
-        data=None,
         local_directory=None,
         shared_filesystem=None,
         protocol=None,
@@ -244,7 +243,6 @@ class LocalCUDACluster(LocalCluster):
         rmm_track_allocations=False,
         jit_unspill=None,
         log_spilling=False,
-        worker_class=None,
         pre_import=None,
         **kwargs,
     ):
@@ -368,6 +366,7 @@ class LocalCUDACluster(LocalCluster):
             enable_rdmacm=enable_rdmacm,
         )
 
+        worker_class = kwargs.pop("worker_class", None)
         if worker_class is not None:
             if log_spilling is True:
                 raise ValueError(
