@@ -567,6 +567,114 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
         raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
+def parse_device_bytes(device_bytes, device_index=0, alignment_size=1):
+    """Parse bytes relative to a specific CUDA device.
+
+    Parameters
+    ----------
+    device_bytes: float, int, str or None
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``0`` and ``None`` are special cases
+        returning ``None``.
+    device_index: int or str
+        The index or UUID of the device from which to obtain the total memory amount.
+        Default: 0.
+    alignment_size: int
+        Number of bytes of alignment to use, i.e., allocation must be a multiple of
+        that size. RMM pool requires 256 bytes alignment.
+
+    Returns
+    -------
+    The parsed bytes value relative to the CUDA devices, or ``None`` as convenience if
+    ``device_bytes`` is ``None`` or any value that would evaluate to ``0``.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_bytes(None)
+    None
+    >>> parse_device_bytes(0)
+    None
+    >>> parse_device_bytes(0.0)
+    None
+    >>> parse_device_bytes("0 MiB")
+    None
+    >>> parse_device_bytes(1.0)
+    34089730048
+    >>> parse_device_bytes(0.8)
+    27271784038
+    >>> parse_device_bytes(1000000000)
+    1000000000
+    >>> parse_device_bytes("1GB")
+    1000000000
+    >>> parse_device_bytes("1GB")
+    1000000000
+    """
+
+    def _align(size, alignment_size):
+        return size // alignment_size * alignment_size
+
+    def parse_fractional(v):
+        """Parse fractional value.
+
+        Ensures ``int(1)`` and ``str("1")`` are not treated as fractionals, but
+        ``float(1)`` is.
+
+        Fractionals must be represented as a ``float`` within the range
+        ``0.0 < v <= 1.0``.
+
+        Parameters
+        ----------
+        v: int, float or str
+            The value to check if fractional.
+
+        Returns
+        -------
+        """
+        # Check if `x` matches exactly `int(1)` or `str("1")`, and is not a `float(1)`
+        is_one = lambda x: not isinstance(x, float) and (x == 1 or x == "1")
+
+        if not is_one(v):
+            with suppress(ValueError, TypeError):
+                v = float(v)
+                if 0.0 < v <= 1.0:
+                    return v
+
+        raise ValueError("The value is not fractional")
+
+    print(f"{device_bytes=}", flush=True)
+
+    # Special case for fractional limit. This comes before `0` special cases because
+    # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.
+    try:
+        fractional_device_bytes = parse_fractional(device_bytes)
+    except ValueError:
+        pass
+    else:
+        if not has_device_memory_resource():
+            raise ValueError(
+                "Fractional of total device memory not supported in devices without "
+                "a dedicated memory resource."
+            )
+        return _align(
+            int(get_device_total_memory(device_index) * fractional_device_bytes),
+            alignment_size,
+        )
+
+    # Special cases that evaluates to `None` or `0`
+    if device_bytes is None:
+        return None
+    elif device_bytes == 0.0:
+        return None
+    elif not isinstance(device_bytes, float) and parse_bytes(device_bytes) == 0:
+        return None
+
+    if isinstance(device_bytes, str):
+        return _align(parse_bytes(device_bytes), alignment_size)
+    else:
+        return _align(int(device_bytes), alignment_size)
+
+
 def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
     """Parse memory limit to be used by a CUDA device.
 
@@ -627,73 +735,20 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     True
     """
 
-    def _align(size, alignment_size):
-        return size // alignment_size * alignment_size
-
-    def parse_fractional(v):
-        """Parse fractional value.
-
-        Ensures ``int(1)`` and ``str("1")`` are not treated as fractionals, but
-        ``float(1)`` is.
-
-        Fractionals must be represented as a ``float`` within the range
-        ``0.0 < v <= 1.0``.
-
-        Parameters
-        ----------
-        v: int, float or str
-            The value to check if fractional.
-
-        Returns
-        -------
-        """
-        # Check if `x` matches exactly `int(1)` or `str("1")`, and is not a `float(1)`
-        is_one = lambda x: not isinstance(x, float) and (x == 1 or x == "1")
-
-        if not is_one(v):
-            with suppress(ValueError, TypeError):
-                v = float(v)
-                if 0.0 < v <= 1.0:
-                    return v
-
-        raise ValueError("The value is not fractional")
-
     # Special cases for "auto" and "default".
     if device_memory_limit in ["auto", "default"]:
         if not has_device_memory_resource():
             return None
         if device_memory_limit == "auto":
-            return _align(get_device_total_memory(device_index), alignment_size)
+            device_memory_limit = get_device_total_memory(device_index)
         else:
             device_memory_limit = 0.8
 
-    # Special case for fractional limit. This comes before `0` special cases because
-    # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.
-    try:
-        fractional_device_memory_limit = parse_fractional(device_memory_limit)
-    except ValueError:
-        pass
-    else:
-        return _align(
-            int(get_device_total_memory(device_index) * fractional_device_memory_limit),
-            alignment_size,
-        )
-
-    # Special cases that evaluates to `None` or `0`
-    if device_memory_limit is None:
-        return None
-    elif device_memory_limit == 0.0:
-        return None
-    elif (
-        not isinstance(device_memory_limit, float)
-        and parse_bytes(device_memory_limit) == 0
-    ):
-        return None
-
-    if isinstance(device_memory_limit, str):
-        return _align(parse_bytes(device_memory_limit), alignment_size)
-    else:
-        return _align(int(device_memory_limit), alignment_size)
+    return parse_device_bytes(
+        device_bytes=device_memory_limit,
+        device_index=device_index,
+        alignment_size=alignment_size,
+    )
 
 
 def get_gpu_uuid(device_index=0):

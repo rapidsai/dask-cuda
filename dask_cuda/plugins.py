@@ -8,7 +8,7 @@ from typing import Callable, Dict
 
 from distributed import WorkerPlugin
 
-from .utils import get_rmm_log_file_name, parse_device_memory_limit
+from .utils import get_rmm_log_file_name, parse_device_bytes
 
 
 class CPUAffinity(WorkerPlugin):
@@ -78,14 +78,14 @@ class RMMSetup(WorkerPlugin):
         self.external_lib_list = external_lib_list
 
     def setup(self, worker=None):
-        self.initial_pool_size = parse_device_memory_limit(
+        self.initial_pool_size = parse_device_bytes(
             self.initial_pool_size, alignment_size=256
         )
 
         if self.async_alloc:
             import rmm
 
-            self.release_threshold = parse_device_memory_limit(
+            self.release_threshold = parse_device_bytes(
                 self.release_threshold, alignment_size=256
             )
 
@@ -94,7 +94,7 @@ class RMMSetup(WorkerPlugin):
                 release_threshold=self.release_threshold,
             )
 
-            self.maximum_pool_size = parse_device_memory_limit(
+            self.maximum_pool_size = parse_device_bytes(
                 self.maximum_pool_size, alignment_size=256
             )
             if self.maximum_pool_size is not None:
@@ -115,7 +115,7 @@ class RMMSetup(WorkerPlugin):
             pool_allocator = False if self.initial_pool_size is None else True
 
             if self.initial_pool_size is not None:
-                self.maximum_pool_size = parse_device_memory_limit(
+                self.maximum_pool_size = parse_device_bytes(
                     self.maximum_pool_size, alignment_size=256
                 )
 

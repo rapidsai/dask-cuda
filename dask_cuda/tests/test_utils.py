@@ -238,12 +238,11 @@ def test_parse_visible_devices():
         parse_cuda_visible_device([])
 
 
-def test_parse_device_memory_limit():
+def test_parse_device_bytes():
     total = get_device_total_memory(0)
 
     assert parse_device_memory_limit(None) is None
     assert parse_device_memory_limit(0) is None
-    assert parse_device_memory_limit(0.0) is None
     assert parse_device_memory_limit("0") is None
     assert parse_device_memory_limit("0.0") is None
     assert parse_device_memory_limit("0 GiB") is None
@@ -251,21 +250,73 @@ def test_parse_device_memory_limit():
     assert parse_device_memory_limit(1) == 1
     assert parse_device_memory_limit("1") == 1
 
-    assert parse_device_memory_limit(1.0) == total
-    assert parse_device_memory_limit("1.0") == total
-    assert parse_device_memory_limit("auto") == total
-
-    assert parse_device_memory_limit(0.8) == int(total * 0.8)
-    assert parse_device_memory_limit(0.8, alignment_size=256) == int(
-        total * 0.8 // 256 * 256
-    )
     assert parse_device_memory_limit(1000000000) == 1000000000
     assert parse_device_memory_limit("1GB") == 1000000000
 
     if has_device_memory_resource(0):
+        assert parse_device_memory_limit(1.0) == total
+        assert parse_device_memory_limit("1.0") == total
+
+        assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+            total * 0.8 // 256 * 256
+        )
+
         assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
     else:
         assert parse_device_memory_limit("default") is None
+
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(1.0) == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit("1.0") == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+                total * 0.8 // 256 * 256
+            )
+
+
+def test_parse_device_memory_limit():
+    total = get_device_total_memory(0)
+
+    assert parse_device_memory_limit(None) is None
+    assert parse_device_memory_limit(0) is None
+    assert parse_device_memory_limit("0") is None
+    assert parse_device_memory_limit(0.0) is None
+    assert parse_device_memory_limit("0 GiB") is None
+
+    assert parse_device_memory_limit(1) == 1
+    assert parse_device_memory_limit("1") == 1
+
+    assert parse_device_memory_limit("auto") == total
+
+    assert parse_device_memory_limit(1000000000) == 1000000000
+    assert parse_device_memory_limit("1GB") == 1000000000
+
+    if has_device_memory_resource(0):
+        assert parse_device_memory_limit(1.0) == total
+        assert parse_device_memory_limit("1.0") == total
+
+        assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+            total * 0.8 // 256 * 256
+        )
+        assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
+    else:
+        assert parse_device_memory_limit("default") is None
+
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(1.0) == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit("1.0") == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+                total * 0.8 // 256 * 256
+            )
 
 
 def test_has_device_memory_resoure():

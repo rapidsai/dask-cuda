@@ -540,9 +540,11 @@ def test_get_cluster_configuration(loop):  # noqa: F811
 def test_worker_fraction_limits(loop):  # noqa: F811
     pytest.importorskip("rmm")
 
-    device_memory_limit_args = []
-    if has_device_memory_resource():
-        device_memory_limit_args += ["--device-memory-limit", "0.1"]
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Devices without dedicated memory resources do not support fractional "
+            "limits"
+        )
 
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
@@ -553,7 +555,8 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
-                *device_memory_limit_args,
+                "--device-memory-limit",
+                "0.1",
                 "--rmm-pool-size",
                 "0.2",
                 "--rmm-maximum-pool-size",
@@ -582,6 +585,33 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                     ret["[plugin] RMMSetup"]["maximum_pool_size"]
                     == (device_total_memory * 0.3) // 256 * 256
                 )
+
+
+@pytest.mark.parametrize(
+    "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
+)
+def test_worker_fraction_limits_no_dedicated_memory(argument):
+    if has_device_memory_resource():
+        pytest.skip("Devices with dedicated memory resources cannot test error")
+
+    if argument == "pool_size":
+        argument_list = ["--rmm-pool-size", "0.1"]
+    elif argument == "maximum_pool_size":
+        argument_list = ["--rmm-pool-size", "1 GiB", "--rmm-maximum-pool-size", "0.1"]
+    else:
+        argument_list = ["--rmm-async", "--rmm-release-threshold", "0.1"]
+
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        ret = subprocess.run(
+            ["dask", "cuda", "worker", "127.0.0.1:9369", *argument_list],
+            capture_output=True,
+        )
+
+        assert ret.returncode != 0
+        assert (
+            b"Fractional of total device memory not supported in devices without a "
+            b"dedicated memory resource" in ret.stderr
+        )
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
