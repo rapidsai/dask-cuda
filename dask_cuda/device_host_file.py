@@ -172,10 +172,11 @@ class DeviceHostFile(ZictBase):
     ----------
     worker_local_directory: path
         Path where to store serialized objects on disk
-    device_memory_limit: int
+    device_memory_limit: int or None
         Number of bytes of CUDA device memory for device LRU cache,
-        spills to host cache once filled.
-    memory_limit: int
+        spills to host cache once filled. Setting this ``0`` or ``None``
+        means unlimited device memory, implies no spilling to host.
+    memory_limit: int or None
         Number of bytes of host memory for host LRU cache, spills to
         disk once filled. Setting this to ``0`` or ``None`` means unlimited
         host memory, implies no spilling to disk.
@@ -233,15 +234,22 @@ class DeviceHostFile(ZictBase):
         self.device_keys = set()
         self.device_func = dict()
         self.device_host_func = Func(device_to_host, host_to_device, self.host_buffer)
-        self.device_buffer = Buffer(
-            self.device_func,
-            self.device_host_func,
-            device_memory_limit,
-            weight=lambda k, v: safe_sizeof(v),
-            **device_buffer_kwargs,
-        )
+        if device_memory_limit is None:
+            self.device_buffer = self.device_func
+        else:
+            self.device_buffer = Buffer(
+                self.device_func,
+                self.device_host_func,
+                device_memory_limit,
+                weight=lambda k, v: safe_sizeof(v),
+                **device_buffer_kwargs,
+            )
 
-        self.device = self.device_buffer.fast.d
+        self.device = (
+            self.device_buffer
+            if device_memory_limit is None
+            else self.device_buffer.fast.d
+        )
         self.host = (
             self.host_buffer if memory_limit is None else self.host_buffer.fast.d
         )
@@ -286,7 +294,12 @@ class DeviceHostFile(ZictBase):
         if key in self.others:
             del self.others[key]
         else:
-            del self.device_buffer[key]
+            if isinstance(self.device_buffer, dict) and key not in self.device_buffer:
+                # If `self.device_buffer` is a dictionary, host `key`s are inserted
+                # directly into `self.host_buffer`.
+                del self.host_buffer[key]
+            else:
+                del self.device_buffer[key]
 
     def evict(self):
         """Evicts least recently used host buffer (aka, CPU or system memory)
