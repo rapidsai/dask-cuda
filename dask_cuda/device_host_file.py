@@ -294,7 +294,12 @@ class DeviceHostFile(ZictBase):
         if key in self.others:
             del self.others[key]
         else:
-            del self.device_buffer[key]
+            if isinstance(self.device_buffer, dict) and key not in self.device_buffer:
+                # If `self.device_buffer` is a dictionary, host `key`s are inserted
+                # directly into `self.host_buffer`.
+                del self.host_buffer[key]
+            else:
+                del self.device_buffer[key]
 
     def evict(self):
         """Evicts least recently used host buffer (aka, CPU or system memory)
