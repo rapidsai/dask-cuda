@@ -270,6 +270,12 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
 
 def test_cudf_spill(loop):  # noqa: F811
     cudf = pytest.importorskip("cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Devices without dedicated memory resources cannot enable cuDF spill"
+        )
+
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -295,6 +301,24 @@ def test_cudf_spill(loop):  # noqa: F811
                 cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
                 for v in cudf_spill_stats.values():
                     assert v == 2
+
+
+def test_cudf_spill_no_dedicated_memory_error():
+    pytest.importorskip("cudf")
+
+    if has_device_memory_resource():
+        pytest.skip("Devices with dedicated memory resources cannot test error")
+
+    ret = subprocess.run(
+        ["dask", "cuda", "worker", "127.0.0.1:9369", "--enable-cudf-spill"],
+        capture_output=True,
+    )
+
+    assert ret.returncode != 0
+    assert (
+        b"cuDF spilling is not supported on devices without dedicated memory"
+        in ret.stderr
+    )
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
@@ -610,6 +634,12 @@ def test_worker_cudf_spill_warning(enable_cudf_spill_warning):  # noqa: F811
             capture_output=True,
         )
         if enable_cudf_spill_warning:
-            assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
+            if has_device_memory_resource():
+                assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
+            else:
+                assert (
+                    b"cuDF spilling is not supported on devices without dedicated "
+                    b"memory" in ret.stderr
+                )
         else:
             assert b"UserWarning: cuDF spilling is enabled" not in ret.stderr
