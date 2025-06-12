@@ -609,7 +609,7 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         if not is_one(v):
             with suppress(ValueError, TypeError):
                 v = float(v)
-                if isinstance(v, float) and 0.0 < v <= 1.0:
+                if 0.0 < v <= 1.0:
                     return v
 
         raise ValueError("The value is not fractional")
