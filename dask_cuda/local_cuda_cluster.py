@@ -143,9 +143,8 @@ class LocalCUDACluster(LocalCluster):
         See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
         .. warning::
-            The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-            incompatible with RMM pools and managed memory. Trying to enable both will
-            result in an exception.
+            The asynchronous allocator is incompatible with RMM pools and managed
+            memory. Trying to enable both will result in an exception.
     rmm_allocator_external_lib_list: str, list or None, default None
         List of external libraries for which to set RMM as the allocator.
         Supported options are: ``["torch", "cupy"]``. Can be a comma-separated string
