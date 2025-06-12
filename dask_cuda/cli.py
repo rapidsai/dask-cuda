@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import absolute_import, division, print_function
 
 import logging
@@ -113,7 +116,7 @@ def cuda():
     type=int,
     default=0,
     help="""Set the cuDF spilling statistics level. This option has no effect if
-    `--enable-cudf-spill` is not specified.""",
+    ``--enable-cudf-spill`` is not specified.""",
 )
 @click.option(
     "--rmm-pool-size",
@@ -135,8 +138,8 @@ def cuda():
     to set the maximum pool size.
 
     .. note::
-        When paired with `--enable-rmm-async` the maximum size cannot be guaranteed due
-        to fragmentation.
+        When paired with ``--enable-rmm-async`` the maximum size cannot be guaranteed
+        due to fragmentation.
 
     .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
@@ -245,12 +248,12 @@ def cuda():
     "--shared-filesystem/--no-shared-filesystem",
     default=None,
     type=bool,
-    help="""If `--shared-filesystem` is specified, inform JIT-Unspill that
-    `local_directory` is a shared filesystem available for all workers, whereas
-    `--no-shared-filesystem` informs it may not assume it's a shared filesystem.
+    help="""If ``--shared-filesystem`` is specified, inform JIT-Unspill that
+    ``local_directory`` is a shared filesystem available for all workers, whereas
+    ``--no-shared-filesystem`` informs it may not assume it's a shared filesystem.
     If neither is specified, JIT-Unspill will decide based on the Dask config value
-    specified by `"jit-unspill-shared-fs"`.
-    Notice, a shared filesystem must support the `os.link()` operation.""",
+    specified by ``"jit-unspill-shared-fs"``.
+    Notice, a shared filesystem must support the ``os.link()`` operation.""",
 )
 @scheduler_file
 @click.option(

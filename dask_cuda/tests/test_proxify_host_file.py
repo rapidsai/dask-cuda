@@ -1,4 +1,5 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Iterable
 from unittest.mock import patch
@@ -377,9 +378,9 @@ def test_externals(root_dir):
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
 def test_incompatible_types(root_dir):
-    """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
+    """Check that ProxifyHostFile unproxifies ``cupy.ndarray`` on retrieval
 
-    Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
+    Notice, in this test we add ``cupy.ndarray`` to the incompatible_types temporarily.
     """
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")

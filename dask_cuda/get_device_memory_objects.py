@@ -27,10 +27,10 @@ class DeviceMemoryId:
 
 
 def get_device_memory_ids(obj) -> Set[DeviceMemoryId]:
-    """Find all CUDA device objects in `obj`
+    """Find all CUDA device objects in ``obj``
 
-    Search through `obj` and find all CUDA device objects, which are objects
-    that either are known to `dispatch` or implement `__cuda_array_interface__`.
+    Search through ``obj`` and find all CUDA device objects, which are objects
+    that either are known to ``dispatch`` or implement ``__cuda_array_interface__``.
 
     Parameters
     ----------
