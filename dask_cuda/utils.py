@@ -235,6 +235,31 @@ def get_device_total_memory(device_index=0):
         return None
 
 
+def has_device_memory_resource(device_index=0):
+    """Determine wheter CUDA device has dedicated memory resource.
+
+    Certain devices have no dedicated memory resource, such as system on a chip (SoC)
+    devices.
+
+    Parameters
+    ----------
+    device_index: int or str
+        The index or UUID of the device from which to obtain the CPU affinity.
+
+    Returns
+    -------
+    Whether the device has a dedicated memory resource.
+    """
+    handle = get_gpu_handle(device_index)
+
+    try:
+        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return False
+
+    return True
+
+
 def get_ucx_config(
     enable_tcp_over_ucx=None,
     enable_infiniband=None,
