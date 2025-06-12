@@ -573,10 +573,13 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     Parameters
     ----------
     device_memory_limit: float, int, str or None
-        This can be a float (fraction of total device memory), an integer (bytes),
-        a string (like 5GB or 5000M), or the special "auto" for the total device size
-        on devices with a dedicated device resource and ``None`` for devices that do not
-        have a dedicated memory resource.
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``"auto"``, ``0`` or ``None`` to disable
+        spilling to host (i.e. allow full device memory usage). Another special value
+        ``"default"`` is also available and returns the recommended Dask-CUDA's defaults
+        and means 80% of the total device memory (analogous to ``0.8``), and disabled
+        spilling (analogous to ``auto``/``0``/``None``) on devices without a dedicated
+        memory resource, such as system on a chip (SoC) devices.
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
@@ -616,6 +619,12 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     ...    else None
     ... )
     True
+    >>> parse_device_memory_limit("default") == (
+    ...    parse_device_memory_limit(0.8)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
     """
 
     def _align(size, alignment_size):
@@ -649,11 +658,14 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
 
         raise ValueError("The value is not fractional")
 
-    # Special cases for "auto".
-    if device_memory_limit == "auto":
+    # Special cases for "auto" and "default".
+    if device_memory_limit in ["auto", "default"]:
         if not has_device_memory_resource():
             return None
-        return _align(get_device_total_memory(device_index), alignment_size)
+        if device_memory_limit == "auto":
+            return _align(get_device_total_memory(device_index), alignment_size)
+        else:
+            device_memory_limit = 0.8
 
     # Special case for fractional limit. This comes before `0` special cases because
     # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.

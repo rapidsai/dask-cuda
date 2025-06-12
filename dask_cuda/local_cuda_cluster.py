@@ -70,11 +70,16 @@ class LocalCUDACluster(LocalCluster):
         starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
         integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
         or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.
-    device_memory_limit : int, float, str, or None, default 0.8
+    device_memory_limit : int, float, str, or None, default "default"
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
-        total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
+        total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, ``0``
         or ``None`` to disable spilling to host (i.e. allow full device memory usage).
+        Another special value ``"default"`` (which happens to be the default) is also
+        available and uses the recommended Dask-CUDA's defaults and means 80% of the
+        total device memory (analogous to ``0.8``), and disabled spilling (analogous
+        to ``auto``/``0``) on devices without a dedicated memory resource, such as
+        system on a chip (SoC) devices.
     enable_cudf_spill : bool, default False
         Enable automatic cuDF spilling.
 
@@ -223,7 +228,7 @@ class LocalCUDACluster(LocalCluster):
         n_workers=None,
         threads_per_worker=1,
         memory_limit="auto",
-        device_memory_limit=0.8,
+        device_memory_limit="default",
         enable_cudf_spill=False,
         cudf_spill_stats=0,
         local_directory=None,

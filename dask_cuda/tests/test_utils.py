@@ -262,6 +262,11 @@ def test_parse_device_memory_limit():
     assert parse_device_memory_limit(1000000000) == 1000000000
     assert parse_device_memory_limit("1GB") == 1000000000
 
+    if has_device_memory_resource(0):
+        assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
+    else:
+        assert parse_device_memory_limit("default") is None
+
 
 def test_has_device_memory_resoure():
     has_memory_resource = has_device_memory_resource()

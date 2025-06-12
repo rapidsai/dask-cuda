@@ -41,7 +41,7 @@ class CUDAWorker(Server):
         nthreads=1,
         name=None,
         memory_limit="auto",
-        device_memory_limit="auto",
+        device_memory_limit="default",
         enable_cudf_spill=False,
         cudf_spill_stats=0,
         rmm_pool_size=None,

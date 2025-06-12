@@ -60,7 +60,7 @@ def worker_data_function(
                     "cuDF spilling is not supported on devices without dedicated "
                     "memory, such as system on a chip (SoC) devices."
                 )
-            elif device_memory_limit is not None:
+            elif device_memory_limit not in [None, "default"]:
                 raise ValueError(
                     "device_memory_limit is set but device has no dedicated memory."
                 )
