@@ -20,6 +20,12 @@ import dask_cudf
 from dask_cuda import LocalCUDACluster, utils
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
+if not utils.has_device_memory_resource():
+    pytest.skip(
+        "No spilling tests supported for devices without memory resources",
+        allow_module_level=True,
+    )
+
 if utils.get_device_total_memory() < 1e10:
     pytest.skip("Not enough GPU memory", allow_module_level=True)
 

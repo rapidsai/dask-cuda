@@ -21,6 +21,7 @@ from dask_cuda.utils import (
     get_gpu_count_mig,
     get_gpu_uuid,
     get_n_gpus,
+    has_device_memory_resource,
     wait_workers,
 )
 
@@ -28,6 +29,11 @@ from dask_cuda.utils import (
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,3,7,8"})
 def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
     nthreads = 4
+
+    device_memory_limit_args = []
+    if has_device_memory_resource():
+        device_memory_limit_args += ["--device-memory-limit", "1 MB"]
+
     with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
         with popen(
             [
@@ -37,8 +43,7 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                 "127.0.0.1:9359",
                 "--host",
                 "127.0.0.1",
-                "--device-memory-limit",
-                "1 MB",
+                *device_memory_limit_args,
                 "--nthreads",
                 str(nthreads),
                 "--no-dashboard",
@@ -255,6 +260,12 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
 
 def test_cudf_spill(loop):  # noqa: F811
     cudf = pytest.importorskip("cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Devices without dedicated memory resources cannot enable cuDF spill"
+        )
+
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -280,6 +291,24 @@ def test_cudf_spill(loop):  # noqa: F811
                 cudf_spill_stats = client.run(cudf.get_option, "spill_stats")
                 for v in cudf_spill_stats.values():
                     assert v == 2
+
+
+def test_cudf_spill_no_dedicated_memory_error():
+    pytest.importorskip("cudf")
+
+    if has_device_memory_resource():
+        pytest.skip("Devices with dedicated memory resources cannot test error")
+
+    ret = subprocess.run(
+        ["dask", "cuda", "worker", "127.0.0.1:9369", "--enable-cudf-spill"],
+        capture_output=True,
+    )
+
+    assert ret.returncode != 0
+    assert (
+        b"cuDF spilling is not supported on devices without dedicated memory"
+        in ret.stderr
+    )
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
@@ -462,6 +491,11 @@ def test_rmm_track_allocations(loop):  # noqa: F811
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_get_cluster_configuration(loop):  # noqa: F811
     pytest.importorskip("rmm")
+
+    device_memory_limit_args = []
+    if has_device_memory_resource():
+        device_memory_limit_args += ["--device-memory-limit", "30 B"]
+
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -471,8 +505,7 @@ def test_get_cluster_configuration(loop):  # noqa: F811
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
-                "--device-memory-limit",
-                "30 B",
+                *device_memory_limit_args,
                 "--rmm-pool-size",
                 "2 GB",
                 "--rmm-maximum-pool-size",
@@ -489,12 +522,18 @@ def test_get_cluster_configuration(loop):  # noqa: F811
                 assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
                 assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
                 assert ret["jit-unspill"] is False
-                assert ret["device-memory-limit"] == 30
+                if has_device_memory_resource():
+                    assert ret["device-memory-limit"] == 30
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_worker_fraction_limits(loop):  # noqa: F811
     pytest.importorskip("rmm")
+
+    device_memory_limit_args = []
+    if has_device_memory_resource():
+        device_memory_limit_args += ["--device-memory-limit", "0.1"]
+
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -504,8 +543,7 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                 "127.0.0.1:9369",
                 "--host",
                 "127.0.0.1",
-                "--device-memory-limit",
-                "0.1",
+                *device_memory_limit_args,
                 "--rmm-pool-size",
                 "0.2",
                 "--rmm-maximum-pool-size",
@@ -524,7 +562,8 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                 ret = get_cluster_configuration(client)
                 wait(ret)
 
-                assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
+                if has_device_memory_resource():
+                    assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
                 assert (
                     ret["[plugin] RMMSetup"]["initial_pool_size"]
                     == (device_total_memory * 0.2) // 256 * 256
@@ -585,6 +624,12 @@ def test_worker_cudf_spill_warning(enable_cudf_spill_warning):  # noqa: F811
             capture_output=True,
         )
         if enable_cudf_spill_warning:
-            assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
+            if has_device_memory_resource():
+                assert b"UserWarning: cuDF spilling is enabled" in ret.stderr
+            else:
+                assert (
+                    b"cuDF spilling is not supported on devices without dedicated "
+                    b"memory" in ret.stderr
+                )
         else:
             assert b"UserWarning: cuDF spilling is enabled" not in ret.stderr

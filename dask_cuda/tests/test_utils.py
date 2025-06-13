@@ -18,6 +18,7 @@ from dask_cuda.utils import (
     get_n_gpus,
     get_preload_options,
     get_ucx_config,
+    has_device_memory_resource,
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
@@ -260,6 +261,23 @@ def test_parse_device_memory_limit():
     )
     assert parse_device_memory_limit(1000000000) == 1000000000
     assert parse_device_memory_limit("1GB") == 1000000000
+
+    if has_device_memory_resource(0):
+        assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
+    else:
+        assert parse_device_memory_limit("default") is None
+
+
+def test_has_device_memory_resoure():
+    has_memory_resource = has_device_memory_resource()
+    total = get_device_total_memory(0)
+
+    if has_memory_resource:
+        # Tested only in devices with a memory resource
+        assert total == parse_device_memory_limit("auto")
+    else:
+        # Tested only in devices without a memory resource
+        assert total is None
 
 
 def test_parse_visible_mig_devices():

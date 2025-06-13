@@ -70,6 +70,7 @@ async def test_with_subset_of_cuda_visible_devices():
         asynchronous=True,
         device_memory_limit=1,
         worker_class=MockWorker,
+        data=lambda x: {},
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             assert len(cluster.workers) == 4
