@@ -636,17 +636,20 @@ def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit
     pytest.importorskip("rich")
 
     ctx = contextlib.nullcontext()
-    if device_memory_limit:
-        ctx = pytest.raises(
-            ValueError,
-            match="device_memory_limit is set but device has no dedicated memory.",
-        )
-    if jit_unspill:
-        # JIT-Unspill exception has precedence, thus overwrite ctx if both are enabled
-        ctx = pytest.raises(
-            ValueError,
-            match="JIT-Unspill is not supported on devices without dedicated memory",
-        )
+    if not has_device_memory_resource():
+        if device_memory_limit:
+            ctx = pytest.raises(
+                ValueError,
+                match="device_memory_limit is set but device has no dedicated memory.",
+            )
+        if jit_unspill:
+            # JIT-Unspill exception has precedence, thus overwrite ctx if both are
+            # enabled
+            ctx = pytest.raises(
+                ValueError,
+                match="JIT-Unspill is not supported on devices without dedicated "
+                "memory",
+            )
 
     with ctx:
         with LocalCUDACluster(
