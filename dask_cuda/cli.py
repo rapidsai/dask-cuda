@@ -167,9 +167,8 @@ def cuda():
     allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
     .. warning::
-        The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-        incompatible with RMM pools and managed memory, trying to enable both will
-        result in failure.""",
+        The asynchronous allocator is incompatible with RMM pools and managed memory,
+        trying to enable both will result in failure.""",
 )
 @click.option(
     "--set-rmm-allocator-for-libs",

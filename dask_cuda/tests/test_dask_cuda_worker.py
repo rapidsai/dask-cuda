@@ -124,11 +124,6 @@ def test_rmm_managed(loop):  # noqa: F811
 def test_rmm_async(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
 
-    driver_version = rmm._cuda.gpu.driverGetVersion()
-    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
-    if driver_version < 11020 or runtime_version < 11020:
-        pytest.skip("cudaMallocAsync not supported")
-
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
             [
@@ -163,11 +158,6 @@ def test_rmm_async(loop):  # noqa: F811
 
 def test_rmm_async_with_maximum_pool_size(loop):  # noqa: F811
     rmm = pytest.importorskip("rmm")
-
-    driver_version = rmm._cuda.gpu.driverGetVersion()
-    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
-    if driver_version < 11020 or runtime_version < 11020:
-        pytest.skip("cudaMallocAsync not supported")
 
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(

@@ -274,11 +274,6 @@ async def test_rmm_managed():
 async def test_rmm_async():
     rmm = pytest.importorskip("rmm")
 
-    driver_version = rmm._cuda.gpu.driverGetVersion()
-    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
-    if driver_version < 11020 or runtime_version < 11020:
-        pytest.skip("cudaMallocAsync not supported")
-
     async with LocalCUDACluster(
         rmm_async=True,
         rmm_pool_size="2GB",
@@ -300,11 +295,6 @@ async def test_rmm_async():
 @gen_test(timeout=20)
 async def test_rmm_async_with_maximum_pool_size():
     rmm = pytest.importorskip("rmm")
-
-    driver_version = rmm._cuda.gpu.driverGetVersion()
-    runtime_version = rmm._cuda.gpu.runtimeGetVersion()
-    if driver_version < 11020 or runtime_version < 11020:
-        pytest.skip("cudaMallocAsync not supported")
 
     async with LocalCUDACluster(
         rmm_async=True,
