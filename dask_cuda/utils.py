@@ -642,8 +642,6 @@ def parse_device_bytes(device_bytes, device_index=0, alignment_size=1):
 
         raise ValueError("The value is not fractional")
 
-    print(f"{device_bytes=}", flush=True)
-
     # Special case for fractional limit. This comes before `0` special cases because
     # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.
     try:

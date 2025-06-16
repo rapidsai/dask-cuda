@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextlib
 import os
 import pkgutil
 import sys
@@ -20,6 +21,7 @@ from dask_cuda.utils import (
     get_device_total_memory,
     get_gpu_count_mig,
     get_gpu_uuid,
+    has_device_memory_resource,
     print_cluster_config,
 )
 from dask_cuda.utils_test import MockWorker
@@ -28,7 +30,8 @@ from dask_cuda.utils_test import MockWorker
 @gen_test(timeout=20)
 async def test_local_cuda_cluster():
     async with LocalCUDACluster(
-        scheduler_port=0, asynchronous=True, device_memory_limit=1
+        scheduler_port=0,
+        asynchronous=True,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             assert len(cluster.workers) == utils.get_n_gpus()
@@ -68,9 +71,8 @@ async def test_with_subset_of_cuda_visible_devices():
     async with LocalCUDACluster(
         scheduler_port=0,
         asynchronous=True,
-        device_memory_limit=1,
         worker_class=MockWorker,
-        data=lambda x: {},
+        data=dict,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             assert len(cluster.workers) == 4
@@ -124,7 +126,9 @@ async def test_explicit_ucx_with_protocol_none(protocol):
 
     initialize(protocol=protocol, enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
-        protocol=None, enable_tcp_over_ucx=True, asynchronous=True, data=dict
+        protocol=None,
+        enable_tcp_over_ucx=True,
+        asynchronous=True,
     ) as cluster:
         assert all(
             ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
@@ -154,7 +158,10 @@ async def test_ucx_protocol_type_error(protocol):
 @gen_test(timeout=20)
 async def test_n_workers():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1",
+        worker_class=MockWorker,
+        asynchronous=True,
+        data=dict,
     ) as cluster:
         assert len(cluster.workers) == 2
         assert len(cluster.worker_spec) == 2
@@ -209,7 +216,10 @@ async def test_no_memory_limits_cudaworker():
 @gen_test(timeout=20)
 async def test_all_to_all():
     async with LocalCUDACluster(
-        CUDA_VISIBLE_DEVICES="0,1", worker_class=MockWorker, asynchronous=True
+        CUDA_VISIBLE_DEVICES="0,1",
+        worker_class=MockWorker,
+        asynchronous=True,
+        data=dict,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             workers = list(client.scheduler_info()["workers"])
@@ -382,7 +392,6 @@ async def test_cluster_worker():
     async with LocalCUDACluster(
         scheduler_port=0,
         asynchronous=True,
-        device_memory_limit=1,
         n_workers=1,
     ) as cluster:
         assert len(cluster.workers) == 1
@@ -465,7 +474,7 @@ async def test_get_cluster_configuration():
     async with LocalCUDACluster(
         rmm_pool_size="2GB",
         rmm_maximum_pool_size="3GB",
-        device_memory_limit="30B",
+        device_memory_limit="30B" if has_device_memory_resource() else None,
         CUDA_VISIBLE_DEVICES="0",
         scheduler_port=0,
         asynchronous=True,
@@ -475,11 +484,18 @@ async def test_get_cluster_configuration():
             assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
             assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
             assert ret["jit-unspill"] is False
-            assert ret["device-memory-limit"] == 30
+            if has_device_memory_resource():
+                assert ret["device-memory-limit"] == 30
 
 
 @gen_test(timeout=20)
 async def test_worker_fraction_limits():
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Devices without dedicated memory resources do not support fractional "
+            "limits"
+        )
+
     async with LocalCUDACluster(
         dashboard_address=None,
         device_memory_limit=0.1,
@@ -502,6 +518,40 @@ async def test_worker_fraction_limits():
                 ret["[plugin] RMMSetup"]["maximum_pool_size"]
                 == (device_total_memory * 0.3) // 256 * 256
             )
+
+
+# Intentionally not using @gen_test to skip cleanup checks
+@pytest.mark.parametrize(
+    "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
+)
+@pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
+def test_worker_fraction_limits_no_dedicated_memory(argument):
+    if has_device_memory_resource():
+        pytest.skip("Devices with dedicated memory resources cannot test error")
+
+    async def _test_worker_fraction_limits_no_dedicated_memory():
+        if argument == "pool_size":
+            kwargs = {"rmm_pool_size": "0.1"}
+        elif argument == "maximum_pool_size":
+            kwargs = {"rmm_pool_size": "1 GiB", "rmm_maximum_pool_size": "0.1"}
+        else:
+            kwargs = {"rmm_async": True, "rmm_release_threshold": "0.1"}
+
+        with raises_with_cause(
+            RuntimeError,
+            "Nanny failed to start",
+            RuntimeError,
+            "Worker failed to start",
+            ValueError,
+            "Fractional of total device memory not supported in devices without a "
+            "dedicated memory resource",
+        ):
+            await LocalCUDACluster(
+                asynchronous=True,
+                **kwargs,
+            )
+
+    asyncio.run(_test_worker_fraction_limits_no_dedicated_memory())
 
 
 @gen_test(timeout=20)
@@ -531,6 +581,11 @@ async def test_cudf_spill_disabled():
 async def test_cudf_spill():
     cudf = pytest.importorskip("cudf")
 
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Devices without dedicated memory resources cannot enable cuDF spill"
+        )
+
     async with LocalCUDACluster(
         enable_cudf_spill=True,
         cudf_spill_stats=2,
@@ -552,27 +607,101 @@ async def test_cudf_spill():
                 assert v == 2
 
 
+@gen_test(timeout=20)
+async def test_cudf_spill_no_dedicated_memory():
+    cudf = pytest.importorskip("cudf")  # noqa: F841
+
+    if has_device_memory_resource():
+        pytest.skip("Devices with dedicated memory resources cannot test error")
+
+    with pytest.raises(
+        ValueError,
+        match="cuDF spilling is not supported on devices without dedicated memory",
+    ):
+        await LocalCUDACluster(
+            enable_cudf_spill=True,
+            cudf_spill_stats=2,
+            asynchronous=True,
+        )
+
+
 @pytest.mark.parametrize(
     "protocol",
     ["ucx", "ucxx"],
 )
-def test_print_cluster_config(capsys, protocol):
+@pytest.mark.parametrize(
+    "jit_unspill",
+    [False, True],
+)
+@pytest.mark.parametrize(
+    "device_memory_limit",
+    [None, "1B"],
+)
+def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit):
     if protocol == "ucx":
         pytest.importorskip("ucp")
     elif protocol == "ucxx":
         pytest.importorskip("ucxx")
 
     pytest.importorskip("rich")
-    with LocalCUDACluster(
-        n_workers=1, device_memory_limit="1B", jit_unspill=True, protocol=protocol
-    ) as cluster:
-        with Client(cluster) as client:
-            print_cluster_config(client)
-            captured = capsys.readouterr()
-            assert "Dask Cluster Configuration" in captured.out
-            assert protocol in captured.out
-            assert "1 B" in captured.out
-            assert "[plugin]" in captured.out
+
+    ctx = contextlib.nullcontext()
+    if device_memory_limit:
+        ctx = pytest.raises(
+            ValueError,
+            match="device_memory_limit is set but device has no dedicated memory.",
+        )
+    if jit_unspill:
+        # JIT-Unspill exception has precedence, thus overwrite ctx if both are enabled
+        ctx = pytest.raises(
+            ValueError,
+            match="JIT-Unspill is not supported on devices without dedicated memory",
+        )
+
+    with ctx:
+        with LocalCUDACluster(
+            n_workers=1,
+            device_memory_limit=device_memory_limit,
+            jit_unspill=jit_unspill,
+            protocol=protocol,
+        ) as cluster:
+            with Client(cluster) as client:
+                print_cluster_config(client)
+                captured = capsys.readouterr()
+                assert "Dask Cluster Configuration" in captured.out
+                assert protocol in captured.out
+                if device_memory_limit == "1B":
+                    assert "1 B" in captured.out
+                assert "[plugin]" in captured.out
+                client.shutdown()
+
+    def ucxpy_reset(timeout=20):
+        """Reset UCX-Py with a timeout.
+
+        Attempt to reset UCX-Py, not doing so may cause a deadlock because UCX-Py is
+        not thread-safe and the Dask cluster may still be alive while a new cluster
+        and UCX-Py instances are initalized.
+        """
+        import time
+
+        import ucp
+
+        start = time.monotonic()
+        while True:
+            try:
+                ucp.reset()
+            except ucp._libs.exceptions.UCXError as e:
+                if time.monotonic() - start > timeout:
+                    raise RuntimeError(
+                        f"Could not reset UCX-Py in {timeout} seconds, this may result "
+                        f"in a deadlock. Failure:\n{e}"
+                    )
+                continue
+            else:
+                break
+
+    if protocol == "ucx":
+        ucxpy_reset()
 
 
 @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
