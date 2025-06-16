@@ -812,7 +812,8 @@ def get_worker_config(dask_worker):
         ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
     else:
         has_device = hasattr(dask_worker.data, "device_buffer")
-        if has_device:
+        if has_device and hasattr(dask_worker.data.device_buffer, "n"):
+            # If `n` is not an attribute, device spilling is disabled/unavailable.
             ret["device-memory-limit"] = dask_worker.data.device_buffer.n
 
     # using ucx ?
