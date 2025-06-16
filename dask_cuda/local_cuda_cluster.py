@@ -342,8 +342,8 @@ class LocalCUDACluster(LocalCluster):
 
         if jit_unspill is None:
             jit_unspill = dask.config.get("jit-unspill", default=False)
-        self.data = kwargs.pop("data", None)
-        if self.data is None:
+        data = kwargs.pop("data", None)
+        if data is None:
             self.data = worker_data_function(
                 device_memory_limit=self.device_memory_limit,
                 memory_limit=self.memory_limit,
@@ -391,6 +391,7 @@ class LocalCUDACluster(LocalCluster):
             threads_per_worker=threads_per_worker,
             memory_limit=self.memory_limit,
             processes=True,
+            data=data,
             local_directory=local_directory,
             protocol=protocol,
             worker_class=worker_class,
@@ -433,7 +434,7 @@ class LocalCUDACluster(LocalCluster):
                 "env": {
                     "CUDA_VISIBLE_DEVICES": visible_devices,
                 },
-                "data": self.data(device_index),
+                **({"data": self.data(device_index)} if hasattr(self, "data") else {}),
                 "plugins": {
                     CPUAffinity(get_cpu_affinity(device_index)),
                     RMMSetup(
