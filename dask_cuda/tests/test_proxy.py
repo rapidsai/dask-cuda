@@ -26,6 +26,7 @@ from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
+from dask_cuda.utils import has_device_memory_resource
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 # Make the "disk" serializer available and use a directory that are
@@ -292,6 +293,11 @@ async def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Spilling not supported in devices without dedicated memory resource"
+        )
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)

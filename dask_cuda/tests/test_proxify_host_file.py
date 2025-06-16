@@ -21,7 +21,7 @@ import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
-from dask_cuda.utils import get_device_total_memory
+from dask_cuda.utils import get_device_total_memory, has_device_memory_resource
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 cupy = pytest.importorskip("cupy")
@@ -230,6 +230,11 @@ def test_spill_on_demand(root_dir):
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
 
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Spilling not supported in devices without dedicated memory resource"
+        )
+
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
         worker_local_directory=root_dir,
@@ -247,6 +252,11 @@ async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "Spilling not supported in devices without dedicated memory resource"
+        )
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
@@ -403,6 +413,11 @@ def test_incompatible_types(root_dir):
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
 
+    if not has_device_memory_resource():
+        pytest.skip(
+            "JIT-Unspill not supported in devices without dedicated memory resource"
+        )
+
     def is_proxy_object(x):
         return "ProxyObject" in str(type(x))
 
@@ -435,6 +450,11 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
     cudf = pytest.importorskip("cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "JIT-Unspill not supported in devices without dedicated memory resource"
+        )
 
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with dask_cuda.LocalCUDACluster(
@@ -471,6 +491,11 @@ def test_on_demand_debug_info():
     rmm = pytest.importorskip("rmm")
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "JIT-Unspill not supported in devices without dedicated memory resource"
+        )
 
     rmm_pool_size = 2**20
 

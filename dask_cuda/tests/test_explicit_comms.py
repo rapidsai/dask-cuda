@@ -26,6 +26,7 @@ from dask_cuda.explicit_comms.dataframe.shuffle import (
     _contains_shuffle_expr,
     shuffle as explicit_comms_shuffle,
 )
+from dask_cuda.utils import has_device_memory_resource
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
@@ -361,6 +362,11 @@ def _test_jit_unspill(protocol):
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 def test_jit_unspill(protocol):
     pytest.importorskip("cudf")
+
+    if not has_device_memory_resource():
+        pytest.skip(
+            "JIT-Unspill not supported in devices without dedicated memory resource"
+        )
 
     p = mp.Process(target=_test_jit_unspill, args=(protocol,))
     p.start()
