@@ -253,11 +253,11 @@ def has_device_memory_resource(device_index=0):
     handle = get_gpu_handle(device_index)
 
     try:
-        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+        pynvml.nvmlDeviceGetMemoryInfo(handle).total
     except pynvml.NVMLError_NotSupported:
         return False
-
-    return True
+    else:
+        return True
 
 
 def get_ucx_config(

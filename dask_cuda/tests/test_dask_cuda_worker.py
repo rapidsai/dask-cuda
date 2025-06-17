@@ -283,13 +283,11 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
                     assert v == 0
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources cannot enable cuDF spill"
+)
 def test_cudf_spill(loop):  # noqa: F811
     cudf = pytest.importorskip("cudf")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Devices without dedicated memory resources cannot enable cuDF spill"
-        )
 
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
@@ -318,11 +316,11 @@ def test_cudf_spill(loop):  # noqa: F811
                     assert v == 2
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices with dedicated memory resources cannot test error"
+)
 def test_cudf_spill_no_dedicated_memory_error():
     pytest.importorskip("cudf")
-
-    if has_device_memory_resource():
-        pytest.skip("Devices with dedicated memory resources cannot test error")
 
     ret = subprocess.run(
         ["dask", "cuda", "worker", "127.0.0.1:9369", "--enable-cudf-spill"],
@@ -552,14 +550,8 @@ def test_get_cluster_configuration(loop):  # noqa: F811
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
-def test_worker_fraction_limits(loop):  # noqa: F811
+def test_worker_fraction_limits(loop, requires_device_memory_resource):  # noqa: F811
     pytest.importorskip("rmm")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Devices without dedicated memory resources do not support fractional "
-            "limits"
-        )
 
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
         with popen(
@@ -590,8 +582,7 @@ def test_worker_fraction_limits(loop):  # noqa: F811
                 ret = get_cluster_configuration(client)
                 wait(ret)
 
-                if has_device_memory_resource():
-                    assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
+                assert ret["device-memory-limit"] == int(device_total_memory * 0.1)
                 assert (
                     ret["[plugin] RMMSetup"]["initial_pool_size"]
                     == (device_total_memory * 0.2) // 256 * 256
@@ -605,10 +596,10 @@ def test_worker_fraction_limits(loop):  # noqa: F811
 @pytest.mark.parametrize(
     "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
 )
+@pytest.mark.skip_if_no_device_memory(
+    "Devices with dedicated memory resources cannot test error"
+)
 def test_worker_fraction_limits_no_dedicated_memory(argument):
-    if has_device_memory_resource():
-        pytest.skip("Devices with dedicated memory resources cannot test error")
-
     if argument == "pool_size":
         argument_list = ["--rmm-pool-size", "0.1"]
     elif argument == "maximum_pool_size":

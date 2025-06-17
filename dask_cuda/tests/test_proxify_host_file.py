@@ -21,7 +21,7 @@ import dask_cuda.proxify_device_objects
 from dask_cuda.get_device_memory_objects import get_device_memory_ids
 from dask_cuda.proxify_host_file import ProxifyHostFile
 from dask_cuda.proxy_object import ProxyObject, asproxy, unproxy
-from dask_cuda.utils import get_device_total_memory, has_device_memory_resource
+from dask_cuda.utils import get_device_total_memory
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 cupy = pytest.importorskip("cupy")
@@ -220,6 +220,9 @@ def test_one_item_host_limit(capsys, root_dir):
     assert len(dhf.manager) == 0
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 def test_spill_on_demand(root_dir):
     """
     Test spilling on demand by disabling the device_memory_limit
@@ -229,11 +232,6 @@ def test_spill_on_demand(root_dir):
     rmm = pytest.importorskip("rmm")
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Spilling not supported in devices without dedicated memory resource"
-        )
 
     total_mem = get_device_total_memory()
     dhf = ProxifyHostFile(
@@ -247,16 +245,14 @@ def test_spill_on_demand(root_dir):
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 @gen_test(timeout=20)
 async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
     cudf = pytest.importorskip("cudf")
     dask_cudf = pytest.importorskip("dask_cudf")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Spilling not supported in devices without dedicated memory resource"
-        )
 
     def task(x):
         assert isinstance(x, cudf.DataFrame)
@@ -409,14 +405,12 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "JIT-Unspill not supported in devices without dedicated memory resource"
-        )
 
     def is_proxy_object(x):
         return "ProxyObject" in str(type(x))
@@ -446,15 +440,13 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                     assert all(res)  # Only proxy objects
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=60)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
     cudf = pytest.importorskip("cudf")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "JIT-Unspill not supported in devices without dedicated memory resource"
-        )
 
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with dask_cuda.LocalCUDACluster(
@@ -486,16 +478,14 @@ async def test_worker_force_spill_to_disk():
                 assert "Unmanaged memory use is high" not in log
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 def test_on_demand_debug_info():
     """Test worker logging when on-demand-spilling fails"""
     rmm = pytest.importorskip("rmm")
     if not hasattr(rmm.mr, "FailureCallbackResourceAdaptor"):
         pytest.skip("RMM doesn't implement FailureCallbackResourceAdaptor")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "JIT-Unspill not supported in devices without dedicated memory resource"
-        )
 
     rmm_pool_size = 2**20
 

@@ -479,13 +479,10 @@ async def test_get_cluster_configuration():
 
 
 @gen_test(timeout=20)
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support fractional limits"
+)
 async def test_worker_fraction_limits():
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Devices without dedicated memory resources do not support fractional "
-            "limits"
-        )
-
     async with LocalCUDACluster(
         dashboard_address=None,
         device_memory_limit=0.1,
@@ -515,10 +512,10 @@ async def test_worker_fraction_limits():
     "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
 )
 @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
+@pytest.mark.skip_if_no_device_memory(
+    "Devices with dedicated memory resources cannot test error"
+)
 def test_worker_fraction_limits_no_dedicated_memory(argument):
-    if has_device_memory_resource():
-        pytest.skip("Devices with dedicated memory resources cannot test error")
-
     async def _test_worker_fraction_limits_no_dedicated_memory():
         if argument == "pool_size":
             kwargs = {"rmm_pool_size": "0.1"}
@@ -568,13 +565,11 @@ async def test_cudf_spill_disabled():
 
 
 @gen_test(timeout=20)
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources cannot enable cuDF spill"
+)
 async def test_cudf_spill():
     cudf = pytest.importorskip("cudf")
-
-    if not has_device_memory_resource():
-        pytest.skip(
-            "Devices without dedicated memory resources cannot enable cuDF spill"
-        )
 
     async with LocalCUDACluster(
         enable_cudf_spill=True,
@@ -597,12 +592,12 @@ async def test_cudf_spill():
                 assert v == 2
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices with dedicated memory resources cannot test error"
+)
 @gen_test(timeout=20)
 async def test_cudf_spill_no_dedicated_memory():
     cudf = pytest.importorskip("cudf")  # noqa: F841
-
-    if has_device_memory_resource():
-        pytest.skip("Devices with dedicated memory resources cannot test error")
 
     with pytest.raises(
         ValueError,
