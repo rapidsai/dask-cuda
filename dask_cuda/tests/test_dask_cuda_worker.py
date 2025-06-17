@@ -30,7 +30,7 @@ from dask_cuda.utils import (
     os.environ,
     {"CUDA_VISIBLE_DEVICES": "0,3,7,8", "DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC": "1"},
 )
-def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
+def test_cuda_visible_devices(loop):  # noqa: F811
     with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
         with popen(
             [
