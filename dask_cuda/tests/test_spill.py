@@ -22,7 +22,8 @@ from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 if not utils.has_device_memory_resource():
     pytest.skip(
-        "No spilling tests supported for devices without memory resources",
+        "No spilling tests supported for devices without memory resources. "
+        "See https://github.com/rapidsai/dask-cuda/issues/1510",
         allow_module_level=True,
     )
 
