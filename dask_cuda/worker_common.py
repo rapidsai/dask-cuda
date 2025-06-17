@@ -1,11 +1,17 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import warnings
 
 from .device_host_file import DeviceHostFile
+from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .proxify_host_file import ProxifyHostFile
-from .utils import get_device_total_memory, parse_device_memory_limit
+from .utils import (
+    get_cpu_affinity,
+    has_device_memory_resource,
+    parse_device_memory_limit,
+)
 
 
 def worker_data_function(
@@ -44,12 +50,11 @@ def worker_data_function(
     """
 
     def data(device_index):
-        has_device_memory = (
-            get_device_total_memory(device_index=device_index) is not None
-        )
+        if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
+            return {}
 
         # First raise errors for invalid configurations
-        if not has_device_memory:
+        if not has_device_memory_resource(device_index):
             if jit_unspill:
                 raise ValueError(
                     "JIT-Unspill is not supported on devices without dedicated memory, "
@@ -68,7 +73,11 @@ def worker_data_function(
         if device_memory_limit is None and memory_limit is None:
             # All spilling is disabled
             return {}
-        elif not has_device_memory:
+        elif not has_device_memory_resource(device_index):
+            if device_memory_limit == "default" and memory_limit is None:
+                # Devices without a dedicated memory resource only support default
+                # host<->disk spilling via Dask's default mechanism.
+                return {}
             # Devices without a dedicated memory resource only support default
             # host<->disk spilling via Dask's default mechanism.
             return None
@@ -104,3 +113,42 @@ def worker_data_function(
                 )
 
     return data
+
+
+def worker_plugins(
+    *,
+    device_index,
+    rmm_initial_pool_size,
+    rmm_maximum_pool_size,
+    rmm_managed_memory,
+    rmm_async_alloc,
+    rmm_release_threshold,
+    rmm_log_directory,
+    rmm_track_allocations,
+    rmm_allocator_external_lib_list,
+    pre_import,
+    enable_cudf_spill,
+    cudf_spill_stats,
+):
+    if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
+        return {
+            PreImport(pre_import),
+            CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
+        }
+    return {
+        CPUAffinity(
+            get_cpu_affinity(device_index),
+        ),
+        RMMSetup(
+            initial_pool_size=rmm_initial_pool_size,
+            maximum_pool_size=rmm_maximum_pool_size,
+            managed_memory=rmm_managed_memory,
+            async_alloc=rmm_async_alloc,
+            release_threshold=rmm_release_threshold,
+            log_directory=rmm_log_directory,
+            track_allocations=rmm_track_allocations,
+            external_lib_list=rmm_allocator_external_lib_list,
+        ),
+        PreImport(pre_import),
+        CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
+    }

@@ -22,15 +22,8 @@ from distributed.proctitle import (
 from distributed.worker_memory import parse_memory_limit
 
 from .initialize import initialize
-from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
-from .utils import (
-    cuda_visible_devices,
-    get_cpu_affinity,
-    get_n_gpus,
-    get_ucx_config,
-    nvml_device_index,
-)
-from .worker_common import worker_data_function
+from .utils import cuda_visible_devices, get_n_gpus, get_ucx_config, nvml_device_index
+from .worker_common import worker_data_function, worker_plugins
 
 
 class CUDAWorker(Server):
@@ -200,23 +193,20 @@ class CUDAWorker(Server):
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
-                    ),
-                    RMMSetup(
-                        initial_pool_size=rmm_pool_size,
-                        maximum_pool_size=rmm_maximum_pool_size,
-                        managed_memory=rmm_managed_memory,
-                        async_alloc=rmm_async,
-                        release_threshold=rmm_release_threshold,
-                        log_directory=rmm_log_directory,
-                        track_allocations=rmm_track_allocations,
-                        external_lib_list=rmm_allocator_external_lib_list,
-                    ),
-                    PreImport(pre_import),
-                    CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
-                },
+                plugins=worker_plugins(
+                    device_index=nvml_device_index(i, cuda_visible_devices(i)),
+                    rmm_initial_pool_size=rmm_pool_size,
+                    rmm_maximum_pool_size=rmm_maximum_pool_size,
+                    rmm_managed_memory=rmm_managed_memory,
+                    rmm_async_alloc=rmm_async,
+                    rmm_release_threshold=rmm_release_threshold,
+                    rmm_log_directory=rmm_log_directory,
+                    rmm_track_allocations=rmm_track_allocations,
+                    rmm_allocator_external_lib_list=rmm_allocator_external_lib_list,
+                    pre_import=pre_import,
+                    enable_cudf_spill=enable_cudf_spill,
+                    cudf_spill_stats=cudf_spill_stats,
+                ),
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={

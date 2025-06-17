@@ -12,16 +12,14 @@ from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
 from .initialize import initialize
-from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .utils import (
     cuda_visible_devices,
-    get_cpu_affinity,
     get_ucx_config,
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
-from .worker_common import worker_data_function
+from .worker_common import worker_data_function, worker_plugins
 
 
 class LoggedWorker(Worker):
@@ -434,21 +432,22 @@ class LocalCUDACluster(LocalCluster):
                     "CUDA_VISIBLE_DEVICES": visible_devices,
                 },
                 **({"data": self.data(device_index)} if hasattr(self, "data") else {}),
-                "plugins": {
-                    CPUAffinity(get_cpu_affinity(device_index)),
-                    RMMSetup(
-                        initial_pool_size=self.rmm_pool_size,
-                        maximum_pool_size=self.rmm_maximum_pool_size,
-                        managed_memory=self.rmm_managed_memory,
-                        async_alloc=self.rmm_async,
-                        release_threshold=self.rmm_release_threshold,
-                        log_directory=self.rmm_log_directory,
-                        track_allocations=self.rmm_track_allocations,
-                        external_lib_list=self.rmm_allocator_external_lib_list,
+                "plugins": worker_plugins(
+                    device_index=device_index,
+                    rmm_initial_pool_size=self.rmm_pool_size,
+                    rmm_maximum_pool_size=self.rmm_maximum_pool_size,
+                    rmm_managed_memory=self.rmm_managed_memory,
+                    rmm_async_alloc=self.rmm_async,
+                    rmm_release_threshold=self.rmm_release_threshold,
+                    rmm_log_directory=self.rmm_log_directory,
+                    rmm_track_allocations=self.rmm_track_allocations,
+                    rmm_allocator_external_lib_list=(
+                        self.rmm_allocator_external_lib_list
                     ),
-                    PreImport(self.pre_import),
-                    CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
-                },
+                    pre_import=self.pre_import,
+                    enable_cudf_spill=self.enable_cudf_spill,
+                    cudf_spill_stats=self.cudf_spill_stats,
+                ),
             }
         )
 

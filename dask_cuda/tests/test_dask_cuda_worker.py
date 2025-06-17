@@ -26,13 +26,46 @@ from dask_cuda.utils import (
 )
 
 
-@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,3,7,8"})
+@patch.dict(
+    os.environ,
+    {"CUDA_VISIBLE_DEVICES": "0,3,7,8", "DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC": "1"},
+)
 def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
+    with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9359",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+                "--worker-class",
+                "dask_cuda.utils_test.MockWorker",
+            ],
+        ):
+            with Client("127.0.0.1:9359", loop=loop) as client:
+                assert wait_workers(client, n_gpus=4)
+
+                def get_visible_devices():
+                    return os.environ["CUDA_VISIBLE_DEVICES"]
+
+                # verify 4 workers with the 4 expected CUDA_VISIBLE_DEVICES
+                result = client.run(get_visible_devices)
+                expected = {"0,3,7,8": 1, "3,7,8,0": 1, "7,8,0,3": 1, "8,0,3,7": 1}
+                for v in result.values():
+                    del expected[v]
+
+                assert len(expected) == 0
+
+
+def test_memory_limit_and_nthreads(loop):  # noqa: F811
     nthreads = 4
 
     device_memory_limit_args = []
     if has_device_memory_resource():
-        device_memory_limit_args += ["--device-memory-limit", "1 MB"]
+        device_memory_limit_args = ["--device-memory-limit", "1 MB"]
 
     with popen(["dask", "scheduler", "--port", "9359", "--no-dashboard"]):
         with popen(
@@ -49,25 +82,17 @@ def test_cuda_visible_devices_and_memory_limit_and_nthreads(loop):  # noqa: F811
                 "--no-dashboard",
                 "--worker-class",
                 "dask_cuda.utils_test.MockWorker",
-            ]
+            ],
         ):
             with Client("127.0.0.1:9359", loop=loop) as client:
-                assert wait_workers(client, n_gpus=4)
+                assert wait_workers(client, n_gpus=get_n_gpus())
 
                 def get_visible_devices():
                     return os.environ["CUDA_VISIBLE_DEVICES"]
 
-                # verify 4 workers with the 4 expected CUDA_VISIBLE_DEVICES
-                result = client.run(get_visible_devices)
-                expected = {"0,3,7,8": 1, "3,7,8,0": 1, "7,8,0,3": 1, "8,0,3,7": 1}
-                for v in result.values():
-                    del expected[v]
-
                 workers = client.scheduler_info()["workers"]
                 for w in workers.values():
                     assert w["memory_limit"] == MEMORY_LIMIT // len(workers)
-
-                assert len(expected) == 0
 
 
 def test_rmm_pool(loop):  # noqa: F811
