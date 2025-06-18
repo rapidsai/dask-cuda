@@ -512,7 +512,7 @@ async def test_worker_fraction_limits():
     "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
 )
 @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
-@pytest.mark.skip_if_no_device_memory(
+@pytest.mark.skip_if_device_memory(
     "Devices with dedicated memory resources cannot test error"
 )
 def test_worker_fraction_limits_no_dedicated_memory(argument):
@@ -592,7 +592,7 @@ async def test_cudf_spill():
                 assert v == 2
 
 
-@pytest.mark.skip_if_no_device_memory(
+@pytest.mark.skip_if_device_memory(
     "Devices with dedicated memory resources cannot test error"
 )
 @gen_test(timeout=20)

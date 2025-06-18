@@ -316,7 +316,7 @@ def test_cudf_spill(loop):  # noqa: F811
                     assert v == 2
 
 
-@pytest.mark.skip_if_no_device_memory(
+@pytest.mark.skip_if_device_memory(
     "Devices with dedicated memory resources cannot test error"
 )
 def test_cudf_spill_no_dedicated_memory_error():
@@ -550,7 +550,10 @@ def test_get_cluster_configuration(loop):  # noqa: F811
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
-def test_worker_fraction_limits(loop, requires_device_memory_resource):  # noqa: F811
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support fractional limits"
+)
+def test_worker_fraction_limits(loop):  # noqa: F811
     pytest.importorskip("rmm")
 
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
@@ -596,7 +599,7 @@ def test_worker_fraction_limits(loop, requires_device_memory_resource):  # noqa:
 @pytest.mark.parametrize(
     "argument", ["pool_size", "maximum_pool_size", "release_threshold"]
 )
-@pytest.mark.skip_if_no_device_memory(
+@pytest.mark.skip_if_device_memory(
     "Devices with dedicated memory resources cannot test error"
 )
 def test_worker_fraction_limits_no_dedicated_memory(argument):
