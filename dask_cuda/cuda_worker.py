@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import absolute_import, division, print_function
 
 import asyncio
@@ -18,18 +21,9 @@ from distributed.proctitle import (
 )
 from distributed.worker_memory import parse_memory_limit
 
-from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
-from .proxify_host_file import ProxifyHostFile
-from .utils import (
-    cuda_visible_devices,
-    get_cpu_affinity,
-    get_n_gpus,
-    get_ucx_config,
-    nvml_device_index,
-    parse_device_memory_limit,
-)
+from .utils import cuda_visible_devices, get_n_gpus, get_ucx_config, nvml_device_index
+from .worker_common import worker_data_function, worker_plugins
 
 
 class CUDAWorker(Server):
@@ -40,7 +34,7 @@ class CUDAWorker(Server):
         nthreads=1,
         name=None,
         memory_limit="auto",
-        device_memory_limit="auto",
+        device_memory_limit="default",
         enable_cudf_spill=False,
         cudf_spill_stats=0,
         rmm_pool_size=None,
@@ -166,35 +160,14 @@ class CUDAWorker(Server):
 
         if jit_unspill is None:
             jit_unspill = dask.config.get("jit-unspill", default=False)
-        if device_memory_limit is None and memory_limit is None:
-            data = lambda _: {}
-        elif jit_unspill:
-            if enable_cudf_spill:
-                warnings.warn(
-                    "Enabling cuDF spilling and JIT-Unspill together is not "
-                    "safe, consider disabling JIT-Unspill."
-                )
 
-            data = lambda i: (
-                ProxifyHostFile,
-                {
-                    "device_memory_limit": parse_device_memory_limit(
-                        device_memory_limit, device_index=i
-                    ),
-                    "memory_limit": memory_limit,
-                    "shared_filesystem": shared_filesystem,
-                },
-            )
-        else:
-            data = lambda i: (
-                DeviceHostFile,
-                {
-                    "device_memory_limit": parse_device_memory_limit(
-                        device_memory_limit, device_index=i
-                    ),
-                    "memory_limit": memory_limit,
-                },
-            )
+        data = worker_data_function(
+            device_memory_limit=device_memory_limit,
+            memory_limit=memory_limit,
+            jit_unspill=jit_unspill,
+            enable_cudf_spill=enable_cudf_spill,
+            shared_filesystem=shared_filesystem,
+        )
 
         cudf_spill_warning = dask.config.get("cudf-spill-warning", default=True)
         if enable_cudf_spill and cudf_spill_warning:
@@ -220,23 +193,20 @@ class CUDAWorker(Server):
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
                 security=security,
                 env={"CUDA_VISIBLE_DEVICES": cuda_visible_devices(i)},
-                plugins={
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(i, cuda_visible_devices(i)))
-                    ),
-                    RMMSetup(
-                        initial_pool_size=rmm_pool_size,
-                        maximum_pool_size=rmm_maximum_pool_size,
-                        managed_memory=rmm_managed_memory,
-                        async_alloc=rmm_async,
-                        release_threshold=rmm_release_threshold,
-                        log_directory=rmm_log_directory,
-                        track_allocations=rmm_track_allocations,
-                        external_lib_list=rmm_allocator_external_lib_list,
-                    ),
-                    PreImport(pre_import),
-                    CUDFSetup(spill=enable_cudf_spill, spill_stats=cudf_spill_stats),
-                },
+                plugins=worker_plugins(
+                    device_index=nvml_device_index(i, cuda_visible_devices(i)),
+                    rmm_initial_pool_size=rmm_pool_size,
+                    rmm_maximum_pool_size=rmm_maximum_pool_size,
+                    rmm_managed_memory=rmm_managed_memory,
+                    rmm_async_alloc=rmm_async,
+                    rmm_release_threshold=rmm_release_threshold,
+                    rmm_log_directory=rmm_log_directory,
+                    rmm_track_allocations=rmm_track_allocations,
+                    rmm_allocator_external_lib_list=rmm_allocator_external_lib_list,
+                    pre_import=pre_import,
+                    enable_cudf_spill=enable_cudf_spill,
+                    cudf_spill_stats=cudf_spill_stats,
+                ),
                 name=name if nprocs == 1 or name is None else str(name) + "-" + str(i),
                 local_directory=local_directory,
                 config={

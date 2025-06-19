@@ -11,18 +11,15 @@ import dask
 from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
-from .device_host_file import DeviceHostFile
 from .initialize import initialize
-from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
-from .proxify_host_file import ProxifyHostFile
 from .utils import (
     cuda_visible_devices,
-    get_cpu_affinity,
     get_ucx_config,
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
 )
+from .worker_common import worker_data_function, worker_plugins
 
 
 class LoggedWorker(Worker):
@@ -71,11 +68,16 @@ class LocalCUDACluster(LocalCluster):
         starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
         integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
         or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.
-    device_memory_limit : int, float, str, or None, default 0.8
+    device_memory_limit : int, float, str, or None, default "default"
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
-        total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0,
+        total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"``, ``0``
         or ``None`` to disable spilling to host (i.e. allow full device memory usage).
+        Another special value ``"default"`` (which happens to be the default) is also
+        available and uses the recommended Dask-CUDA's defaults and means 80% of the
+        total device memory (analogous to ``0.8``), and disabled spilling (analogous
+        to ``auto``/``0``) on devices without a dedicated memory resource, such as
+        system on a chip (SoC) devices.
     enable_cudf_spill : bool, default False
         Enable automatic cuDF spilling.
 
@@ -223,10 +225,9 @@ class LocalCUDACluster(LocalCluster):
         n_workers=None,
         threads_per_worker=1,
         memory_limit="auto",
-        device_memory_limit=0.8,
+        device_memory_limit="default",
         enable_cudf_spill=False,
         cudf_spill_stats=0,
-        data=None,
         local_directory=None,
         shared_filesystem=None,
         protocol=None,
@@ -244,7 +245,6 @@ class LocalCUDACluster(LocalCluster):
         rmm_track_allocations=False,
         jit_unspill=None,
         log_spilling=False,
-        worker_class=None,
         pre_import=None,
         **kwargs,
     ):
@@ -341,32 +341,13 @@ class LocalCUDACluster(LocalCluster):
             jit_unspill = dask.config.get("jit-unspill", default=False)
         data = kwargs.pop("data", None)
         if data is None:
-            if device_memory_limit is None and memory_limit is None:
-                data = {}
-            elif jit_unspill:
-                if enable_cudf_spill:
-                    warnings.warn(
-                        "Enabling cuDF spilling and JIT-Unspill together is not "
-                        "safe, consider disabling JIT-Unspill."
-                    )
-
-                data = (
-                    ProxifyHostFile,
-                    {
-                        "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.memory_limit,
-                        "shared_filesystem": shared_filesystem,
-                    },
-                )
-            else:
-                data = (
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": self.device_memory_limit,
-                        "memory_limit": self.memory_limit,
-                        "log_spilling": log_spilling,
-                    },
-                )
+            self.data = worker_data_function(
+                device_memory_limit=self.device_memory_limit,
+                memory_limit=self.memory_limit,
+                jit_unspill=jit_unspill,
+                enable_cudf_spill=enable_cudf_spill,
+                shared_filesystem=shared_filesystem,
+            )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
@@ -387,6 +368,7 @@ class LocalCUDACluster(LocalCluster):
             enable_rdmacm=enable_rdmacm,
         )
 
+        worker_class = kwargs.pop("worker_class", None)
         if worker_class is not None:
             if log_spilling is True:
                 raise ValueError(
@@ -443,28 +425,29 @@ class LocalCUDACluster(LocalCluster):
         spec = copy.deepcopy(self.new_spec)
         worker_count = self.cuda_visible_devices.index(name)
         visible_devices = cuda_visible_devices(worker_count, self.cuda_visible_devices)
+        device_index = nvml_device_index(0, visible_devices)
         spec["options"].update(
             {
                 "env": {
                     "CUDA_VISIBLE_DEVICES": visible_devices,
                 },
-                "plugins": {
-                    CPUAffinity(
-                        get_cpu_affinity(nvml_device_index(0, visible_devices))
+                **({"data": self.data(device_index)} if hasattr(self, "data") else {}),
+                "plugins": worker_plugins(
+                    device_index=device_index,
+                    rmm_initial_pool_size=self.rmm_pool_size,
+                    rmm_maximum_pool_size=self.rmm_maximum_pool_size,
+                    rmm_managed_memory=self.rmm_managed_memory,
+                    rmm_async_alloc=self.rmm_async,
+                    rmm_release_threshold=self.rmm_release_threshold,
+                    rmm_log_directory=self.rmm_log_directory,
+                    rmm_track_allocations=self.rmm_track_allocations,
+                    rmm_allocator_external_lib_list=(
+                        self.rmm_allocator_external_lib_list
                     ),
-                    RMMSetup(
-                        initial_pool_size=self.rmm_pool_size,
-                        maximum_pool_size=self.rmm_maximum_pool_size,
-                        managed_memory=self.rmm_managed_memory,
-                        async_alloc=self.rmm_async,
-                        release_threshold=self.rmm_release_threshold,
-                        log_directory=self.rmm_log_directory,
-                        track_allocations=self.rmm_track_allocations,
-                        external_lib_list=self.rmm_allocator_external_lib_list,
-                    ),
-                    PreImport(self.pre_import),
-                    CUDFSetup(self.enable_cudf_spill, self.cudf_spill_stats),
-                },
+                    pre_import=self.pre_import,
+                    enable_cudf_spill=self.enable_cudf_spill,
+                    cudf_spill_stats=self.cudf_spill_stats,
+                ),
             }
         )
 

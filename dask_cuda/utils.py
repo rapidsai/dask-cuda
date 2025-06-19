@@ -235,6 +235,31 @@ def get_device_total_memory(device_index=0):
         return None
 
 
+def has_device_memory_resource(device_index=0):
+    """Determine wheter CUDA device has dedicated memory resource.
+
+    Certain devices have no dedicated memory resource, such as system on a chip (SoC)
+    devices.
+
+    Parameters
+    ----------
+    device_index: int or str
+        The index or UUID of the device from which to obtain the CPU affinity.
+
+    Returns
+    -------
+    Whether the device has a dedicated memory resource.
+    """
+    handle = get_gpu_handle(device_index)
+
+    try:
+        pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return False
+    else:
+        return True
+
+
 def get_ucx_config(
     enable_tcp_over_ucx=None,
     enable_infiniband=None,
@@ -542,14 +567,15 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
         raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
-def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
-    """Parse memory limit to be used by a CUDA device.
+def parse_device_bytes(device_bytes, device_index=0, alignment_size=1):
+    """Parse bytes relative to a specific CUDA device.
 
     Parameters
     ----------
-    device_memory_limit: float, int, str or None
-        This can be a float (fraction of total device memory), an integer (bytes),
-        a string (like 5GB or 5000M), and "auto" for the total device size.
+    device_bytes: float, int, str or None
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``0`` and ``None`` are special cases
+        returning ``None``.
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
@@ -559,27 +585,29 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
 
     Returns
     -------
-    The parsed memory limit in bytes, or ``None`` as convenience if
-    ``device_memory_limit`` is ``None`` or any value that would evaluate to ``0``.
+    The parsed bytes value relative to the CUDA devices, or ``None`` as convenience if
+    ``device_bytes`` is ``None`` or any value that would evaluate to ``0``.
 
     Examples
     --------
     >>> # On a 32GB CUDA device
-    >>> parse_device_memory_limit(None)
+    >>> parse_device_bytes(None)
     None
-    >>> parse_device_memory_limit(0)
+    >>> parse_device_bytes(0)
     None
-    >>> parse_device_memory_limit(0.0)
+    >>> parse_device_bytes(0.0)
     None
-    >>> parse_device_memory_limit("0 MiB")
+    >>> parse_device_bytes("0 MiB")
     None
-    >>> parse_device_memory_limit(1.0)
+    >>> parse_device_bytes(1.0)
     34089730048
-    >>> parse_device_memory_limit(0.8)
+    >>> parse_device_bytes(0.8)
     27271784038
-    >>> parse_device_memory_limit(1000000000)
+    >>> parse_device_bytes(1000000000)
     1000000000
-    >>> parse_device_memory_limit("1GB")
+    >>> parse_device_bytes("1GB")
+    1000000000
+    >>> parse_device_bytes("1GB")
     1000000000
     """
 
@@ -614,37 +642,111 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
 
         raise ValueError("The value is not fractional")
 
-    # Special cases for "auto".
-    if device_memory_limit == "auto":
-        return _align(get_device_total_memory(device_index), alignment_size)
-
     # Special case for fractional limit. This comes before `0` special cases because
     # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.
     try:
-        fractional_device_memory_limit = parse_fractional(device_memory_limit)
+        fractional_device_bytes = parse_fractional(device_bytes)
     except ValueError:
         pass
     else:
+        if not has_device_memory_resource():
+            raise ValueError(
+                "Fractional of total device memory not supported in devices without "
+                "a dedicated memory resource."
+            )
         return _align(
-            int(get_device_total_memory(device_index) * fractional_device_memory_limit),
+            int(get_device_total_memory(device_index) * fractional_device_bytes),
             alignment_size,
         )
 
     # Special cases that evaluates to `None` or `0`
-    if device_memory_limit is None:
+    if device_bytes is None:
         return None
-    elif device_memory_limit == 0.0:
+    elif device_bytes == 0.0:
         return None
-    elif (
-        not isinstance(device_memory_limit, float)
-        and parse_bytes(device_memory_limit) == 0
-    ):
+    elif not isinstance(device_bytes, float) and parse_bytes(device_bytes) == 0:
         return None
 
-    if isinstance(device_memory_limit, str):
-        return _align(parse_bytes(device_memory_limit), alignment_size)
+    if isinstance(device_bytes, str):
+        return _align(parse_bytes(device_bytes), alignment_size)
     else:
-        return _align(int(device_memory_limit), alignment_size)
+        return _align(int(device_bytes), alignment_size)
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
+    """Parse memory limit to be used by a CUDA device.
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``"auto"``, ``0`` or ``None`` to disable
+        spilling to host (i.e. allow full device memory usage). Another special value
+        ``"default"`` is also available and returns the recommended Dask-CUDA's defaults
+        and means 80% of the total device memory (analogous to ``0.8``), and disabled
+        spilling (analogous to ``auto``/``0``/``None``) on devices without a dedicated
+        memory resource, such as system on a chip (SoC) devices.
+    device_index: int or str
+        The index or UUID of the device from which to obtain the total memory amount.
+        Default: 0.
+    alignment_size: int
+        Number of bytes of alignment to use, i.e., allocation must be a multiple of
+        that size. RMM pool requires 256 bytes alignment.
+
+    Returns
+    -------
+    The parsed memory limit in bytes, or ``None`` as convenience if
+    ``device_memory_limit`` is ``None`` or any value that would evaluate to ``0``.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_memory_limit(None)
+    None
+    >>> parse_device_memory_limit(0)
+    None
+    >>> parse_device_memory_limit(0.0)
+    None
+    >>> parse_device_memory_limit("0 MiB")
+    None
+    >>> parse_device_memory_limit(1.0)
+    34089730048
+    >>> parse_device_memory_limit(0.8)
+    27271784038
+    >>> parse_device_memory_limit(1000000000)
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    >>> parse_device_memory_limit("auto") == (
+    ...    parse_device_memory_limit(1.0)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
+    >>> parse_device_memory_limit("default") == (
+    ...    parse_device_memory_limit(0.8)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
+    """
+
+    # Special cases for "auto" and "default".
+    if device_memory_limit in ["auto", "default"]:
+        if not has_device_memory_resource():
+            return None
+        if device_memory_limit == "auto":
+            device_memory_limit = get_device_total_memory(device_index)
+        else:
+            device_memory_limit = 0.8
+
+    return parse_device_bytes(
+        device_bytes=device_memory_limit,
+        device_index=device_index,
+        alignment_size=alignment_size,
+    )
 
 
 def get_gpu_uuid(device_index=0):
@@ -710,7 +812,8 @@ def get_worker_config(dask_worker):
         ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
     else:
         has_device = hasattr(dask_worker.data, "device_buffer")
-        if has_device:
+        if has_device and hasattr(dask_worker.data.device_buffer, "n"):
+            # If `n` is not an attribute, device spilling is disabled/unavailable.
             ret["device-memory-limit"] = dask_worker.data.device_buffer.n
 
     # using ucx ?

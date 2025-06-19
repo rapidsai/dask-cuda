@@ -359,6 +359,9 @@ def _test_jit_unspill(protocol):
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.skip_if_no_device_memory(
+    "JIT-Unspill not supported in devices without dedicated memory resource"
+)
 def test_jit_unspill(protocol):
     pytest.importorskip("cudf")
 

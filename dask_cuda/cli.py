@@ -93,16 +93,20 @@ def cuda():
     help="""Size of the host LRU cache, which is used to determine when the worker
     starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
     integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
-    or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.""",
+    or ``"5000M"``), or ``"auto"`` or ``0`` for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",
-    default="0.8",
+    default="default",
     show_default=True,
     help="""Size of the CUDA device LRU cache, which is used to determine when the
     worker starts spilling to host memory. Can be an integer (bytes), float (fraction of
-    total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"`` or 0 to
-    disable spilling to host (i.e. allow full device memory usage).""",
+    total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"`` or ``0``
+    to disable spilling to host (i.e. allow full device memory usage). Another special
+    value ``"default"`` (which happens to be the default) is also available and uses the
+    recommended Dask-CUDA's defaults and means 80% of the total device memory (analogous
+    to ``0.8``), and disabled spilling (analogous to ``auto``/``0``) on devices without
+    a dedicated memory resource, such as system on a chip (SoC) devices.""",
 )
 @click.option(
     "--enable-cudf-spill/--disable-cudf-spill",

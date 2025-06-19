@@ -220,6 +220,9 @@ def test_one_item_host_limit(capsys, root_dir):
     assert len(dhf.manager) == 0
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 def test_spill_on_demand(root_dir):
     """
     Test spilling on demand by disabling the device_memory_limit
@@ -242,6 +245,9 @@ def test_spill_on_demand(root_dir):
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 @gen_test(timeout=20)
 async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
@@ -399,6 +405,9 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
@@ -431,6 +440,9 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                     assert all(res)  # Only proxy objects
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=60)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
@@ -466,6 +478,9 @@ async def test_worker_force_spill_to_disk():
                 assert "Unmanaged memory use is high" not in log
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 def test_on_demand_debug_info():
     """Test worker logging when on-demand-spilling fails"""
     rmm = pytest.importorskip("rmm")
