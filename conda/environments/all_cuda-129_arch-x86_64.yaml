@@ -3,9 +3,7 @@
 channels:
 - rapidsai
 - rapidsai-nightly
-- dask/label/dev
 - conda-forge
-- nvidia
 dependencies:
 - click >=8.1
 - cuda-nvcc-impl
