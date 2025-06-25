@@ -1,5 +1,11 @@
 #!/bin/bash
+# Copyright (c) 2025, NVIDIA CORPORATION.
 
+# There are several environment variables that are set but not exported
+# Shellcheck flags these up as "unused", but because `dask-scheduler` is called
+# within this script, those environment variables are in scope and will be
+# respected.  So we ignore that warning for this file.
+# shellcheck disable=SC2034
 usage() {
     echo "usage: $0 [-a <scheduler_address>] [-i <interface>] [-r <rmm_pool_size>] [-t <transports>]" >&2
     exit 1
@@ -17,10 +23,11 @@ while getopts ":a:i:r:t:" flag; do
     esac
 done
 
-if [ -z ${interface+x} ] && ! [ -z ${transport+x} ]; then
+if [ -z ${interface+x} ] && [ -n "${transport+x}" ]; then
     echo "$0: interface must be specified with -i if NVLink or InfiniBand are enabled"
     exit 1
 fi
+
 
 # set up environment variables/flags
 DASK_DISTRIBUTED__COMM__UCX__CUDA_COPY=True
@@ -30,7 +37,7 @@ DASK_DISTRIBUTED__RMM__POOL_SIZE=$rmm_pool_size
 scheduler_flags="--scheduler-file scheduler.json --protocol ucx"
 worker_flags="--scheduler-file scheduler.json --enable-tcp-over-ucx --rmm-pool-size ${rmm_pool_size}"
 
-if ! [ -z ${interface+x} ]; then
+if [ -n "${interface+x}" ]; then
     scheduler_flags+=" --interface ${interface}"
 fi
 if [[ $transport == *"nvlink"* ]]; then
@@ -46,7 +53,7 @@ if [[ $transport == *"ib"* ]]; then
 fi
 
 # initialize scheduler
-dask scheduler $scheduler_flags &
+dask scheduler "$scheduler_flags" &
 
 # initialize workers
-dask cuda worker $worker_flags
+dask cuda worker "$worker_flags"
