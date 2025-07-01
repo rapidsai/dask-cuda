@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 import math
 from collections import ChainMap
@@ -166,7 +169,7 @@ def merge(args, ddf1, ddf2):
 
 def bench_once(client, args, write_profile=None):
     # Generate random Dask dataframes
-    n_workers = len(client.scheduler_info()["workers"])
+    n_workers = len(client.scheduler_info(n_workers=-1)["workers"])
     # Allow the number of chunks to vary between
     # the "base" and "other" DataFrames
     args.base_chunks = args.base_chunks or n_workers

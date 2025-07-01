@@ -644,11 +644,11 @@ def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
     for _ in range(timeout // 5):
         print(
             "Waiting for workers to come up, "
-            f"have {len(client.scheduler_info().get('workers', []))}, "
+            f"have {len(client.scheduler_info(n_workers=-1).get('workers', []))}, "
             f"want {expected}"
         )
         time.sleep(5)
-        nworkers = len(client.scheduler_info().get("workers", []))
+        nworkers = len(client.scheduler_info(n_workers=-1).get("workers", []))
         if nworkers == expected:
             return
     else:
