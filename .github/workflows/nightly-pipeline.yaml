@@ -22,6 +22,7 @@ on:
       build_type:
         description: "build_type: one of [branch, nightly, pull-request]"
         type: string
+        default: branch
 
 jobs:
   build:
