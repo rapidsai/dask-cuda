@@ -425,7 +425,7 @@ def wait_workers(
 
     start = time.time()
     while True:
-        if len(client.scheduler_info()["workers"]) == n_gpus:
+        if len(client.scheduler_info(n_workers=-1)["workers"]) == n_gpus:
             return True
         elif time.time() - start > timeout:
             if callable(timeout_callback):
@@ -439,7 +439,7 @@ async def _all_to_all(client):
     """
     Trigger all to all communication between workers and scheduler
     """
-    workers = list(client.scheduler_info()["workers"])
+    workers = list(client.scheduler_info(n_workers=-1)["workers"])
     futs = []
     for w in workers:
         bit_of_data = b"0" * 1
@@ -858,7 +858,7 @@ async def _get_cluster_configuration(client):
     if worker_config:
         w = list(worker_config.values())[0]
         ret.update(w)
-        info = client.scheduler_info()
+        info = client.scheduler_info(n_workers=-1)
         workers = info.get("workers", {})
         ret["nworkers"] = len(workers)
         ret["nthreads"] = sum(w["nthreads"] for w in workers.values())

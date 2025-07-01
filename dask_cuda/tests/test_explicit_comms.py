@@ -427,7 +427,9 @@ def test_create_destroy_create():
     with LocalCluster(n_workers=1) as cluster:
         with Client(cluster) as client:
             context = comms.default_comms()
-            scheduler_addresses_old = list(client.scheduler_info()["workers"].keys())
+            scheduler_addresses_old = list(
+                client.scheduler_info(n_workers=-1)["workers"].keys()
+            )
             comms_addresses_old = list(comms.default_comms().worker_addresses)
             assert comms.default_comms() is context
             assert len(comms._comms_cache) == 1
@@ -448,7 +450,9 @@ def test_create_destroy_create():
     # because we referenced the old cluster's addresses.
     with LocalCluster(n_workers=1) as cluster:
         with Client(cluster) as client:
-            scheduler_addresses_new = list(client.scheduler_info()["workers"].keys())
+            scheduler_addresses_new = list(
+                client.scheduler_info(n_workers=-1)["workers"].keys()
+            )
             comms_addresses_new = list(comms.default_comms().worker_addresses)
 
     assert scheduler_addresses_new == comms_addresses_new
@@ -489,7 +493,8 @@ def test_scaled_cluster_gets_new_comms_context():
                 "n_workers": 2,
             }
             expected_1 = {
-                k: expected_values for k in client.scheduler_info()["workers"]
+                k: expected_values
+                for k in client.scheduler_info(n_workers=-1)["workers"]
             }
             assert result_1 == expected_1
 
@@ -517,7 +522,8 @@ def test_scaled_cluster_gets_new_comms_context():
                 "n_workers": 3,
             }
             expected_2 = {
-                k: expected_values for k in client.scheduler_info()["workers"]
+                k: expected_values
+                for k in client.scheduler_info(n_workers=-1)["workers"]
             }
             assert result_2 == expected_2
 

@@ -77,7 +77,9 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     # Comms are unique to a {client, [workers]} pair, so we key our
     # cache by the token of that.
     client = client or default_client()
-    token = tokenize(client.id, list(client.scheduler_info()["workers"].keys()))
+    token = tokenize(
+        client.id, list(client.scheduler_info(n_workers=-1)["workers"].keys())
+    )
     maybe_comms = _comms_cache.get(token)
     if maybe_comms is None:
         maybe_comms = CommsContext(client=client)
@@ -206,7 +208,9 @@ class CommsContext:
         self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
-        self.worker_addresses = list(self.client.scheduler_info()["workers"].keys())
+        self.worker_addresses = list(
+            self.client.scheduler_info(n_workers=-1)["workers"].keys()
+        )
 
         # Make all workers listen and get all listen addresses
         self.worker_direct_addresses = []

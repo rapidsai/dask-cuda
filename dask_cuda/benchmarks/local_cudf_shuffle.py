@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 from collections import ChainMap
 from time import perf_counter
@@ -70,7 +73,7 @@ def create_data(
     """
     chunksize = args.partition_size // np.float64().nbytes
 
-    workers = list(client.scheduler_info()["workers"].keys())
+    workers = list(client.scheduler_info(n_workers=-1)["workers"].keys())
     assert len(workers) > 0
 
     dist = args.partition_distribution

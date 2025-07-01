@@ -90,7 +90,7 @@ def test_memory_limit_and_nthreads(loop):  # noqa: F811
                 def get_visible_devices():
                     return os.environ["CUDA_VISIBLE_DEVICES"]
 
-                workers = client.scheduler_info()["workers"]
+                workers = client.scheduler_info(n_workers=-1)["workers"]
                 for w in workers.values():
                     assert w["memory_limit"] == MEMORY_LIMIT // len(workers)
 

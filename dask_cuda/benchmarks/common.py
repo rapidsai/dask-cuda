@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2022-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 from argparse import Namespace
 from functools import partial
@@ -124,7 +127,7 @@ def run(client: Client, args: Namespace, config: Config):
     """
 
     wait_for_cluster(client, shutdown_on_failure=True)
-    assert len(client.scheduler_info()["workers"]) > 0
+    assert len(client.scheduler_info(n_workers=-1)["workers"]) > 0
     setup_memory_pools(
         client=client,
         is_gpu=args.type == "gpu",

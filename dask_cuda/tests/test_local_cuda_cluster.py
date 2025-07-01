@@ -222,7 +222,7 @@ async def test_all_to_all():
         data=dict,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
-            workers = list(client.scheduler_info()["workers"])
+            workers = list(client.scheduler_info(n_workers=-1)["workers"])
             n_workers = len(workers)
             await utils.all_to_all(client)
             # assert all to all has resulted in all data on every worker
