@@ -28,6 +28,8 @@ def _create_cuda_context_handler():
 
 def _warn_generic():
     try:
+        # TODO: update when UCX-Py is removed, see
+        # https://github.com/rapidsai/dask-cuda/issues/1517
         import distributed.comm.ucx
 
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
