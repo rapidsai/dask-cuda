@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
+import importlib
 import logging
 import os
 
@@ -22,63 +26,95 @@ def _create_cuda_context_handler():
         numba.cuda.current_context()
 
 
-def _create_cuda_context(protocol="ucx"):
-    if protocol not in ["ucx", "ucxx"]:
-        return
+def _warn_generic():
+    try:
+        # TODO: update when UCX-Py is removed, see
+        # https://github.com/rapidsai/dask-cuda/issues/1517
+        import distributed.comm.ucx
+
+        # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
+        # context directly from the UCX module, thus avoiding a similar warning there.
+        cuda_visible_device = get_device_index_and_uuid(
+            os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
+        )
+        ctx = has_cuda_context()
+        if (
+            ctx.has_context
+            and not distributed.comm.ucx.cuda_context_created.has_context
+        ):
+            distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
+
+        _create_cuda_context_handler()
+
+        if not distributed.comm.ucx.cuda_context_created.has_context:
+            ctx = has_cuda_context()
+            if ctx.has_context and ctx.device_info != cuda_visible_device:
+                distributed.comm.ucx._warn_cuda_context_wrong_device(
+                    cuda_visible_device, ctx.device_info, os.getpid()
+                )
+
+    except Exception:
+        logger.error("Unable to start CUDA Context", exc_info=True)
+
+
+def _initialize_ucx():
+    try:
+        import distributed.comm.ucx
+
+        distributed.comm.ucx.init_once()
+    except ModuleNotFoundError:
+        # UCX initialization has to be delegated to Distributed, it will take care
+        # of setting correct environment variables and importing `ucp` after that.
+        # Therefore if ``import ucp`` fails we can just continue here.
+        pass
+
+
+def _initialize_ucxx():
     try:
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
         # context directly from the UCX module, thus avoiding a similar warning there.
-        try:
-            if protocol == "ucx":
-                import distributed.comm.ucx
+        import distributed_ucxx.ucxx
 
-                distributed.comm.ucx.init_once()
-            elif protocol == "ucxx":
-                import distributed_ucxx.ucxx
-
-                distributed_ucxx.ucxx.init_once()
-        except ModuleNotFoundError:
-            # UCX initialization has to be delegated to Distributed, it will take care
-            # of setting correct environment variables and importing `ucp` after that.
-            # Therefore if ``import ucp`` fails we can just continue here.
-            pass
+        distributed_ucxx.ucxx.init_once()
 
         cuda_visible_device = get_device_index_and_uuid(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
         ctx = has_cuda_context()
-        if protocol == "ucx":
-            if (
-                ctx.has_context
-                and not distributed.comm.ucx.cuda_context_created.has_context
-            ):
-                distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
-        elif protocol == "ucxx":
-            if (
-                ctx.has_context
-                and not distributed_ucxx.ucxx.cuda_context_created.has_context
-            ):
-                distributed_ucxx.ucxx._warn_existing_cuda_context(ctx, os.getpid())
+        if (
+            ctx.has_context
+            and not distributed_ucxx.ucxx.cuda_context_created.has_context
+        ):
+            distributed_ucxx.ucxx._warn_existing_cuda_context(ctx, os.getpid())
 
         _create_cuda_context_handler()
 
-        if protocol == "ucx":
-            if not distributed.comm.ucx.cuda_context_created.has_context:
-                ctx = has_cuda_context()
-                if ctx.has_context and ctx.device_info != cuda_visible_device:
-                    distributed.comm.ucx._warn_cuda_context_wrong_device(
-                        cuda_visible_device, ctx.device_info, os.getpid()
-                    )
-        elif protocol == "ucxx":
-            if not distributed_ucxx.ucxx.cuda_context_created.has_context:
-                ctx = has_cuda_context()
-                if ctx.has_context and ctx.device_info != cuda_visible_device:
-                    distributed_ucxx.ucxx._warn_cuda_context_wrong_device(
-                        cuda_visible_device, ctx.device_info, os.getpid()
-                    )
+        if not distributed_ucxx.ucxx.cuda_context_created.has_context:
+            ctx = has_cuda_context()
+            if ctx.has_context and ctx.device_info != cuda_visible_device:
+                distributed_ucxx.ucxx._warn_cuda_context_wrong_device(
+                    cuda_visible_device, ctx.device_info, os.getpid()
+                )
 
     except Exception:
         logger.error("Unable to start CUDA Context", exc_info=True)
+
+
+def _create_cuda_context(protocol="ucx"):
+    if protocol not in ["ucx", "ucxx", "ucx-old"]:
+        return
+
+    has_ucxx = bool(importlib.util.find_spec("distributed_ucxx"))
+
+    if protocol == "ucxx" or (has_ucxx and protocol == "ucx"):
+        # With https://github.com/rapidsai/rapids-dask-dependency/pull/116,
+        # `protocol="ucx"` now points to UCXX (if distributed-ucxx is installed),
+        # thus call the UCXX initializer.
+        _initialize_ucxx()
+    else:
+        if protocol.startswith("ucx"):
+            _initialize_ucx()
+        _warn_generic()
 
 
 def initialize(
