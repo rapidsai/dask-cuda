@@ -26,20 +26,12 @@ def _create_cuda_context_handler():
         numba.cuda.current_context()
 
 
-def _initialize_ucx():
+def _warn_generic():
     try:
+        import distributed.comm.ucx
+
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
         # context directly from the UCX module, thus avoiding a similar warning there.
-        try:
-            import distributed.comm.ucx
-
-            distributed.comm.ucx.init_once()
-        except ModuleNotFoundError:
-            # UCX initialization has to be delegated to Distributed, it will take care
-            # of setting correct environment variables and importing `ucp` after that.
-            # Therefore if ``import ucp`` fails we can just continue here.
-            pass
-
         cuda_visible_device = get_device_index_and_uuid(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
@@ -61,6 +53,18 @@ def _initialize_ucx():
 
     except Exception:
         logger.error("Unable to start CUDA Context", exc_info=True)
+
+
+def _initialize_ucx():
+    try:
+        import distributed.comm.ucx
+
+        distributed.comm.ucx.init_once()
+    except ModuleNotFoundError:
+        # UCX initialization has to be delegated to Distributed, it will take care
+        # of setting correct environment variables and importing `ucp` after that.
+        # Therefore if ``import ucp`` fails we can just continue here.
+        pass
 
 
 def _initialize_ucxx():
@@ -112,7 +116,9 @@ def _create_cuda_context(protocol="ucx"):
         # thus call the UCXX initializer.
         _initialize_ucxx()
     else:
-        _initialize_ucx()
+        if protocol.startswith("ucx"):
+            _initialize_ucx()
+        _warn_generic()
 
 
 def initialize(
