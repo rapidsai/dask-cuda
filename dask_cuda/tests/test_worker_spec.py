@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from distributed import Nanny
@@ -28,7 +31,7 @@ def _check_env_value(spec, k, v):
 @pytest.mark.parametrize("num_devices", [1, 4])
 @pytest.mark.parametrize("cls", [Nanny])
 @pytest.mark.parametrize("interface", [None, "eth0", "enp1s0f0"])
-@pytest.mark.parametrize("protocol", [None, "tcp", "ucx"])
+@pytest.mark.parametrize("protocol", [None, "tcp", "ucx", "ucx-old"])
 @pytest.mark.parametrize("dashboard_address", [None, ":0", ":8787"])
 @pytest.mark.parametrize("threads_per_worker", [1, 8])
 @pytest.mark.parametrize("silence_logs", [False, True])
@@ -58,7 +61,7 @@ def test_worker_spec(
             enable_nvlink=enable_nvlink,
         )
 
-    if (enable_infiniband or enable_nvlink) and protocol != "ucx":
+    if (enable_infiniband or enable_nvlink) and protocol not in ("ucx", "ucx-old"):
         with pytest.raises(
             TypeError, match="Enabling InfiniBand or NVLink requires protocol='ucx'"
         ):

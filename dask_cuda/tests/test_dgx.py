@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import multiprocessing as mp
 import os
 from enum import Enum, auto
@@ -10,6 +13,7 @@ from distributed import Client
 
 from dask_cuda import LocalCUDACluster
 from dask_cuda.initialize import initialize
+from dask_cuda.utils_test import get_ucx_implementation
 
 mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
@@ -78,10 +82,7 @@ def test_default():
 
 
 def _test_tcp_over_ucx(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     with LocalCUDACluster(protocol=protocol, enable_tcp_over_ucx=True) as cluster:
         with Client(cluster) as client:
@@ -102,13 +103,10 @@ def _test_tcp_over_ucx(protocol):
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 def test_tcp_over_ucx(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
     if _is_ucx_116(ucp):
         pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 
@@ -137,10 +135,7 @@ def _test_ucx_infiniband_nvlink(
     skip_queue, protocol, enable_infiniband, enable_nvlink, enable_rdmacm
 ):
     cupy = pytest.importorskip("cupy")
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     if enable_infiniband and not any(
         [at.startswith("rc") for at in ucp.get_active_transports()]
@@ -206,7 +201,7 @@ def _test_ucx_infiniband_nvlink(
             assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 @pytest.mark.parametrize(
     "params",
     [
@@ -222,10 +217,7 @@ def _test_ucx_infiniband_nvlink(
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(protocol, params):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
     if _is_ucx_116(ucp) and params["enable_infiniband"] is False:
         pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
 

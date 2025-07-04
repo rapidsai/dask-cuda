@@ -6,6 +6,8 @@ from typing import Literal
 import distributed
 from distributed import Nanny, Worker
 
+from .utils import _get_active_ucx_implementation_name
+
 
 class MockWorker(Worker):
     """Mock Worker class preventing NVML from getting used by SystemMonitor.
@@ -46,3 +48,14 @@ class IncreasedCloseTimeoutNanny(Nanny):
         self, timeout: float = 30.0, reason: str = "nanny-close"
     ) -> Literal["OK"]:
         return await super().close(timeout=timeout, reason=reason)
+
+
+def get_ucx_implementation(protocol):
+    import pytest
+
+    protocol = _get_active_ucx_implementation_name(protocol)
+
+    if protocol == "ucx":
+        return pytest.importorskip("ucxx")
+    else:
+        return pytest.importorskip("ucp")
