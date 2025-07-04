@@ -80,7 +80,7 @@ def parse_benchmark_args(
     cluster_args.add_argument(
         "-p",
         "--protocol",
-        choices=["tcp", "ucx", "ucxx"],
+        choices=["tcp", "ucx", "ucxx", "ucx-old"],
         default="tcp",
         type=str,
         help="The communication protocol to use.",
