@@ -353,7 +353,7 @@ def get_preload_options(
         preload_options["preload_argv"].append("--create-cuda-context")
 
     try:
-        get_ucx_implementation(protocol)
+        _get_active_ucx_implementation_name(protocol)
     except ValueError:
         pass
     else:
@@ -825,7 +825,7 @@ def get_worker_config(dask_worker):
     scheme, loc = parse_address(dask_worker.scheduler.address)
     ret["protocol"] = scheme
     try:
-        protocol = get_ucx_implementation(scheme)
+        protocol = _get_active_ucx_implementation_name(scheme)
     except ValueError:
         pass
     else:
@@ -984,11 +984,11 @@ class CommaSeparatedChoice(click.Choice):
         return values
 
 
-def get_ucx_implementation(protocol):
-    """Get the UCX implementation selected.
+def _get_active_ucx_implementation_name(protocol):
+    """Get the name of active UCX implementation.
 
-    Determine what UCX implementation is being used based on a series of conditions.
-    UCXX is selected if:
+    Determine what UCX implementation is being activated based on a series of
+    conditions. UCXX is selected if:
     - The protocol is `"ucxx"`, or the protocol is `"ucx"` and the `distributed-ucxx`
       package is installed.
     UCX-Py is selected if:
