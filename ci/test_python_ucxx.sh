@@ -48,10 +48,10 @@ rapids-logger "pytest dask-cuda with ucxx"
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  -k "ucxx"
+  -k "not ucx-old"
 
 rapids-logger "Run local benchmark with ucxx"
-./ci/run_benchmarks.sh -p ucxx
+./ci/run_benchmarks.sh -p ucx
 
 export UCXPY_PROGRESS_MODE=blocking
 rapids-logger "pytest dask-cuda with ucxx in blocking progress mode"
@@ -61,10 +61,10 @@ rapids-logger "pytest dask-cuda with ucxx in blocking progress mode"
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  -k "ucxx"
+  -k "not ucx-old"
 
 rapids-logger "Run local benchmark with ucxx in blocking progress mode"
-./ci/run_benchmarks.sh -p ucxx
+./ci/run_benchmarks.sh -p ucx
 
 rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}
