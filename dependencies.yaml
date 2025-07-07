@@ -159,7 +159,7 @@ dependencies:
         packages:
           - &cudf_unsuffixed cudf==25.8.*,>=0.0.0a0
           - &dask_cudf_unsuffixed dask-cudf==25.8.*,>=0.0.0a0
-          - distributed-ucxx==0.45.*,>=0.0.0a0
+          - &distributed_ucxx_unsuffixed distributed-ucxx==0.45.*,>=0.0.0a0
           - &kvikio_unsuffixed kvikio==25.8.*,>=0.0.0a0
           - &ucx_py_unsuffixed ucx-py==0.45.*,>=0.0.0a0
           - ucxx==0.45.*,>=0.0.0a0
@@ -188,6 +188,7 @@ dependencies:
             packages:
               - *cudf_unsuffixed
               - *dask_cudf_unsuffixed
+              - *distributed_ucxx_unsuffixed
               - *kvikio_unsuffixed
               - *ucx_py_unsuffixed
   depends_on_dask_cuda:
