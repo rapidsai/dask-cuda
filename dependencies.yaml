@@ -182,6 +182,7 @@ dependencies:
             packages:
               - cudf-cu12==25.8.*,>=0.0.0a0
               - dask-cudf-cu12==25.8.*,>=0.0.0a0
+              - distributed-ucxx-cu12==0.45.*,>=0.0.0a0
               - kvikio-cu12==25.8.*,>=0.0.0a0
               - ucx-py-cu12==0.45.*,>=0.0.0a0
           - matrix:
