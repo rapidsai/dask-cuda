@@ -55,7 +55,7 @@ def get_ucx_implementation(protocol):
 
     protocol = _get_active_ucx_implementation_name(protocol)
 
-    if protocol == "ucx":
+    if protocol == "ucxx":
         return pytest.importorskip("ucxx")
     else:
         return pytest.importorskip("ucp")
