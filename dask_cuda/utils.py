@@ -266,8 +266,14 @@ def get_ucx_config(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
+    protocol=None,
 ):
     ucx_config = dask.config.get("distributed.comm.ucx")
+
+    # TODO: remove along with `protocol` kwarg when UCX-Py is removed, see
+    # https://github.com/rapidsai/dask-cuda/issues/1517
+    if protocol in ("ucx", "ucxx", "ucx-old"):
+        ucx_config[canonical_name("ucx-protocol", ucx_config)] = protocol
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
     ucx_config[canonical_name("reuse-endpoints", ucx_config)] = False

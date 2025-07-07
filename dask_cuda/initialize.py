@@ -173,6 +173,7 @@ def initialize(
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
+        protocol=protocol,
     )
     dask.config.set({"distributed.comm.ucx": ucx_config})
 
