@@ -14,7 +14,7 @@ from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny, get_ucx_implementation
 
 mp = mp.get_context("spawn")  # type: ignore
 
@@ -25,10 +25,7 @@ mp = mp.get_context("spawn")  # type: ignore
 
 
 def _test_initialize_ucx_tcp(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        ucp = pytest.importorskip("ucp")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_tcp_over_ucx": True}
     initialize(protocol=protocol, **kwargs)
@@ -60,10 +57,7 @@ def _test_initialize_ucx_tcp(protocol):
 
 @pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_tcp(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        pytest.importorskip("ucp")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_tcp, args=(protocol,))
     p.start()
@@ -72,10 +66,7 @@ def test_initialize_ucx_tcp(protocol):
 
 
 def _test_initialize_ucx_nvlink(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        ucp = pytest.importorskip("ucp")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_nvlink": True}
     initialize(protocol=protocol, **kwargs)
@@ -108,10 +99,7 @@ def _test_initialize_ucx_nvlink(protocol):
 
 @pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_nvlink(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        pytest.importorskip("ucp")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_nvlink, args=(protocol,))
     p.start()
@@ -120,10 +108,7 @@ def test_initialize_ucx_nvlink(protocol):
 
 
 def _test_initialize_ucx_infiniband(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        ucp = pytest.importorskip("ucp")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_infiniband": True}
     initialize(protocol=protocol, **kwargs)
@@ -159,10 +144,7 @@ def _test_initialize_ucx_infiniband(protocol):
 )
 @pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_infiniband(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        pytest.importorskip("ucp")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_infiniband, args=(protocol,))
     p.start()
@@ -171,10 +153,7 @@ def test_initialize_ucx_infiniband(protocol):
 
 
 def _test_initialize_ucx_all(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        ucp = pytest.importorskip("ucp")
+    ucp = get_ucx_implementation(protocol)
 
     initialize(protocol=protocol)
     with LocalCluster(
@@ -209,10 +188,7 @@ def _test_initialize_ucx_all(protocol):
 
 @pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_all(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucxx")
-    elif protocol == "ucx-old":
-        pytest.importorskip("ucp")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_all, args=(protocol,))
     p.start()

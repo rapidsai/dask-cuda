@@ -24,7 +24,7 @@ from dask_cuda.utils import (
     has_device_memory_resource,
     print_cluster_config,
 )
-from dask_cuda.utils_test import MockWorker
+from dask_cuda.utils_test import MockWorker, get_ucx_implementation
 
 
 @gen_test(timeout=20)
@@ -95,14 +95,11 @@ async def test_with_subset_of_cuda_visible_devices():
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 @gen_test(timeout=20)
 async def test_ucx_protocol(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     async with LocalCUDACluster(
         protocol=protocol, asynchronous=True, data=dict
@@ -115,14 +112,11 @@ async def test_ucx_protocol(protocol):
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 @gen_test(timeout=20)
 async def test_explicit_ucx_with_protocol_none(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     initialize(protocol=protocol, enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
@@ -131,21 +125,19 @@ async def test_explicit_ucx_with_protocol_none(protocol):
         asynchronous=True,
     ) as cluster:
         assert all(
-            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
+            ws.address.startswith(f"{protocol}://")
+            for ws in cluster.scheduler.workers.values()
         )
 
 
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 @gen_test(timeout=20)
 async def test_ucx_protocol_type_error(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     initialize(protocol=protocol, enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
@@ -612,7 +604,7 @@ async def test_cudf_spill_no_dedicated_memory():
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 @pytest.mark.parametrize(
     "jit_unspill",
@@ -623,10 +615,7 @@ async def test_cudf_spill_no_dedicated_memory():
     [None, "1B"],
 )
 def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     pytest.importorskip("rich")
 
@@ -688,7 +677,7 @@ def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit
             else:
                 break
 
-    if protocol == "ucx":
+    if protocol == "ucx-old":
         ucxpy_reset()
 
 
