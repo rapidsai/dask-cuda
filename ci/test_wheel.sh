@@ -25,3 +25,13 @@ rapids-logger "pytest dask-cuda"
 
 rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh
+
+# Run rapids-dask-dependency tests without `distributed-ucxx`, ensuring the protocol
+# selection mechanism works also on "legacy" environments where only `ucx-py` is
+# installed.
+# TODO: remove as part of https://github.com/rapidsai/dask-cuda/issues/1517
+distributed_ucxx_package_name="$(pip list | grep distributed-ucxx | awk '{print $1}')"
+pip uninstall "${distributed_ucxx_package_name}"
+./ci/run_pytest.sh \
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-rdd-protocol-selection.xml" \
+  -k "test_rdd_protocol"

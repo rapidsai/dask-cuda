@@ -53,5 +53,14 @@ rapids-logger "pytest dask-cuda"
 rapids-logger "Run local benchmark"
 ./ci/run_benchmarks.sh
 
+# Run rapids-dask-dependency tests without `distributed-ucxx`, ensuring the protocol
+# selection mechanism works also on "legacy" environments where only `ucx-py` is
+# installed.
+# TODO: remove as part of https://github.com/rapidsai/dask-cuda/issues/1517
+mamba remove -y distributed-ucxx
+./ci/run_pytest.sh \
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-rdd-protocol-selection.xml" \
+  -k "test_rdd_protocol"
+
 rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}
