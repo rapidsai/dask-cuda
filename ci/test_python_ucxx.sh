@@ -40,6 +40,7 @@ set_exit_code() {
 }
 trap set_exit_code ERR
 set +e
+
 rapids-logger "pytest dask-cuda with ucxx in thread progress mode"
 UCXPY_PROGRESS_MODE=thread \
   ./ci/run_pytest.sh \

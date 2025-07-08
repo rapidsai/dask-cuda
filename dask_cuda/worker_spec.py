@@ -91,7 +91,7 @@ def worker_spec(
             raise TypeError(
                 "Enabling InfiniBand or NVLink requires protocol='ucx', "
                 "protocol='ucxx' or protocol='ucx-old'"
-            )
+            ) from None
 
     if CUDA_VISIBLE_DEVICES is None:
         CUDA_VISIBLE_DEVICES = os.environ.get(

@@ -1015,7 +1015,7 @@ def _get_active_ucx_implementation_name(protocol):
     ValueError
         If protocol is not a valid UCX protocol.
     """
-    has_ucxx = bool(importlib.util.find_spec("distributed_ucxx"))
+    has_ucxx = importlib.util.find_spec("distributed_ucxx") is not None
 
     if protocol == "ucxx" or (has_ucxx and protocol == "ucx"):
         # With https://github.com/rapidsai/rapids-dask-dependency/pull/116,
