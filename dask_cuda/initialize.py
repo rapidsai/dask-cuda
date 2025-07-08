@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
-import importlib
 import logging
 import os
 
@@ -11,7 +10,7 @@ import numba.cuda
 import dask
 from distributed.diagnostics.nvml import get_device_index_and_uuid, has_cuda_context
 
-from .utils import get_ucx_config
+from .utils import _get_active_ucx_implementation_name, get_ucx_config
 
 logger = logging.getLogger(__name__)
 
@@ -104,17 +103,17 @@ def _create_cuda_context(protocol="ucx"):
     if protocol not in ["ucx", "ucxx", "ucx-old"]:
         return
 
-    has_ucxx = bool(importlib.util.find_spec("distributed_ucxx"))
-
-    if protocol == "ucxx" or (has_ucxx and protocol == "ucx"):
-        # With https://github.com/rapidsai/rapids-dask-dependency/pull/116,
-        # `protocol="ucx"` now points to UCXX (if distributed-ucxx is installed),
-        # thus call the UCXX initializer.
-        _initialize_ucxx()
-    else:
-        if protocol.startswith("ucx"):
-            _initialize_ucx()
+    try:
+        ucx_implementation = _get_active_ucx_implementation_name(protocol)
+    except ValueError:
+        # Not a UCX protocol, just raise CUDA context warnings if needed.
         _warn_generic()
+    else:
+        if ucx_implementation == "ucxx":
+            _initialize_ucxx()
+        else:
+            _initialize_ucx()
+            _warn_generic()
 
 
 def initialize(
@@ -174,6 +173,7 @@ def initialize(
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
+        protocol=protocol,
     )
     dask.config.set({"distributed.comm.ucx": ucx_config})
 

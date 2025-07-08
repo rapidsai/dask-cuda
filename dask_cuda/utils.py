@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
 import math
 import operator
 import os
@@ -265,8 +266,14 @@ def get_ucx_config(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
+    protocol=None,
 ):
     ucx_config = dask.config.get("distributed.comm.ucx")
+
+    # TODO: remove along with `protocol` kwarg when UCX-Py is removed, see
+    # https://github.com/rapidsai/dask-cuda/issues/1517
+    if protocol in ("ucx", "ucxx", "ucx-old"):
+        ucx_config[canonical_name("ucx-protocol", ucx_config)] = protocol
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
     ucx_config[canonical_name("reuse-endpoints", ucx_config)] = False
@@ -351,7 +358,11 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    if protocol in ["ucx", "ucxx"]:
+    try:
+        _get_active_ucx_implementation_name(protocol)
+    except ValueError:
+        pass
+    else:
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
@@ -819,14 +830,19 @@ def get_worker_config(dask_worker):
     # using ucx ?
     scheme, loc = parse_address(dask_worker.scheduler.address)
     ret["protocol"] = scheme
-    if scheme == "ucx":
-        import ucp
+    try:
+        protocol = _get_active_ucx_implementation_name(scheme)
+    except ValueError:
+        pass
+    else:
+        if protocol == "ucxx":
+            import ucxx
 
-        ret["ucx-transports"] = ucp.get_active_transports()
-    elif scheme == "ucxx":
-        import ucxx
+            ret["ucx-transports"] = ucxx.get_active_transports()
+        elif protocol == "ucx-old":
+            import ucp
 
-        ret["ucx-transports"] = ucxx.get_active_transports()
+            ret["ucx-transports"] = ucp.get_active_transports()
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
@@ -972,3 +988,41 @@ class CommaSeparatedChoice(click.Choice):
                 choices_str = ", ".join(f"'{c}'" for c in self.choices)
                 self.fail(f"invalid choice(s): {v}. (choices are: {choices_str})")
         return values
+
+
+def _get_active_ucx_implementation_name(protocol):
+    """Get the name of active UCX implementation.
+
+    Determine what UCX implementation is being activated based on a series of
+    conditions. UCXX is selected if:
+    - The protocol is `"ucxx"`, or the protocol is `"ucx"` and the `distributed-ucxx`
+      package is installed.
+    UCX-Py is selected if:
+    - The protocol is `"ucx-old"`, or the protocol is `"ucx"` and the `distributed-ucxx`
+      package is not installed, in which case a `FutureWarning` is also raised.
+
+    Parameters
+    ----------
+    protocol: str
+        The communication protocol selected.
+
+    Returns
+    -------
+    The selected implementation type, either "ucxx" or "ucx-old".
+
+    Raises
+    ------
+    ValueError
+        If protocol is not a valid UCX protocol.
+    """
+    has_ucxx = importlib.util.find_spec("distributed_ucxx") is not None
+
+    if protocol == "ucxx" or (has_ucxx and protocol == "ucx"):
+        # With https://github.com/rapidsai/rapids-dask-dependency/pull/116,
+        # `protocol="ucx"` now points to UCXX (if distributed-ucxx is installed),
+        # thus call the UCXX initializer.
+        return "ucxx"
+    elif protocol in ("ucx", "ucx-old"):
+        return "ucx-old"
+    else:
+        raise ValueError("Protocol is neither UCXX nor UCX-Py")

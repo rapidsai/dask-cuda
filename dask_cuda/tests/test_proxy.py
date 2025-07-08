@@ -26,7 +26,7 @@ from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny, get_ucx_implementation
 
 # Make the "disk" serializer available and use a directory that are
 # remove on exit.
@@ -407,14 +407,12 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucx-old"])
 @gen_test(timeout=120)
 async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    if protocol.startswith("ucx"):
+        get_ucx_implementation(protocol)
     cudf = pytest.importorskip("cudf")
 
     def task(x):
@@ -423,7 +421,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
         serializers_used = x._pxy_get().serializer
 
         # Check that `x` is serialized with the expected serializers
-        if protocol in ["ucx", "ucxx"]:
+        if protocol in ["ucx", "ucx-old"]:
             if send_serializers is None:
                 assert serializers_used == "cuda"
             else:
@@ -454,15 +452,13 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
             await client.submit(task, df)
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucx-old"])
 @pytest.mark.parametrize("shared_fs", [True, False])
 @gen_test(timeout=20)
 async def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    if protocol.startswith("ucx"):
+        get_ucx_implementation(protocol)
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 

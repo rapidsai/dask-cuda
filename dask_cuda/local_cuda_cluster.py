@@ -105,13 +105,16 @@ class LocalCUDACluster(LocalCluster):
         are not supported or disabled.
     enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, requires
-        ``protocol="ucx"`` and implies ``enable_tcp_over_ucx=True`` when ``True``.
+        ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``, and implies
+        ``enable_tcp_over_ucx=True`` when ``True``.
     enable_nvlink : bool, default None
-        Set environment variables to enable UCX over NVLink, requires ``protocol="ucx"``
-        and implies ``enable_tcp_over_ucx=True`` when ``True``.
+        Set environment variables to enable UCX over NVLink, requires
+        ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``, and implies
+        ``enable_tcp_over_ucx=True`` when ``True``.
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
-        requires ``protocol="ucx"`` and ``enable_infiniband=True``.
+        requires ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``,
+        and ``enable_infiniband=True``.
     rmm_pool_size : int, str or None, default None
         RMM pool size to initialize each worker with. Can be an integer (bytes), float
         (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``), or
@@ -205,7 +208,8 @@ class LocalCUDACluster(LocalCluster):
     Raises
     ------
     TypeError
-        If InfiniBand or NVLink are enabled and ``protocol!="ucx"``.
+        If InfiniBand or NVLink are enabled and
+        ``protocol not in ("ucx", "ucxx", "ucx-old")``.
     ValueError
         If RMM pool, RMM managed memory or RMM async allocator are requested but RMM
         cannot be imported.
@@ -351,11 +355,19 @@ class LocalCUDACluster(LocalCluster):
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
-                protocol = "ucx"
-            elif protocol not in ["ucx", "ucxx"]:
+                ucx_protocol = dask.config.get(
+                    "distributed.comm.ucx.ucx-protocol", default=None
+                )
+                if ucx_protocol is not None:
+                    # TODO: remove when UCX-Py is removed,
+                    # see https://github.com/rapidsai/dask-cuda/issues/1517
+                    protocol = ucx_protocol
+                else:
+                    protocol = "ucx"
+            elif protocol not in ("ucx", "ucxx", "ucx-old"):
                 raise TypeError(
-                    "Enabling InfiniBand or NVLink requires protocol='ucx' or "
-                    "protocol='ucxx'"
+                    "Enabling InfiniBand or NVLink requires protocol='ucx', "
+                    "protocol='ucxx' or protocol='ucx-old'"
                 )
 
         self.host = kwargs.get("host", None)
