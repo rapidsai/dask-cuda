@@ -18,6 +18,15 @@ rapids-logger "Installing test dependencies"
 # echo to expand wildcard
 rapids-pip-retry install -v --prefer-binary -r /tmp/requirements-test.txt "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)"
 
+EXITCODE=0
+# shellcheck disable=SC2317
+set_exit_code() {
+    EXITCODE=$?
+    rapids-logger "Test failed with error ${EXITCODE}"
+}
+trap set_exit_code ERR
+set +e
+
 rapids-logger "pytest dask-cuda"
 ./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml"
@@ -34,3 +43,6 @@ pip uninstall -y "${distributed_ucxx_package_name}"
 ./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda-rdd-protocol-selection.xml" \
   -k "test_rdd_protocol"
+
+rapids-logger "Test script exiting with latest error code: $EXITCODE"
+exit ${EXITCODE}
