@@ -71,6 +71,3 @@ done
 find docs/source/ -type f -name '*.rst' -print0 | while IFS= read -r -d '' filename; do
     sed_runner "s|/branch-[^/]*/|/branch-${NEXT_SHORT_TAG}/|g" "${filename}"
 done
-
-# Update CI image tags of the form {rapids_version}-{something}
-sed_runner "s/:[0-9]*\\.[0-9]*-/:${NEXT_SHORT_TAG}-/g" ./CONTRIBUTING.md
