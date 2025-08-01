@@ -16,6 +16,12 @@ source rapids-rattler-channel-string
 
 rapids-logger "Building dask-cuda"
 
+mkdir /tmp/rbb
+pushd /tmp/rbb
+wget -O ../rbb.zip https://github.com/rapidsai/rapids-build-backend/actions/runs/16683467298/artifacts/3670230978
+unzip ../rbb.zip
+popd
+
 rattler-build build --recipe conda/recipes/dask-cuda \
                     "${RATTLER_ARGS[@]}" \
                     "${RATTLER_CHANNELS[@]}"

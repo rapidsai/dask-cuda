@@ -58,6 +58,7 @@ files:
     includes:
       - docs
 channels:
+  - /tmp/rbb
   - rapidsai
   - rapidsai-nightly
   - conda-forge
