@@ -16,7 +16,7 @@ source rapids-rattler-channel-string
 
 rapids-logger "Building dask-cuda"
 
-RBB_CHANNEL="$(rapids-get-pr-conda-artifact rapidsai/rapids-build-backend 73 python)"
+RBB_CHANNEL="$(rapids-get-pr-conda-artifact rapids-build-backend 73 python)"
 
 rattler-build build --recipe conda/recipes/dask-cuda \
                     "${RATTLER_ARGS[@]}" \
