@@ -11,17 +11,18 @@ rapids-generate-version > ./VERSION
 RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION)
 export RAPIDS_PACKAGE_VERSION
 
+RBB_CHANNEL="$(rapids-get-pr-conda-artifact rapids-build-backend 73 python)"
+# shellcheck disable=SC2034
+RAPIDS_PREPENDED_CONDA_CHANNELS=("$RBB_CHANNEL")
+
 # populates `RATTLER_CHANNELS` array and `RATTLER_ARGS` array
 source rapids-rattler-channel-string
 
 rapids-logger "Building dask-cuda"
 
-RBB_CHANNEL="$(rapids-get-pr-conda-artifact rapids-build-backend 73 python)"
-
 rattler-build build --recipe conda/recipes/dask-cuda \
                     "${RATTLER_ARGS[@]}" \
-                    "${RATTLER_CHANNELS[@]}" \
-                    --channel "$RBB_CHANNEL"
+                    "${RATTLER_CHANNELS[@]}"
 
 # remove build_cache directory to avoid uploading the entire source tree
 # tracked in https://github.com/prefix-dev/rattler-build/issues/1424
