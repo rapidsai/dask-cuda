@@ -11,11 +11,6 @@ rapids-generate-version > ./VERSION
 RAPIDS_PACKAGE_VERSION=$(head -1 ./VERSION)
 export RAPIDS_PACKAGE_VERSION
 
-RBB_CHANNEL="$(rapids-get-pr-conda-artifact rapids-build-backend 73 python)"
-find "$RBB_CHANNEL"
-# shellcheck disable=SC2034
-RAPIDS_PREPENDED_CONDA_CHANNELS=("$RBB_CHANNEL")
-
 # populates `RATTLER_CHANNELS` array and `RATTLER_ARGS` array
 source rapids-rattler-channel-string
 
