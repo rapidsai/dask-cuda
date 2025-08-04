@@ -3,10 +3,14 @@
 # Labels culled from https://github.com/rapidsai/dask-cuda/labels
 
 python:
- - 'dask_cuda/**'
-
+  - changed-files:
+      any-glob-to-any-file:
+        - 'dask_cuda/**'
 ci:
-  - 'ci/**'
-
+  - changed-files:
+      any-glob-to-any-file:
+        - 'ci/**'
 conda:
-  - 'conda/**'
+  - changed-files:
+      any-glob-to-any-file:
+        - 'conda/**'
