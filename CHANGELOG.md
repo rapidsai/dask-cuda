@@ -1,3 +1,44 @@
+# dask-cuda 25.08.00 (6 Aug 2025)
+
+## 🚨 Breaking Changes
+
+- Better `parse_device_memory_limit` special-case handling ([#1506](https://github.com/rapidsai/dask-cuda/pull/1506)) [@pentschev](https://github.com/pentschev)
+- Remove CUDA 11 from dependencies.yaml ([#1503](https://github.com/rapidsai/dask-cuda/pull/1503)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- stop uploading packages to downloads.rapids.ai ([#1501](https://github.com/rapidsai/dask-cuda/pull/1501)) [@jameslamb](https://github.com/jameslamb)
+
+## 🐛 Bug Fixes
+
+- Update `test_initialize` for to match `protocol=&quot;ucx&quot;` changes ([#1518](https://github.com/rapidsai/dask-cuda/pull/1518)) [@pentschev](https://github.com/pentschev)
+- Get all workers from scheduler info ([#1514](https://github.com/rapidsai/dask-cuda/pull/1514)) [@pentschev](https://github.com/pentschev)
+- Adding GH_TOKEN pass-through to summarize job ([#1508](https://github.com/rapidsai/dask-cuda/pull/1508)) [@msarahan](https://github.com/msarahan)
+- Add fix for devices that do not have memory resources ([#1502](https://github.com/rapidsai/dask-cuda/pull/1502)) [@viclafargue](https://github.com/viclafargue)
+
+## 📖 Documentation
+
+- add docs on CI workflow inputs ([#1515](https://github.com/rapidsai/dask-cuda/pull/1515)) [@jameslamb](https://github.com/jameslamb)
+- Fix docstring escaping ([#1507](https://github.com/rapidsai/dask-cuda/pull/1507)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Test rapids-dask-dependency UCX protocol selection ([#1520](https://github.com/rapidsai/dask-cuda/pull/1520)) [@pentschev](https://github.com/pentschev)
+- Initialize UCXX when distributed-ucxx installed and `protocol=ucx` ([#1516](https://github.com/rapidsai/dask-cuda/pull/1516)) [@pentschev](https://github.com/pentschev)
+- Handle system on a chip (SoC) devices ([#1505](https://github.com/rapidsai/dask-cuda/pull/1505)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- fix(docker): use versioned `-latest` tag for all `rapidsai` images ([#1523](https://github.com/rapidsai/dask-cuda/pull/1523)) [@gforsyth](https://github.com/gforsyth)
+- Update UCX implementation checks ([#1519](https://github.com/rapidsai/dask-cuda/pull/1519)) [@pentschev](https://github.com/pentschev)
+- Use CUDA 12.9 in Conda, Devcontainers, Spark, GHA, etc. ([#1513](https://github.com/rapidsai/dask-cuda/pull/1513)) [@jakirkham](https://github.com/jakirkham)
+- refactor(shellcheck): enable for all files and fix remaining warnings ([#1512](https://github.com/rapidsai/dask-cuda/pull/1512)) [@gforsyth](https://github.com/gforsyth)
+- Remove nvidia and dask channels ([#1511](https://github.com/rapidsai/dask-cuda/pull/1511)) [@vyasr](https://github.com/vyasr)
+- Drop CUDA 11 checks and warnings ([#1509](https://github.com/rapidsai/dask-cuda/pull/1509)) [@pentschev](https://github.com/pentschev)
+- Better `parse_device_memory_limit` special-case handling ([#1506](https://github.com/rapidsai/dask-cuda/pull/1506)) [@pentschev](https://github.com/pentschev)
+- Remove CUDA 11 from dependencies.yaml ([#1503](https://github.com/rapidsai/dask-cuda/pull/1503)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- stop uploading packages to downloads.rapids.ai ([#1501](https://github.com/rapidsai/dask-cuda/pull/1501)) [@jameslamb](https://github.com/jameslamb)
+- Forward-merge branch-25.06 into branch-25.08 ([#1489](https://github.com/rapidsai/dask-cuda/pull/1489)) [@gforsyth](https://github.com/gforsyth)
+- Forward-merge branch-25.06 into branch-25.08 ([#1483](https://github.com/rapidsai/dask-cuda/pull/1483)) [@gforsyth](https://github.com/gforsyth)
+- Forward-merge branch-25.06 into branch-25.08 ([#1478](https://github.com/rapidsai/dask-cuda/pull/1478)) [@gforsyth](https://github.com/gforsyth)
+
 # dask-cuda 25.06.00 (5 Jun 2025)
 
 ## 🚨 Breaking Changes
