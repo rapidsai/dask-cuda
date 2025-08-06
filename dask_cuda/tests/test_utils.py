@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 from unittest.mock import patch
 
@@ -15,11 +18,13 @@ from dask_cuda.utils import (
     get_n_gpus,
     get_preload_options,
     get_ucx_config,
+    has_device_memory_resource,
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
     unpack_bitmask,
 )
+from dask_cuda.utils_test import get_ucx_implementation
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
@@ -76,19 +81,19 @@ def test_get_device_total_memory():
     for i in range(get_n_gpus()):
         with cuda.gpus[i]:
             total_mem = get_device_total_memory(i)
-            assert type(total_mem) is int
-            assert total_mem > 0
+            if has_device_memory_resource():
+                assert type(total_mem) is int
+                assert total_mem > 0
+            else:
+                assert total_mem is None
 
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 def test_get_preload_options_default(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     opts = get_preload_options(
         protocol=protocol,
@@ -103,16 +108,13 @@ def test_get_preload_options_default(protocol):
 
 @pytest.mark.parametrize(
     "protocol",
-    ["ucx", "ucxx"],
+    ["ucx", "ucx-old"],
 )
 @pytest.mark.parametrize("enable_tcp", [True, False])
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("enable_nvlink", [True, False])
 def test_get_preload_options(protocol, enable_tcp, enable_infiniband, enable_nvlink):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     opts = get_preload_options(
         protocol=protocol,
@@ -135,11 +137,17 @@ def test_get_preload_options(protocol, enable_tcp, enable_infiniband, enable_nvl
         assert "--enable-nvlink" in opts["preload_argv"]
 
 
+@pytest.mark.parametrize(
+    "protocol",
+    ["ucx", "ucx-old"],
+)
 @pytest.mark.parametrize("enable_tcp_over_ucx", [True, False, None])
 @pytest.mark.parametrize("enable_nvlink", [True, False, None])
 @pytest.mark.parametrize("enable_infiniband", [True, False, None])
-def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, enable_nvlink):
-    pytest.importorskip("ucp")
+def test_get_ucx_config(
+    protocol, enable_tcp_over_ucx, enable_infiniband, enable_nvlink
+):
+    get_ucx_implementation(protocol)
 
     kwargs = {
         "enable_tcp_over_ucx": enable_tcp_over_ucx,
@@ -234,19 +242,97 @@ def test_parse_visible_devices():
         parse_cuda_visible_device([])
 
 
+def test_parse_device_bytes():
+    total = get_device_total_memory(0)
+
+    assert parse_device_memory_limit(None) is None
+    assert parse_device_memory_limit(0) is None
+    assert parse_device_memory_limit("0") is None
+    assert parse_device_memory_limit("0.0") is None
+    assert parse_device_memory_limit("0 GiB") is None
+
+    assert parse_device_memory_limit(1) == 1
+    assert parse_device_memory_limit("1") == 1
+
+    assert parse_device_memory_limit(1000000000) == 1000000000
+    assert parse_device_memory_limit("1GB") == 1000000000
+
+    if has_device_memory_resource(0):
+        assert parse_device_memory_limit(1.0) == total
+        assert parse_device_memory_limit("1.0") == total
+
+        assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+            total * 0.8 // 256 * 256
+        )
+
+        assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
+    else:
+        assert parse_device_memory_limit("default") is None
+
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(1.0) == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit("1.0") == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+                total * 0.8 // 256 * 256
+            )
+
+
 def test_parse_device_memory_limit():
     total = get_device_total_memory(0)
 
-    assert parse_device_memory_limit(None) == total
-    assert parse_device_memory_limit(0) == total
+    assert parse_device_memory_limit(None) is None
+    assert parse_device_memory_limit(0) is None
+    assert parse_device_memory_limit("0") is None
+    assert parse_device_memory_limit(0.0) is None
+    assert parse_device_memory_limit("0 GiB") is None
+
+    assert parse_device_memory_limit(1) == 1
+    assert parse_device_memory_limit("1") == 1
+
     assert parse_device_memory_limit("auto") == total
 
-    assert parse_device_memory_limit(0.8) == int(total * 0.8)
-    assert parse_device_memory_limit(0.8, alignment_size=256) == int(
-        total * 0.8 // 256 * 256
-    )
     assert parse_device_memory_limit(1000000000) == 1000000000
     assert parse_device_memory_limit("1GB") == 1000000000
+
+    if has_device_memory_resource(0):
+        assert parse_device_memory_limit(1.0) == total
+        assert parse_device_memory_limit("1.0") == total
+
+        assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+            total * 0.8 // 256 * 256
+        )
+        assert parse_device_memory_limit("default") == parse_device_memory_limit(0.8)
+    else:
+        assert parse_device_memory_limit("default") is None
+
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(1.0) == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit("1.0") == total
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8) == int(total * 0.8)
+        with pytest.raises(ValueError):
+            assert parse_device_memory_limit(0.8, alignment_size=256) == int(
+                total * 0.8 // 256 * 256
+            )
+
+
+def test_has_device_memory_resoure():
+    has_memory_resource = has_device_memory_resource()
+    total = get_device_total_memory(0)
+
+    if has_memory_resource:
+        # Tested only in devices with a memory resource
+        assert total == parse_device_memory_limit("auto")
+    else:
+        # Tested only in devices without a memory resource
+        assert total is None
 
 
 def test_parse_visible_mig_devices():

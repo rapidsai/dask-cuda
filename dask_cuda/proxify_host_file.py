@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import abc
 import gc
 import io
@@ -64,29 +67,29 @@ class Proxies(abc.ABC):
 
     @abc.abstractmethod
     def mem_usage_add(self, proxy: ProxyObject) -> None:
-        """Given a new proxy, update `self._mem_usage`"""
+        """Given a new proxy, update ``self._mem_usage``"""
 
     @abc.abstractmethod
     def mem_usage_remove(self, proxy: ProxyObject) -> None:
-        """Removal of proxy, update `self._mem_usage`"""
+        """Removal of proxy, update ``self._mem_usage``"""
 
     @abc.abstractmethod
     def buffer_info(self) -> List[Tuple[float, int, List[ProxyObject]]]:
         """Return a list of buffer information
 
         The returned format is:
-            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+            ``[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]``
         """
 
     def add(self, proxy: ProxyObject) -> None:
-        """Add a proxy for tracking, calls `self.mem_usage_add`"""
+        """Add a proxy for tracking, calls ``self.mem_usage_add``"""
         assert not self.contains_proxy_id(id(proxy))
         with self._lock:
             self._proxy_id_to_proxy[id(proxy)] = weakref.ref(proxy)
         self.mem_usage_add(proxy)
 
     def remove(self, proxy: ProxyObject) -> None:
-        """Remove proxy from tracking, calls `self.mem_usage_remove`"""
+        """Remove proxy from tracking, calls ``self.mem_usage_remove``"""
         with self._lock:
             del self._proxy_id_to_proxy[id(proxy)]
         self.mem_usage_remove(proxy)
@@ -323,13 +326,13 @@ class ProxyManager:
                         assert header["serializer"] == pxy.serializer
 
     def proxify(self, obj: T, duplicate_check=True) -> Tuple[T, bool]:
-        """Proxify `obj` and add found proxies to the `Proxies` collections
+        """Proxify ``obj`` and add found proxies to the ``Proxies`` collections
 
-        Search through `obj` and wrap all CUDA device objects in ProxyObject.
+        Search through ``obj`` and wrap all CUDA device objects in ProxyObject.
         If duplicate_check is True, identical CUDA device objects found in
-        `obj` are wrapped by the same ProxyObject.
+        ``obj`` are wrapped by the same ProxyObject.
 
-        Returns the proxified object and a boolean, which is `True` when one or
+        Returns the proxified object and a boolean, which is ``True`` when one or
         more incompatible-types were found.
 
         Parameters
@@ -337,7 +340,7 @@ class ProxyManager:
         obj
             Object to search through or wrap in a ProxyObject.
         duplicate_check
-            Make sure that identical CUDA device objects found in `obj` are
+            Make sure that identical CUDA device objects found in ``obj`` are
             wrapped by the same ProxyObject. This check comes with a significant
             overhead hence it is recommended setting to False when it is known
             that no duplicate exist.
@@ -380,11 +383,11 @@ class ProxyManager:
         proxies_access: Callable[[], List[Tuple[float, int, List[ProxyObject]]]],
         serializer: Callable[[ProxyObject], None],
     ) -> int:
-        """Evict buffers retrieved by calling `proxies_access`
+        """Evict buffers retrieved by calling ``proxies_access``
 
-        Calls `proxies_access` to retrieve a list of proxies and then spills
-        enough proxies to free up at a minimum `nbytes` bytes. In order to
-        spill a proxy, `serializer` is called.
+        Calls ``proxies_access`` to retrieve a list of proxies and then spills
+        enough proxies to free up at a minimum ``nbytes`` bytes. In order to
+        spill a proxy, ``serializer`` is called.
 
         Parameters
         ----------
@@ -392,7 +395,7 @@ class ProxyManager:
             Number of bytes to evict.
         proxies_access: callable
             Function that returns a list of proxies pack in a tuple like:
-            `[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]
+            ``[(<access-time>, <size-of-buffer>, <list-of-proxies>), ...]``
         serializer: callable
             Function that serialize the given proxy object.
 
@@ -423,7 +426,7 @@ class ProxyManager:
     def maybe_evict_from_device(self, extra_dev_mem=0) -> None:
         """Evict buffers until total memory usage is below device-memory-limit
 
-        Adds `extra_dev_mem` to the current total memory usage when comparing
+        Adds ``extra_dev_mem`` to the current total memory usage when comparing
         against device-memory-limit.
         """
         mem_over_usage = (
@@ -439,7 +442,7 @@ class ProxyManager:
     def maybe_evict_from_host(self, extra_host_mem=0) -> None:
         """Evict buffers until total memory usage is below host-memory-limit
 
-        Adds `extra_host_mem` to the current total memory usage when comparing
+        Adds ``extra_host_mem`` to the current total memory usage when comparing
         against device-memory-limit.
         """
         assert self._host_memory_limit is not None
@@ -466,7 +469,7 @@ class ProxifyHostFile(MutableMapping):
     workers in Distributed.
 
     It wraps all CUDA device objects in a ProxyObject instance and maintains
-    `device_memory_limit` by spilling ProxyObject on-the-fly. This addresses
+    ``device_memory_limit`` by spilling ProxyObject on-the-fly. This addresses
     some issues with the default DeviceHostFile host, which tracks device
     memory inaccurately see <https://github.com/rapidsai/dask-cuda/pull/451>
 
@@ -488,16 +491,16 @@ class ProxifyHostFile(MutableMapping):
     memory_limit: int
         Number of bytes of host memory used before spilling to disk.
     shared_filesystem: bool or None, default None
-        Whether the `local_directory` above is shared between all workers or not.
+        Whether the ``local_directory`` above is shared between all workers or not.
         If ``None``, the "jit-unspill-shared-fs" config value are used, which
         defaults to False.
-        Notice, a shared filesystem must support the `os.link()` operation.
+        Notice, a shared filesystem must support the ``os.link()`` operation.
     compatibility_mode: bool or None, default None
         Enables compatibility-mode, which means that items are un-proxified before
         retrieval. This makes it possible to get some of the JIT-unspill benefits
         without having to be ProxyObject compatible. In order to still allow specific
-        ProxyObjects, set the `mark_as_explicit_proxies=True` when proxifying with
-        `proxify_device_objects()`. If ``None``, the "jit-unspill-compatibility-mode"
+        ProxyObjects, set the ``mark_as_explicit_proxies=True`` when proxifying with
+        ``proxify_device_objects()``. If ``None``, the "jit-unspill-compatibility-mode"
         config value are used, which defaults to False.
     spill_on_demand: bool or None, default None
         Enables spilling when the RMM memory pool goes out of memory. If ``None``,
@@ -639,7 +642,7 @@ class ProxifyHostFile(MutableMapping):
         """Manually evict 1% of host limit.
 
         Dask uses this to trigger CPU-to-Disk spilling. We don't know how much
-        we need to spill but Dask will call `evict()` repeatedly until enough
+        we need to spill but Dask will call ``evict()`` repeatedly until enough
         is spilled. We ask for 1% each time.
 
         Return
@@ -658,9 +661,9 @@ class ProxifyHostFile(MutableMapping):
 
     @property
     def fast(self):
-        """Alternative access to `.evict()` used by Dask
+        """Alternative access to ``.evict()`` used by Dask
 
-        Dask expects `.fast.evict()` to be available for manually triggering
+        Dask expects ``.fast.evict()`` to be available for manually triggering
         of CPU-to-Disk spilling.
         """
         if len(self.manager._host) == 0:
@@ -758,9 +761,9 @@ class ProxifyHostFile(MutableMapping):
 
     @classmethod
     def serialize_proxy_to_disk_inplace(cls, proxy: ProxyObject) -> None:
-        """Serialize `proxy` to disk.
+        """Serialize ``proxy`` to disk.
 
-        Avoid de-serializing if `proxy` is serialized using "dask" or
+        Avoid de-serializing if ``proxy`` is serialized using "dask" or
         "pickle". In this case the already serialized data is written
         directly to disk.
 

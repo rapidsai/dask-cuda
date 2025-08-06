@@ -41,30 +41,19 @@ set_exit_code() {
 trap set_exit_code ERR
 set +e
 
-rapids-logger "pytest dask-cuda with ucxx"
-./ci/run_pytest.sh \
+rapids-logger "pytest dask-cuda with ucxx in thread progress mode"
+UCXPY_PROGRESS_MODE=thread \
+  ./ci/run_pytest.sh \
   --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
   --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
   --cov-report=term \
-  -k "ucxx"
+  -k "not ucx-old"
 
-rapids-logger "Run local benchmark with ucxx"
-./ci/run_benchmarks.sh -p ucxx
-
-export UCXPY_PROGRESS_MODE=blocking
-rapids-logger "pytest dask-cuda with ucxx in blocking progress mode"
-./ci/run_pytest.sh \
-  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
-  --cov-config=../pyproject.toml \
-  --cov=dask_cuda \
-  --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
-  --cov-report=term \
-  -k "ucxx"
-
-rapids-logger "Run local benchmark with ucxx in blocking progress mode"
-./ci/run_benchmarks.sh -p ucxx
+rapids-logger "Run local benchmark with ucxx in thread progress mode"
+UCXPY_PROGRESS_MODE=thread \
+  ./ci/run_benchmarks.sh -p ucx
 
 rapids-logger "Test script exiting with latest error code: $EXITCODE"
 exit ${EXITCODE}

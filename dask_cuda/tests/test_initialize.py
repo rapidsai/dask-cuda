@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import multiprocessing as mp
 import sys
 
@@ -11,7 +14,7 @@ from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny, get_ucx_implementation
 
 mp = mp.get_context("spawn")  # type: ignore
 
@@ -22,10 +25,7 @@ mp = mp.get_context("spawn")  # type: ignore
 
 
 def _test_initialize_ucx_tcp(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_tcp_over_ucx": True}
     initialize(protocol=protocol, **kwargs)
@@ -55,12 +55,9 @@ def _test_initialize_ucx_tcp(protocol):
             assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_tcp(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_tcp, args=(protocol,))
     p.start()
@@ -69,10 +66,7 @@ def test_initialize_ucx_tcp(protocol):
 
 
 def _test_initialize_ucx_nvlink(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_nvlink": True}
     initialize(protocol=protocol, **kwargs)
@@ -103,12 +97,9 @@ def _test_initialize_ucx_nvlink(protocol):
             assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_nvlink(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_nvlink, args=(protocol,))
     p.start()
@@ -117,10 +108,7 @@ def test_initialize_ucx_nvlink(protocol):
 
 
 def _test_initialize_ucx_infiniband(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     kwargs = {"enable_infiniband": True}
     initialize(protocol=protocol, **kwargs)
@@ -154,12 +142,9 @@ def _test_initialize_ucx_infiniband(protocol):
 @pytest.mark.skipif(
     "ib0" not in psutil.net_if_addrs(), reason="Infiniband interface ib0 not found"
 )
-@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_infiniband(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_infiniband, args=(protocol,))
     p.start()
@@ -168,10 +153,7 @@ def test_initialize_ucx_infiniband(protocol):
 
 
 def _test_initialize_ucx_all(protocol):
-    if protocol == "ucx":
-        ucp = pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        ucp = pytest.importorskip("ucxx")
+    ucp = get_ucx_implementation(protocol)
 
     initialize(protocol=protocol)
     with LocalCluster(
@@ -204,12 +186,9 @@ def _test_initialize_ucx_all(protocol):
             assert all(client.run(check_ucx_options).values())
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["ucx", "ucx-old"])
 def test_initialize_ucx_all(protocol):
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    get_ucx_implementation(protocol)
 
     p = mp.Process(target=_test_initialize_ucx_all, args=(protocol,))
     p.start()

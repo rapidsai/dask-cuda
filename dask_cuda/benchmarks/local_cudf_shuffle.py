@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 from collections import ChainMap
 from time import perf_counter
@@ -70,7 +73,7 @@ def create_data(
     """
     chunksize = args.partition_size // np.float64().nbytes
 
-    workers = list(client.scheduler_info()["workers"].keys())
+    workers = list(client.scheduler_info(n_workers=-1)["workers"].keys())
     assert len(workers) > 0
 
     dist = args.partition_distribution
@@ -149,7 +152,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
             key="Device memory limit", value=f"{format_bytes(args.device_memory_limit)}"
         )
     print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
-    if args.protocol in ["ucx", "ucxx"]:
+    if args.protocol in ["ucx", "ucxx", "ucx-old"]:
         print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
         print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
         print_key_value(key="NVLink", value=f"{args.enable_nvlink}")

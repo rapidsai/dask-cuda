@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import operator
 import os
 import pickle
@@ -23,7 +26,7 @@ from dask_cuda import LocalCUDACluster, proxy_object
 from dask_cuda.disk_io import SpillToDiskFile
 from dask_cuda.proxify_device_objects import proxify_device_objects
 from dask_cuda.proxify_host_file import ProxifyHostFile
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny, get_ucx_implementation
 
 # Make the "disk" serializer available and use a directory that are
 # remove on exit.
@@ -242,7 +245,7 @@ def test_serialize_of_proxied_cudf(proxy_serializers, dask_serializers):
 
 @pytest.mark.parametrize("backend", ["numpy", "cupy"])
 def test_fixed_attribute_length(backend):
-    """Test fixed attribute `x.__len__` access
+    """Test fixed attribute ``x.__len__`` access
 
     Notice, accessing fixed attributes shouldn't de-serialize the proxied object
     """
@@ -263,7 +266,7 @@ def test_fixed_attribute_length(backend):
 
 
 def test_fixed_attribute_name():
-    """Test fixed attribute `x.name` access
+    """Test fixed attribute ``x.name`` access
 
     Notice, accessing fixed attributes shouldn't de-serialize the proxied object
     """
@@ -284,6 +287,9 @@ def test_fixed_attribute_name():
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Spilling not supported in devices without dedicated memory resource"
+)
 @gen_test(timeout=20)
 async def test_spilling_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
@@ -386,8 +392,8 @@ def test_serializing_array_to_disk(backend, serializers, size):
 class _PxyObjTest(proxy_object.ProxyObject):
     """
     A class that:
-        - defines `__dask_tokenize__` in order to avoid deserialization when
-          calling `client.scatter()`
+        - defines ``__dask_tokenize__`` in order to avoid deserialization when
+          calling ``client.scatter()``
         - Asserts that no deserialization is performaned when communicating.
     """
 
@@ -401,14 +407,12 @@ class _PxyObjTest(proxy_object.ProxyObject):
 
 
 @pytest.mark.parametrize("send_serializers", [None, ("dask", "pickle"), ("cuda",)])
-@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucx-old"])
 @gen_test(timeout=120)
 async def test_communicating_proxy_objects(protocol, send_serializers):
     """Testing serialization of cuDF dataframe when communicating"""
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    if protocol.startswith("ucx"):
+        get_ucx_implementation(protocol)
     cudf = pytest.importorskip("cudf")
 
     def task(x):
@@ -417,7 +421,7 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
         serializers_used = x._pxy_get().serializer
 
         # Check that `x` is serialized with the expected serializers
-        if protocol in ["ucx", "ucxx"]:
+        if protocol in ["ucx", "ucx-old"]:
             if send_serializers is None:
                 assert serializers_used == "cuda"
             else:
@@ -448,15 +452,13 @@ async def test_communicating_proxy_objects(protocol, send_serializers):
             await client.submit(task, df)
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
+@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucx-old"])
 @pytest.mark.parametrize("shared_fs", [True, False])
 @gen_test(timeout=20)
 async def test_communicating_disk_objects(protocol, shared_fs):
     """Testing disk serialization of cuDF dataframe when communicating"""
-    if protocol == "ucx":
-        pytest.importorskip("ucp")
-    elif protocol == "ucxx":
-        pytest.importorskip("ucxx")
+    if protocol.startswith("ucx"):
+        get_ucx_implementation(protocol)
     cudf = pytest.importorskip("cudf")
     ProxifyHostFile._spill_to_disk.shared_filesystem = shared_fs
 

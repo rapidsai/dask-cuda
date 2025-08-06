@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 import math
 from collections import ChainMap
@@ -166,7 +169,7 @@ def merge(args, ddf1, ddf2):
 
 def bench_once(client, args, write_profile=None):
     # Generate random Dask dataframes
-    n_workers = len(client.scheduler_info()["workers"])
+    n_workers = len(client.scheduler_info(n_workers=-1)["workers"])
     # Allow the number of chunks to vary between
     # the "base" and "other" DataFrames
     args.base_chunks = args.base_chunks or n_workers
@@ -224,7 +227,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
         )
     print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
     print_key_value(key="Frac-match", value=f"{args.frac_match}")
-    if args.protocol in ["ucx", "ucxx"]:
+    if args.protocol in ["ucx", "ucxx", "ucx-old"]:
         print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
         print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
         print_key_value(key="NVLink", value=f"{args.enable_nvlink}")

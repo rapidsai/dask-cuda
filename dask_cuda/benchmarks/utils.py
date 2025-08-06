@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import argparse
 import itertools
 import json
@@ -77,7 +80,7 @@ def parse_benchmark_args(
     cluster_args.add_argument(
         "-p",
         "--protocol",
-        choices=["tcp", "ucx", "ucxx"],
+        choices=["tcp", "ucx", "ucxx", "ucx-old"],
         default="tcp",
         type=str,
         help="The communication protocol to use.",
@@ -122,7 +125,7 @@ def parse_benchmark_args(
         "pool size."
         ""
         ".. note::"
-        "    When paired with `--enable-rmm-async` the maximum size cannot be "
+        "    When paired with ``--enable-rmm-async`` the maximum size cannot be "
         "    guaranteed due to fragmentation."
         ""
         ".. note::"
@@ -641,11 +644,11 @@ def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
     for _ in range(timeout // 5):
         print(
             "Waiting for workers to come up, "
-            f"have {len(client.scheduler_info().get('workers', []))}, "
+            f"have {len(client.scheduler_info(n_workers=-1).get('workers', []))}, "
             f"want {expected}"
         )
         time.sleep(5)
-        nworkers = len(client.scheduler_info().get("workers", []))
+        nworkers = len(client.scheduler_info(n_workers=-1).get("workers", []))
         if nworkers == expected:
             return
     else:

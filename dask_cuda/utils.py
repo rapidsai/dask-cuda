@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
 import math
 import operator
 import os
@@ -43,7 +44,7 @@ def unpack_bitmask(x, mask_bits=64):
     x: list of int
         A list of integers
     mask_bits: int
-        An integer determining the bitwidth of `x`
+        An integer determining the bitwidth of ``x``
 
     Examples
     --------
@@ -220,9 +221,44 @@ def get_device_total_memory(device_index=0):
     ----------
     device_index: int or str
         The index or UUID of the device from which to obtain the CPU affinity.
+
+    Returns
+    -------
+    The total memory of the CUDA Device in bytes, or ``None`` for devices that do not
+    have a dedicated memory resource, as is usually the case for system on a chip (SoC)
+    devices.
     """
     handle = get_gpu_handle(device_index)
-    return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+
+    try:
+        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return None
+
+
+def has_device_memory_resource(device_index=0):
+    """Determine wheter CUDA device has dedicated memory resource.
+
+    Certain devices have no dedicated memory resource, such as system on a chip (SoC)
+    devices.
+
+    Parameters
+    ----------
+    device_index: int or str
+        The index or UUID of the device from which to obtain the CPU affinity.
+
+    Returns
+    -------
+    Whether the device has a dedicated memory resource.
+    """
+    handle = get_gpu_handle(device_index)
+
+    try:
+        pynvml.nvmlDeviceGetMemoryInfo(handle).total
+    except pynvml.NVMLError_NotSupported:
+        return False
+    else:
+        return True
 
 
 def get_ucx_config(
@@ -230,8 +266,14 @@ def get_ucx_config(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
+    protocol=None,
 ):
     ucx_config = dask.config.get("distributed.comm.ucx")
+
+    # TODO: remove along with `protocol` kwarg when UCX-Py is removed, see
+    # https://github.com/rapidsai/dask-cuda/issues/1517
+    if protocol in ("ucx", "ucxx", "ucx-old"):
+        ucx_config[canonical_name("ucx-protocol", ucx_config)] = protocol
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
     ucx_config[canonical_name("reuse-endpoints", ucx_config)] = False
@@ -316,7 +358,11 @@ def get_preload_options(
     if create_cuda_context:
         preload_options["preload_argv"].append("--create-cuda-context")
 
-    if protocol in ["ucx", "ucxx"]:
+    try:
+        _get_active_ucx_implementation_name(protocol)
+    except ValueError:
+        pass
+    else:
         initialize_ucx_argv = []
         if enable_tcp_over_ucx:
             initialize_ucx_argv.append("--enable-tcp-over-ucx")
@@ -365,7 +411,7 @@ def wait_workers(
         Instance of client, used to query for number of workers connected.
     min_timeout: float
         Minimum number of seconds to wait before timeout. This value may be
-        overridden by setting the `DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT` with
+        overridden by setting the ``DASK_CUDA_WAIT_WORKERS_MIN_TIMEOUT`` with
         a positive integer.
     seconds_per_gpu: float
         Seconds to wait for each GPU on the system. For example, if its
@@ -374,7 +420,7 @@ def wait_workers(
         used as timeout when larger than min_timeout.
     n_gpus: None or int
         If specified, will wait for a that amount of GPUs (i.e., Dask workers)
-        to come online, else waits for a total of `get_n_gpus` workers.
+        to come online, else waits for a total of ``get_n_gpus`` workers.
     timeout_callback: None or callable
         A callback function to be executed if a timeout occurs, ignored if
         None.
@@ -390,7 +436,7 @@ def wait_workers(
 
     start = time.time()
     while True:
-        if len(client.scheduler_info()["workers"]) == n_gpus:
+        if len(client.scheduler_info(n_workers=-1)["workers"]) == n_gpus:
             return True
         elif time.time() - start > timeout:
             if callable(timeout_callback):
@@ -404,7 +450,7 @@ async def _all_to_all(client):
     """
     Trigger all to all communication between workers and scheduler
     """
-    workers = list(client.scheduler_info()["workers"])
+    workers = list(client.scheduler_info(n_workers=-1)["workers"])
     futs = []
     for w in workers:
         bit_of_data = b"0" * 1
@@ -493,8 +539,8 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
     """Get the device index for NVML addressing
 
     NVML expects the index of the physical device, unlike CUDA runtime which
-    expects the address relative to `CUDA_VISIBLE_DEVICES`. This function
-    returns the i-th device index from the `CUDA_VISIBLE_DEVICES`
+    expects the address relative to ``CUDA_VISIBLE_DEVICES``. This function
+    returns the i-th device index from the ``CUDA_VISIBLE_DEVICES``
     comma-separated string of devices or list.
 
     Examples
@@ -532,15 +578,15 @@ def nvml_device_index(i, CUDA_VISIBLE_DEVICES):
         raise ValueError("`CUDA_VISIBLE_DEVICES` must be `str` or `list`")
 
 
-def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
-    """Parse memory limit to be used by a CUDA device.
+def parse_device_bytes(device_bytes, device_index=0, alignment_size=1):
+    """Parse bytes relative to a specific CUDA device.
 
     Parameters
     ----------
-    device_memory_limit: float, int, str or None
-        This can be a float (fraction of total device memory), an integer (bytes),
-        a string (like 5GB or 5000M), and "auto", 0 or None for the total device
-        size.
+    device_bytes: float, int, str or None
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``0`` and ``None`` are special cases
+        returning ``None``.
     device_index: int or str
         The index or UUID of the device from which to obtain the total memory amount.
         Default: 0.
@@ -548,10 +594,133 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
         Number of bytes of alignment to use, i.e., allocation must be a multiple of
         that size. RMM pool requires 256 bytes alignment.
 
+    Returns
+    -------
+    The parsed bytes value relative to the CUDA devices, or ``None`` as convenience if
+    ``device_bytes`` is ``None`` or any value that would evaluate to ``0``.
+
+    Examples
+    --------
+    >>> # On a 32GB CUDA device
+    >>> parse_device_bytes(None)
+    None
+    >>> parse_device_bytes(0)
+    None
+    >>> parse_device_bytes(0.0)
+    None
+    >>> parse_device_bytes("0 MiB")
+    None
+    >>> parse_device_bytes(1.0)
+    34089730048
+    >>> parse_device_bytes(0.8)
+    27271784038
+    >>> parse_device_bytes(1000000000)
+    1000000000
+    >>> parse_device_bytes("1GB")
+    1000000000
+    >>> parse_device_bytes("1GB")
+    1000000000
+    """
+
+    def _align(size, alignment_size):
+        return size // alignment_size * alignment_size
+
+    def parse_fractional(v):
+        """Parse fractional value.
+
+        Ensures ``int(1)`` and ``str("1")`` are not treated as fractionals, but
+        ``float(1)`` is.
+
+        Fractionals must be represented as a ``float`` within the range
+        ``0.0 < v <= 1.0``.
+
+        Parameters
+        ----------
+        v: int, float or str
+            The value to check if fractional.
+
+        Returns
+        -------
+        """
+        # Check if `x` matches exactly `int(1)` or `str("1")`, and is not a `float(1)`
+        is_one = lambda x: not isinstance(x, float) and (x == 1 or x == "1")
+
+        if not is_one(v):
+            with suppress(ValueError, TypeError):
+                v = float(v)
+                if 0.0 < v <= 1.0:
+                    return v
+
+        raise ValueError("The value is not fractional")
+
+    # Special case for fractional limit. This comes before `0` special cases because
+    # the `float` may be passed in a `str`, e.g., from `CUDAWorker`.
+    try:
+        fractional_device_bytes = parse_fractional(device_bytes)
+    except ValueError:
+        pass
+    else:
+        if not has_device_memory_resource():
+            raise ValueError(
+                "Fractional of total device memory not supported in devices without "
+                "a dedicated memory resource."
+            )
+        return _align(
+            int(get_device_total_memory(device_index) * fractional_device_bytes),
+            alignment_size,
+        )
+
+    # Special cases that evaluates to `None` or `0`
+    if device_bytes is None:
+        return None
+    elif device_bytes == 0.0:
+        return None
+    elif not isinstance(device_bytes, float) and parse_bytes(device_bytes) == 0:
+        return None
+
+    if isinstance(device_bytes, str):
+        return _align(parse_bytes(device_bytes), alignment_size)
+    else:
+        return _align(int(device_bytes), alignment_size)
+
+
+def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_size=1):
+    """Parse memory limit to be used by a CUDA device.
+
+    Parameters
+    ----------
+    device_memory_limit: float, int, str or None
+        Can be an integer (bytes), float (fraction of total device memory), string
+        (like ``"5GB"`` or ``"5000M"``), ``"auto"``, ``0`` or ``None`` to disable
+        spilling to host (i.e. allow full device memory usage). Another special value
+        ``"default"`` is also available and returns the recommended Dask-CUDA's defaults
+        and means 80% of the total device memory (analogous to ``0.8``), and disabled
+        spilling (analogous to ``auto``/``0``/``None``) on devices without a dedicated
+        memory resource, such as system on a chip (SoC) devices.
+    device_index: int or str
+        The index or UUID of the device from which to obtain the total memory amount.
+        Default: 0.
+    alignment_size: int
+        Number of bytes of alignment to use, i.e., allocation must be a multiple of
+        that size. RMM pool requires 256 bytes alignment.
+
+    Returns
+    -------
+    The parsed memory limit in bytes, or ``None`` as convenience if
+    ``device_memory_limit`` is ``None`` or any value that would evaluate to ``0``.
+
     Examples
     --------
     >>> # On a 32GB CUDA device
     >>> parse_device_memory_limit(None)
+    None
+    >>> parse_device_memory_limit(0)
+    None
+    >>> parse_device_memory_limit(0.0)
+    None
+    >>> parse_device_memory_limit("0 MiB")
+    None
+    >>> parse_device_memory_limit(1.0)
     34089730048
     >>> parse_device_memory_limit(0.8)
     27271784038
@@ -559,26 +728,36 @@ def parse_device_memory_limit(device_memory_limit, device_index=0, alignment_siz
     1000000000
     >>> parse_device_memory_limit("1GB")
     1000000000
+    >>> parse_device_memory_limit("1GB")
+    1000000000
+    >>> parse_device_memory_limit("auto") == (
+    ...    parse_device_memory_limit(1.0)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
+    >>> parse_device_memory_limit("default") == (
+    ...    parse_device_memory_limit(0.8)
+    ...    if has_device_memory_resource()
+    ...    else None
+    ... )
+    True
     """
 
-    def _align(size, alignment_size):
-        return size // alignment_size * alignment_size
+    # Special cases for "auto" and "default".
+    if device_memory_limit in ["auto", "default"]:
+        if not has_device_memory_resource():
+            return None
+        if device_memory_limit == "auto":
+            device_memory_limit = get_device_total_memory(device_index)
+        else:
+            device_memory_limit = 0.8
 
-    if device_memory_limit in {0, "0", None, "auto"}:
-        return _align(get_device_total_memory(device_index), alignment_size)
-
-    with suppress(ValueError, TypeError):
-        device_memory_limit = float(device_memory_limit)
-        if isinstance(device_memory_limit, float) and device_memory_limit <= 1:
-            return _align(
-                int(get_device_total_memory(device_index) * device_memory_limit),
-                alignment_size,
-            )
-
-    if isinstance(device_memory_limit, str):
-        return _align(parse_bytes(device_memory_limit), alignment_size)
-    else:
-        return _align(int(device_memory_limit), alignment_size)
+    return parse_device_bytes(
+        device_bytes=device_memory_limit,
+        device_index=device_index,
+        alignment_size=alignment_size,
+    )
 
 
 def get_gpu_uuid(device_index=0):
@@ -644,20 +823,26 @@ def get_worker_config(dask_worker):
         ret["device-memory-limit"] = dask_worker.data.manager._device_memory_limit
     else:
         has_device = hasattr(dask_worker.data, "device_buffer")
-        if has_device:
+        if has_device and hasattr(dask_worker.data.device_buffer, "n"):
+            # If `n` is not an attribute, device spilling is disabled/unavailable.
             ret["device-memory-limit"] = dask_worker.data.device_buffer.n
 
     # using ucx ?
     scheme, loc = parse_address(dask_worker.scheduler.address)
     ret["protocol"] = scheme
-    if scheme == "ucx":
-        import ucp
+    try:
+        protocol = _get_active_ucx_implementation_name(scheme)
+    except ValueError:
+        pass
+    else:
+        if protocol == "ucxx":
+            import ucxx
 
-        ret["ucx-transports"] = ucp.get_active_transports()
-    elif scheme == "ucxx":
-        import ucxx
+            ret["ucx-transports"] = ucxx.get_active_transports()
+        elif protocol == "ucx-old":
+            import ucp
 
-        ret["ucx-transports"] = ucxx.get_active_transports()
+            ret["ucx-transports"] = ucp.get_active_transports()
 
     # comm timeouts
     ret["distributed.comm.timeouts"] = dask.config.get("distributed.comm.timeouts")
@@ -689,7 +874,7 @@ async def _get_cluster_configuration(client):
     if worker_config:
         w = list(worker_config.values())[0]
         ret.update(w)
-        info = client.scheduler_info()
+        info = client.scheduler_info(n_workers=-1)
         workers = info.get("workers", {})
         ret["nworkers"] = len(workers)
         ret["nthreads"] = sum(w["nthreads"] for w in workers.values())
@@ -767,7 +952,7 @@ def get_rmm_device_memory_usage() -> Optional[int]:
     """Get current bytes allocated on current device through RMM
 
     Check the current RMM resource stack for resources such as
-    `StatisticsResourceAdaptor` and `TrackingResourceAdaptor`
+    ``StatisticsResourceAdaptor`` and ``TrackingResourceAdaptor``
     that can report the current allocated bytes. Returns None,
     if no such resources exist.
 
@@ -803,3 +988,41 @@ class CommaSeparatedChoice(click.Choice):
                 choices_str = ", ".join(f"'{c}'" for c in self.choices)
                 self.fail(f"invalid choice(s): {v}. (choices are: {choices_str})")
         return values
+
+
+def _get_active_ucx_implementation_name(protocol):
+    """Get the name of active UCX implementation.
+
+    Determine what UCX implementation is being activated based on a series of
+    conditions. UCXX is selected if:
+    - The protocol is `"ucxx"`, or the protocol is `"ucx"` and the `distributed-ucxx`
+      package is installed.
+    UCX-Py is selected if:
+    - The protocol is `"ucx-old"`, or the protocol is `"ucx"` and the `distributed-ucxx`
+      package is not installed, in which case a `FutureWarning` is also raised.
+
+    Parameters
+    ----------
+    protocol: str
+        The communication protocol selected.
+
+    Returns
+    -------
+    The selected implementation type, either "ucxx" or "ucx-old".
+
+    Raises
+    ------
+    ValueError
+        If protocol is not a valid UCX protocol.
+    """
+    has_ucxx = importlib.util.find_spec("distributed_ucxx") is not None
+
+    if protocol == "ucxx" or (has_ucxx and protocol == "ucx"):
+        # With https://github.com/rapidsai/rapids-dask-dependency/pull/116,
+        # `protocol="ucx"` now points to UCXX (if distributed-ucxx is installed),
+        # thus call the UCXX initializer.
+        return "ucxx"
+    elif protocol in ("ucx", "ucx-old"):
+        return "ucx-old"
+    else:
+        raise ValueError("Protocol is neither UCXX nor UCX-Py")

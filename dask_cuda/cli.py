@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import absolute_import, division, print_function
 
 import logging
@@ -90,16 +93,20 @@ def cuda():
     help="""Size of the host LRU cache, which is used to determine when the worker
     starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
     integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
-    or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.""",
+    or ``"5000M"``), or ``"auto"`` or ``0`` for no memory management.""",
 )
 @click.option(
     "--device-memory-limit",
-    default="0.8",
+    default="default",
     show_default=True,
     help="""Size of the CUDA device LRU cache, which is used to determine when the
     worker starts spilling to host memory. Can be an integer (bytes), float (fraction of
-    total device memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"`` or 0 to
-    disable spilling to host (i.e. allow full device memory usage).""",
+    total device memory), string (like ``"5GB"`` or ``"5000M"``), ``"auto"`` or ``0``
+    to disable spilling to host (i.e. allow full device memory usage). Another special
+    value ``"default"`` (which happens to be the default) is also available and uses the
+    recommended Dask-CUDA's defaults and means 80% of the total device memory (analogous
+    to ``0.8``), and disabled spilling (analogous to ``auto``/``0``) on devices without
+    a dedicated memory resource, such as system on a chip (SoC) devices.""",
 )
 @click.option(
     "--enable-cudf-spill/--disable-cudf-spill",
@@ -113,7 +120,7 @@ def cuda():
     type=int,
     default=0,
     help="""Set the cuDF spilling statistics level. This option has no effect if
-    `--enable-cudf-spill` is not specified.""",
+    ``--enable-cudf-spill`` is not specified.""",
 )
 @click.option(
     "--rmm-pool-size",
@@ -135,8 +142,8 @@ def cuda():
     to set the maximum pool size.
 
     .. note::
-        When paired with `--enable-rmm-async` the maximum size cannot be guaranteed due
-        to fragmentation.
+        When paired with ``--enable-rmm-async`` the maximum size cannot be guaranteed
+        due to fragmentation.
 
     .. note::
         This size is a per-worker configuration, and not cluster-wide.""",
@@ -160,9 +167,8 @@ def cuda():
     allocator. See ``rmm.mr.CudaAsyncMemoryResource`` for more info.
 
     .. warning::
-        The asynchronous allocator requires CUDA Toolkit 11.2 or newer. It is also
-        incompatible with RMM pools and managed memory, trying to enable both will
-        result in failure.""",
+        The asynchronous allocator is incompatible with RMM pools and managed memory,
+        trying to enable both will result in failure.""",
 )
 @click.option(
     "--set-rmm-allocator-for-libs",
@@ -245,12 +251,12 @@ def cuda():
     "--shared-filesystem/--no-shared-filesystem",
     default=None,
     type=bool,
-    help="""If `--shared-filesystem` is specified, inform JIT-Unspill that
-    `local_directory` is a shared filesystem available for all workers, whereas
-    `--no-shared-filesystem` informs it may not assume it's a shared filesystem.
+    help="""If ``--shared-filesystem`` is specified, inform JIT-Unspill that
+    ``local_directory`` is a shared filesystem available for all workers, whereas
+    ``--no-shared-filesystem`` informs it may not assume it's a shared filesystem.
     If neither is specified, JIT-Unspill will decide based on the Dask config value
-    specified by `"jit-unspill-shared-fs"`.
-    Notice, a shared filesystem must support the `os.link()` operation.""",
+    specified by ``"jit-unspill-shared-fs"``.
+    Notice, a shared filesystem must support the ``os.link()`` operation.""",
 )
 @scheduler_file
 @click.option(

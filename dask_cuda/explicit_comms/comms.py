@@ -33,7 +33,7 @@ def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
     Returns
     -------
     context: context
-        Either `MultiLock(*args, **kwargs)` or a NULL context
+        Either ``MultiLock(*args, **kwargs)`` or a NULL context
     """
     if multi_lock_context:
         from distributed import MultiLock
@@ -52,7 +52,7 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     Parameters
     ----------
     client: Client, optional
-        If no default comm object exists, create the new comm on `client`
+        If no default comm object exists, create the new comm on ``client``
         are returned.
 
     Returns
@@ -77,7 +77,9 @@ def default_comms(client: Optional[Client] = None) -> "CommsContext":
     # Comms are unique to a {client, [workers]} pair, so we key our
     # cache by the token of that.
     client = client or default_client()
-    token = tokenize(client.id, list(client.scheduler_info()["workers"].keys()))
+    token = tokenize(
+        client.id, list(client.scheduler_info(n_workers=-1)["workers"].keys())
+    )
     maybe_comms = _comms_cache.get(token)
     if maybe_comms is None:
         maybe_comms = CommsContext(client=client)
@@ -206,7 +208,9 @@ class CommsContext:
         self.sessionId = uuid.uuid4().int
 
         # Get address of all workers (not Nanny addresses)
-        self.worker_addresses = list(self.client.scheduler_info()["workers"].keys())
+        self.worker_addresses = list(
+            self.client.scheduler_info(n_workers=-1)["workers"].keys()
+        )
 
         # Make all workers listen and get all listen addresses
         self.worker_direct_addresses = []
@@ -248,7 +252,7 @@ class CommsContext:
         Returns
         -------
         ret: object or Future
-            If wait=True, the result of `coroutine`
+            If wait=True, the result of ``coroutine``
             If wait=False, Future that can be waited on later.
         """
         ret = self.client.submit(
@@ -305,7 +309,7 @@ class CommsContext:
     def stage_keys(self, name: str, keys: Iterable[Hashable]) -> Dict[int, set]:
         """Staging keys on workers under the given name
 
-        In an explicit-comms task, use `pop_staging_area(..., name)` to access
+        In an explicit-comms task, use ``pop_staging_area(..., name)`` to access
         the staged keys and the associated data.
 
         Notes
@@ -335,7 +339,7 @@ class CommsContext:
 
 
 def pop_staging_area(session_state: dict, name: str) -> Dict[str, Any]:
-    """Pop the staging area called `name`
+    """Pop the staging area called ``name``
 
     This function must be called within a running explicit-comms task.
 

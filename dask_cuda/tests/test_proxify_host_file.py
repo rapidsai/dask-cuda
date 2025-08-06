@@ -1,4 +1,5 @@
-# Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
 
 from typing import Iterable
 from unittest.mock import patch
@@ -219,6 +220,9 @@ def test_one_item_host_limit(capsys, root_dir):
     assert len(dhf.manager) == 0
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 def test_spill_on_demand(root_dir):
     """
     Test spilling on demand by disabling the device_memory_limit
@@ -241,6 +245,9 @@ def test_spill_on_demand(root_dir):
 
 
 @pytest.mark.parametrize("jit_unspill", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support spilling"
+)
 @gen_test(timeout=20)
 async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
@@ -377,9 +384,9 @@ def test_externals(root_dir):
 
 @patch("dask_cuda.proxify_device_objects.incompatible_types", (cupy.ndarray,))
 def test_incompatible_types(root_dir):
-    """Check that ProxifyHostFile unproxifies `cupy.ndarray` on retrieval
+    """Check that ProxifyHostFile unproxifies ``cupy.ndarray`` on retrieval
 
-    Notice, in this test we add `cupy.ndarray` to the incompatible_types temporarily.
+    Notice, in this test we add ``cupy.ndarray`` to the incompatible_types temporarily.
     """
     cupy = pytest.importorskip("cupy")
     cudf = pytest.importorskip("cudf")
@@ -398,6 +405,9 @@ def test_incompatible_types(root_dir):
 
 @pytest.mark.parametrize("npartitions", [1, 2, 3])
 @pytest.mark.parametrize("compatibility_mode", [True, False])
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
@@ -430,6 +440,9 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
                     assert all(res)  # Only proxy objects
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 @gen_test(timeout=60)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
@@ -465,6 +478,9 @@ async def test_worker_force_spill_to_disk():
                 assert "Unmanaged memory use is high" not in log
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources do not support JIT-Unspill"
+)
 def test_on_demand_debug_info():
     """Test worker logging when on-demand-spilling fails"""
     rmm = pytest.importorskip("rmm")
