@@ -146,7 +146,7 @@ dependencies:
           - numpy>=1.23,<3.0a0
           - pandas>=1.3
           - pynvml>=12.0.0,<13.0.0a0
-          - rapids-dask-dependency==25.8.*,>=0.0.0a0
+          - rapids-dask-dependency==25.8.*
           - zict>=2.0.0
   test_python:
     common:
@@ -157,12 +157,12 @@ dependencies:
           - pytest-timeout
       - output_types: [conda]
         packages:
-          - &cudf_unsuffixed cudf==25.8.*,>=0.0.0a0
-          - &dask_cudf_unsuffixed dask-cudf==25.8.*,>=0.0.0a0
-          - &distributed_ucxx_unsuffixed distributed-ucxx==0.45.*,>=0.0.0a0
-          - &kvikio_unsuffixed kvikio==25.8.*,>=0.0.0a0
-          - &ucx_py_unsuffixed ucx-py==0.45.*,>=0.0.0a0
-          - ucxx==0.45.*,>=0.0.0a0
+          - &cudf_unsuffixed cudf==25.8.*
+          - &dask_cudf_unsuffixed dask-cudf==25.8.*
+          - &distributed_ucxx_unsuffixed distributed-ucxx==0.45.*
+          - &kvikio_unsuffixed kvikio==25.8.*
+          - &ucx_py_unsuffixed ucx-py==0.45.*
+          - ucxx==0.45.*
     specific:
       - output_types: conda
         matrices:
@@ -180,11 +180,11 @@ dependencies:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu12==25.8.*,>=0.0.0a0
-              - dask-cudf-cu12==25.8.*,>=0.0.0a0
-              - distributed-ucxx-cu12==0.45.*,>=0.0.0a0
-              - kvikio-cu12==25.8.*,>=0.0.0a0
-              - ucx-py-cu12==0.45.*,>=0.0.0a0
+              - cudf-cu12==25.8.*
+              - dask-cudf-cu12==25.8.*
+              - distributed-ucxx-cu12==0.45.*
+              - kvikio-cu12==25.8.*
+              - ucx-py-cu12==0.45.*
           - matrix:
             packages:
               - *cudf_unsuffixed
@@ -196,4 +196,4 @@ dependencies:
     common:
       - output_types: conda
         packages:
-          - dask-cuda==25.8.*,>=0.0.0a0
+          - dask-cuda==25.8.*
