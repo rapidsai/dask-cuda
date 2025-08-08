@@ -148,6 +148,18 @@ dependencies:
           - pynvml>=12.0.0,<13.0.0a0
           - rapids-dask-dependency==25.10.*,>=0.0.0a0
           - zict>=2.0.0
+      - output_types: [conda]
+        packages:
+          - &numba-cuda-dep numba-cuda>=0.14.0,<0.15.0a0
+    specific:
+      - output_types: [requirements, pyproject]
+        matrices:
+          - matrix: {cuda: "12.*"}
+            packages:
+              - &numba-cuda-cu12-dep numba-cuda[cu12]>=0.14.0,<0.15.0a0
+          - matrix: # Fallback for no matrix
+            packages:
+              - *numba-cuda-cu12-dep
   test_python:
     common:
       - output_types: [conda, requirements, pyproject]
