@@ -62,6 +62,7 @@ jobs:
       container_image: "rapidsai/ci-conda:25.08-latest"
       script: "ci/build_docs.sh"
   wheel-build:
+    needs: checks
     secrets: inherit
     uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@branch-25.10
     with:
