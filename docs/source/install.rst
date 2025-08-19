@@ -16,7 +16,7 @@ To install the latest version of Dask-CUDA along with the CUDA Toolkit:
 
 .. code-block:: bash
 
-    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cuda-version=12.9
+    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cuda-version=13.0
 
 Pip
 ---
