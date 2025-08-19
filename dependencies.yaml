@@ -97,14 +97,11 @@ dependencies:
             packages:
               - cuda-version=13.0
   cuda:
-    specific:
+    common:
       - output_types: conda
-        matrices:
-          - matrix:
-              cuda: "12.*"
-            packages:
-              - cuda-nvcc-impl
-              - cuda-nvrtc
+        packages:
+          - cuda-nvcc-impl
+          - cuda-nvrtc
   develop:
     common:
       - output_types: [conda, requirements]
@@ -160,10 +157,13 @@ dependencies:
         matrices:
           - matrix: {cuda: "12.*"}
             packages:
-              - &numba_cuda_cu12 numba-cuda[cu12]>=0.19.0,<0.20.0a0
+              - numba-cuda[cu12]>=0.19.0,<0.20.0a0
+          - matrix: {cuda: "13.*"}
+            packages:
+              - &numba_cuda_cu13 numba-cuda[cu13]>=0.19.0,<0.20.0a0
           - matrix: # Fallback for no matrix
             packages:
-              - *numba_cuda_cu12
+              - *numba_cuda_cu13
   test_python:
     common:
       - output_types: [conda, requirements, pyproject]
@@ -201,6 +201,15 @@ dependencies:
               - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
               - kvikio-cu12==25.10.*,>=0.0.0a0
               - ucx-py-cu12==0.46.*,>=0.0.0a0
+          - matrix:
+              cuda: "13.*"
+              cuda_suffixed: "true"
+            packages:
+              - cudf-cu13==25.10.*,>=0.0.0a0
+              - dask-cudf-cu13==25.10.*,>=0.0.0a0
+              - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
+              - kvikio-cu13==25.10.*,>=0.0.0a0
+              - ucx-py-cu13==0.46.*,>=0.0.0a0
           - matrix:
             packages:
               - *cudf_unsuffixed
