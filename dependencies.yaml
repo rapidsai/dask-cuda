@@ -150,13 +150,13 @@ dependencies:
           - zict>=2.0.0
       - output_types: [conda]
         packages:
-          - &numba_cuda numba-cuda>=0.18.0,<0.19.0a0
+          - &numba_cuda numba-cuda>=0.19.0,<0.20.0a0
     specific:
       - output_types: [requirements, pyproject]
         matrices:
           - matrix: {cuda: "12.*"}
             packages:
-              - &numba_cuda_cu12 numba-cuda[cu12]>=0.18.0,<0.19.0a0
+              - &numba_cuda_cu12 numba-cuda[cu12]>=0.19.0,<0.20.0a0
           - matrix: # Fallback for no matrix
             packages:
               - *numba_cuda_cu12
