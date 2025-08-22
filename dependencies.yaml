@@ -142,7 +142,7 @@ dependencies:
       - output_types: [conda, requirements, pyproject]
         packages:
           - click >=8.1
-          - cuda-python>=12.9.1,<13.0a0
+          - cuda-core==0.3.*
           - numba>=0.60.0,<0.62.0a0
           - numpy>=1.23,<3.0a0
           - pandas>=1.3
