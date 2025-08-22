@@ -5,7 +5,7 @@ import logging
 import os
 
 import click
-import numba.cuda
+import cuda.core.experimental
 
 import dask
 from distributed.diagnostics.nvml import get_device_index_and_uuid, has_cuda_context
@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 def _create_cuda_context_handler():
     if int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0:
         try:
-            numba.cuda.current_context()
-        except numba.cuda.cudadrv.error.CudaSupportError:
+            cuda.core.experimental.Device().set_current()
+        except Exception:
             pass
     else:
-        numba.cuda.current_context()
+        cuda.core.experimental.Device().set_current()
 
 
 def _warn_generic():
@@ -100,9 +100,6 @@ def _initialize_ucxx():
 
 
 def _create_cuda_context(protocol="ucx"):
-    if protocol not in ["ucx", "ucxx", "ucx-old"]:
-        return
-
     try:
         ucx_implementation = _get_active_ucx_implementation_name(protocol)
     except ValueError:
