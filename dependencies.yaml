@@ -188,7 +188,7 @@ dependencies:
               - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
               - kvikio-cu12==25.10.*,>=0.0.0a0
               - ucx-py-cu12==0.46.*,>=0.0.0a0
-              - &numba_cuda_cu12 numba-cuda[cu12]>=0.19.0,<0.20.0a0
+              - numba-cuda[cu12]>=0.19.0,<0.20.0a0
           - matrix:
               cuda: "13.*"
               cuda_suffixed: "true"
@@ -198,6 +198,7 @@ dependencies:
               - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
               - kvikio-cu13==25.10.*,>=0.0.0a0
               - ucx-py-cu13==0.46.*,>=0.0.0a0
+              - &numba_cuda_cu13 numba-cuda[cu13]>=0.19.0,<0.20.0a0
           - matrix:
             packages:
               - *cudf_unsuffixed
@@ -205,7 +206,7 @@ dependencies:
               - *distributed_ucxx_unsuffixed
               - *kvikio_unsuffixed
               - *ucx_py_unsuffixed
-              - *numba_cuda_cu12
+              - *numba_cuda_cu13
   depends_on_dask_cuda:
     common:
       - output_types: conda
