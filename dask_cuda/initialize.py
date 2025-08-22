@@ -100,18 +100,10 @@ def _initialize_ucxx():
 
 
 def _create_cuda_context(protocol="ucx"):
-    if protocol not in ["ucx", "ucxx", "ucx-old"]:
-        return
-
-    # protocol is in {"ucx", "ucxx", "ucx-old"} here
-
     try:
         ucx_implementation = _get_active_ucx_implementation_name(protocol)
     except ValueError:
         # Not a UCX protocol, just raise CUDA context warnings if needed.
-        # Claim: this is unreachable.
-        # We raise a ValueError iff protocol is not in {"ucx", "ucxx", "ucx-old"}
-        # but we know it is in that set because of the early return above.
         _warn_generic()
     else:
         if ucx_implementation == "ucxx":
