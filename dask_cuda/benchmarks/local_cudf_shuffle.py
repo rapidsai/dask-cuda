@@ -129,6 +129,27 @@ def bench_once(client, args, write_profile=None):
         ctx = performance_report(filename=write_profile)
 
     with ctx:
+        if args.backend == "rapidsmpf":
+            from rapidsmpf.config import Options
+            from rapidsmpf.examples.dask import dask_cudf_shuffle
+            from rapidsmpf.integrations.dask import bootstrap_dask_cluster
+
+            # from rapidsmpf.integrations.dask.shuffler import (
+            # gather_shuffle_statistics,
+            # )
+
+            options = Options({"dask_spill_device": "0.4", "dask_statistics": "true"})
+            bootstrap_dask_cluster(client, options=options)
+            t1 = perf_counter()
+            partition_count = args.in_parts
+            shuffled = dask_cudf_shuffle(
+                df,
+                ["data"],
+                sort=False,
+                partition_count=partition_count,
+            )
+            duration = perf_counter() - t1
+            assert shuffled.npartitions == partition_count
         if args.backend in {"dask", "dask-noop"}:
             duration = shuffle_dask(df, args)
         else:
@@ -215,7 +236,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms", "dask-noop"],
+            "choices": ["dask", "explicit-comms", "dask-noop", "rapidsmpf"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
