@@ -28,6 +28,18 @@ To install the latest version of Dask-CUDA:
 
     python -m pip install dask-cuda
 
+`dask-cuda` also provides extras to ensure a consistent set of optional dependencies are installed based on the CUDA version you're using.
+
+.. code-block:: bash
+
+    # CUDA 13
+    python -m pip install 'dask-cuda[cu13]'
+
+.. code-block:: bash
+
+    # CUDA 12
+    python -m pip install 'dask-cuda[cu12]'
+
 Source
 ------
 

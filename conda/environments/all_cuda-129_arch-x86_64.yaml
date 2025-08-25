@@ -10,8 +10,6 @@ dependencies:
 - cuda-nvcc-impl
 - cuda-nvrtc
 - cuda-version=12.9
-- cudf==25.10.*,>=0.0.0a0
-- dask-cudf==25.10.*,>=0.0.0a0
 - distributed-ucxx==0.46.*,>=0.0.0a0
 - kvikio=25.10.*,>=0.0.0a0
 - numactl-devel-cos7-x86_64
