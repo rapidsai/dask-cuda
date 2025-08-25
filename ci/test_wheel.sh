@@ -18,6 +18,9 @@ rapids-logger "Installing test dependencies"
 # echo to expand wildcard
 rapids-pip-retry install -v --prefer-binary -r /tmp/requirements-test.txt "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)"
 
+RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
+mkdir -p "${RAPIDS_TESTS_DIR}"
+
 EXITCODE=0
 # shellcheck disable=SC2317
 set_exit_code() {
