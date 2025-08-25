@@ -17,8 +17,8 @@ from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 
 dask_cudf = pytest.importorskip("dask_cudf")
 
-from dask_cuda import LocalCUDACluster, utils  # noqa: F402
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny  # noqa: F402
+from dask_cuda import LocalCUDACluster, utils  # noqa: E402
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny  # noqa: E402
 
 if not utils.has_device_memory_resource():
     pytest.skip(
