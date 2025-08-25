@@ -169,10 +169,8 @@ dependencies:
     common:
       - output_types: [pyproject]
         packages:
-          # TODO: add 'cudf' and 'dask-cudf' back to this dependency list once there are CUDA 13 packages for those
-          # ref: https://github.com/rapidsai/dask-cuda/pull/1536#issuecomment-3212474898
-          # - cudf-cu12==25.10.*,>=0.0.0a0
-          # - dask-cudf-cu12==25.10.*,>=0.0.0a0
+          - cudf-cu12==25.10.*,>=0.0.0a0
+          - dask-cudf-cu12==25.10.*,>=0.0.0a0
           - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
           - kvikio-cu12==25.10.*,>=0.0.0a0
           - ucx-py-cu12==0.46.*,>=0.0.0a0
@@ -200,11 +198,12 @@ dependencies:
         packages:
           # ensure dependencies of 'dask.dataframe' are available
           # ref: https://github.com/rapidsai/dask-cuda/pull/1536#discussion_r2298528510
+          # TODO: remove this once there are CUDA 13 'dask-cudf' packages
           - 'dask[dataframe]'
       - output_types: [conda]
         packages:
           - distributed-ucxx==0.46.*,>=0.0.0a0
-          - kvikio=25.10.*,>=0.0.0a0
+          - kvikio==25.10.*,>=0.0.0a0
           - ucx-py==0.46.*,>=0.0.0a0
           - numba-cuda>=0.19.1,<0.20.0a0
     specific:
