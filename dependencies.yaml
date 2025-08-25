@@ -196,6 +196,11 @@ dependencies:
           - pytest
           - pytest-cov
           - pytest-timeout
+      - output_types: [requirements, pyproject]
+        packages:
+          # ensure dependencies of 'dask.dataframe' are available
+          # ref: https://github.com/rapidsai/dask-cuda/pull/1536#discussion_r2298528510
+          - 'dask[dataframe]'
       - output_types: [conda]
         packages:
           - distributed-ucxx==0.46.*,>=0.0.0a0
