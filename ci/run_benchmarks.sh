@@ -6,6 +6,13 @@ set -euo pipefail
 # Support invoking run_benchmarks.sh outside the script directory
 cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/../dask_cuda
 
+# TODO: run cudf benchmarks unconditionally once there are CUDA 13 cudf packages
+# ref: https://github.com/rapidsai/dask-cuda/pull/1536#issuecomment-321247489
+if [[ ! $(python -c "import cudf") ]]; then
+  echo "skipping benchmarks: cudf packages not available"
+  exit 0
+fi
+
 python benchmarks/local_cudf_shuffle.py \
   --partition-size="1 KiB" \
   -d 0 \
