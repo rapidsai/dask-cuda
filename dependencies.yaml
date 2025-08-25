@@ -218,16 +218,6 @@ dependencies:
               - dask-cudf==25.10.*,>=0.0.0a0
           - matrix:
             packages:
-      - output_types: conda
-        matrices:
-          - matrix:
-              arch: x86_64
-            packages:
-              - numactl-devel-cos7-x86_64
-          - matrix:
-              arch: aarch64
-            packages:
-              - numactl-devel-cos7-aarch64
   depends_on_dask_cuda:
     common:
       - output_types: conda
