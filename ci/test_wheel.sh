@@ -5,6 +5,9 @@ set -eou pipefail
 
 source rapids-init-pip
 
+RAPIDS_CUDA_MAJOR="${RAPIDS_CUDA_VERSION%%.*}"
+export RAPIDS_CUDA_MAJOR
+
 DASK_CUDA_WHEELHOUSE=$(RAPIDS_PY_WHEEL_NAME="dask-cuda" RAPIDS_PY_WHEEL_PURE="1" rapids-download-wheels-from-github python)
 
 # Install cuda-suffixed dependencies b/c while `dask-cuda` has no cuda suffix, the test dependencies do
@@ -16,7 +19,11 @@ rapids-dependency-file-generator \
 
 rapids-logger "Installing test dependencies"
 # echo to expand wildcard
-rapids-pip-retry install -v --prefer-binary -r /tmp/requirements-test.txt "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)"
+rapids-pip-retry install \
+  -v \
+  --prefer-binary \
+  -r /tmp/requirements-test.txt \
+  "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)[cu${RAPIDS_CUDA_MAJOR}]"
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 mkdir -p "${RAPIDS_TESTS_DIR}"

@@ -9,9 +9,7 @@ dependencies:
 - cuda-core==0.3.*
 - cuda-nvcc-impl
 - cuda-nvrtc
-- cuda-version=12.9
-- cudf==25.10.*,>=0.0.0a0
-- dask-cudf==25.10.*,>=0.0.0a0
+- cuda-version=13.0
 - distributed-ucxx==0.46.*,>=0.0.0a0
 - kvikio==25.10.*,>=0.0.0a0
 - numba-cuda>=0.19.1,<0.20.0a0
@@ -32,4 +30,4 @@ dependencies:
 - sphinx-rtd-theme>=0.5.1
 - ucx-py==0.46.*,>=0.0.0a0
 - zict>=2.0.0
-name: all_cuda-129_arch-aarch64
+name: all_cuda-130_arch-aarch64
