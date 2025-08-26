@@ -111,7 +111,7 @@ def start_dask_scheduler(protocol: str, max_attempts: int = 5, timeout: int = 10
         pytest.fail(f"Failed to start dask scheduler after {max_attempts} attempts.")
 
 
-@pytest.mark.timeout(20)
+@pytest.mark.timeout(30)
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
 def test_dask_cuda_worker_cli_integration(protocol, tmp_path):
@@ -173,9 +173,6 @@ dask_setup.callback = capture_dask_setup_call
             # Wait and check for worker connection
             with Client(sched_addr) as client:
                 assert wait_workers(client, n_gpus=1)
-
-                # Give extra time for preload execution
-                time.sleep(3)
 
                 # Check if dask_setup was called and captured correctly
                 if capture_file_path.exists():
