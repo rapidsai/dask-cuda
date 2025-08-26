@@ -5,11 +5,13 @@ import json
 import os
 import tempfile
 import time
+from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
 
 from distributed import Client
+from distributed.utils import open_port
 from distributed.utils_test import popen
 
 from dask_cuda.initialize import dask_setup
@@ -43,6 +45,72 @@ def test_dask_setup_function_with_mock_worker(protocol):
         )
 
         mock_create_context.assert_not_called()
+
+
+@contextmanager
+def start_dask_scheduler(protocol: str, max_attempts: int = 5, timeout: int = 10):
+    """Start Dask scheduler in subprocess.
+
+    Attempts to start a Dask scheduler in subprocess, if the port is not available
+    retry on a different port up to a maximum of `max_attempts` attempts. The stdout
+    and stderr of the process is read to determine whether the scheduler failed to
+    bind to port or succeeded, and ensures no more than `timeout` seconds are awaited
+    for between reads.
+
+    This is primarily useful because UCX does not release TCP ports immediately. A
+    workaround without the need for this function is setting `UCX_TCP_CM_REUSEADDR=y`,
+    but that requires to be explicitly set when running tests, and that is not very
+    friendly.
+
+    Parameters
+    ----------
+    protocol: str
+        Communication protocol to use.
+    max_attempts: int
+        Maximum attempts to try to open scheduler.
+    timeout: int
+        Time to wait while reading stdout/stderr of subprocess.
+    """
+    port = open_port()
+    for _ in range(max_attempts):
+        with popen(
+            [
+                "dask",
+                "scheduler",
+                "--no-dashboard",
+                "--protocol",
+                protocol,
+                "--port",
+                str(port),
+            ],
+            capture_output=True,  # Capture stdout and stderr
+        ) as scheduler_process:
+            # Check if the scheduler process started successfully by streaming output
+            try:
+                start_time = time.monotonic()
+                while True:
+                    if time.monotonic() - start_time > timeout:
+                        raise TimeoutError("Timeout while waiting for scheduler output")
+
+                    # Use select to wait for data with a timeout
+                    line = scheduler_process.stdout.readline()
+                    if not line:
+                        break  # End of output
+                    print(
+                        line.decode(), end=""
+                    )  # Since capture_output=True, print the line here
+                    if b"Scheduler at:" in line:
+                        # Scheduler is now listening
+                        break
+                    elif b"UCXXBusyError" in line:
+                        raise Exception("UCXXBusyError detected in scheduler output")
+            except Exception:
+                port += 1
+            else:
+                yield scheduler_process, port
+                return
+    else:
+        pytest.fail(f"Failed to start dask scheduler after {max_attempts} attempts.")
 
 
 @pytest.mark.timeout(20)
@@ -91,38 +159,29 @@ dask_setup.callback = capture_dask_setup_call
         if os.path.exists(capture_file_path):
             os.unlink(capture_file_path)
 
-        # Build CLI args
-        cli_args = [
-            "dask",
-            "cuda",
-            "worker",
-            f"{protocol}://127.0.0.1:9358",
-            "--host",
-            "127.0.0.1",
-            "--no-dashboard",
-            "--preload",
-            preload_file,
-            "--death-timeout",
-            "10",
-        ]
+        with start_dask_scheduler(protocol=protocol) as scheduler_process_port:
+            scheduler_process, scheduler_port = scheduler_process_port
+            sched_addr = f"{protocol}://127.0.0.1:{scheduler_port}"
+            print(f"{sched_addr=}", flush=True)
 
-        # Start scheduler and worker
-        with popen(
-            [
+            # Build dask cuda worker args
+            dask_cuda_worker_args = [
                 "dask",
-                "scheduler",
-                "--protocol",
-                protocol,
-                "--port",
-                "9358",
+                "cuda",
+                "worker",
+                sched_addr,
+                "--host",
+                "127.0.0.1",
                 "--no-dashboard",
+                "--preload",
+                preload_file,
+                "--death-timeout",
+                "10",
             ]
-        ):
-            time.sleep(2)  # Give scheduler time to start
 
-            with popen(cli_args):
+            with popen(dask_cuda_worker_args):
                 # Wait and check for worker connection
-                with Client(f"{protocol}://127.0.0.1:9358") as client:
+                with Client(sched_addr) as client:
                     assert wait_workers(client, n_gpus=1)
 
                     # Give extra time for preload execution
