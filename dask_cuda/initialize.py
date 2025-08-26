@@ -184,40 +184,9 @@ def initialize(
     default=False,
     help="Create CUDA context",
 )
-@click.option(
-    "--protocol",
-    default=None,
-    type=str,
-    help="Communication protocol, such as: 'tcp', 'tls', 'ucx' or 'ucxx'.",
-)
-@click.option(
-    "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=False,
-    help="Enable TCP communication over UCX",
-)
-@click.option(
-    "--enable-infiniband/--disable-infiniband",
-    default=False,
-    help="Enable InfiniBand communication",
-)
-@click.option(
-    "--enable-nvlink/--disable-nvlink",
-    default=False,
-    help="Enable NVLink communication",
-)
-@click.option(
-    "--enable-rdmacm/--disable-rdmacm",
-    default=False,
-    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
-)
 def dask_setup(
-    service,
+    worker,
     create_cuda_context,
-    protocol,
-    enable_tcp_over_ucx,
-    enable_infiniband,
-    enable_nvlink,
-    enable_rdmacm,
 ):
     if create_cuda_context:
-        _create_cuda_context(protocol=protocol)
+        _create_cuda_context(protocol=worker._protocol)
