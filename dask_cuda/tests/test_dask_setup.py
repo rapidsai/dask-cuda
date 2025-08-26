@@ -91,7 +91,6 @@ def start_dask_scheduler(protocol: str, max_attempts: int = 5, timeout: int = 10
                     if time.monotonic() - start_time > timeout:
                         raise TimeoutError("Timeout while waiting for scheduler output")
 
-                    # Use select to wait for data with a timeout
                     line = scheduler_process.stdout.readline()
                     if not line:
                         break  # End of output
