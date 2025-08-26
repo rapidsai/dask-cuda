@@ -45,7 +45,10 @@ def _warn_generic():
 
         _create_cuda_context_handler()
 
-        if not distributed.comm.ucx.cuda_context_created.has_context:
+        if (
+            distributed.comm.ucx.cuda_context_created is False
+            or distributed.comm.ucx.cuda_context_created.has_context
+        ):
             ctx = has_cuda_context()
             if ctx.has_context and ctx.device_info != cuda_visible_device:
                 distributed.comm.ucx._warn_cuda_context_wrong_device(
