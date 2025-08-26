@@ -191,5 +191,6 @@ def dask_setup(
     worker,
     create_cuda_context,
 ):
+    protocol = worker._protocol.split("://")[0]
     if create_cuda_context:
-        _create_cuda_context(protocol=worker._protocol)
+        _create_cuda_context(protocol=protocol)
