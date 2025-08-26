@@ -3,7 +3,6 @@
 
 import json
 import os
-import tempfile
 import time
 from contextlib import contextmanager
 from unittest.mock import Mock, patch
@@ -116,22 +115,20 @@ def start_dask_scheduler(protocol: str, max_attempts: int = 5, timeout: int = 10
 @pytest.mark.timeout(20)
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 @pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
-def test_dask_cuda_worker_cli_integration(protocol):
+def test_dask_cuda_worker_cli_integration(protocol, tmp_path):
     """Test that dask cuda worker CLI correctly passes arguments to dask_setup.
 
     Verifies the end-to-end integration where the CLI tool actually launches and calls
     dask_setup with correct args.
     """
 
-    # Use a global file path to ensure cleanup
-    capture_file_path = tempfile.NamedTemporaryFile(
-        delete=False, suffix="_dask_setup_integration_test.json"
-    ).name
+    # Use pytest's tmp_path for file management
+    capture_file_path = tmp_path / "dask_setup_integration_test.json"
+    preload_file = tmp_path / "preload_capture.py"
 
-    # Create a simple capture script that works reliably
-    with tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".py") as f:
-        f.write(
-            f'''
+    # Write the preload script to tmp_path
+    preload_file.write_text(
+        f'''
 import json
 import os
 
@@ -144,73 +141,59 @@ def capture_dask_setup_call(worker, create_cuda_context):
     }}
 
     # Write immediately to ensure it gets captured
-    with open('{capture_file_path}', 'w') as f:
+    with open(r"{capture_file_path}", 'w') as f:
         json.dump(result, f)
 
 # Patch dask_setup callback
 from dask_cuda.initialize import dask_setup
 dask_setup.callback = capture_dask_setup_call
 '''
-        )
-        preload_file = f.name
+    )
 
-    try:
-        # Clean up any existing capture file
-        if os.path.exists(capture_file_path):
-            os.unlink(capture_file_path)
+    with start_dask_scheduler(protocol=protocol) as scheduler_process_port:
+        scheduler_process, scheduler_port = scheduler_process_port
+        sched_addr = f"{protocol}://127.0.0.1:{scheduler_port}"
+        print(f"{sched_addr=}", flush=True)
 
-        with start_dask_scheduler(protocol=protocol) as scheduler_process_port:
-            scheduler_process, scheduler_port = scheduler_process_port
-            sched_addr = f"{protocol}://127.0.0.1:{scheduler_port}"
-            print(f"{sched_addr=}", flush=True)
+        # Build dask cuda worker args
+        dask_cuda_worker_args = [
+            "dask",
+            "cuda",
+            "worker",
+            sched_addr,
+            "--host",
+            "127.0.0.1",
+            "--no-dashboard",
+            "--preload",
+            str(preload_file),
+            "--death-timeout",
+            "10",
+        ]
 
-            # Build dask cuda worker args
-            dask_cuda_worker_args = [
-                "dask",
-                "cuda",
-                "worker",
-                sched_addr,
-                "--host",
-                "127.0.0.1",
-                "--no-dashboard",
-                "--preload",
-                preload_file,
-                "--death-timeout",
-                "10",
-            ]
+        with popen(dask_cuda_worker_args):
+            # Wait and check for worker connection
+            with Client(sched_addr) as client:
+                assert wait_workers(client, n_gpus=1)
 
-            with popen(dask_cuda_worker_args):
-                # Wait and check for worker connection
-                with Client(sched_addr) as client:
-                    assert wait_workers(client, n_gpus=1)
+                # Give extra time for preload execution
+                time.sleep(3)
 
-                    # Give extra time for preload execution
-                    time.sleep(3)
+                # Check if dask_setup was called and captured correctly
+                if capture_file_path.exists():
+                    with open(capture_file_path, "r") as cf:
+                        captured_args = json.load(cf)
 
-                    # Check if dask_setup was called and captured correctly
-                    if os.path.exists(capture_file_path):
-                        with open(capture_file_path, "r") as cf:
-                            captured_args = json.load(cf)
+                    # Verify the critical arguments were passed correctly
+                    assert (
+                        captured_args["create_cuda_context"] is True
+                    ), "create_cuda_context should be True"
 
-                        # Verify the critical arguments were passed correctly
-                        assert (
-                            captured_args["create_cuda_context"] is True
-                        ), "create_cuda_context should be True"
-
-                        # Verify worker has a protocol set
-                        assert (
-                            captured_args["worker_protocol"] == protocol
-                        ), "Worker should have a protocol"
-                    else:
-                        pytest.fail(
-                            "capture file not found: dask_setup was not called or "
-                            "failed to write to file"
-                        )
-
-    finally:
-        # Cleanup
-        try:
-            os.unlink(preload_file)
-            os.unlink(capture_file_path)
-        except FileNotFoundError:
-            pass
+                    # Verify worker has a protocol set
+                    assert (
+                        captured_args["worker_protocol"] == protocol
+                    ), "Worker should have a protocol"
+                else:
+                    pytest.fail(
+                        "capture file not found: dask_setup was not called or "
+                        "failed to write to file"
+                    )
