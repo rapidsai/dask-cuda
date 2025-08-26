@@ -141,8 +141,12 @@ def bench_once(client, args, write_profile=None):
 
             options = Options({"dask_spill_device": "0.5", "dask_statistics": "true"})
             if not bootstrapped:
-                bootstrap_dask_cluster(client, options=options)
-                bootstrapped = True
+                shuffle_plugin = client.run(
+                    lambda dask_worker: "shuffle" in dask_worker.plugins
+                ).values()
+                if not all(list(shuffle_plugin)):
+                    bootstrap_dask_cluster(client, options=options)
+                    bootstrapped = True
             t1 = perf_counter()
             partition_count = args.in_parts
 
@@ -152,6 +156,7 @@ def bench_once(client, args, write_profile=None):
                 sort=False,
                 partition_count=partition_count,
             )
+            wait(shuffled.persist())
             duration = perf_counter() - t1
             assert shuffled.npartitions == partition_count
         elif args.backend in {"dask", "dask-noop"}:
