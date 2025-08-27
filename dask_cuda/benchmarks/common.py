@@ -155,6 +155,12 @@ def run(client: Client, args: Namespace, config: Config):
             p2p_bw,
         )
 
+    if args.gather_shuffle_stats:
+        from rapidsmpf.integrations.dask.shuffler import gather_shuffle_statistics
+
+        shuffle_stats = gather_shuffle_statistics(client)
+        print(shuffle_stats, flush=True)
+
 
 def run_client_from_existing_scheduler(args: Namespace, config: Config):
     """Set up a client by connecting to a scheduler

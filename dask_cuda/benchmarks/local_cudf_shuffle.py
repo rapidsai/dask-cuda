@@ -154,6 +154,7 @@ def bench_once(client, args, write_profile=None):
                 df,
                 ["data"],
                 sort=False,
+                config_options=options,
                 partition_count=partition_count,
             )
             wait(shuffled.persist())
