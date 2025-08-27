@@ -45,7 +45,10 @@ def _warn_generic():
 
         _create_cuda_context_handler()
 
-        if not distributed.comm.ucx.cuda_context_created.has_context:
+        if (
+            distributed.comm.ucx.cuda_context_created is False
+            or distributed.comm.ucx.cuda_context_created.has_context
+        ):
             ctx = has_cuda_context()
             if ctx.has_context and ctx.device_info != cuda_visible_device:
                 distributed.comm.ucx._warn_cuda_context_wrong_device(
@@ -184,40 +187,10 @@ def initialize(
     default=False,
     help="Create CUDA context",
 )
-@click.option(
-    "--protocol",
-    default=None,
-    type=str,
-    help="Communication protocol, such as: 'tcp', 'tls', 'ucx' or 'ucxx'.",
-)
-@click.option(
-    "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=False,
-    help="Enable TCP communication over UCX",
-)
-@click.option(
-    "--enable-infiniband/--disable-infiniband",
-    default=False,
-    help="Enable InfiniBand communication",
-)
-@click.option(
-    "--enable-nvlink/--disable-nvlink",
-    default=False,
-    help="Enable NVLink communication",
-)
-@click.option(
-    "--enable-rdmacm/--disable-rdmacm",
-    default=False,
-    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
-)
 def dask_setup(
-    service,
+    worker,
     create_cuda_context,
-    protocol,
-    enable_tcp_over_ucx,
-    enable_infiniband,
-    enable_nvlink,
-    enable_rdmacm,
 ):
+    protocol = worker._protocol.split("://")[0]
     if create_cuda_context:
         _create_cuda_context(protocol=protocol)
