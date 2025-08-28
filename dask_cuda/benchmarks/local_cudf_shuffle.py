@@ -135,10 +135,6 @@ def bench_once(client, args, write_profile=None):
             from rapidsmpf.examples.dask import dask_cudf_shuffle
             from rapidsmpf.integrations.dask import bootstrap_dask_cluster
 
-            # from rapidsmpf.integrations.dask.shuffler import (
-            # gather_shuffle_statistics,
-            # )
-
             options = Options({"dask_spill_device": "0.5", "dask_statistics": "true"})
             if not bootstrapped:
                 shuffle_plugin = client.run(

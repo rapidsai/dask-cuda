@@ -549,6 +549,12 @@ def setup_memory_pools(
 ):
     if not is_gpu:
         return
+
+    if client.run(
+        lambda dask_worker: any("RMMSetup" in x for x in (dask_worker.plugins.keys()))
+    ):
+        return
+
     client.run(
         setup_memory_pool,
         disable_rmm=disable_rmm,
