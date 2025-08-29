@@ -15,10 +15,10 @@ from distributed.sizeof import sizeof
 from distributed.utils import Deadline
 from distributed.utils_test import gen_cluster, gen_test, loop  # noqa: F401
 
-dask_cudf = pytest.importorskip("dask_cudf")
+import dask_cudf
 
-from dask_cuda import LocalCUDACluster, utils  # noqa: E402
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny  # noqa: E402
+from dask_cuda import LocalCUDACluster, utils
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 if not utils.has_device_memory_resource():
     pytest.skip(
