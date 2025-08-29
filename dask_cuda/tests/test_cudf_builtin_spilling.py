@@ -8,6 +8,7 @@ from dask_cuda.device_host_file import DeviceHostFile
 from dask_cuda.is_spillable_object import is_spillable_object
 from dask_cuda.proxify_host_file import ProxifyHostFile
 
+cudf = pytest.importorskip("cudf")
 cupy = pytest.importorskip("cupy")
 pandas = pytest.importorskip("pandas")
 
@@ -16,7 +17,6 @@ pytest.importorskip(
     reason="Current version of cudf doesn't support built-in spilling",
 )
 
-import cudf  # noqa: E402
 from cudf.core.buffer.spill_manager import (  # noqa: E402
     SpillManager,
     get_global_manager,
