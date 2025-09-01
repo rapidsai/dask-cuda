@@ -26,7 +26,7 @@ from dask_cuda.explicit_comms.dataframe.shuffle import (
     _contains_shuffle_expr,
     shuffle as explicit_comms_shuffle,
 )
-from dask_cuda.utils_test import IncreasedCloseTimeoutNanny, get_ucx_implementation
+from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
 ucp = pytest.importorskip("ucp")
@@ -57,7 +57,8 @@ def _test_local_cluster(protocol):
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 def test_local_cluster(protocol):
     if protocol.startswith("ucx"):
-        get_ucx_implementation(protocol)
+        pytest.importorskip("distributed_ucxx")
+
     p = mp.Process(target=_test_local_cluster, args=(protocol,))
     p.start()
     p.join()
@@ -208,7 +209,7 @@ def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
     if backend == "cudf":
         pytest.importorskip("cudf")
     if protocol.startswith("ucx"):
-        get_ucx_implementation(protocol)
+        pytest.importorskip("distributed_ucxx")
 
     p = mp.Process(
         target=_test_dataframe_shuffle, args=(backend, protocol, nworkers, _partitions)
@@ -330,7 +331,8 @@ def test_dataframe_shuffle_merge(backend, protocol, nworkers):
     if backend == "cudf":
         pytest.importorskip("cudf")
     if protocol.startswith("ucx"):
-        get_ucx_implementation(protocol)
+        pytest.importorskip("distributed_ucxx")
+
     p = mp.Process(
         target=_test_dataframe_shuffle_merge, args=(backend, protocol, nworkers)
     )
@@ -371,7 +373,7 @@ def _test_jit_unspill(protocol):
 def test_jit_unspill(protocol):
     pytest.importorskip("cudf")
     if protocol.startswith("ucx"):
-        get_ucx_implementation(protocol)
+        pytest.importorskip("distributed_ucxx")
 
     p = mp.Process(target=_test_jit_unspill, args=(protocol,))
     p.start()
