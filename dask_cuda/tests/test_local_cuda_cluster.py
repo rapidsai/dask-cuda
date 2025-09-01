@@ -24,7 +24,7 @@ from dask_cuda.utils import (
     has_device_memory_resource,
     print_cluster_config,
 )
-from dask_cuda.utils_test import MockWorker, get_ucx_implementation
+from dask_cuda.utils_test import MockWorker
 
 
 @gen_test(timeout=20)
@@ -93,53 +93,39 @@ async def test_with_subset_of_cuda_visible_devices():
                 }
 
 
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
 @gen_test(timeout=20)
-async def test_ucx_protocol(protocol):
-    get_ucx_implementation(protocol)
+async def test_ucx_protocol():
+    pytest.importorskip("distributed_ucxx")
 
     async with LocalCUDACluster(
-        protocol=protocol, asynchronous=True, data=dict
+        protocol="ucx", asynchronous=True, data=dict
     ) as cluster:
         assert all(
-            ws.address.startswith(f"{protocol}://")
-            for ws in cluster.scheduler.workers.values()
+            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
         )
 
 
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
 @gen_test(timeout=20)
-async def test_explicit_ucx_with_protocol_none(protocol):
-    get_ucx_implementation(protocol)
+async def test_explicit_ucx_with_protocol_none():
+    pytest.importorskip("distributed_ucxx")
 
-    initialize(protocol=protocol, enable_tcp_over_ucx=True)
+    initialize(protocol="ucx", enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
         protocol=None,
         enable_tcp_over_ucx=True,
         asynchronous=True,
     ) as cluster:
         assert all(
-            ws.address.startswith(f"{protocol}://")
-            for ws in cluster.scheduler.workers.values()
+            ws.address.startswith("ucx://") for ws in cluster.scheduler.workers.values()
         )
 
 
 @pytest.mark.filterwarnings("ignore:Exception ignored in")
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
 @gen_test(timeout=20)
-async def test_ucx_protocol_type_error(protocol):
-    get_ucx_implementation(protocol)
+async def test_ucx_protocol_type_error():
+    pytest.importorskip("distributed_ucxx")
 
-    initialize(protocol=protocol, enable_tcp_over_ucx=True)
+    initialize(protocol="ucx", enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
         async with LocalCUDACluster(
             protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict
@@ -603,10 +589,6 @@ async def test_cudf_spill_no_dedicated_memory():
 
 
 @pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
-@pytest.mark.parametrize(
     "jit_unspill",
     [False, True],
 )
@@ -614,8 +596,8 @@ async def test_cudf_spill_no_dedicated_memory():
     "device_memory_limit",
     [None, "1B"],
 )
-def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit):
-    get_ucx_implementation(protocol)
+def test_print_cluster_config(capsys, jit_unspill, device_memory_limit):
+    pytest.importorskip("distributed_ucxx")
 
     pytest.importorskip("rich")
 
@@ -640,45 +622,17 @@ def test_print_cluster_config(capsys, protocol, jit_unspill, device_memory_limit
             n_workers=1,
             device_memory_limit=device_memory_limit,
             jit_unspill=jit_unspill,
-            protocol=protocol,
+            protocol="ucx",
         ) as cluster:
             with Client(cluster) as client:
                 print_cluster_config(client)
                 captured = capsys.readouterr()
                 assert "Dask Cluster Configuration" in captured.out
-                assert protocol in captured.out
+                assert "ucx" in captured.out
                 if device_memory_limit == "1B":
                     assert "1 B" in captured.out
                 assert "[plugin]" in captured.out
                 client.shutdown()
-
-    def ucxpy_reset(timeout=20):
-        """Reset UCX-Py with a timeout.
-
-        Attempt to reset UCX-Py, not doing so may cause a deadlock because UCX-Py is
-        not thread-safe and the Dask cluster may still be alive while a new cluster
-        and UCX-Py instances are initalized.
-        """
-        import time
-
-        import ucp
-
-        start = time.monotonic()
-        while True:
-            try:
-                ucp.reset()
-            except ucp._libs.exceptions.UCXError as e:
-                if time.monotonic() - start > timeout:
-                    raise RuntimeError(
-                        f"Could not reset UCX-Py in {timeout} seconds, this may result "
-                        f"in a deadlock. Failure:\n{e}"
-                    )
-                continue
-            else:
-                break
-
-    if protocol == "ucx-old":
-        ucxpy_reset()
 
 
 @pytest.mark.xfail(reason="https://github.com/rapidsai/dask-cuda/issues/1265")
