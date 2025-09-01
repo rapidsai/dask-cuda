@@ -47,8 +47,8 @@ class LocalCUDACluster(LocalCluster):
     respect this hardware as much as possible.
 
     Each worker process is automatically assigned the correct CPU cores and network
-    interface cards to maximize performance. If UCX and UCX-Py are available, InfiniBand
-    and NVLink connections can be used to optimize data transfer performance.
+    interface cards to maximize performance. If UCX and distributed-ucxx are available,
+    InfiniBand and NVLink connections can be used to optimize data transfer performance.
 
     Parameters
     ----------
