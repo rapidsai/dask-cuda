@@ -173,7 +173,6 @@ dependencies:
           - dask-cudf-cu12==25.10.*,>=0.0.0a0
           - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
           - kvikio-cu12==25.10.*,>=0.0.0a0
-          - ucx-py-cu12==0.46.*,>=0.0.0a0
           - numba-cuda[cu12]>=0.19.1,<0.20.0a0
   extra_cu13:
     common:
@@ -183,7 +182,6 @@ dependencies:
           - dask-cudf-cu13==25.10.*,>=0.0.0a0
           - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
           - kvikio-cu13==25.10.*,>=0.0.0a0
-          - ucx-py-cu13==0.46.*,>=0.0.0a0
           - numba-cuda[cu13]>=0.19.1,<0.20.0a0
   test_python:
     common:
@@ -198,7 +196,6 @@ dependencies:
           - dask-cudf==25.10.*,>=0.0.0a0
           - distributed-ucxx==0.46.*,>=0.0.0a0
           - kvikio==25.10.*,>=0.0.0a0
-          - ucx-py==0.46.*,>=0.0.0a0
           - numba-cuda>=0.19.1,<0.20.0a0
   depends_on_dask_cuda:
     common:
