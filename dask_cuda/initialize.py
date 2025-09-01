@@ -10,7 +10,7 @@ import cuda.core.experimental
 import dask
 from distributed.diagnostics.nvml import get_device_index_and_uuid, has_cuda_context
 
-from .utils import _get_active_ucx_implementation_name, get_ucx_config
+from .utils import get_ucx_config
 
 logger = logging.getLogger(__name__)
 
@@ -103,17 +103,11 @@ def _initialize_ucxx():
 
 
 def _create_cuda_context(protocol="ucx"):
-    try:
-        ucx_implementation = _get_active_ucx_implementation_name(protocol)
-    except ValueError:
+    if protocol in ("ucx", "ucxx"):
+        _initialize_ucxx()
+    else:
         # Not a UCX protocol, just raise CUDA context warnings if needed.
         _warn_generic()
-    else:
-        if ucx_implementation == "ucxx":
-            _initialize_ucxx()
-        else:
-            _initialize_ucx()
-            _warn_generic()
 
 
 def initialize(
