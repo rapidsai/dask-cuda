@@ -18,10 +18,6 @@ mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
 
 
-def _is_ucx_116(ucp):
-    return ucp.get_ucx_version()[:2] == (1, 16)
-
-
 class DGXVersion(Enum):
     DGX_1 = auto()
     DGX_2 = auto()
