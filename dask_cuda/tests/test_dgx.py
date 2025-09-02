@@ -19,10 +19,6 @@ mp = mp.get_context("spawn")  # type: ignore
 psutil = pytest.importorskip("psutil")
 
 
-def _is_ucx_116(ucp):
-    return ucp.get_ucx_version()[:2] == (1, 16)
-
-
 class DGXVersion(Enum):
     DGX_1 = auto()
     DGX_2 = auto()
@@ -106,10 +102,6 @@ def _test_tcp_over_ucx(protocol):
     ["ucx", "ucx-old"],
 )
 def test_tcp_over_ucx(protocol):
-    ucp = get_ucx_implementation(protocol)
-    if _is_ucx_116(ucp):
-        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
-
     p = mp.Process(target=_test_tcp_over_ucx, args=(protocol,))
     p.start()
     p.join()
@@ -217,10 +209,6 @@ def _test_ucx_infiniband_nvlink(
     reason="Automatic InfiniBand device detection Unsupported for %s" % _get_dgx_name(),
 )
 def test_ucx_infiniband_nvlink(protocol, params):
-    ucp = get_ucx_implementation(protocol)
-    if _is_ucx_116(ucp) and params["enable_infiniband"] is False:
-        pytest.skip("https://github.com/rapidsai/ucx-py/issues/1037")
-
     skip_queue = mp.Queue()
 
     p = mp.Process(
