@@ -171,21 +171,11 @@ dependencies:
     common:
       - output_types: [pyproject]
         packages:
-          - cudf-cu12==25.10.*,>=0.0.0a0
-          - dask-cudf-cu12==25.10.*,>=0.0.0a0
-          - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
-          - kvikio-cu12==25.10.*,>=0.0.0a0
-          - ucx-py-cu12==0.46.*,>=0.0.0a0
           - numba-cuda[cu12]>=0.19.1,<0.20.0a0
   extra_cu13:
     common:
       - output_types: [pyproject]
         packages:
-          - cudf-cu13==25.10.*,>=0.0.0a0
-          - dask-cudf-cu13==25.10.*,>=0.0.0a0
-          - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
-          - kvikio-cu13==25.10.*,>=0.0.0a0
-          - ucx-py-cu13==0.46.*,>=0.0.0a0
           - numba-cuda[cu13]>=0.19.1,<0.20.0a0
   test_python:
     common:
@@ -196,12 +186,39 @@ dependencies:
           - pytest-timeout
       - output_types: [conda]
         packages:
-          - cudf==25.10.*,>=0.0.0a0
-          - dask-cudf==25.10.*,>=0.0.0a0
-          - distributed-ucxx==0.46.*,>=0.0.0a0
-          - kvikio==25.10.*,>=0.0.0a0
-          - ucx-py==0.46.*,>=0.0.0a0
-          - numba-cuda>=0.19.1,<0.20.0a0
+          - &cudf_unsuffixed cudf==25.10.*,>=0.0.0a0
+          - &dask_cudf_unsuffixed dask-cudf==25.10.*,>=0.0.0a0
+          - &distributed_ucxx_unsuffixed distributed-ucxx==0.46.*,>=0.0.0a0
+          - &kvikio_unsuffixed kvikio==25.10.*,>=0.0.0a0
+          - &ucx_py_unsuffixed ucx-py==0.46.*,>=0.0.0a0
+    specific:
+      - output_types: [requirements, pyproject]
+        matrices:
+          - matrix:
+              cuda: "12.*"
+              cuda_suffixed: "true"
+            packages:
+              - cudf-cu12==25.10.*,>=0.0.0a0
+              - dask-cudf-cu12==25.10.*,>=0.0.0a0
+              - distributed-ucxx-cu12==0.46.*,>=0.0.0a0
+              - kvikio-cu12==25.10.*,>=0.0.0a0
+              - ucx-py-cu12==0.46.*,>=0.0.0a0
+          - matrix:
+              cuda: "13.*"
+              cuda_suffixed: "true"
+            packages:
+              - cudf-cu13==25.8.*,>=0.0.0a0
+              - dask-cudf-cu13==25.10.*,>=0.0.0a0
+              - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
+              - kvikio-cu13==25.10.*,>=0.0.0a0
+              - ucx-py-cu13==0.46.*,>=0.0.0a0
+          - matrix:
+            packages:
+              - *cudf_unsuffixed
+              - *dask_cudf_unsuffixed
+              - *distributed_ucxx_unsuffixed
+              - *kvikio_unsuffixed
+              - *ucx_py_unsuffixed
   depends_on_dask_cuda:
     common:
       - output_types: conda
