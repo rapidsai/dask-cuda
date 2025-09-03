@@ -266,6 +266,12 @@ def get_ucx_config(
     enable_rdmacm=None,
     protocol=None,
 ):
+    try:
+        import distributed_ucxx
+    except ImportError:
+        return None
+
+    distributed_ucxx.config.setup_config()
     ucx_config = dask.config.get("distributed-ucxx")
 
     # TODO: remove along with `protocol` kwarg when UCX-Py is removed, see
