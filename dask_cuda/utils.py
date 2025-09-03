@@ -18,7 +18,6 @@ import pynvml
 import toolz
 
 import dask
-import distributed  # noqa: required for dask.config.get("distributed.comm.ucx")
 from dask.config import canonical_name
 from dask.utils import format_bytes, parse_bytes
 from distributed import wait
@@ -266,7 +265,7 @@ def get_ucx_config(
     enable_nvlink=None,
     enable_rdmacm=None,
 ):
-    ucx_config = dask.config.get("distributed.comm.ucx")
+    ucx_config = dask.config.get("distributed-ucxx")
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
 

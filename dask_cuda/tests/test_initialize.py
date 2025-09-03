@@ -36,7 +36,7 @@ def _test_initialize_ucx_tcp():
         threads_per_worker=1,
         processes=True,
         worker_class=IncreasedCloseTimeoutNanny,
-        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
+        config={"distributed-ucxx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -76,7 +76,7 @@ def _test_initialize_ucx_nvlink():
         threads_per_worker=1,
         processes=True,
         worker_class=IncreasedCloseTimeoutNanny,
-        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
+        config={"distributed-ucxx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -117,7 +117,7 @@ def _test_initialize_ucx_infiniband():
         threads_per_worker=1,
         processes=True,
         worker_class=IncreasedCloseTimeoutNanny,
-        config={"distributed.comm.ucx": get_ucx_config(**kwargs)},
+        config={"distributed-ucxx": get_ucx_config(**kwargs)},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))
@@ -160,7 +160,7 @@ def _test_initialize_ucx_all():
         threads_per_worker=1,
         processes=True,
         worker_class=IncreasedCloseTimeoutNanny,
-        config={"distributed.comm.ucx": get_ucx_config()},
+        config={"distributed-ucxx": get_ucx_config()},
     ) as cluster:
         with Client(cluster) as client:
             res = da.from_array(numpy.arange(10000), chunks=(1000,))

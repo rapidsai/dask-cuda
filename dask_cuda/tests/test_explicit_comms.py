@@ -29,7 +29,6 @@ from dask_cuda.explicit_comms.dataframe.shuffle import (
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
-ucp = pytest.importorskip("ucp")
 
 
 # Notice, all of the following tests is executed in a new process such
