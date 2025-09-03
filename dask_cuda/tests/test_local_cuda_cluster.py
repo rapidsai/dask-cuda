@@ -109,7 +109,7 @@ async def test_ucx_protocol():
 async def test_explicit_ucx_with_protocol_none():
     pytest.importorskip("distributed_ucxx")
 
-    initialize(protocol="ucx", enable_tcp_over_ucx=True)
+    initialize(enable_tcp_over_ucx=True)
     async with LocalCUDACluster(
         protocol=None,
         enable_tcp_over_ucx=True,
@@ -125,7 +125,7 @@ async def test_explicit_ucx_with_protocol_none():
 async def test_ucx_protocol_type_error():
     pytest.importorskip("distributed_ucxx")
 
-    initialize(protocol="ucx", enable_tcp_over_ucx=True)
+    initialize(enable_tcp_over_ucx=True)
     with pytest.raises(TypeError):
         async with LocalCUDACluster(
             protocol="tcp", enable_tcp_over_ucx=True, asynchronous=True, data=dict

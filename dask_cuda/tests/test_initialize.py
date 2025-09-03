@@ -28,7 +28,7 @@ def _test_initialize_ucx_tcp():
     ucxx = pytest.importorskip("ucxx")
 
     kwargs = {"enable_tcp_over_ucx": True}
-    initialize(protocol="ucx", **kwargs)
+    initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
         dashboard_address=None,
@@ -68,7 +68,7 @@ def _test_initialize_ucx_nvlink():
     ucxx = pytest.importorskip("ucxx")
 
     kwargs = {"enable_nvlink": True}
-    initialize(protocol="ucx", **kwargs)
+    initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
         dashboard_address=None,
@@ -109,7 +109,7 @@ def _test_initialize_ucx_infiniband():
     ucxx = pytest.importorskip("ucxx")
 
     kwargs = {"enable_infiniband": True}
-    initialize(protocol="ucx", **kwargs)
+    initialize(**kwargs)
     with LocalCluster(
         protocol="ucx",
         dashboard_address=None,
@@ -152,7 +152,7 @@ def test_initialize_ucx_infiniband():
 def _test_initialize_ucx_all():
     ucxx = pytest.importorskip("ucxx")
 
-    initialize(protocol="ucx")
+    initialize()
     with LocalCluster(
         protocol="ucx",
         dashboard_address=None,

@@ -350,17 +350,7 @@ class LocalCUDACluster(LocalCluster):
             )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-            if protocol is None:
-                ucx_protocol = dask.config.get(
-                    "distributed.comm.ucx.ucx-protocol", default=None
-                )
-                if ucx_protocol is not None:
-                    # TODO: remove when UCX-Py is removed,
-                    # see https://github.com/rapidsai/dask-cuda/issues/1517
-                    protocol = ucx_protocol
-                else:
-                    protocol = "ucx"
-            elif protocol not in ("ucx", "ucxx"):
+            if protocol not in ("ucx", "ucxx"):
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         self.host = kwargs.get("host", None)
