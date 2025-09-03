@@ -17,9 +17,9 @@ dependencies:
 - numba-cuda>=0.19.1,<0.20.0a0
 - numpy>=1.23,<3.0a0
 - numpydoc>=1.1.0
+- nvidia-ml-py>=12.560.30
 - pandas>=1.3
 - pre-commit
-- pynvml>=12.0.0,<13.0.0a0
 - pytest
 - pytest-cov
 - pytest-timeout
