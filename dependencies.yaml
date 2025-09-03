@@ -207,7 +207,7 @@ dependencies:
               cuda: "13.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu13==25.8.*,>=0.0.0a0
+              - cudf-cu13==25.10.*,>=0.0.0a0
               - dask-cudf-cu13==25.10.*,>=0.0.0a0
               - distributed-ucxx-cu13==0.46.*,>=0.0.0a0
               - kvikio-cu13==25.10.*,>=0.0.0a0
