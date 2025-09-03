@@ -118,7 +118,7 @@ def initialize(
     enable_rdmacm=None,
     protocol="ucx",
 ):
-    """Create CUDA context and initialize UCX-Py, depending on user parameters.
+    """Create CUDA context and initialize UCXX configuration.
 
     Sometimes it is convenient to initialize the CUDA context, particularly before
     starting up Dask worker processes which create a variety of threads.
@@ -169,7 +169,7 @@ def initialize(
         enable_rdmacm=enable_rdmacm,
         protocol=protocol,
     )
-    dask.config.set({"distributed.comm.ucx": ucx_config})
+    dask.config.set({"distributed-ucxx": ucx_config})
 
     if create_cuda_context:
         _create_cuda_context(protocol=protocol)
