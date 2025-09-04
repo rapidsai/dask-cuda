@@ -24,7 +24,6 @@ from dask_cuda.utils import (
     parse_device_memory_limit,
     unpack_bitmask,
 )
-from dask_cuda.utils_test import get_ucx_implementation
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
@@ -88,15 +87,11 @@ def test_get_device_total_memory():
                 assert total_mem is None
 
 
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
-def test_get_preload_options_default(protocol):
-    get_ucx_implementation(protocol)
+def test_get_preload_options_default():
+    pytest.importorskip("distributed_ucxx")
 
     opts = get_preload_options(
-        protocol=protocol,
+        protocol="ucx",
         create_cuda_context=True,
     )
 
@@ -106,18 +101,14 @@ def test_get_preload_options_default(protocol):
     assert opts["preload_argv"] == ["--create-cuda-context"]
 
 
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
 @pytest.mark.parametrize("enable_tcp", [True, False])
 @pytest.mark.parametrize("enable_infiniband", [True, False])
 @pytest.mark.parametrize("enable_nvlink", [True, False])
-def test_get_preload_options(protocol, enable_tcp, enable_infiniband, enable_nvlink):
-    get_ucx_implementation(protocol)
+def test_get_preload_options(enable_tcp, enable_infiniband, enable_nvlink):
+    pytest.importorskip("distributed_ucxx")
 
     opts = get_preload_options(
-        protocol=protocol,
+        protocol="ucx",
         create_cuda_context=True,
         enable_tcp_over_ucx=enable_tcp,
         enable_infiniband=enable_infiniband,
@@ -137,17 +128,11 @@ def test_get_preload_options(protocol, enable_tcp, enable_infiniband, enable_nvl
         assert "--enable-nvlink" in opts["preload_argv"]
 
 
-@pytest.mark.parametrize(
-    "protocol",
-    ["ucx", "ucx-old"],
-)
 @pytest.mark.parametrize("enable_tcp_over_ucx", [True, False, None])
 @pytest.mark.parametrize("enable_nvlink", [True, False, None])
 @pytest.mark.parametrize("enable_infiniband", [True, False, None])
-def test_get_ucx_config(
-    protocol, enable_tcp_over_ucx, enable_infiniband, enable_nvlink
-):
-    get_ucx_implementation(protocol)
+def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, enable_nvlink):
+    pytest.importorskip("distributed_ucxx")
 
     kwargs = {
         "enable_tcp_over_ucx": enable_tcp_over_ucx,

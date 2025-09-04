@@ -7,16 +7,12 @@ import dask.array as da
 from distributed import Client
 
 from dask_cuda import LocalCUDACluster
-from dask_cuda.utils_test import get_ucx_implementation
 
 cupy = pytest.importorskip("cupy")
 
 
-@pytest.mark.parametrize("protocol", ["ucx", "ucx-old", "tcp"])
+@pytest.mark.parametrize("protocol", ["ucx", "tcp"])
 def test_ucx_from_array(protocol):
-    if protocol.startswith("ucx"):
-        get_ucx_implementation(protocol)
-
     N = 10_000
     with LocalCUDACluster(protocol=protocol) as cluster:
         with Client(cluster):

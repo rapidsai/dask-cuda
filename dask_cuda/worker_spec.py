@@ -9,7 +9,7 @@ from distributed.system import MEMORY_LIMIT
 from .initialize import initialize
 from .local_cuda_cluster import cuda_visible_devices
 from .plugins import CPUAffinity
-from .utils import _get_active_ucx_implementation_name, get_cpu_affinity, get_gpu_count
+from .utils import get_cpu_affinity, get_gpu_count
 
 
 def worker_spec(
@@ -84,14 +84,12 @@ def worker_spec(
        'preload_argv': ['--create-cuda-context']}}}
 
     """
-    if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
-        try:
-            _get_active_ucx_implementation_name(protocol)
-        except ValueError:
-            raise TypeError(
-                "Enabling InfiniBand or NVLink requires protocol='ucx', "
-                "protocol='ucxx' or protocol='ucx-old'"
-            ) from None
+    if (
+        enable_tcp_over_ucx or enable_infiniband or enable_nvlink
+    ) and protocol != "ucx":
+        raise TypeError(
+            "Enabling InfiniBand or NVLink requires protocol='ucx'"
+        ) from None
 
     if CUDA_VISIBLE_DEVICES is None:
         CUDA_VISIBLE_DEVICES = os.environ.get(
