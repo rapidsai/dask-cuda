@@ -265,6 +265,12 @@ def get_ucx_config(
     enable_nvlink=None,
     enable_rdmacm=None,
 ):
+    try:
+        import distributed_ucxx
+    except ImportError:
+        return None
+
+    distributed_ucxx.config.setup_config()
     ucx_config = dask.config.get("distributed-ucxx")
 
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True

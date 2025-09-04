@@ -350,6 +350,8 @@ class LocalCUDACluster(LocalCluster):
             )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
+            if protocol is None:
+                protocol = "ucx"
             if protocol not in ("ucx", "ucxx"):
                 raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
