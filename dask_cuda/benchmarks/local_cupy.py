@@ -195,7 +195,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
         )
     print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
     print_key_value(key="Protocol", value=f"{args.protocol}")
-    if args.protocol in ["ucx", "ucxx", "ucx-old"]:
+    if args.protocol in ["ucx", "ucxx"]:
         print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
         print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
         print_key_value(key="NVLink", value=f"{args.enable_nvlink}")

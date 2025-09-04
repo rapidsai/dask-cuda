@@ -32,7 +32,6 @@ function sed_runner() {
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
 # Bump testing dependencies
-sed_runner "s/ucx-py==.*/ucx-py==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
 sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
 
 DEPENDENCIES=(
@@ -51,7 +50,6 @@ done
 
 UCX_DEPENDENCIES=(
   distributed-ucxx
-  ucx-py
   ucxx
 )
 for DEP in "${UCX_DEPENDENCIES[@]}"; do
