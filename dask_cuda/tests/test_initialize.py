@@ -2,8 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import multiprocessing as mp
+import os
 import shutil
+import subprocess
 import sys
+import tempfile
+import textwrap
 
 import cuda.core.experimental
 import numpy
@@ -237,11 +241,6 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
     warnings from both the parent process and each worker subprocess, since
     they all inherit the CUDA context created at import time.
     """
-    import os
-    import subprocess
-    import tempfile
-    import textwrap
-
     # Create temporary directory for our test files
     temp_dir = tempfile.mkdtemp()
 
@@ -329,7 +328,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             capture_output=True,
             text=True,
             timeout=30,  # Reduced timeout for simpler test
-            cwd="/datasets/pentschev/src/dask-cuda",
+            cwd=os.getcwd(),
         )
 
         # Check for successful test execution regardless of warnings
