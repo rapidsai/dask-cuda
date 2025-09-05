@@ -89,6 +89,8 @@ def _create_cuda_context_and_warn():
     -------
     None
     """
+    global pre_existing_cuda_context, cuda_context_created
+
     cuda_visible_device = get_device_index_and_uuid(
         os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
     )
@@ -109,8 +111,6 @@ def _create_cuda_context_and_warn():
 
 
 def _create_cuda_context():
-    global pre_existing_cuda_context, cuda_context_created
-
     try:
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
         # context directly from the UCX module, thus avoiding a similar warning there.
