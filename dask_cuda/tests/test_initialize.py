@@ -389,7 +389,11 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             ), f"Warning missing explanatory text: {warning}"
     finally:
         # Clean up temporary files
-        shutil.rmtree(temp_dir, onexc=print)
+        try:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+        except Exception as e:
+            print(f"Cleanup error: {e}")
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
