@@ -264,7 +264,6 @@ def get_ucx_config(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
-    protocol=None,
 ):
     try:
         import distributed_ucxx
@@ -274,13 +273,7 @@ def get_ucx_config(
     distributed_ucxx.config.setup_config()
     ucx_config = dask.config.get("distributed-ucxx")
 
-    # TODO: remove along with `protocol` kwarg when UCX-Py is removed, see
-    # https://github.com/rapidsai/dask-cuda/issues/1517
-    if protocol in ("ucx", "ucxx"):
-        ucx_config[canonical_name("ucx-protocol", ucx_config)] = protocol
-
     ucx_config[canonical_name("create-cuda-context", ucx_config)] = True
-    ucx_config[canonical_name("reuse-endpoints", ucx_config)] = False
 
     # If any transport is explicitly disabled (`False`) by the user, others that
     # are not specified should be enabled (`True`). If transports are explicitly

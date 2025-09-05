@@ -152,7 +152,6 @@ def _test_ucx_infiniband_nvlink(
             cm_tls_priority = ["tcp"]
 
     initialize(
-        protocol="ucx",
         enable_tcp_over_ucx=enable_tcp_over_ucx,
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,

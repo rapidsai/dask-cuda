@@ -17,12 +17,10 @@ from dask_cuda.initialize import dask_setup
 from dask_cuda.utils import wait_workers
 
 
-@pytest.mark.parametrize("protocol", ["tcp", "ucx", "ucxx"])
-def test_dask_setup_function_with_mock_worker(protocol):
+def test_dask_setup_function_with_mock_worker():
     """Test the dask_setup function directly with mock worker."""
     # Create a mock worker object
     mock_worker = Mock()
-    mock_worker._protocol = protocol
 
     with patch("dask_cuda.initialize._create_cuda_context") as mock_create_context:
         # Test with create_cuda_context=True
@@ -33,7 +31,7 @@ def test_dask_setup_function_with_mock_worker(protocol):
             create_cuda_context=True,
         )
 
-        mock_create_context.assert_called_once_with(protocol=protocol)
+        mock_create_context.assert_called_once_with()
 
         mock_create_context.reset_mock()
 
