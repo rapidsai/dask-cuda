@@ -325,7 +325,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
     try:
         # Run the main script in a subprocess
         result = subprocess.run(
-            ["/raid/pentschev/miniforge3/envs/rn-250904/bin/python", main_script_path],
+            [sys.executable, main_script_path],
             capture_output=True,
             text=True,
             timeout=30,  # Reduced timeout for simpler test
