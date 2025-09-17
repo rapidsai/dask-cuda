@@ -3,7 +3,7 @@ UCX Integration
 
 Communication can be a major bottleneck in distributed systems.
 Dask-CUDA addresses this by supporting integration with `UCX <https://www.openucx.org/>`_, an optimized communication framework that provides high-performance networking and supports a variety of transport methods, including `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_ and `InfiniBand <https://www.mellanox.com/pdf/whitepapers/IB_Intro_WP_190.pdf>`_ for systems with specialized hardware, and TCP for systems without it.
-This integration is enabled through `UCX-Py <https://ucx-py.readthedocs.io/>`_, an interface that provides Python bindings for UCX.
+This integration is enabled through `UCXX <https://docs.rapids.ai/api/ucxx/nightly/>`_, an interface that provides Python bindings for UCX.
 
 Hardware requirements
 ---------------------
@@ -14,7 +14,7 @@ NVIDIA provides comparison charts for both `NVLink bridges <https://www.nvidia.c
 Software requirements
 ---------------------
 
-UCX integration requires an environment with both UCX and UCX-Py installed; see `UCX-Py Installation <https://ucx-py.readthedocs.io/en/latest/install.html>`_ for detailed instructions on this process.
+UCX integration requires an environment with both UCX and UCXX installed; see `UCXX Installation <https://docs.rapids.ai/api/ucxx/nightly/install/>`_ for detailed instructions on this process.
 
 When using UCX, each NVLink and InfiniBand memory buffer must create a mapping between each unique pair of processes they are transferred across; this can be quite costly, potentially in the range of hundreds of milliseconds per mapping.
 For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
@@ -44,7 +44,7 @@ Configuring transports manually is still possible, please refer to the subsectio
 Manual
 ~~~~~~
 
-In addition to installations of UCX and UCX-Py on your system, for manual configuration several options must be specified within your Dask configuration to enable the integration.
+In addition to installations of UCX and UCXX on your system, for manual configuration several options must be specified within your Dask configuration to enable the integration.
 Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
 However, some will affect related libraries, such as RMM:
 
@@ -64,7 +64,7 @@ However, some will affect related libraries, such as RMM:
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 
-  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-max-rndv-rails>`_ and `here <https://ucx-py.readthedocs.io/en/latest/configuration.html#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
+  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-max-rndv-rails>`_ and `here <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
 
 - ``distributed.comm.ucx.rdmacm: true`` -- **recommended for InfiniBand.**
 
