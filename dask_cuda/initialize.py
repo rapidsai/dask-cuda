@@ -54,8 +54,50 @@ def _warn_cuda_context_wrong_device(
     )
 
 
+def _mock_test_device() -> bool:
+    """Check whether running tests in a single-GPU environment.
+
+
+    Returns
+    -------
+    Whether running tests in a single-GPU environment, determined by checking whether
+    `DASK_CUDA_TEST_SINGLE_GPU` environment variable is set to a value different than
+    `"0"`.
+    """
+    return int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0
+
+
+def _get_device_str() -> str:
+    """Get the device string.
+
+    Get a string with the first device (first element before the comma), which may be
+    an index or a UUID.
+
+    Always returns "0" when running tests in a single-GPU environment, determined by
+    the result returned by `_mock_test_device()`.
+
+    Returns
+    -------
+    The device string.
+    """
+    if _mock_test_device():
+        return "0"
+    else:
+        return os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
+
+
 def _create_cuda_context_handler():
-    if int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0:
+    """Create a CUDA context on the current device.
+
+    A CUDA context is created on the current device if one does not exist yet, and not
+    running tests on a single-GPU environment, determined by the result returned by
+    `_mock_test_device()`.
+
+    Returns
+    -------
+    The device string.
+    """
+    if _mock_test_device():
         try:
             cuda.core.experimental.Device().set_current()
         except Exception:
@@ -91,9 +133,7 @@ def _create_cuda_context_and_warn():
     """
     global pre_existing_cuda_context, cuda_context_created
 
-    cuda_visible_device = get_device_index_and_uuid(
-        os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
-    )
+    cuda_visible_device = get_device_index_and_uuid(_get_device_str())
     pre_existing_cuda_context = has_cuda_context()
     if pre_existing_cuda_context.has_context:
         _warn_existing_cuda_context(pre_existing_cuda_context.device_info, os.getpid())
