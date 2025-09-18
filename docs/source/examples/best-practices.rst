@@ -57,7 +57,7 @@ Accelerated Networking
 ~~~~~~~~~~~~~~~~~~~~~~
 
 As discussed in `Multi-GPU Machines`_, accelerated networking has better bandwidth/throughput compared with traditional networking hardware and does
-not force any costly Host-to-Device/Device-to-Host transfers.  Dask-CUDA can leverage accelerated networking hardware with `UCX-Py <https://ucx-py.readthedocs.io/en/latest/>`_.
+not force any costly Host-to-Device/Device-to-Host transfers.  Dask-CUDA can leverage accelerated networking hardware with `UCXX <https://docs.rapids.ai/api/ucxx/nightly/>`_.
 
 As an example, let's compare a merge benchmark when using 2 GPUs connected with NVLink.  First we'll run with standard TCP comms:
 
