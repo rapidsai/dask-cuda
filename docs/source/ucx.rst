@@ -64,7 +64,7 @@ However, some will affect related libraries, such as RMM:
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 
-  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `here <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-max-rndv-rails>`_ and `here <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
+  For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `UCX_MAX_RNDV_RAILS <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-max-rndv-rails>`_ and `UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
 
 - ``distributed.comm.ucx.rdmacm: true`` -- **recommended for InfiniBand.**
 
