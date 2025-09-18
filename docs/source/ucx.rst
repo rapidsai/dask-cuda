@@ -32,46 +32,157 @@ A memory pool also prevents the Dask scheduler from deserializing CUDA data, whi
 Configuration
 -------------
 
+UCX Configuration can be provided via:
+
+1. **YAML configuration files**: `distributed-ucxx.yaml`
+2. **Environment variables**: Using the `DASK_DISTRIBUTED_UCXX_` prefix
+3. **Programmatic configuration**: Using Dask's configuration system
+
+Configuration Schema
+~~~~~~~~~~~~~~~~~~~~
+
+The configuration schema is defined in `distributed-ucxx-schema.yaml <https://github.com/rapidsai/ucxx/blob/HEAD/python/distributed-ucxx/distributed_ucxx/distributed-ucxx-schema.yaml>`_ and supports various options:
+
+- UCX transport configuration: `tcp`, `nvlink`, `infiniband`, `cuda-copy`, etc.
+- RMM configuration: `rmm.pool-size`
+- Advanced options: `multi-buffer`, `environment`
+
+Example Configuration
+~~~~~~~~~~~~~~~~~~~~~
+
+New schema (recommended):
+
+.. code-block:: yaml
+
+    distributed-ucxx:
+      tcp: true
+      nvlink: true
+      infiniband: false
+      cuda-copy: true
+      create-cuda-context: true
+      multi-buffer: false
+      environment:
+        log-level: "info"
+      rmm:
+        pool-size: "1GB"
+
+Legacy schema (may be removed in the future):
+
+.. code-block:: yaml
+
+    distributed:
+      comm:
+        ucx:
+          tcp: true
+          nvlink: true
+          infiniband: false
+          cuda-copy: true
+          create-cuda-context: true
+          multi-buffer: false
+          environment:
+            log-level: "info"
+          rmm:
+            pool-size: "1GB"
+
+Environment Variables
+~~~~~~~~~~~~~~~~~~~~~
+
+New schema (recommended):
+
+.. code-block:: bash
+
+    export DASK_DISTRIBUTED_UCXX__TCP=true
+    export DASK_DISTRIBUTED_UCXX__NVLINK=true
+    export DASK_DISTRIBUTED_UCXX__RMM__POOL_SIZE=1GB
+
+Legacy schema (may be removed in the future):
+
+.. code-block:: bash
+
+    export DASK_DISTRIBUTED__COMM__UCX__TCP=true
+    export DASK_DISTRIBUTED__COMM__UCX__NVLINK=true
+    export DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB
+
+Python Configuration
+~~~~~~~~~~~~~~~~~~~~
+
+New schema (recommended):
+
+.. code-block:: python
+
+    import dask
+
+    dask.config.set({
+        "distributed-ucxx.tcp": True,
+        "distributed-ucxx.nvlink": True,
+        "distributed-ucxx.rmm.pool-size": "1GB"
+    })
+
+Legacy schema (may be removed in the future):
+
+.. code-block:: python
+
+    import dask
+
+    dask.config.set({
+        "distributed.comm.ucx.tcp": True,
+        "distributed.comm.ucx.nvlink": True,
+        "distributed.rmm.pool-size": "1GB"
+    })
+
+Migration from UCX-Py
+~~~~~~~~~~~~~~~~~~~~~
+
+If you're migrating from the legacy UCX configuration in the main Distributed package, update your configuration keys:
+
+- ``distributed.comm.ucx.*`` is now ``distributed-ucxx.*``
+- ``distributed.rmm.pool-size`` is now ``distributed-ucxx.rmm.pool-size``
+
+The old configuration schema is still valid for convenience, but may be removed in a future version.
+
+Configuration Types
+~~~~~~~~~~~~~~~~~~~
+
 Automatic
-~~~~~~~~~
+^^^^^^^^^
 
 Beginning with Dask-CUDA 22.02 and assuming UCX >= 1.11.1, specifying UCX transports is now optional.
 
-A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <../examples/ucx/>`_ for more details examples of UCX usage with automatic configuration.
+A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <../examples/ucx/>`_ for more details examples of UCX usage with automatic configuration.
 
 Configuring transports manually is still possible, please refer to the subsection below.
 
 Manual
-~~~~~~
+^^^^^^
 
 In addition to installations of UCX and UCXX on your system, for manual configuration several options must be specified within your Dask configuration to enable the integration.
 Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
 However, some will affect related libraries, such as RMM:
 
-- ``distributed.comm.ucx.cuda_copy: true`` -- **required.**
+- ``distributed-ucxx.cuda_copy: true`` -- **required.**
 
   Adds ``cuda_copy`` to ``UCX_TLS``, enabling CUDA transfers over UCX.
 
-- ``distributed.comm.ucx.tcp: true`` -- **required.**
+- ``distributed-ucxx.tcp: true`` -- **required.**
 
   Adds ``tcp`` to ``UCX_TLS``, enabling TCP transfers over UCX; this is required for very small transfers which are inefficient for NVLink and InfiniBand.
 
-- ``distributed.comm.ucx.nvlink: true`` -- **required for NVLink.**
+- ``distributed-ucxx.nvlink: true`` -- **required for NVLink.**
 
   Adds ``cuda_ipc`` to ``UCX_TLS``, enabling NVLink transfers over UCX; affects intra-node communication only.
 
-- ``distributed.comm.ucx.infiniband: true`` -- **required for InfiniBand.**
+- ``distributed-ucxx.infiniband: true`` -- **required for InfiniBand.**
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 
   For optimal performance with UCX 1.11 and above, it is recommended to also set the environment variables ``UCX_MAX_RNDV_RAILS=1`` and ``UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES=cuda``, see documentation `UCX_MAX_RNDV_RAILS <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-max-rndv-rails>`_ and `UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES <https://docs.rapids.ai/api/ucxx/nightly/configuration/#ucx-memtype-reg-whole-alloc-types>`_ for more details on those variables.
 
-- ``distributed.comm.ucx.rdmacm: true`` -- **recommended for InfiniBand.**
+- ``distributed-ucxx.rdmacm: true`` -- **recommended for InfiniBand.**
 
   Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
   This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
 
-- ``distributed.rmm.pool-size: <str|int>`` -- **recommended.**
+- ``distributed-ucxx.rmm.pool-size: <str|int>`` -- **recommended.**
 
   Allocates an RMM pool of the specified size for the process; size can be provided with an integer number of bytes or in human readable format, e.g. ``"4GB"``.
   It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
@@ -138,6 +249,6 @@ Troubleshooting
 Timeouts
 ~~~~~~~~
 
-Depending on the cluster size and GPU architecture timeouts may occur when establishing endpoints between Dask workers. For those cases it is possible to increase the default timeout via the ``distributed.comm.ucx.connect-timeout`` configuration, or the respective ``DASK_DISTRIBUTED__COMM__UCX__CONNECT_TIMEOUT`` environment variable. The value represents the timeout in seconds.
+Depending on the cluster size and GPU architecture timeouts may occur when establishing endpoints between Dask workers. For those cases it is possible to increase the default timeout via the ``distributed-ucxx.connect-timeout`` configuration, or the respective ``DASK_DISTRIBUTED_UCXX__CONNECT_TIMEOUT`` environment variable. The value represents the timeout in seconds.
 
 Note that the timeout is designed to prevent workers from hanging indefinitely if something goes wrong, so increasing the timeout to a value that is too high may cause workers to seemingly freeze. Therefore, make sure to increase this value with caution and keeping it to reasonably short amounts of time. As of now, no cases have been observed where increasing this value to 60 seconds didn't suffice.

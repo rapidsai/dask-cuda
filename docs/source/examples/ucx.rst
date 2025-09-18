@@ -56,14 +56,14 @@ When using ``dask cuda worker`` with UCX communication and automatic configurati
 Scheduler
 ^^^^^^^^^
 
-For automatic UCX configuration, we must ensure a CUDA context is created on the scheduler before UCX is initialized. This can be satisfied by specifying the ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True`` environment variable when creating the scheduler.
+For automatic UCX configuration, we must ensure a CUDA context is created on the scheduler before UCX is initialized. This can be satisfied by specifying the ``DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True`` environment variable when creating the scheduler.
 
 To start a Dask scheduler using UCX with automatic configuration and one GB of RMM pool:
 
 .. code-block:: bash
 
-    $ DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True \
-    > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
+    $ DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True \
+    > DASK_DISTRIBUTED_UCXX__RMM__POOL_SIZE=1GB \
     > dask scheduler --protocol ucx --interface ib0
 
 .. note::
@@ -102,17 +102,17 @@ To connect a client to the cluster with automatic UCX configuration we started:
     import dask
     from dask.distributed import Client
 
-    with dask.config.set({"distributed.comm.ucx.create_cuda_context": True}):
+    with dask.config.set({"distributed-ucxx.create_cuda_context": True}):
         client = Client("ucx://<scheduler_address>:8786")
 
-Alternatively, the ``with dask.config.set`` statement from the example above may be omitted and the ``DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT=True`` environment variable specified instead:
+Alternatively, the ``with dask.config.set`` statement from the example above may be omitted and the ``DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True`` environment variable specified instead:
 
 .. code-block:: python
 
     import os
 
     os.environ["UCX_MEMTYPE_REG_WHOLE_ALLOC_TYPES"] = "cuda"
-    os.environ["DASK_DISTRIBUTED__COMM__UCX__CREATE_CUDA_CONTEXT"] = "True"
+    os.environ["DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT"] = "True"
 
     from dask.distributed import Client
 
@@ -135,12 +135,12 @@ To start a Dask scheduler using UCX with all supported transports and an gigabyt
 
 .. code-block:: bash
 
-    $ DASK_DISTRIBUTED__COMM__UCX__CUDA_COPY=True \
-    > DASK_DISTRIBUTED__COMM__UCX__TCP=True \
-    > DASK_DISTRIBUTED__COMM__UCX__NVLINK=True \
-    > DASK_DISTRIBUTED__COMM__UCX__INFINIBAND=True \
-    > DASK_DISTRIBUTED__COMM__UCX__RDMACM=True \
-    > DASK_DISTRIBUTED__RMM__POOL_SIZE=1GB \
+    $ DASK_DISTRIBUTED_UCXX__CUDA_COPY=True \
+    > DASK_DISTRIBUTED_UCXX__TCP=True \
+    > DASK_DISTRIBUTED_UCXX__NVLINK=True \
+    > DASK_DISTRIBUTED_UCXX__INFINIBAND=True \
+    > DASK_DISTRIBUTED_UCXX__RDMACM=True \
+    > DASK_DISTRIBUTED_UCXX__RMM__POOL_SIZE=1GB \
     > dask scheduler --protocol ucx --interface ib0
 
 We communicate to the scheduler that we will be using UCX with the ``--protocol`` option, and that we will be using InfiniBand with the ``--interface`` option.
