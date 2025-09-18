@@ -14,7 +14,7 @@ NVIDIA provides comparison charts for both `NVLink bridges <https://www.nvidia.c
 Software requirements
 ---------------------
 
-UCX integration requires an environment with both UCX and UCXX installed; see `UCXX Installation <https://docs.rapids.ai/api/ucxx/nightly/install/>`_ for detailed instructions on this process.
+UCX integration requires an environment with both UCX and UCXX installed; see `Installation <../install>`_ for detailed instructions on this process.
 
 When using UCX, each NVLink and InfiniBand memory buffer must create a mapping between each unique pair of processes they are transferred across; this can be quite costly, potentially in the range of hundreds of milliseconds per mapping.
 For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
