@@ -48,8 +48,7 @@ UCXPY_PROGRESS_MODE=thread \
   --cov-config=../pyproject.toml \
   --cov=dask_cuda \
   --cov-report=xml:"${RAPIDS_COVERAGE_DIR}/dask-cuda-coverage.xml" \
-  --cov-report=term \
-  -k "not ucx-old"
+  --cov-report=term
 
 rapids-logger "Run local benchmark with ucxx in thread progress mode"
 UCXPY_PROGRESS_MODE=thread \

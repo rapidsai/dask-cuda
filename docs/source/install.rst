@@ -16,7 +16,16 @@ To install the latest version of Dask-CUDA along with the CUDA Toolkit:
 
 .. code-block:: bash
 
-    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cuda-version=12.9
+    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cuda-version=13.0
+
+UCXX Support
+~~~~~~~~~~~~
+
+To install the distributed-ucxx package to support accelerated communications with UCX add the package to the previous command, resulting in:
+
+.. code-block:: bash
+
+    conda install -c rapidsai -c conda-forge -c nvidia dask-cuda cuda-version=13.0 distributed-ucxx
 
 Pip
 ---
@@ -27,6 +36,37 @@ To install the latest version of Dask-CUDA:
 .. code-block:: bash
 
     python -m pip install dask-cuda
+
+`dask-cuda` also provides extras to ensure a consistent set of optional dependencies are installed based on the CUDA version you're using.
+
+.. code-block:: bash
+
+    # CUDA 13
+    python -m pip install 'dask-cuda[cu13]'
+
+.. code-block:: bash
+
+    # CUDA 12
+    python -m pip install 'dask-cuda[cu12]'
+
+UCXX Support
+~~~~~~~~~~~~
+
+To install the distributed-ucxx package to support accelerated communications with UCX add the package to the previous command, resulting in one of the following (see above for details on available choices):
+
+.. code-block:: bash
+
+    python -m pip install dask-cuda distributed-ucxx
+
+.. code-block:: bash
+
+    # CUDA 13
+    python -m pip install 'dask-cuda[cu13]' 'distributed-ucxx[cu13]'
+
+.. code-block:: bash
+
+    # CUDA 12
+    python -m pip install 'dask-cuda[cu12]' 'distributed-ucxx[cu12]'
 
 Source
 ------

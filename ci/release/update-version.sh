@@ -19,7 +19,7 @@ NEXT_MAJOR=$(echo "$NEXT_FULL_TAG" | awk '{split($0, a, "."); print a[1]}')
 NEXT_MINOR=$(echo "$NEXT_FULL_TAG" | awk '{split($0, a, "."); print a[2]}')
 NEXT_SHORT_TAG=${NEXT_MAJOR}.${NEXT_MINOR}
 NEXT_SHORT_TAG_PEP440=$(python -c "from packaging.version import Version; print(Version('${NEXT_SHORT_TAG}'))")
-NEXT_UCXPY_VERSION="$(curl -s https://version.gpuci.io/rapids/"${NEXT_SHORT_TAG}")"
+NEXT_UCXX_VERSION="$(curl -s https://version.gpuci.io/rapids/"${NEXT_SHORT_TAG}")"
 
 echo "Preparing release $CURRENT_TAG => $NEXT_FULL_TAG"
 
@@ -32,8 +32,7 @@ function sed_runner() {
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
 
 # Bump testing dependencies
-sed_runner "s/ucx-py==.*/ucx-py==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
-sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
+sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXX_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
 
 DEPENDENCIES=(
   cudf
@@ -51,14 +50,13 @@ done
 
 UCX_DEPENDENCIES=(
   distributed-ucxx
-  ucx-py
   ucxx
 )
 for DEP in "${UCX_DEPENDENCIES[@]}"; do
   for FILE in dependencies.yaml conda/environments/*.yaml; do
-    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0/g" "${FILE}"
+    sed_runner "/-.* ${DEP}\(-cu[[:digit:]]\{2\}\)\{0,1\}==/ s/==.*/==${NEXT_UCXX_VERSION}.*,>=0.0.0a0/g" "${FILE}"
   done
-  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_UCXPY_VERSION}.*,>=0.0.0a0\"/g" pyproject.toml
+  sed_runner "/\"${DEP}==/ s/==.*\"/==${NEXT_UCXX_VERSION}.*,>=0.0.0a0\"/g" pyproject.toml
 done
 
 # CI files

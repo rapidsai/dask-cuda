@@ -119,11 +119,8 @@ def get_device_memory_objects_register_cudf():
         return []
 
     @dispatch.register(cudf.core.index.Index)
-    def get_device_memory_objects_cudf_index(obj):
-        return dispatch(obj._values)
-
     @dispatch.register(cudf.core.multiindex.MultiIndex)
-    def get_device_memory_objects_cudf_multiindex(obj):
+    def get_device_memory_objects_cudf_index(obj):
         return dispatch(obj._columns)
 
     @dispatch.register(cudf.core.column.ColumnBase)
