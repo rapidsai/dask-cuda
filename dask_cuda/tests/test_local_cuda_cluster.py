@@ -206,7 +206,20 @@ async def test_all_to_all():
             # assert all to all has resulted in all data on every worker
             data = await client.has_what()
             all_data = [v for w in data.values() for v in w if "lambda" in v]
-            assert all(all_data.count(i) == n_workers for i in all_data)
+
+            try:
+                assert all(all_data.count(i) == n_workers for i in all_data)
+            except AssertionError:
+                # Print debugging info when assertion fails
+                print(f"DEBUG: n_workers = {n_workers}", flush=True)
+                print(f"DEBUG: data = {data}", flush=True)
+                print(f"DEBUG: all_data = {all_data}", flush=True)
+                print(
+                    "DEBUG: Data count per item: "
+                    f"{[(i, all_data.count(i)) for i in set(all_data)]}",
+                    flush=True,
+                )
+                raise
 
 
 @gen_test(timeout=20)
