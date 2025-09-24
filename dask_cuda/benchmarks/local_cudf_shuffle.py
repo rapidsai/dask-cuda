@@ -60,7 +60,7 @@ def shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped):
     options = Options(
         {
             "dask_spill_device": str(args.dask_spill_device),
-            "dask_statistics": str(args.dask_statistics).lower(),
+            "dask_statistics": str(args.gather_shuffle_stats).lower(),
         }
     )
     if not rapidsmpf_bootstrapped:
@@ -174,7 +174,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, duration)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client):
     if args.markdown:
         print("```")
     print("Shuffle benchmark")
@@ -201,6 +201,12 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_throughput_bandwidth(
         args, durations, data_processed, p2p_bw, address_to_index
     )
+
+    if args.gather_shuffle_stats:
+        from rapidsmpf.integrations.dask.shuffler import gather_shuffle_statistics
+
+        shuffle_stats = gather_shuffle_statistics(client)
+        print(shuffle_stats, flush=True)
 
 
 def create_tidy_results(args, p2p_bw, results):
@@ -287,11 +293,6 @@ def parse_args():
             "metavar": "FLOAT",
             "type": float,
             "help": "Dask spill device threshold (default 0.5)",
-        },
-        {
-            "name": "--dask-statistics",
-            "action": "store_true",
-            "help": "Enable dask statistics (default False)",
         },
     ]
 

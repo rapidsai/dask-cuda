@@ -144,7 +144,7 @@ def run(client: Client, args: Namespace, config: Config):
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)
-    config.pretty_print_results(args, address_to_index, p2p_bw, results)
+    config.pretty_print_results(args, address_to_index, p2p_bw, results, client)
     if args.output_basename:
         df, p2p_bw = config.create_tidy_results(args, p2p_bw, results)
         df["num_workers"] = len(address_to_index)
@@ -154,12 +154,6 @@ def run(client: Client, args: Namespace, config: Config):
             df,
             p2p_bw,
         )
-
-    if args.gather_shuffle_stats:
-        from rapidsmpf.integrations.dask.shuffler import gather_shuffle_statistics
-
-        shuffle_stats = gather_shuffle_statistics(client)
-        print(shuffle_stats, flush=True)
 
 
 def run_client_from_existing_scheduler(args: Namespace, config: Config):
