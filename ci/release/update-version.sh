@@ -30,6 +30,7 @@ function sed_runner() {
 
 # Centralized version file update
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
+echo "branch-${NEXT_SHORT_TAG}" > RAPIDS_BRANCH
 
 # Bump testing dependencies
 sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXX_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
