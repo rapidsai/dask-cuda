@@ -52,6 +52,39 @@ def shuffle_explicit_comms(df, args):
     return perf_counter() - t1
 
 
+def shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped):
+    from rapidsmpf.config import Options
+    from rapidsmpf.examples.dask import dask_cudf_shuffle
+    from rapidsmpf.integrations.dask import bootstrap_dask_cluster
+
+    options = Options(
+        {
+            "dask_spill_device": str(args.dask_spill_device),
+            "dask_statistics": str(args.dask_statistics).lower(),
+        }
+    )
+    if not rapidsmpf_bootstrapped:
+        shuffle_plugin = client.run(
+            lambda dask_worker: "shuffle" in dask_worker.plugins
+        ).values()
+        if not all(list(shuffle_plugin)):
+            bootstrap_dask_cluster(client, options=options)
+    t1 = perf_counter()
+    partition_count = args.in_parts
+
+    shuffled = dask_cudf_shuffle(
+        df,
+        ["data"],
+        sort=False,
+        config_options=options,
+        partition_count=partition_count,
+    )
+    wait(shuffled.persist())
+    duration = perf_counter() - t1
+    assert shuffled.npartitions == partition_count
+    return duration
+
+
 def create_df(nelem, df_type):
     if df_type == "cpu":
         return pd.DataFrame({"data": np.random.random(nelem)})
@@ -129,33 +162,10 @@ def bench_once(client, args, write_profile=None):
         ctx = performance_report(filename=write_profile)
 
     with ctx:
-        bootstrapped = False
+        rapidsmpf_bootstrapped = False
         if args.backend == "rapidsmpf":
-            from rapidsmpf.config import Options
-            from rapidsmpf.examples.dask import dask_cudf_shuffle
-            from rapidsmpf.integrations.dask import bootstrap_dask_cluster
-
-            options = Options({"dask_spill_device": "0.5", "dask_statistics": "true"})
-            if not bootstrapped:
-                shuffle_plugin = client.run(
-                    lambda dask_worker: "shuffle" in dask_worker.plugins
-                ).values()
-                if not all(list(shuffle_plugin)):
-                    bootstrap_dask_cluster(client, options=options)
-                    bootstrapped = True
-            t1 = perf_counter()
-            partition_count = args.in_parts
-
-            shuffled = dask_cudf_shuffle(
-                df,
-                ["data"],
-                sort=False,
-                config_options=options,
-                partition_count=partition_count,
-            )
-            wait(shuffled.persist())
-            duration = perf_counter() - t1
-            assert shuffled.npartitions == partition_count
+            duration = shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped)
+            rapidsmpf_bootstrapped = True
         elif args.backend in {"dask", "dask-noop"}:
             duration = shuffle_dask(df, args)
         else:
@@ -270,6 +280,18 @@ def parse_args():
             "help": "Comma separated list defining the size of each partition, "
             "which must have the same length as `--devs`. "
             "If not set, a balanced distribution is used.",
+        },
+        {
+            "name": "--dask-spill-device",
+            "default": 0.5,
+            "metavar": "FLOAT",
+            "type": float,
+            "help": "Dask spill device threshold (default 0.5)",
+        },
+        {
+            "name": "--dask-statistics",
+            "action": "store_true",
+            "help": "Enable dask statistics (default False)",
         },
     ]
 
