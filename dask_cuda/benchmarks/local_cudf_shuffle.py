@@ -292,12 +292,14 @@ def parse_args():
             "default": 0.5,
             "metavar": "FLOAT",
             "type": float,
-            "help": "Dask spill device threshold (default 0.5)",
+            "help": "Dask spill device threshold, only applicable for "
+            "--backend=rapidsmpf (default 0.5)",
         },
         {
             "name": "--gather-shuffle-stats",
             "action": "store_true",
-            "help": "Gather shuffle statistics",
+            "help": "Gather shuffle statistics, only applicable for "
+            "--backend=rapidsmpf",
         },
     ]
 
