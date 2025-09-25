@@ -553,6 +553,7 @@ def setup_memory_pools(
     if client.run(
         lambda dask_worker: any("RMMSetup" in x for x in (dask_worker.plugins.keys()))
     ):
+        # Prevent setting up memory RMM if it was already done
         return
 
     client.run(
