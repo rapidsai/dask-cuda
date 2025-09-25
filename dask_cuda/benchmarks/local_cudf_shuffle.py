@@ -303,10 +303,17 @@ def parse_args():
         },
     ]
 
-    return parse_benchmark_args(
+    args = parse_benchmark_args(
         description="Distributed shuffle (dask/cudf) benchmark",
         args_list=special_args,
     )
+
+    if args.gather_shuffle_stats and args.backend != "rapidsmpf":
+        raise ValueError(
+            "--gather-shuffle-stats can only be used with --backend=rapidsmpf"
+        )
+
+    return args
 
 
 if __name__ == "__main__":
