@@ -174,7 +174,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, duration)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results, client):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     if args.markdown:
         print("```")
     print("Shuffle benchmark")
@@ -293,6 +293,11 @@ def parse_args():
             "metavar": "FLOAT",
             "type": float,
             "help": "Dask spill device threshold (default 0.5)",
+        },
+        {
+            "name": "--gather-shuffle-stats",
+            "action": "store_true",
+            "help": "Gather shuffle statistics",
         },
     ]
 

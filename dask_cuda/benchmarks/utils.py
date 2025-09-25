@@ -366,11 +366,6 @@ def parse_benchmark_args(
         type=int,
         help="Number of warmup runs",
     )
-    parser.add_argument(
-        "--gather-shuffle-stats",
-        action="store_true",
-        help="Gather shuffle statistics",
-    )
 
     for args in args_list:
         name = args.pop("name")

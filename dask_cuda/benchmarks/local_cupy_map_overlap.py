@@ -61,7 +61,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, took)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     if args.markdown:
         print("```")
     print("Cupy map overlap benchmark")
