@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+
 import contextlib
 from collections import ChainMap
 from time import perf_counter as clock
@@ -133,7 +136,7 @@ def bench_once(client, args, write_profile=None):
     return (disk_size, num_rows, t2 - t1)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     if args.markdown:
         print("```")
     print("Parquet read benchmark")
