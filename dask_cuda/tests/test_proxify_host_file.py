@@ -448,14 +448,21 @@ async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""
     cudf = pytest.importorskip("cudf")
 
+    def create_dataframe():
+        return cudf.DataFrame({"key": np.arange(10**8)})
+
     with dask.config.set({"distributed.worker.memory.terminate": False}):
         async with dask_cuda.LocalCUDACluster(
             n_workers=1, device_memory_limit="1MB", jit_unspill=True, asynchronous=True
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 # Create a df that are spilled to host memory immediately
-                df = cudf.DataFrame({"key": np.arange(10**8)})
-                [ddf] = client.persist([dask.dataframe.from_pandas(df, npartitions=1)])
+                # df = cudf.DataFrame({"key": np.arange(10**8)})
+                ddf = dask.dataframe.from_delayed(
+                    dask.delayed(create_dataframe)(),
+                    meta=cudf.DataFrame({"key": cupy.arange(0)}),
+                )
+                [ddf] = client.persist([ddf])
                 await ddf
 
                 async def f(dask_worker):
@@ -466,13 +473,12 @@ async def test_worker_force_spill_to_disk():
                     memory = w.monitor.proc.memory_info().rss
                     w.memory_manager.memory_limit = memory - 10**8
                     w.memory_manager.memory_target_fraction = 1
-                    print(w.memory_manager.data)
                     await w.memory_manager.memory_monitor(w)
                     # Check that host memory are freed
                     assert w.monitor.proc.memory_info().rss < memory - 10**7
                     w.memory_manager.memory_limit = memory * 10  # Un-limit
 
-                client.run(f)
+                await client.run(f)
                 log = str(await client.get_worker_logs())
                 # Check that the worker doesn't complain about unmanaged memory
                 assert "Unmanaged memory use is high" not in log
