@@ -457,7 +457,6 @@ async def test_worker_force_spill_to_disk():
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
                 # Create a df that are spilled to host memory immediately
-                # df = cudf.DataFrame({"key": np.arange(10**8)})
                 ddf = dask.dataframe.from_delayed(
                     dask.delayed(create_dataframe)(),
                     meta=cudf.DataFrame({"key": cupy.arange(0)}),
