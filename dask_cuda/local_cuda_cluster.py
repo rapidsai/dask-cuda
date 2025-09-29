@@ -307,6 +307,15 @@ class LocalCUDACluster(LocalCluster):
         self.rmm_release_threshold = rmm_release_threshold
         self.rmm_allocator_external_lib_list = rmm_allocator_external_lib_list
 
+        if self.rmm_async and self.rmm_pool_size is not None:
+            # check for https://github.com/rapidsai/rmm/issues/2060
+            msg = (
+                "'rmm_pool_size' is not needed when 'rmm_async' is enabled and will "
+                "raise a 'TypeError' in the future. Remove the 'rmm_pool_size' "
+                "argument when creating this cluster to silence this warning."
+            )
+            warnings.warn(msg, FutureWarning)
+
         if rmm_pool_size is not None or rmm_managed_memory or rmm_async:
             try:
                 import rmm  # noqa F401
