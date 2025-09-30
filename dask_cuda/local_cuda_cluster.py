@@ -311,7 +311,7 @@ class LocalCUDACluster(LocalCluster):
             # check for https://github.com/rapidsai/rmm/issues/2060
             msg = (
                 "'rmm_pool_size' is not needed when 'rmm_async' is enabled and will "
-                "raise a 'TypeError' in the future. Remove the 'rmm_pool_size' "
+                "raise an exception in the future. Remove the 'rmm_pool_size' "
                 "argument when creating this cluster to silence this warning."
             )
             warnings.warn(msg, FutureWarning)
