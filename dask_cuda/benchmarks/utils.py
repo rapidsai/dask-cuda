@@ -375,7 +375,7 @@ def parse_benchmark_args(
 
     args = parser.parse_args()
 
-    if args.rmm_async and args.rmm_pool_size is not None:
+    if args.enable_rmm_async and args.rmm_pool_size is not None:
         raise ValueError("--rmm-async and --rmm-pool-size cannot be used together")
 
     if args.multi_node and len(args.hosts.split(",")) < 2:
