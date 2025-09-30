@@ -182,10 +182,12 @@ However, some will affect related libraries, such as RMM:
   Replaces ``sockcm`` with ``rdmacm`` in ``UCX_SOCKADDR_TLS_PRIORITY``, enabling remote direct memory access (RDMA) for InfiniBand transfers.
   This is recommended by UCX for use with InfiniBand, and will not work if InfiniBand is disabled.
 
-- ``distributed-ucxx.rmm.pool-size: <str|int>`` -- **recommended.**
+- ``distributed-ucxx.rmm.pool-size: <str|int>`` -- **recommended for pool memory resources.**
 
   Allocates an RMM pool of the specified size for the process; size can be provided with an integer number of bytes or in human readable format, e.g. ``"4GB"``.
   It is recommended to set the pool size to at least the minimum amount of memory used by the process; if possible, one can map all GPU memory to a single pool, to be utilized for the lifetime of the process.
+
+  This has no effect with ``rmm_async=True``.
 
 .. note::
     These options can be used with mainline Dask.distributed.

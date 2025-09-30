@@ -54,7 +54,6 @@ python benchmarks/local_cudf_shuffle.py \
   "$@"
 
 python benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
   --rmm-maximum-pool-size 4GiB \
   --enable-rmm-async \
   --partition-size="1 KiB" \

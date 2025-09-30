@@ -644,3 +644,13 @@ def test_death_timeout_raises():
             dashboard_address=":0",
         ):
             pass
+
+
+def test_rmm_pool_size_warns():
+    with pytest.warns(
+        FutureWarning, match="'rmm_pool_size' is not needed when 'rmm_async' is enabled"
+    ):
+        try:
+            cluster = LocalCUDACluster(n_workers=1, rmm_pool_size="1GB", rmm_async=True)
+        finally:
+            cluster.close()
