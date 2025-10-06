@@ -121,7 +121,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, output_size, t2 - t1)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     if args.markdown:
         print("```")
     print("Groupby benchmark")

@@ -69,7 +69,7 @@ class Config(NamedTuple):
         two-tuple of a pandas dataframe and the point-to-point bandwidths
     """
     pretty_print_results: Callable[
-        [Namespace, Mapping[str, int], np.ndarray, List[Any]], None
+        [Namespace, Mapping[str, int], np.ndarray, List[Any], Optional[Client]], None
     ]
     """Callable to pretty-print results for human consumption
 
@@ -144,7 +144,7 @@ def run(client: Client, args: Namespace, config: Config):
     )
     address_to_index, results, message_data = gather_bench_results(client, args, config)
     p2p_bw = peer_to_peer_bandwidths(message_data, address_to_index)
-    config.pretty_print_results(args, address_to_index, p2p_bw, results)
+    config.pretty_print_results(args, address_to_index, p2p_bw, results, client=client)
     if args.output_basename:
         df, p2p_bw = config.create_tidy_results(args, p2p_bw, results)
         df["num_workers"] = len(address_to_index)

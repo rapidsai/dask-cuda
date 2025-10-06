@@ -375,6 +375,9 @@ def parse_benchmark_args(
 
     args = parser.parse_args()
 
+    if args.enable_rmm_async and args.rmm_pool_size is not None:
+        raise ValueError("--rmm-async and --rmm-pool-size cannot be used together")
+
     if args.multi_node and len(args.hosts.split(",")) < 2:
         raise ValueError("--multi-node requires at least 2 hosts")
 
@@ -497,7 +500,6 @@ def setup_memory_pool(
     if not disable_rmm:
         if rmm_async:
             mr = rmm.mr.CudaAsyncMemoryResource(
-                initial_pool_size=pool_size,
                 release_threshold=release_threshold,
             )
 
@@ -544,6 +546,13 @@ def setup_memory_pools(
 ):
     if not is_gpu:
         return
+
+    if client.run(
+        lambda dask_worker: any("RMMSetup" in x for x in (dask_worker.plugins.keys()))
+    ):
+        # Prevent setting up memory RMM if it was already done
+        return
+
     client.run(
         setup_memory_pool,
         disable_rmm=disable_rmm,

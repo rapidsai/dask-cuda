@@ -52,6 +52,39 @@ def shuffle_explicit_comms(df, args):
     return perf_counter() - t1
 
 
+def shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped):
+    from rapidsmpf.config import Options
+    from rapidsmpf.examples.dask import dask_cudf_shuffle
+    from rapidsmpf.integrations.dask import bootstrap_dask_cluster
+
+    options = Options(
+        {
+            "dask_spill_device": str(args.dask_spill_device),
+            "dask_statistics": str(args.gather_shuffle_stats).lower(),
+        }
+    )
+    if not rapidsmpf_bootstrapped:
+        shuffle_plugin = client.run(
+            lambda dask_worker: "shuffle" in dask_worker.plugins
+        ).values()
+        if not all(list(shuffle_plugin)):
+            bootstrap_dask_cluster(client, options=options)
+    t1 = perf_counter()
+    partition_count = args.in_parts
+
+    shuffled = dask_cudf_shuffle(
+        df,
+        ["data"],
+        sort=False,
+        config_options=options,
+        partition_count=partition_count,
+    )
+    wait(shuffled.persist())
+    duration = perf_counter() - t1
+    assert shuffled.npartitions == partition_count
+    return duration
+
+
 def create_df(nelem, df_type):
     if df_type == "cpu":
         return pd.DataFrame({"data": np.random.random(nelem)})
@@ -129,7 +162,11 @@ def bench_once(client, args, write_profile=None):
         ctx = performance_report(filename=write_profile)
 
     with ctx:
-        if args.backend in {"dask", "dask-noop"}:
+        rapidsmpf_bootstrapped = False
+        if args.backend == "rapidsmpf":
+            duration = shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped)
+            rapidsmpf_bootstrapped = True
+        elif args.backend in {"dask", "dask-noop"}:
             duration = shuffle_dask(df, args)
         else:
             duration = shuffle_explicit_comms(df, args)
@@ -137,7 +174,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, duration)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     if args.markdown:
         print("```")
     print("Shuffle benchmark")
@@ -164,6 +201,12 @@ def pretty_print_results(args, address_to_index, p2p_bw, results):
     print_throughput_bandwidth(
         args, durations, data_processed, p2p_bw, address_to_index
     )
+
+    if args.gather_shuffle_stats:
+        from rapidsmpf.integrations.dask.shuffler import gather_shuffle_statistics
+
+        shuffle_stats = gather_shuffle_statistics(client)
+        print(shuffle_stats, flush=True)
 
 
 def create_tidy_results(args, p2p_bw, results):
@@ -215,7 +258,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms", "dask-noop"],
+            "choices": ["dask", "explicit-comms", "dask-noop", "rapidsmpf"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
@@ -244,12 +287,33 @@ def parse_args():
             "which must have the same length as `--devs`. "
             "If not set, a balanced distribution is used.",
         },
+        {
+            "name": "--dask-spill-device",
+            "default": 0.5,
+            "metavar": "FLOAT",
+            "type": float,
+            "help": "Dask spill device threshold, only applicable for "
+            "--backend=rapidsmpf (default 0.5)",
+        },
+        {
+            "name": "--gather-shuffle-stats",
+            "action": "store_true",
+            "help": "Gather shuffle statistics, only applicable for "
+            "--backend=rapidsmpf",
+        },
     ]
 
-    return parse_benchmark_args(
+    args = parse_benchmark_args(
         description="Distributed shuffle (dask/cudf) benchmark",
         args_list=special_args,
     )
+
+    if args.gather_shuffle_stats and args.backend != "rapidsmpf":
+        raise ValueError(
+            "--gather-shuffle-stats can only be used with --backend=rapidsmpf"
+        )
+
+    return args
 
 
 if __name__ == "__main__":

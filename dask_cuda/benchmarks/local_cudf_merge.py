@@ -204,7 +204,7 @@ def bench_once(client, args, write_profile=None):
     return (data_processed, duration)
 
 
-def pretty_print_results(args, address_to_index, p2p_bw, results):
+def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
     broadcast = (
         False if args.shuffle_join else (True if args.broadcast_join else "default")
     )
