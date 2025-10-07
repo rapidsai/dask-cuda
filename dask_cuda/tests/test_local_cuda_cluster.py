@@ -240,13 +240,6 @@ async def test_rmm_pool():
 
 
 @gen_test(timeout=20)
-async def test_rmm_maximum_poolsize_without_poolsize_error():
-    pytest.importorskip("rmm")
-    with pytest.raises(ValueError):
-        await LocalCUDACluster(rmm_maximum_pool_size="2GB", asynchronous=True)
-
-
-@gen_test(timeout=20)
 async def test_rmm_managed():
     rmm = pytest.importorskip("rmm")
 
