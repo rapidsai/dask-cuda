@@ -146,6 +146,7 @@ exclude = [
     "docs",
     "tests",
     "docs.*",
+    "examples.*",
     "tests.*",
 ]
 
