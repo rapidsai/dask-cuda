@@ -121,8 +121,6 @@ def parse_benchmark_args(
         help="When ``--rmm-pool-size`` is specified, this argument indicates the "
         "maximum pool size.  Can be an integer (bytes), or a string (like '4GB' or "
         "'5000M'). By default, the total available memory on the GPU is used. "
-        "``rmm_pool_size`` must be specified to use RMM pool and to set the maximum "
-        "pool size."
         ""
         ".. note::"
         "    When paired with ``--enable-rmm-async`` the maximum size cannot be "

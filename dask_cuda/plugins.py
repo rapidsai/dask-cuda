@@ -54,11 +54,6 @@ class RMMSetup(WorkerPlugin):
         track_allocations,
         external_lib_list,
     ):
-        if initial_pool_size is None and maximum_pool_size is not None:
-            raise ValueError(
-                "`rmm_maximum_pool_size` was specified without specifying "
-                "`rmm_pool_size`.`rmm_pool_size` must be specified to use RMM pool."
-            )
         if async_alloc is True:
             if managed_memory is True:
                 raise ValueError(
