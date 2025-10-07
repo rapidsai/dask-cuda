@@ -5,115 +5,167 @@ import logging
 import os
 
 import click
-import numba.cuda
+import cuda.core.experimental
 
 import dask
-from distributed.diagnostics.nvml import get_device_index_and_uuid, has_cuda_context
+from distributed.diagnostics.nvml import (
+    CudaDeviceInfo,
+    get_device_index_and_uuid,
+    has_cuda_context,
+)
 
-from .utils import _get_active_ucx_implementation_name, get_ucx_config
+from .utils import get_ucx_config
 
 logger = logging.getLogger(__name__)
 
 
+pre_existing_cuda_context = None
+cuda_context_created = None
+
+
+_warning_suffix = (
+    "This is often the result of a CUDA-enabled library calling a CUDA runtime "
+    "function before Dask-CUDA can spawn worker processes. Please make sure any such "
+    "function calls don't happen at import time or in the global scope of a program."
+)
+
+
+def _get_device_and_uuid_str(device_info: CudaDeviceInfo) -> str:
+    return f"{device_info.device_index} ({str(device_info.uuid)})"
+
+
+def _warn_existing_cuda_context(device_info: CudaDeviceInfo, pid: int) -> None:
+    device_uuid_str = _get_device_and_uuid_str(device_info)
+    logger.warning(
+        f"A CUDA context for device {device_uuid_str} already exists "
+        f"on process ID {pid}. {_warning_suffix}"
+    )
+
+
+def _warn_cuda_context_wrong_device(
+    device_info_expected: CudaDeviceInfo, device_info_actual: CudaDeviceInfo, pid: int
+) -> None:
+    expected_device_uuid_str = _get_device_and_uuid_str(device_info_expected)
+    actual_device_uuid_str = _get_device_and_uuid_str(device_info_actual)
+    logger.warning(
+        f"Worker with process ID {pid} should have a CUDA context assigned to device "
+        f"{expected_device_uuid_str}, but instead the CUDA context is on device "
+        f"{actual_device_uuid_str}. {_warning_suffix}"
+    )
+
+
+def _mock_test_device() -> bool:
+    """Check whether running tests in a single-GPU environment.
+
+
+    Returns
+    -------
+    Whether running tests in a single-GPU environment, determined by checking whether
+    `DASK_CUDA_TEST_SINGLE_GPU` environment variable is set to a value different than
+    `"0"`.
+    """
+    return int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0
+
+
+def _get_device_str() -> str:
+    """Get the device string.
+
+    Get a string with the first device (first element before the comma), which may be
+    an index or a UUID.
+
+    Always returns "0" when running tests in a single-GPU environment, determined by
+    the result returned by `_mock_test_device()`.
+
+    Returns
+    -------
+    The device string.
+    """
+    if _mock_test_device():
+        return "0"
+    else:
+        return os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
+
+
 def _create_cuda_context_handler():
-    if int(os.environ.get("DASK_CUDA_TEST_SINGLE_GPU", "0")) != 0:
+    """Create a CUDA context on the current device.
+
+    A CUDA context is created on the current device if one does not exist yet, and not
+    running tests on a single-GPU environment, determined by the result returned by
+    `_mock_test_device()`.
+
+    Returns
+    -------
+    The device string.
+    """
+    if _mock_test_device():
         try:
-            numba.cuda.current_context()
-        except numba.cuda.cudadrv.error.CudaSupportError:
+            cuda.core.experimental.Device().set_current()
+        except Exception:
             pass
     else:
-        numba.cuda.current_context()
+        cuda.core.experimental.Device().set_current()
 
 
-def _warn_generic():
-    try:
-        # TODO: update when UCX-Py is removed, see
-        # https://github.com/rapidsai/dask-cuda/issues/1517
-        import distributed.comm.ucx
+def _create_cuda_context_and_warn():
+    """Create CUDA context and warn depending on certain conditions.
 
-        # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
-        # context directly from the UCX module, thus avoiding a similar warning there.
-        cuda_visible_device = get_device_index_and_uuid(
-            os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
+    Warns if a pre-existing CUDA context already existed or if the resulting CUDA
+    context was created in the wrong device.
+
+    This function is almost an identical duplicate from
+    `distributed_ucxx.ucxx.init_once`, the duplication is necessary because Dask-CUDA
+    needs to support `protocol="tcp"` as well, even when distributed-ucxx is not
+    installed, but this here runs _after_ comms have started, which is fine for TCP
+    because the time when CUDA context is created is not important. The code needs to
+    live also in distributed-ucxx because there the time when a CUDA context is created
+    matters, and it needs to happen _before_ UCX is initialized, but comms in
+    Distributed is initialized before preload, and thus only after this function
+    executes.
+
+    Raises
+    ------
+    Exception
+        If anything wrong happened during context initialization.
+
+    Returns
+    -------
+    None
+    """
+    global pre_existing_cuda_context, cuda_context_created
+
+    cuda_visible_device = get_device_index_and_uuid(_get_device_str())
+    pre_existing_cuda_context = has_cuda_context()
+    if pre_existing_cuda_context.has_context:
+        _warn_existing_cuda_context(pre_existing_cuda_context.device_info, os.getpid())
+
+    _create_cuda_context_handler()
+
+    cuda_context_created = has_cuda_context()
+    if (
+        cuda_context_created.has_context
+        and cuda_context_created.device_info.uuid != cuda_visible_device.uuid
+    ):
+        _warn_cuda_context_wrong_device(
+            cuda_visible_device, cuda_context_created.device_info, os.getpid()
         )
-        ctx = has_cuda_context()
-        if (
-            ctx.has_context
-            and not distributed.comm.ucx.cuda_context_created.has_context
-        ):
-            distributed.comm.ucx._warn_existing_cuda_context(ctx, os.getpid())
-
-        _create_cuda_context_handler()
-
-        if not distributed.comm.ucx.cuda_context_created.has_context:
-            ctx = has_cuda_context()
-            if ctx.has_context and ctx.device_info != cuda_visible_device:
-                distributed.comm.ucx._warn_cuda_context_wrong_device(
-                    cuda_visible_device, ctx.device_info, os.getpid()
-                )
-
-    except Exception:
-        logger.error("Unable to start CUDA Context", exc_info=True)
 
 
-def _initialize_ucx():
-    try:
-        import distributed.comm.ucx
-
-        distributed.comm.ucx.init_once()
-    except ModuleNotFoundError:
-        # UCX initialization has to be delegated to Distributed, it will take care
-        # of setting correct environment variables and importing `ucp` after that.
-        # Therefore if ``import ucp`` fails we can just continue here.
-        pass
-
-
-def _initialize_ucxx():
+def _create_cuda_context():
     try:
         # Added here to ensure the parent `LocalCUDACluster` process creates the CUDA
         # context directly from the UCX module, thus avoiding a similar warning there.
         import distributed_ucxx.ucxx
-
-        distributed_ucxx.ucxx.init_once()
-
-        cuda_visible_device = get_device_index_and_uuid(
-            os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
-        )
-        ctx = has_cuda_context()
-        if (
-            ctx.has_context
-            and not distributed_ucxx.ucxx.cuda_context_created.has_context
-        ):
-            distributed_ucxx.ucxx._warn_existing_cuda_context(ctx, os.getpid())
-
-        _create_cuda_context_handler()
-
-        if not distributed_ucxx.ucxx.cuda_context_created.has_context:
-            ctx = has_cuda_context()
-            if ctx.has_context and ctx.device_info != cuda_visible_device:
-                distributed_ucxx.ucxx._warn_cuda_context_wrong_device(
-                    cuda_visible_device, ctx.device_info, os.getpid()
-                )
-
-    except Exception:
-        logger.error("Unable to start CUDA Context", exc_info=True)
-
-
-def _create_cuda_context(protocol="ucx"):
-    if protocol not in ["ucx", "ucxx", "ucx-old"]:
-        return
+    except ImportError:
+        pass
+    else:
+        if distributed_ucxx.ucxx.ucxx is not None:
+            # UCXX has already initialized (and warned if necessary)
+            return
 
     try:
-        ucx_implementation = _get_active_ucx_implementation_name(protocol)
-    except ValueError:
-        # Not a UCX protocol, just raise CUDA context warnings if needed.
-        _warn_generic()
-    else:
-        if ucx_implementation == "ucxx":
-            _initialize_ucxx()
-        else:
-            _initialize_ucx()
-            _warn_generic()
+        _create_cuda_context_and_warn()
+    except Exception:
+        logger.error("Unable to start CUDA Context", exc_info=True)
 
 
 def initialize(
@@ -122,9 +174,8 @@ def initialize(
     enable_infiniband=None,
     enable_nvlink=None,
     enable_rdmacm=None,
-    protocol="ucx",
 ):
-    """Create CUDA context and initialize UCX-Py, depending on user parameters.
+    """Create CUDA context and initialize UCXX configuration.
 
     Sometimes it is convenient to initialize the CUDA context, particularly before
     starting up Dask worker processes which create a variety of threads.
@@ -173,12 +224,11 @@ def initialize(
         enable_infiniband=enable_infiniband,
         enable_nvlink=enable_nvlink,
         enable_rdmacm=enable_rdmacm,
-        protocol=protocol,
     )
-    dask.config.set({"distributed.comm.ucx": ucx_config})
+    dask.config.set({"distributed-ucxx": ucx_config})
 
     if create_cuda_context:
-        _create_cuda_context(protocol=protocol)
+        _create_cuda_context()
 
 
 @click.command()
@@ -187,40 +237,9 @@ def initialize(
     default=False,
     help="Create CUDA context",
 )
-@click.option(
-    "--protocol",
-    default=None,
-    type=str,
-    help="Communication protocol, such as: 'tcp', 'tls', 'ucx' or 'ucxx'.",
-)
-@click.option(
-    "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
-    default=False,
-    help="Enable TCP communication over UCX",
-)
-@click.option(
-    "--enable-infiniband/--disable-infiniband",
-    default=False,
-    help="Enable InfiniBand communication",
-)
-@click.option(
-    "--enable-nvlink/--disable-nvlink",
-    default=False,
-    help="Enable NVLink communication",
-)
-@click.option(
-    "--enable-rdmacm/--disable-rdmacm",
-    default=False,
-    help="Enable RDMA connection manager, currently requires InfiniBand enabled.",
-)
 def dask_setup(
-    service,
+    worker,
     create_cuda_context,
-    protocol,
-    enable_tcp_over_ucx,
-    enable_infiniband,
-    enable_nvlink,
-    enable_rdmacm,
 ):
     if create_cuda_context:
-        _create_cuda_context(protocol=protocol)
+        _create_cuda_context()

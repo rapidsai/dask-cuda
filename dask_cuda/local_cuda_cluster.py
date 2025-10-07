@@ -47,8 +47,8 @@ class LocalCUDACluster(LocalCluster):
     respect this hardware as much as possible.
 
     Each worker process is automatically assigned the correct CPU cores and network
-    interface cards to maximize performance. If UCX and UCX-Py are available, InfiniBand
-    and NVLink connections can be used to optimize data transfer performance.
+    interface cards to maximize performance. If UCX and distributed-ucxx are available,
+    InfiniBand and NVLink connections can be used to optimize data transfer performance.
 
     Parameters
     ----------
@@ -105,16 +105,13 @@ class LocalCUDACluster(LocalCluster):
         are not supported or disabled.
     enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, requires
-        ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``, and implies
-        ``enable_tcp_over_ucx=True`` when ``True``.
+        ``protocol="ucx"``, and implies ``enable_tcp_over_ucx=True`` when ``True``.
     enable_nvlink : bool, default None
         Set environment variables to enable UCX over NVLink, requires
-        ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``, and implies
-        ``enable_tcp_over_ucx=True`` when ``True``.
+        ``protocol="ucx"``, and implies ``enable_tcp_over_ucx=True`` when ``True``.
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
-        requires ``protocol="ucx"``, ``protocol="ucxx"`` or ``protocol="ucx-old"``,
-        and ``enable_infiniband=True``.
+        requires ``protocol="ucx"``, and ``enable_infiniband=True``.
     rmm_pool_size : int, str or None, default None
         RMM pool size to initialize each worker with. Can be an integer (bytes), float
         (fraction of total device memory), string (like ``"5GB"`` or ``"5000M"``), or
@@ -208,8 +205,7 @@ class LocalCUDACluster(LocalCluster):
     Raises
     ------
     TypeError
-        If InfiniBand or NVLink are enabled and
-        ``protocol not in ("ucx", "ucxx", "ucx-old")``.
+        If InfiniBand or NVLink are enabled and ``protocol != "ucx"``.
     ValueError
         If RMM pool, RMM managed memory or RMM async allocator are requested but RMM
         cannot be imported.
@@ -355,20 +351,9 @@ class LocalCUDACluster(LocalCluster):
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:
             if protocol is None:
-                ucx_protocol = dask.config.get(
-                    "distributed.comm.ucx.ucx-protocol", default=None
-                )
-                if ucx_protocol is not None:
-                    # TODO: remove when UCX-Py is removed,
-                    # see https://github.com/rapidsai/dask-cuda/issues/1517
-                    protocol = ucx_protocol
-                else:
-                    protocol = "ucx"
-            elif protocol not in ("ucx", "ucxx", "ucx-old"):
-                raise TypeError(
-                    "Enabling InfiniBand or NVLink requires protocol='ucx', "
-                    "protocol='ucxx' or protocol='ucx-old'"
-                )
+                protocol = "ucx"
+            if protocol not in ("ucx", "ucxx"):
+                raise TypeError("Enabling InfiniBand or NVLink requires protocol='ucx'")
 
         self.host = kwargs.get("host", None)
 
@@ -420,7 +405,7 @@ class LocalCUDACluster(LocalCluster):
         ) + ["dask_cuda.initialize"]
         self.new_spec["options"]["preload_argv"] = self.new_spec["options"].get(
             "preload_argv", []
-        ) + ["--create-cuda-context", "--protocol", protocol]
+        ) + ["--create-cuda-context"]
 
         self.cuda_visible_devices = CUDA_VISIBLE_DEVICES
         self.scale(n_workers)

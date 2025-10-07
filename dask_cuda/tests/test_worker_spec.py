@@ -31,7 +31,7 @@ def _check_env_value(spec, k, v):
 @pytest.mark.parametrize("num_devices", [1, 4])
 @pytest.mark.parametrize("cls", [Nanny])
 @pytest.mark.parametrize("interface", [None, "eth0", "enp1s0f0"])
-@pytest.mark.parametrize("protocol", [None, "tcp", "ucx", "ucx-old"])
+@pytest.mark.parametrize("protocol", [None, "tcp", "ucx"])
 @pytest.mark.parametrize("dashboard_address", [None, ":0", ":8787"])
 @pytest.mark.parametrize("threads_per_worker", [1, 8])
 @pytest.mark.parametrize("silence_logs", [False, True])
@@ -48,6 +48,9 @@ def test_worker_spec(
     enable_infiniband,
     enable_nvlink,
 ):
+    if protocol == "ucx":
+        pytest.importorskip("distributed_ucxx")
+
     def _test():
         return worker_spec(
             CUDA_VISIBLE_DEVICES=list(range(num_devices)),
@@ -61,7 +64,7 @@ def test_worker_spec(
             enable_nvlink=enable_nvlink,
         )
 
-    if (enable_infiniband or enable_nvlink) and protocol not in ("ucx", "ucx-old"):
+    if (enable_infiniband or enable_nvlink) and protocol != "ucx":
         with pytest.raises(
             TypeError, match="Enabling InfiniBand or NVLink requires protocol='ucx'"
         ):
