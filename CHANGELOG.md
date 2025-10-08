@@ -1,3 +1,41 @@
+# dask-cuda 25.10.00 (8 Oct 2025)
+
+## 🚨 Breaking Changes
+
+- Remove UCX-Py support ([#1546](https://github.com/rapidsai/dask-cuda/pull/1546)) [@pentschev](https://github.com/pentschev)
+
+## 🐛 Bug Fixes
+
+- `get_device_memory_objects()`: use _columns instead of _value ([#1543](https://github.com/rapidsai/dask-cuda/pull/1543)) [@madsbk](https://github.com/madsbk)
+- Fix `dask_setup` and cleanup ([#1541](https://github.com/rapidsai/dask-cuda/pull/1541)) [@pentschev](https://github.com/pentschev)
+- Fix test wheels for local CI runs ([#1539](https://github.com/rapidsai/dask-cuda/pull/1539)) [@pentschev](https://github.com/pentschev)
+- Add numba-cuda as runtime dependency ([#1531](https://github.com/rapidsai/dask-cuda/pull/1531)) [@pentschev](https://github.com/pentschev)
+
+## 🚀 New Features
+
+- Update to support CUDA context warnings for all protocols ([#1548](https://github.com/rapidsai/dask-cuda/pull/1548)) [@pentschev](https://github.com/pentschev)
+- Remove UCX-Py support ([#1546](https://github.com/rapidsai/dask-cuda/pull/1546)) [@pentschev](https://github.com/pentschev)
+
+## 🛠️ Improvements
+
+- Update docs to UCXX ([#1554](https://github.com/rapidsai/dask-cuda/pull/1554)) [@pentschev](https://github.com/pentschev)
+- Prevent NVML errors in single-GPU test environments ([#1553](https://github.com/rapidsai/dask-cuda/pull/1553)) [@pentschev](https://github.com/pentschev)
+- Configure repo for automatic release notes generation ([#1552](https://github.com/rapidsai/dask-cuda/pull/1552)) [@AyodeAwe](https://github.com/AyodeAwe)
+- update dependencies: nvidia-ml-py (&gt;=12) ([#1551](https://github.com/rapidsai/dask-cuda/pull/1551)) [@jameslamb](https://github.com/jameslamb)
+- Use branch-25.10 again ([#1550](https://github.com/rapidsai/dask-cuda/pull/1550)) [@jameslamb](https://github.com/jameslamb)
+- remove RAPIDS dependencies from cu12, cu13 extras ([#1549](https://github.com/rapidsai/dask-cuda/pull/1549)) [@jameslamb](https://github.com/jameslamb)
+- use &#39;nvidia-ml-py&#39; package for &#39;pynvml&#39; module ([#1547](https://github.com/rapidsai/dask-cuda/pull/1547)) [@jameslamb](https://github.com/jameslamb)
+- Remove test skip for UCX 1.16 bug ([#1545](https://github.com/rapidsai/dask-cuda/pull/1545)) [@pentschev](https://github.com/pentschev)
+- restore cudf dependency ([#1544](https://github.com/rapidsai/dask-cuda/pull/1544)) [@jameslamb](https://github.com/jameslamb)
+- Update rapids-dependency-file-generator ([#1542](https://github.com/rapidsai/dask-cuda/pull/1542)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- Use cuda-core for context initialization. ([#1537](https://github.com/rapidsai/dask-cuda/pull/1537)) [@TomAugspurger](https://github.com/TomAugspurger)
+- Build and test with CUDA 13.0.0 ([#1536](https://github.com/rapidsai/dask-cuda/pull/1536)) [@jameslamb](https://github.com/jameslamb)
+- Update to numba-cuda &gt;=0.19.0,&lt;0.20.0a0 ([#1535](https://github.com/rapidsai/dask-cuda/pull/1535)) [@brandon-b-miller](https://github.com/brandon-b-miller)
+- Update to numba-cuda &gt;=0.18.0,&lt;0.19.0a0 ([#1533](https://github.com/rapidsai/dask-cuda/pull/1533)) [@bdice](https://github.com/bdice)
+- Fix anchor naming conventions in dependencies.yaml ([#1532](https://github.com/rapidsai/dask-cuda/pull/1532)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+- ci(labeler): update labeler action to [@v5 ([#1528](https://github.com/rapidsai/dask-cuda/pull/1528)) @gforsyth](https://github.com/v5 ([#1528](https://github.com/rapidsai/dask-cuda/pull/1528)) @gforsyth)
+- Update rapids-build-backend to 0.4.1 ([#1527](https://github.com/rapidsai/dask-cuda/pull/1527)) [@KyleFromNVIDIA](https://github.com/KyleFromNVIDIA)
+
 # dask-cuda 25.08.00 (6 Aug 2025)
 
 ## 🚨 Breaking Changes
