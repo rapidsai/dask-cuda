@@ -15,6 +15,7 @@ from distributed import Client, wait
 from distributed.system import MEMORY_LIMIT
 from distributed.utils_test import cleanup, loop, loop_in_thread, popen  # noqa: F401
 
+from dask_cuda.plugins import RMMSetup
 from dask_cuda.utils import (
     get_cluster_configuration,
     get_device_total_memory,
@@ -159,8 +160,6 @@ def test_rmm_async(loop):  # noqa: F811
                 "--host",
                 "127.0.0.1",
                 "--rmm-async",
-                "--rmm-pool-size",
-                "2 GB",
                 "--rmm-release-threshold",
                 "3 GB",
                 "--no-dashboard",
@@ -177,7 +176,7 @@ def test_rmm_async(loop):  # noqa: F811
 
                 ret = get_cluster_configuration(client)
                 wait(ret)
-                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] is None
                 assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
 
 
@@ -194,8 +193,6 @@ def test_rmm_async_with_maximum_pool_size(loop):  # noqa: F811
                 "--host",
                 "127.0.0.1",
                 "--rmm-async",
-                "--rmm-pool-size",
-                "2 GB",
                 "--rmm-release-threshold",
                 "3 GB",
                 "--rmm-maximum-pool-size",
@@ -221,7 +218,7 @@ def test_rmm_async_with_maximum_pool_size(loop):  # noqa: F811
 
                 ret = get_cluster_configuration(client)
                 wait(ret)
-                assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
+                assert ret["[plugin] RMMSetup"]["initial_pool_size"] is None
                 assert ret["[plugin] RMMSetup"]["release_threshold"] == 3000000000
                 assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 4000000000
 
@@ -682,3 +679,18 @@ def test_worker_cudf_spill_warning(enable_cudf_spill_warning):  # noqa: F811
                 )
         else:
             assert b"UserWarning: cuDF spilling is enabled" not in ret.stderr
+
+
+def test_rmm_setup_memory_pool_validation():
+    plugin = RMMSetup(
+        initial_pool_size=None,
+        maximum_pool_size="2 GB",
+        managed_memory=False,
+        async_alloc=True,
+        release_threshold=None,
+        log_directory=None,
+        track_allocations=False,
+        external_lib_list=None,
+    )
+    assert plugin.initial_pool_size is None
+    assert plugin.maximum_pool_size == "2 GB"

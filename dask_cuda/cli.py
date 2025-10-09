@@ -138,8 +138,7 @@ def cuda():
     help="""When ``--rmm-pool-size`` is specified, this argument indicates the maximum
     pool size.  Can be an integer (bytes), float (fraction of total device memory),
     string (like ``"5GB"`` or ``"5000M"``) or ``None``. By default, the total available
-    memory on the GPU is used. ``rmm_pool_size`` must be specified to use RMM pool and
-    to set the maximum pool size.
+    memory on the GPU is used.
 
     .. note::
         When paired with ``--enable-rmm-async`` the maximum size cannot be guaranteed
