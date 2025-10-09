@@ -135,8 +135,8 @@ def cuda():
 @click.option(
     "--rmm-maximum-pool-size",
     default=None,
-    help="""When ``--rmm-pool-size`` is specified, this argument indicates the maximum
-    pool size.  Can be an integer (bytes), float (fraction of total device memory),
+    help="""The maximum pool size, when using an RMM pool memory resource.
+    Can be an integer (bytes), float (fraction of total device memory),
     string (like ``"5GB"`` or ``"5000M"``) or ``None``. By default, the total available
     memory on the GPU is used.
 
