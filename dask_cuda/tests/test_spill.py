@@ -278,7 +278,6 @@ async def test_cupy_cluster_device_spill(params):
             worker_class=IncreasedCloseTimeoutNanny,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
-
                 await client.wait_for_workers(1)
 
                 rs = da.random.RandomState(RandomState=cupy.random.RandomState)
@@ -385,7 +384,6 @@ async def test_cudf_cluster_device_spill(params, cudf_spill):
             enable_cudf_spill=enable_cudf_spill,
         ) as cluster:
             async with Client(cluster, asynchronous=True) as client:
-
                 await client.wait_for_workers(1)
 
                 # There's a known issue with datetime64:
@@ -487,7 +485,6 @@ async def test_cudf_spill_cluster(cudf_spill):
         cudf_spill_stats=enable_cudf_spill,
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
-
             await client.wait_for_workers(1)
             await client.run(_set_cudf_device_limit)
 

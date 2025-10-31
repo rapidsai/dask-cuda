@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import click
 import cupy
 
@@ -46,7 +49,6 @@ def main(
     interface,
     rmm_pool_size,
 ):
-
     if (enable_infiniband or enable_nvlink) and not interface:
         raise ValueError(
             "Interface must be specified if NVLink or Infiniband are enabled"

@@ -155,7 +155,6 @@ async def test_threads_per_worker_and_memory_limit():
 
 @gen_test(timeout=20)
 async def test_no_memory_limits_cluster():
-
     async with LocalCUDACluster(
         asynchronous=True, memory_limit=None, device_memory_limit=None
     ) as cluster:
@@ -169,7 +168,6 @@ async def test_no_memory_limits_cluster():
 
 @gen_test(timeout=20)
 async def test_no_memory_limits_cudaworker():
-
     async with LocalCUDACluster(
         asynchronous=True,
         memory_limit=None,

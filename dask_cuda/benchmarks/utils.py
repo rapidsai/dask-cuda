@@ -662,8 +662,7 @@ def wait_for_cluster(client, timeout=120, shutdown_on_failure=True):
         if shutdown_on_failure:
             client.shutdown()
         raise RuntimeError(
-            f"Not all workers up after {timeout}s; "
-            f"got {nworkers}, wanted {expected}"
+            f"Not all workers up after {timeout}s; got {nworkers}, wanted {expected}"
         )
 
 
@@ -792,7 +791,7 @@ def print_throughput_bandwidth(
 
         print_key_value(key="(w1,w2)", value="25% 50% 75% (total nbytes)")
         print_separator(separator="-")
-        for (source, dest) in np.ndindex(p2p_bw.shape[:2]):
+        for source, dest in np.ndindex(p2p_bw.shape[:2]):
             bw = BandwidthStats(*p2p_bw[source, dest, ...])
             if bw.total_bytes > 0:
                 print_key_value(

@@ -168,7 +168,7 @@ def run_client_from_existing_scheduler(args: Namespace, config: Config):
         kwargs = {"scheduler_file": args.scheduler_file}
     else:
         raise RuntimeError(
-            "Need to specify either --scheduler-file " "or --scheduler-address"
+            "Need to specify either --scheduler-file or --scheduler-address"
         )
     with Client(**kwargs) as client:
         run(client, args, config)

@@ -178,14 +178,14 @@ dask_setup.callback = capture_dask_setup_call
                         captured_args = json.load(cf)
 
                     # Verify the critical arguments were passed correctly
-                    assert (
-                        captured_args["create_cuda_context"] is True
-                    ), "create_cuda_context should be True"
+                    assert captured_args["create_cuda_context"] is True, (
+                        "create_cuda_context should be True"
+                    )
 
                     # Verify worker has a protocol set
-                    assert (
-                        captured_args["worker_protocol"] == protocol
-                    ), "Worker should have a protocol"
+                    assert captured_args["worker_protocol"] == protocol, (
+                        "Worker should have a protocol"
+                    )
                 else:
                     pytest.fail(
                         "capture file not found: dask_setup was not called or "

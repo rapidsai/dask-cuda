@@ -332,9 +332,9 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         )
 
         # Check for successful test execution regardless of warnings
-        assert (
-            "Context creation successful" in result.stdout
-        ), "Test did not create a CUDA context"
+        assert "Context creation successful" in result.stdout, (
+            "Test did not create a CUDA context"
+        )
         assert (
             "Creating LocalCUDACluster" in result.stdout
             or "LocalCUDACluster created successfully" in result.stdout

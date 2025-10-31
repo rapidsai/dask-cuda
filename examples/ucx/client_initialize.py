@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 import click
 import cupy
 
@@ -34,7 +37,6 @@ def main(
     enable_infiniband,
     enable_rdmacm,
 ):
-
     # set up environment
     initialize(
         enable_tcp_over_ucx=True,

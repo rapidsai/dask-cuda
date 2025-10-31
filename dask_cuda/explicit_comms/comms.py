@@ -13,9 +13,9 @@ from distributed import Client, Worker, default_client, get_worker
 from distributed.comm.addressing import parse_address, parse_host_port, unparse_address
 
 # Mapping tokenize(client ID, [worker addresses]) to CommsContext
-_comms_cache: weakref.WeakValueDictionary[
-    str, "CommsContext"
-] = weakref.WeakValueDictionary()
+_comms_cache: weakref.WeakValueDictionary[str, "CommsContext"] = (
+    weakref.WeakValueDictionary()
+)
 
 
 def get_multi_lock_or_null_context(multi_lock_context, *args, **kwargs):
