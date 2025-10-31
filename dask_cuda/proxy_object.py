@@ -912,7 +912,6 @@ def unproxify_input_wrapper(func):
 
 
 if dask_array is not None:
-
     # Register dispatch of ProxyObject on all known dispatch objects
     for dispatch in (
         dask.array.core.tensordot_lookup,

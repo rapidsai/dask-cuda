@@ -22,7 +22,7 @@ def worker_spec(
     enable_tcp_over_ucx=False,
     enable_infiniband=False,
     enable_nvlink=False,
-    **kwargs
+    **kwargs,
 ):
     """Create a Spec for a CUDA worker.
 

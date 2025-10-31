@@ -74,7 +74,6 @@ def generate_chunk(chunk_info, unique_size=1, gpu=True):
 
 
 def get_random_ddf(args):
-
     total_size = args.chunk_size * args.in_parts
     chunk_kwargs = {
         "unique_size": max(int(args.unique_ratio * total_size), 1),
@@ -91,7 +90,6 @@ def get_random_ddf(args):
 
 
 def bench_once(client, args, write_profile=None):
-
     # Generate random Dask dataframe
     df = get_random_ddf(args)
 
