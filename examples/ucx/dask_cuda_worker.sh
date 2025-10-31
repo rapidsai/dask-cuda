@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-License-Identifier: Apache-2.0
 
 # There are several environment variables that are set but not exported
 # Shellcheck flags these up as "unused", but because `dask-scheduler` is called
