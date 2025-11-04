@@ -19,7 +19,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_config
+from dask_cuda.utils import get_ucx_config, get_gpu_handle
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 mp = mp.get_context("spawn")  # type: ignore
@@ -28,6 +28,17 @@ mp = mp.get_context("spawn")  # type: ignore
 # that UCX options of the different tests doesn't conflict.
 # Furthermore, all tests do some computation to trigger initialization
 # of UCX before retrieving the current config.
+
+
+def _has_v100_gpu():
+    """Return True if the first GPU (index 0) is a V100."""
+    import pynvml
+
+    handle = get_gpu_handle(0)
+    name = pynvml.nvmlDeviceGetName(handle)
+    if isinstance(name, bytes):
+        name = name.decode("utf-8", errors="ignore")
+    return "V100" in name
 
 
 def _test_initialize_ucx_tcp():
@@ -397,6 +408,9 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
+@pytest.mark.xfail(
+    _has_v100_gpu(), reason="Known intermittent failure on V100 GPUs", strict=False
+)
 def test_cuda_context_warning_with_subprocess_warnings(protocol):
     """Test CUDA context warnings from parent and worker subprocesses.
 
