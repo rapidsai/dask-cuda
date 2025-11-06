@@ -44,6 +44,8 @@ jobs:
     with:
       build_type: pull-request
       script: ci/build_python.sh
+      # noarch build -- select a single amd64 runner, with the latest CUDA and latest Python version
+      matrix_filter: map(select(.ARCH == "amd64")) | [max_by([(.CUDA_VER|split(".")|map(tonumber)), (.PY_VER|split(".")|map(tonumber))])]
   conda-python-tests:
     needs: conda-python-build
     secrets: inherit

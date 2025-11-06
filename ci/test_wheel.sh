@@ -9,7 +9,7 @@ source rapids-init-pip
 RAPIDS_CUDA_MAJOR="${RAPIDS_CUDA_VERSION%%.*}"
 export RAPIDS_CUDA_MAJOR
 
-DASK_CUDA_WHEELHOUSE=$(RAPIDS_PY_WHEEL_NAME="dask-cuda" RAPIDS_PY_WHEEL_PURE="1" rapids-download-wheels-from-github python)
+DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-package-name "wheel_python" "dask-cuda" --pure)")
 
 # Install cuda-suffixed dependencies b/c while `dask-cuda` has no cuda suffix, the test dependencies do
 rapids-dependency-file-generator \
