@@ -5,7 +5,7 @@
 set -euo pipefail
 
 rapids-logger "Downloading artifacts from previous jobs"
-PYTHON_CHANNEL=$(rapids-download-conda-from-github python)
+PYTHON_CHANNEL=$(rapids-download-from-github "$(rapids-package-name "conda_python" dask-cuda --pure)")
 
 rapids-logger "Create test conda environment"
 . /opt/conda/etc/profile.d/conda.sh
