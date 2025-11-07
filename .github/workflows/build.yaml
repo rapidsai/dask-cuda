@@ -80,6 +80,10 @@ jobs:
       package-type: python
       pure-wheel: true
       append-cuda-suffix: false
+      # this pure wheel build requires its own matrix_filter (not the ones upstream)
+      # Package is pure Python and only ever requires one build.
+      # This selects "ARCH=amd64 + the latest supported Python + CUDA".
+      matrix_filter: map(select(.ARCH == "amd64")) | sort_by(.CUDA_VER, .PY_VER) | [last]
   wheel-publish:
     needs: wheel-build
     secrets: inherit
