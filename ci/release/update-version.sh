@@ -126,12 +126,10 @@ done
 # Docs referencing source code - update branch references based on context
 find docs/source/ -type f -name '*.rst' -print0 | while IFS= read -r -d '' filename; do
     if [[ "${RUN_CONTEXT}" == "main" ]]; then
-        # In main context, convert branch-X.Y to main
-        sed_runner "s|/branch-[^/]*/|/main/|g" "${filename}"
+        # In main context, convert release/X.Y to main
         sed_runner "s|/release/[^/]*/|/main/|g" "${filename}"
     elif [[ "${RUN_CONTEXT}" == "release" ]]; then
-        # In release context, convert main or branch-X.Y to release/X.Y
+        # In release context, convert main to release/X.Y
         sed_runner "s|/main/|/release/${NEXT_SHORT_TAG}/|g" "${filename}"
-        sed_runner "s|/branch-[^/]*/|/release/${NEXT_SHORT_TAG}/|g" "${filename}"
     fi
 done
