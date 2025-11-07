@@ -34,7 +34,7 @@ rapids-logger "Check GPU usage"
 nvidia-smi
 
 EXITCODE=0
-# shellcheck disable=SC2317
+# shellcheck disable=SC2329
 set_exit_code() {
     EXITCODE=$?
     rapids-logger "Test failed with error ${EXITCODE}"
