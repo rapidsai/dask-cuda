@@ -24,3 +24,6 @@ rattler-build build --recipe conda/recipes/dask-cuda \
 # remove build_cache directory to avoid uploading the entire source tree
 # tracked in https://github.com/prefix-dev/rattler-build/issues/1424
 rm -rf "$RAPIDS_CONDA_BLD_OUTPUT_DIR"/build_cache
+
+RAPIDS_PACKAGE_NAME="$(rapids-package-name conda_python dask-cuda --pure)"
+export RAPIDS_PACKAGE_NAME

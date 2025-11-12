@@ -44,6 +44,7 @@ jobs:
     with:
       build_type: pull-request
       script: ci/build_python.sh
+      pure-conda: true
   conda-python-tests:
     needs: conda-python-build
     secrets: inherit
@@ -67,14 +68,15 @@ jobs:
     uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
     with:
       build_type: pull-request
-      # Package is pure Python and only ever requires one build.
-      # This selects "ARCH=amd64 + the latest supported Python + CUDA".
-      matrix_filter: map(select(.ARCH == "amd64")) | max_by([(.PY_VER|split(".")|map(tonumber)), (.CUDA_VER|split(".")|map(tonumber))]) | [.]
       script: "ci/build_wheel.sh"
       package-name: dask-cuda
       package-type: python
       pure-wheel: true
       append-cuda-suffix: false
+      # this pure wheel build requires its own matrix_filter (not the ones upstream)
+      # Package is pure Python and only ever requires one build.
+      # This selects "ARCH=amd64 + the latest supported Python + CUDA".
+      matrix_filter: map(select(.ARCH == "amd64")) | sort_by(.CUDA_VER, .PY_VER) | [last]
   wheel-tests:
     needs: wheel-build
     secrets: inherit
