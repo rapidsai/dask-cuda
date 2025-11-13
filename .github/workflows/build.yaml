@@ -96,3 +96,4 @@ jobs:
       date: ${{ inputs.date }}
       package-name: dask-cuda
       package-type: python
+      publish-wheel-search-key: "dask-cuda_wheel"
