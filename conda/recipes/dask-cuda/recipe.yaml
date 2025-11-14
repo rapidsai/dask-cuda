@@ -46,6 +46,7 @@ requirements:
     - pandas >=1.3
     - rapids-dask-dependency =${{ minor_version }}
     - zict >=2.0.0
+    - __linux
 
 tests:
   - python:
