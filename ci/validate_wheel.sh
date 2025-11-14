@@ -10,14 +10,12 @@ wheel_dir_relative_path=$1
 # to begin installing them on Windows or OSX when we know that the dependencies
 # won't work / be available.
 for wheel in "${wheel_dir_relative_path}"/*-py3-none-any.whl; do
-    if [ -f "${wheel}" ]; then
-        rapids-logger "Retagging pure Python wheel: ${wheel}"
+    rapids-logger "Retagging pure Python wheel: ${wheel}"
 
-        # Retag for manylinux x86_64 and manylinux aarch64
-        wheel tags --platform-tag=manylinux_2_28_x86_64.manylinux_2_28_aarch64 --remove "${wheel}"
+    # Retag for manylinux x86_64 and manylinux aarch64
+    wheel tags --platform-tag=manylinux_2_28_x86_64.manylinux_2_28_aarch64 --remove "${wheel}"
 
-        rapids-logger "Successfully retagged wheel for manylinux platforms"
-    fi
+    rapids-logger "Successfully retagged wheel for manylinux platforms"
 done
 
 rapids-logger "validate packages with 'pydistcheck'"
