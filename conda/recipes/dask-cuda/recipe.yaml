@@ -47,6 +47,7 @@ requirements:
     - rapids-dask-dependency =${{ minor_version }}
     - zict >=2.0.0
     - __linux
+    - __glibc >=2.28
 
 tests:
   - python:
