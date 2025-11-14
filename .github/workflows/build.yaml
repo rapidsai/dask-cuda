@@ -42,6 +42,7 @@ jobs:
       date: ${{ inputs.date }}
       script: ci/build_python.sh
       sha: ${{ inputs.sha }}
+      pure-conda: true
   docs-build:
     if: github.ref_type == 'branch'
     needs: [conda-python-build]
@@ -76,11 +77,14 @@ jobs:
       script: ci/build_wheel.sh
       # Package is pure Python and only ever requires one build.
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
-      matrix_filter: map(select(.ARCH == "amd64")) | max_by([(.PY_VER|split(".")|map(tonumber)), (.CUDA_VER|split(".")|map(tonumber))]) | [.]
       package-name: dask-cuda
       package-type: python
       pure-wheel: true
       append-cuda-suffix: false
+      # this pure wheel build requires its own matrix_filter (not the ones upstream)
+      # Package is pure Python and only ever requires one build.
+      # This selects "ARCH=amd64 + the latest supported Python + CUDA".
+      matrix_filter: map(select(.ARCH == "amd64")) | sort_by(.CUDA_VER, .PY_VER) | [last]
   wheel-publish:
     needs: wheel-build
     secrets: inherit
@@ -92,3 +96,4 @@ jobs:
       date: ${{ inputs.date }}
       package-name: dask-cuda
       package-type: python
+      publish-wheel-search-key: "dask-cuda_wheel"
