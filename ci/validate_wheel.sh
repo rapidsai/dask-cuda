@@ -14,7 +14,7 @@ for wheel in "${wheel_dir_relative_path}"/*-py3-none-any.whl; do
         rapids-logger "Retagging pure Python wheel: ${wheel}"
 
         # Retag for manylinux x86_64 and manylinux aarch64
-        wheel tags --platform-tag=manylinux_2_5_x86_64.manylinux_2_5_aarch64 --remove "${wheel}"
+        wheel tags --platform-tag=manylinux_2_28_x86_64.manylinux_2_28_aarch64 --remove "${wheel}"
 
         rapids-logger "Successfully retagged wheel for manylinux platforms"
     fi
