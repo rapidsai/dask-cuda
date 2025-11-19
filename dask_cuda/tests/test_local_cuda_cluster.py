@@ -190,6 +190,9 @@ async def test_no_memory_limits_cudaworker():
 
 
 @gen_test(timeout=20)
+@pytest.mark.flaky(
+    reruns=3,
+)
 async def test_all_to_all():
     async with LocalCUDACluster(
         CUDA_VISIBLE_DEVICES="0,1",

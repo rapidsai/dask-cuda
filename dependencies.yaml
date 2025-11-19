@@ -188,6 +188,7 @@ dependencies:
         packages:
           - pytest
           - pytest-cov
+          - pytest-rerunfailures!=16.0.0  # See https://github.com/pytest-dev/pytest-rerunfailures/issues/302
           - pytest-timeout
       - output_types: [conda]
         packages:
