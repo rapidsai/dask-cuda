@@ -24,6 +24,7 @@ files:
       - cuda_version
       - py_version
       - test_python
+      - test_python_cuda
       - depends_on_dask_cuda
   checks:
     output: none
@@ -61,6 +62,30 @@ files:
       key: cu13
     includes:
       - extra_cu13
+  py_test:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test
+    includes:
+      - test_python
+  py_test_cu12:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test-cu12
+    includes:
+      - test_python_cu12
+  py_test_cu13:
+    output: pyproject
+    pyproject_dir: .
+    extras:
+      table: project.optional-dependencies
+      key: test-cu13
+    includes:
+      - test_python_cu13
   py_run:
     output: pyproject
     pyproject_dir: .
@@ -196,13 +221,14 @@ dependencies:
           - &dask_cudf_unsuffixed dask-cudf==26.2.*,>=0.0.0a0
           - &distributed_ucxx_unsuffixed distributed-ucxx==0.48.*,>=0.0.0a0
           - &kvikio_unsuffixed kvikio==26.2.*,>=0.0.0a0
+  test_python_cuda:
     specific:
       - output_types: [requirements, pyproject]
         matrices:
           - matrix:
               cuda: "12.*"
               cuda_suffixed: "true"
-            packages:
+            packages: &test_python_cu12
               - cudf-cu12==26.2.*,>=0.0.0a0
               - dask-cudf-cu12==26.2.*,>=0.0.0a0
               - distributed-ucxx-cu12==0.48.*,>=0.0.0a0
@@ -210,7 +236,7 @@ dependencies:
           - matrix:
               cuda: "13.*"
               cuda_suffixed: "true"
-            packages:
+            packages: &test_python_cu13
               - cudf-cu13==26.2.*,>=0.0.0a0
               - dask-cudf-cu13==26.2.*,>=0.0.0a0
               - distributed-ucxx-cu13==0.48.*,>=0.0.0a0
@@ -221,6 +247,14 @@ dependencies:
               - *dask_cudf_unsuffixed
               - *distributed_ucxx_unsuffixed
               - *kvikio_unsuffixed
+  test_python_cu12:
+    common:
+      - output_types: [requirements, pyproject]
+        packages: *test_python_cu12
+  test_python_cu13:
+    common:
+      - output_types: [requirements, pyproject]
+        packages: *test_python_cu13
   depends_on_dask_cuda:
     common:
       - output_types: conda

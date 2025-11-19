@@ -11,20 +11,12 @@ export RAPIDS_CUDA_MAJOR
 
 DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-package-name "wheel_python" "dask-cuda" --pure)")
 
-# Install cuda-suffixed dependencies b/c while `dask-cuda` has no cuda suffix, the test dependencies do
-rapids-dependency-file-generator \
-    --output requirements \
-    --file-key "test_python" \
-    --matrix "cuda=${RAPIDS_CUDA_VERSION%.*};arch=$(arch);py=${RAPIDS_PY_VERSION};cuda_suffixed=true" \
-| tee /tmp/requirements-test.txt
-
 rapids-logger "Installing test dependencies"
 # echo to expand wildcard
 rapids-pip-retry install \
   -v \
   --prefer-binary \
-  -r /tmp/requirements-test.txt \
-  "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)[cu${RAPIDS_CUDA_MAJOR}]"
+  "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)[cu${RAPIDS_CUDA_MAJOR},test,test-cu${RAPIDS_CUDA_MAJOR}]"
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 mkdir -p "${RAPIDS_TESTS_DIR}"
