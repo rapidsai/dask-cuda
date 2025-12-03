@@ -39,7 +39,7 @@ requirements:
     - click >=8.1
     - cuda-core =0.3
     - numba >=0.60.0,<0.62.0a0
-    - numba-cuda >=0.21.2,<0.22.0a0
+    - numba-cuda >=0.19.1,<0.20.0a0
     - numpy >=1.23,<3.0a0
     # 'nvidia-ml-py' provides the 'pynvml' module
     - nvidia-ml-py>=12
