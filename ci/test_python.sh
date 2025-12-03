@@ -28,7 +28,7 @@ conda activate test
 set -u
 
 rapids-logger "Forcing installation of numba-cuda==0.21.3 into 'test' environment"
-rapids-mamba-retry install --yes -n test numba-cuda=0.21.3
+mamba install --no-deps --force-reinstall numba-cuda==0.21.3 --yes
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 RAPIDS_COVERAGE_DIR=${RAPIDS_COVERAGE_DIR:-"${PWD}/coverage-results"}
