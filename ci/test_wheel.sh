@@ -18,10 +18,6 @@ rapids-pip-retry install \
   --prefer-binary \
   "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)[cu${RAPIDS_CUDA_MAJOR},test,test-cu${RAPIDS_CUDA_MAJOR}]"
 
-# Force-install the specific numba version required for tests
-rapids-logger "Force-installing numba-cuda==0.21.3"
-rapids-pip-retry install -v --force-reinstall "numba-cuda==0.21.3"
-
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
 mkdir -p "${RAPIDS_TESTS_DIR}"
 
