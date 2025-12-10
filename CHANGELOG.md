@@ -1,3 +1,30 @@
+# dask-cuda 25.12.00 (10 Dec 2025)
+
+### 🐛 Bug Fixes
+* Print `test_all_to_all` debug info when assertion fails by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1557
+* Remove more uses of deprecated async pool size by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1568
+* Mark `test_cuda_context_warning_with_subprocess_warnings` xfail by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1576
+* refactored update-version.sh to handle new branching strategy by @rockhowse in https://github.com/rapidsai/dask-cuda/pull/1578
+### 🛠️ Improvements
+* Adding in rapidsmpf shuffle by @quasiben in https://github.com/rapidsai/dask-cuda/pull/1538
+* Fixes for `test_worker_force_spill_to_disk` by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1562
+* Deprecate rmm_pool_size and rmm_async by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1563
+* Exclude 'examples' directory from distribution by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1567
+* Fix help message for `-rmm-maximum-pool-size` by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1570
+* Use main branch by @bdice in https://github.com/rapidsai/dask-cuda/pull/1571
+* Use main shared-workflows branch by @bdice in https://github.com/rapidsai/dask-cuda/pull/1572
+* Use ruff-check, ruff-format instead of black, flake8, isort by @KyleFromNVIDIA in https://github.com/rapidsai/dask-cuda/pull/1573
+* Use SPDX for all copyright headers by @KyleFromNVIDIA in https://github.com/rapidsai/dask-cuda/pull/1574
+* refactor(build): single jobs for pure wheels and noarch: python by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1577
+* fix(wheel): override wheel artifact name in input to publish job by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1580
+* feat: restrict pure package installation to linux only by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1581
+* Conda: Use `c_stdlib_version` to constrain `__glibc` by @jakirkham in https://github.com/rapidsai/dask-cuda/pull/1586
+
+## New Contributors
+* @rockhowse made their first contribution in https://github.com/rapidsai/dask-cuda/pull/1578
+
+**Full Changelog**: https://github.com/rapidsai/dask-cuda/compare/v25.12.00a...release/25.12
+
 # dask-cuda 25.10.00 (8 Oct 2025)
 
 ## 🚨 Breaking Changes
