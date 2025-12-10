@@ -168,7 +168,7 @@ dependencies:
           # 'nvidia-ml-py' provides the 'pynvml' module
           - nvidia-ml-py>=12
           - pandas>=1.3
-          - rapids-dask-dependency==25.12.*,>=0.0.0a0
+          - rapids-dask-dependency==25.12.*
           - zict>=2.0.0
   extra_cu12:
     common:
@@ -191,10 +191,10 @@ dependencies:
           - pytest-timeout
       - output_types: [conda]
         packages:
-          - &cudf_unsuffixed cudf==25.12.*,>=0.0.0a0
-          - &dask_cudf_unsuffixed dask-cudf==25.12.*,>=0.0.0a0
-          - &distributed_ucxx_unsuffixed distributed-ucxx==0.47.*,>=0.0.0a0
-          - &kvikio_unsuffixed kvikio==25.12.*,>=0.0.0a0
+          - &cudf_unsuffixed cudf==25.12.*
+          - &dask_cudf_unsuffixed dask-cudf==25.12.*
+          - &distributed_ucxx_unsuffixed distributed-ucxx==0.47.*
+          - &kvikio_unsuffixed kvikio==25.12.*
     specific:
       - output_types: [requirements, pyproject]
         matrices:
@@ -202,18 +202,18 @@ dependencies:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu12==25.12.*,>=0.0.0a0
-              - dask-cudf-cu12==25.12.*,>=0.0.0a0
-              - distributed-ucxx-cu12==0.47.*,>=0.0.0a0
-              - kvikio-cu12==25.12.*,>=0.0.0a0
+              - cudf-cu12==25.12.*
+              - dask-cudf-cu12==25.12.*
+              - distributed-ucxx-cu12==0.47.*
+              - kvikio-cu12==25.12.*
           - matrix:
               cuda: "13.*"
               cuda_suffixed: "true"
             packages:
-              - cudf-cu13==25.12.*,>=0.0.0a0
-              - dask-cudf-cu13==25.12.*,>=0.0.0a0
-              - distributed-ucxx-cu13==0.47.*,>=0.0.0a0
-              - kvikio-cu13==25.12.*,>=0.0.0a0
+              - cudf-cu13==25.12.*
+              - dask-cudf-cu13==25.12.*
+              - distributed-ucxx-cu13==0.47.*
+              - kvikio-cu13==25.12.*
           - matrix:
             packages:
               - *cudf_unsuffixed
@@ -224,4 +224,4 @@ dependencies:
     common:
       - output_types: conda
         packages:
-          - dask-cuda==25.12.*,>=0.0.0a0
+          - dask-cuda==25.12.*
