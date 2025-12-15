@@ -131,6 +131,8 @@ def run(client: Client, args: Namespace, config: Config):
     setup_memory_pools(
         client=client,
         is_gpu=args.type == "gpu",
+        is_external_cluster=args.scheduler_file is not None
+        or args.scheduler_address is not None,
         disable_rmm=args.disable_rmm,
         disable_rmm_pool=args.disable_rmm_pool,
         pool_size=args.rmm_pool_size,
