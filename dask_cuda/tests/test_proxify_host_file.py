@@ -280,6 +280,10 @@ async def test_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
+# Upstream changes in cudf have broken this test
+# More changes are anticipated, so we'll xfail this test
+# for now. Follow https://github.com/rapidsai/cudf/issues/20871 for more.
+@pytest.mark.xfail(reason="https://github.com/rapidsai/cudf/pull/20869")
 def test_dataframes_share_dev_mem(root_dir):
     cudf = pytest.importorskip("cudf")
 
