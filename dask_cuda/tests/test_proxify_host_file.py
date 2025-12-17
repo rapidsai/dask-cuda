@@ -288,9 +288,11 @@ def test_dataframes_share_dev_mem(root_dir):
     view1 = grouped[0]
     view2 = grouped[1]
     # Even though the two dataframe doesn't point to the same cudf.Buffer object
-    assert view1["a"].data is not view2["a"].data
+    assert (
+        view1["a"].to_pylibcudf()[0].data() is not view2["a"].to_pylibcudf()[0].data()
+    )
     # They still share the same underlying device memory
-    view1["a"].data.get_ptr(mode="read") == view2["a"].data.get_ptr(mode="read")
+    view1["a"].to_pylibcudf()[0].data().ptr == view2["a"].to_pylibcudf()[0].data().ptr
 
     dhf = ProxifyHostFile(
         worker_local_directory=root_dir, device_memory_limit=160, memory_limit=1000
