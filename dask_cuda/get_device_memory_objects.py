@@ -153,3 +153,7 @@ def register_pylibcudf():
         col = pylibcudf.column.Column.from_cuda_array_interface(x)
         # col.data() returns a gpumemoryview, which knows the size in bytes
         return col.data().nbytes
+
+    @sizeof.register(pylibcudf.gpumemoryview)
+    def sizeof_gpumemoryview(x):
+        return x.nbytes
