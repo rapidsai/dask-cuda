@@ -16,6 +16,7 @@ authors = [
     { name = "NVIDIA Corporation" },
 ]
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "click >=8.1",
@@ -158,9 +159,6 @@ build-backend = "setuptools.build_meta"
 dependencies-file = "dependencies.yaml"
 disable-cuda = true
 matrix-entry = "cuda_suffixed=true"
-
-[tool.setuptools]
-license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
 version = {file = "dask_cuda/VERSION"}
