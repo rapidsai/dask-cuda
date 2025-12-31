@@ -132,7 +132,7 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
             np.random.seed(42)
             df = pd.DataFrame({"key": np.random.randint(0, high=100, size=100)})
             if backend == "cudf":
-                df = cudf.DataFrame.from_pandas(df)
+                df = cudf.DataFrame(df)
 
             if _partitions:
                 df["_partitions"] = 0
@@ -311,8 +311,8 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
             expected = df1.merge(df2, on="key").set_index("key")
 
             if backend == "cudf":
-                df1 = cudf.DataFrame.from_pandas(df1)
-                df2 = cudf.DataFrame.from_pandas(df2)
+                df1 = cudf.DataFrame(df1)
+                df2 = cudf.DataFrame(df2)
 
             ddf1 = dd.from_pandas(df1, npartitions=n_workers + 1)
             ddf2 = dd.from_pandas(
@@ -353,9 +353,7 @@ def _test_jit_unspill(protocol):
     ) as cluster:
         with Client(cluster):
             np.random.seed(42)
-            df = cudf.DataFrame.from_pandas(
-                pd.DataFrame({"key": np.random.random(100)})
-            )
+            df = cudf.DataFrame(pd.DataFrame({"key": np.random.random(100)}))
             ddf = dd.from_pandas(df.copy(), npartitions=4)
             ddf = explicit_comms_shuffle(ddf, ["key"])
 
