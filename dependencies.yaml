@@ -111,7 +111,7 @@ dependencies:
       - output_types: [conda, requirements, pyproject]
         packages:
           - rapids-build-backend>=0.4.0,<0.5.0
-          - setuptools>=64.0.0
+          - setuptools>=77.0.0
   cuda_version:
     specific:
       - output_types: conda
