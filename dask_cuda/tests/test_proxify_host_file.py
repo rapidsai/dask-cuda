@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Iterable
@@ -280,6 +280,7 @@ async def test_local_cuda_cluster(jit_unspill):
             assert_frame_equal(got.to_pandas(), df.to_pandas())
 
 
+@pytest.mark.xfail(strict=False, reason="cudf refactor in progress")
 def test_dataframes_share_dev_mem(root_dir):
     cudf = pytest.importorskip("cudf")
 

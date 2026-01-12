@@ -9,7 +9,7 @@ dependencies:
 - cuda-core==0.3.*
 - cuda-nvcc-impl
 - cuda-nvrtc
-- cuda-version=13.0
+- cuda-version=13.1
 - cudf==26.2.*,>=0.0.0a0
 - dask-cudf==26.2.*,>=0.0.0a0
 - distributed-ucxx==0.48.*,>=0.0.0a0
@@ -27,9 +27,9 @@ dependencies:
 - python>=3.10,<3.14
 - rapids-build-backend>=0.4.0,<0.5.0
 - rapids-dask-dependency==26.2.*,>=0.0.0a0
-- setuptools>=64.0.0
+- setuptools>=77.0.0
 - sphinx
 - sphinx-click>=2.7.1
 - sphinx-rtd-theme>=0.5.1
 - zict>=2.0.0
-name: all_cuda-130_arch-x86_64
+name: all_cuda-131_arch-aarch64

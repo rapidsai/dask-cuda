@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import operator
@@ -644,6 +644,7 @@ def test_sizeof_cupy():
     assert pxy._pxy_get().is_serialized()
 
 
+@pytest.mark.xfail(strict=False, reason="cudf refactor in progress")
 def test_sizeof_cudf():
     cudf = pytest.importorskip("cudf")
     a = cudf.datasets.timeseries().reset_index()
