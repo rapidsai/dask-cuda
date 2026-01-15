@@ -14,4 +14,4 @@ Usage
 In order to use explicit-comms in Dask/Distributed automatically, simply define the environment variable ``DASK_EXPLICIT_COMMS=True`` or setting the ``"explicit-comms"``
 key in the `Dask configuration <https://docs.dask.org/en/latest/configuration.html>`_.
 
-It is also possible to use explicit-comms in tasks manually, see the `API <../api/#explicit-comms>`_ and our `implementation of shuffle <https://github.com/rapidsai/dask-cuda/blob/release/26.02/dask_cuda/explicit_comms/dataframe/shuffle.py>`_ for guidance.
+It is also possible to use explicit-comms in tasks manually, see the `API <../api/#explicit-comms>`_ and our `implementation of shuffle <https://github.com/rapidsai/dask-cuda/blob/main/dask_cuda/explicit_comms/dataframe/shuffle.py>`_ for guidance.
