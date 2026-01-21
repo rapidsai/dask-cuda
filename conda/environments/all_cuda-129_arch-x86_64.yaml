@@ -14,7 +14,7 @@ dependencies:
 - dask-cudf==26.4.*,>=0.0.0a0
 - distributed-ucxx==0.49.*,>=0.0.0a0
 - kvikio==26.4.*,>=0.0.0a0
-- numba-cuda>=0.22.1,<0.23.0
+- numba-cuda>=0.22.2
 - numpy>=1.23,<3.0
 - numpydoc>=1.1.0
 - nvidia-ml-py>=12
