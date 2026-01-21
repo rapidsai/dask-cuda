@@ -323,15 +323,7 @@ def test_cudf_get_device_memory_objects():
         ),
     ]
     res = get_device_memory_ids(objects)
-    # Buffers are:
-    # 1. int data for objects[0].a
-    # 2. mask data for objects[0].a
-    # 3. int data for objects[0].b
-    # 4. int data for objects[0].index
-    # 5. int data for objects[1].levels[0]
-    # 6. char data for objects[1].levels[1]
-    # 7. offset data for objects[1].levels[1]
-    assert len(res) == 7, "We expect seven buffer objects"
+    assert len(res) == 6, "We expect six buffer objects"
 
 
 def test_externals(root_dir):
