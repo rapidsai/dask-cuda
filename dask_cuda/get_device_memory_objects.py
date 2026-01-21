@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Set
@@ -126,7 +126,11 @@ def get_device_memory_objects_register_cudf():
 
     @dispatch.register(cudf.core.column.ColumnBase)
     def get_device_memory_objects_cudf_column(obj):
-        return dispatch(obj.data) + dispatch(obj.children) + dispatch(obj.mask)
+        return (
+            dispatch(obj.data)
+            + dispatch(obj.plc_column.children())
+            + dispatch(obj.mask)
+        )
 
 
 @sizeof.register_lazy("cupy")
