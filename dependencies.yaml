@@ -204,7 +204,7 @@ dependencies:
       - output_types: [pyproject]
         packages:
           - cuda-core[cu12]==0.3.*
-          - numba-cuda>=0.24.0
+          - numba-cuda[cu12]>=0.24.0
   extra_cu13:
     common:
       - output_types: [pyproject]
