@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 repos:
@@ -30,7 +30,7 @@ repos:
                 args: ["--module=dask_cuda", "--ignore-missing-imports"]
                 pass_filenames: false
       - repo: https://github.com/rapidsai/pre-commit-hooks
-        rev: v1.2.1
+        rev: v1.3.3
         hooks:
             - id: verify-alpha-spec
             - id: verify-copyright
@@ -49,6 +49,7 @@ repos:
                   pytest[.]ini$|
                   Makefile$|
                   [.]flake8$
+            - id: verify-pyproject-license
       - repo: https://github.com/rapidsai/dependency-file-generator
         rev: v1.20.0
         hooks:
