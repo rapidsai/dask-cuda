@@ -1,11 +1,18 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
 import os
 
 import click
-import cuda.core.experimental
+
+try:
+    from cuda.core import Device
+except ImportError:
+    # Remove when cuda-core>=0.5
+    import cuda.core.experimental
+
+    Device = cuda.core.experimental.Device
 
 import dask
 from distributed.diagnostics.nvml import (
@@ -99,11 +106,11 @@ def _create_cuda_context_handler():
     """
     if _mock_test_device():
         try:
-            cuda.core.experimental.Device().set_current()
+            Device().set_current()
         except Exception:
             pass
     else:
-        cuda.core.experimental.Device().set_current()
+        Device().set_current()
 
 
 def _create_cuda_context_and_warn():
