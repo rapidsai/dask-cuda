@@ -146,6 +146,7 @@ section-order = [
 ]
 
 [tool.pytest.ini_options]
+addopts = "--tb=native"
 filterwarnings = [
     "error::DeprecationWarning",
     "error::FutureWarning",
