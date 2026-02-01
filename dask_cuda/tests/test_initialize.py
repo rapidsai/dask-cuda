@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import multiprocessing as mp
@@ -9,7 +9,7 @@ import sys
 import tempfile
 import textwrap
 
-import cuda.core.experimental
+from cuda.core import system
 import numpy
 import psutil
 import pytest
@@ -261,11 +261,11 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         # Problematic library that creates CUDA context at import time
         import os
 
-        import cuda.core.experimental
+        from cuda.core import Device
 
         try:
             # Create CUDA context at import time, this will be inherited by subprocesses
-            cuda.core.experimental.Device().set_current()
+            Device().set_current()
             print("Problematic library: Created CUDA context at import time")
             os.environ['SUBPROCESS_CUDA_CONTEXT_CREATED'] = '1'
         except Exception as e:
@@ -366,7 +366,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             ):
                 warnings_assigned_device_found.append(line)
 
-        num_devices = cuda.core.experimental.system.num_devices
+        num_devices = system.num_devices
 
         # Every worker raises the warning once. With protocol="ucx" the warning is
         # raised once more by the parent process.
