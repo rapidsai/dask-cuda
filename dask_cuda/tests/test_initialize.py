@@ -10,10 +10,9 @@ import tempfile
 import textwrap
 
 try:
-    # Remove when cuda-cora>=0.5
     from cuda.core import system
 except ImportError:
-    # cuda-core < 0.5
+    # Remove when cuda-core>=0.5
     import cuda.core.experimental
 
     system = cuda.core.experimental.system
