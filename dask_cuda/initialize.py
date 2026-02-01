@@ -5,7 +5,15 @@ import logging
 import os
 
 import click
-from cuda.core import Device
+
+try:
+    # Remove when cuda-cora>=0.5
+    from cuda.core import Device
+except ImportError:
+    # cuda-core < 0.5
+    import cuda.core.experimental
+
+    Device = cuda.core.experimental.Device
 
 import dask
 from distributed.diagnostics.nvml import (

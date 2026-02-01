@@ -9,7 +9,15 @@ import sys
 import tempfile
 import textwrap
 
-from cuda.core import system
+try:
+    # Remove when cuda-cora>=0.5
+    from cuda.core import system
+except ImportError:
+    # cuda-core < 0.5
+    import cuda.core.experimental
+
+    system = cuda.core.experimental.system
+
 import numpy
 import psutil
 import pytest
@@ -261,7 +269,12 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         # Problematic library that creates CUDA context at import time
         import os
 
-        from cuda.core import Device
+        try:
+            from cuda.core import Device
+        except ImportError:
+            # cuda-core < 0.5
+            import cuda.core.experimental
+            Device = cuda.core.experimental.Device
 
         try:
             # Create CUDA context at import time, this will be inherited by subprocesses
