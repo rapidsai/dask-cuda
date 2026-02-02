@@ -188,7 +188,7 @@ dependencies:
         packages:
           - click >=8.1
           - cuda-core>=0.3.2
-          - numba-cuda>=0.22.1
+          - numba-cuda>=0.22.2
           - numpy>=1.23,<3.0
           # 'nvidia-ml-py' provides the 'pynvml' module
           - nvidia-ml-py>=12
@@ -200,13 +200,13 @@ dependencies:
       - output_types: [pyproject]
         packages:
           - cuda-core[cu12]>=0.3.2
-          - numba-cuda[cu12]>=0.22.1
+          - numba-cuda[cu12]>=0.22.2
   extra_cu13:
     common:
       - output_types: [pyproject]
         packages:
           - cuda-core[cu13]>=0.3.2
-          - numba-cuda[cu13]>=0.22.1
+          - numba-cuda[cu13]>=0.22.2
   test_python:
     common:
       - output_types: [conda, requirements, pyproject]
@@ -228,7 +228,7 @@ dependencies:
           - matrix: {dependencies: "oldest"}
             packages:
               - cuda-core==0.3.2
-              - numba-cuda==0.22.1
+              - numba-cuda==0.22.2
           - matrix:
             packages:
   test_python_cuda:
