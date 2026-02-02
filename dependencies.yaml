@@ -228,6 +228,7 @@ dependencies:
           - matrix: {dependencies: "oldest"}
             packages:
               - cuda-core==0.3.2
+              - numba-cuda==0.22.1
           - matrix:
             packages:
   test_python_cuda:
