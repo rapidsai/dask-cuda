@@ -31,6 +31,8 @@ class CUDAWorker(Server):
         self,
         scheduler=None,
         host=None,
+        listen_address=None,
+        contact_address=None,
         nthreads=1,
         name=None,
         memory_limit="auto",
@@ -104,7 +106,7 @@ class CUDAWorker(Server):
             resources = None
 
         preload_argv = kwargs.pop("preload_argv", [])
-        kwargs = {"worker_port": None, "listen_address": None, **kwargs}
+        kwargs = {"worker_port": None, **kwargs}
 
         if (
             scheduler is None
@@ -124,6 +126,23 @@ class CUDAWorker(Server):
 
         if interface and host:
             raise ValueError("Can not specify both interface and host")
+
+        if (host or interface) and listen_address:
+            raise ValueError(
+                "Cannot specify listen_address when host or interface is given"
+            )
+            
+        if contact_address and not listen_address:
+            raise ValueError(
+                "Must specify listen_address when contact_address is provided"
+            )
+
+        if listen_address and nprocs > 1:
+            raise ValueError(
+                "Cannot specify listen_address when using multiple GPUs "
+                f"(nprocs={nprocs})."
+            )
+
 
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
@@ -189,6 +208,8 @@ class CUDAWorker(Server):
                 memory_limit=memory_limit,
                 interface=interface,
                 host=host,
+                listen_address=listen_address,
+                contact_address=contact_address,
                 preload=(list(preload) or []) + ["dask_cuda.initialize"],
                 preload_argv=(list(preload_argv) or []) + ["--create-cuda-context"],
                 security=security,

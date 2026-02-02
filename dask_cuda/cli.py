@@ -70,7 +70,22 @@ def cuda():
     default=None,
     help="""IP address of serving host; should be visible to the scheduler and other
     workers. Can be a string (like ``"127.0.0.1"``) or ``None`` to fall back on the
-    address of the interface specified by ``--interface`` or the default interface.""",
+    address of the interface specified by ``--interface`` or the default interface. 
+    See --listen-address and --contact-address if you need different listen and contact addresses.""",
+)
+@click.option(
+    "--listen-address",
+    type=str,
+    default=None,
+    help="The address to which the worker binds. Example: tcp://0.0.0.0:9000 or tcp://:9000 for IPv4+IPv6",
+)
+@click.option(
+    "--contact-address",
+    type=str,
+    default=None,
+    help="The address the worker advertises to the scheduler for "
+    "communication with it and other workers. "
+    "Example: tcp://127.0.0.1:9000",
 )
 @click.option(
     "--nthreads",
@@ -356,6 +371,8 @@ def cuda():
 def worker(
     scheduler,
     host,
+    listen_address,
+    contact_address,
     nthreads,
     name,
     memory_limit,
@@ -431,6 +448,8 @@ def worker(
         worker = CUDAWorker(
             scheduler,
             host,
+            listen_address,
+            contact_address,
             nthreads,
             name,
             memory_limit,
