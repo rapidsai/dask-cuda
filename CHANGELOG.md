@@ -1,3 +1,31 @@
+# dask-cuda 26.02.00 (4 Feb 2026)
+
+### 🐛 Bug Fixes
+* Mark `test_all_to_all` flaky and rerun by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1588
+* Register sizeof for `pylibcudf.gpumemoryview` by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1598
+* cudf.DataFrame.from_pandas compatibility by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1599
+* xfail `test_sizeof_cudf` by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1602
+* xfail test_dataframes_share_dev_mem by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1603
+* Fix RMM setup in benchmarks by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1597
+### 🛠️ Improvements
+* Give Python wheel its own `test-cu*` dependencies by @KyleFromNVIDIA in https://github.com/rapidsai/dask-cuda/pull/1589
+* Use strict priority in CI conda tests by @bdice in https://github.com/rapidsai/dask-cuda/pull/1590
+* Update pre-commit hooks by @bdice in https://github.com/rapidsai/dask-cuda/pull/1579
+* Use strict priority in CI conda tests by @bdice in https://github.com/rapidsai/dask-cuda/pull/1592
+* Remove alpha specs from non-RAPIDS dependencies by @bdice in https://github.com/rapidsai/dask-cuda/pull/1593
+* Enable merge barriers by @KyleFromNVIDIA in https://github.com/rapidsai/dask-cuda/pull/1594
+* Update to numba-cuda `>=0.22.1,<0.23.0` by @brandon-b-miller in https://github.com/rapidsai/dask-cuda/pull/1591
+* Restore tests from `numba-cuda` upgrade by @brandon-b-miller in https://github.com/rapidsai/dask-cuda/pull/1595
+* Use SPDX license identifiers in pyproject.toml, bump build dependency floors by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1600
+* build and test against CUDA 13.1.0 by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1601
+* Use main shared-workflows branch by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1604
+* wheel builds: react to changes in pip's handling of build constraints  by @mmccarty in https://github.com/rapidsai/dask-cuda/pull/1606
+
+## New Contributors
+* @mmccarty made their first contribution in https://github.com/rapidsai/dask-cuda/pull/1606
+
+**Full Changelog**: https://github.com/rapidsai/dask-cuda/compare/v26.02.00a...release/26.02
+
 # dask-cuda 25.12.00 (10 Dec 2025)
 
 ### 🐛 Bug Fixes
