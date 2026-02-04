@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 ################################################################################
 # dask-cuda version updater
@@ -88,6 +88,7 @@ function sed_runner() {
 
 # Centralized version file update
 echo "${NEXT_FULL_TAG}" | tr -d '"' > VERSION
+echo "${NEXT_UCXX_VERSION}.00" > UCXX_VERSION
 
 # Bump testing dependencies
 sed_runner "s/ucxx==.*/ucxx==${NEXT_UCXX_VERSION}.*,>=0.0.0a0/g" dependencies.yaml
