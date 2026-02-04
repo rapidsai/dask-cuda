@@ -197,7 +197,7 @@ dependencies:
           # 'nvidia-ml-py' provides the 'pynvml' module
           - nvidia-ml-py>=12
           - pandas>=1.3
-          - rapids-dask-dependency==26.2.*,>=0.0.0a0
+          - rapids-dask-dependency==26.2.*
           - zict>=2.0.0
   extra_cu12:
     common:
@@ -221,10 +221,10 @@ dependencies:
           - pytest-timeout
       - output_types: [conda]
         packages:
-          - &cudf_unsuffixed cudf==26.2.*,>=0.0.0a0
-          - &dask_cudf_unsuffixed dask-cudf==26.2.*,>=0.0.0a0
-          - &distributed_ucxx_unsuffixed distributed-ucxx==0.48.*,>=0.0.0a0
-          - &kvikio_unsuffixed kvikio==26.2.*,>=0.0.0a0
+          - &cudf_unsuffixed cudf==26.2.*
+          - &dask_cudf_unsuffixed dask-cudf==26.2.*
+          - &distributed_ucxx_unsuffixed distributed-ucxx==0.48.*
+          - &kvikio_unsuffixed kvikio==26.2.*
   test_python_cuda:
     specific:
       - output_types: [requirements, pyproject]
@@ -233,18 +233,18 @@ dependencies:
               cuda: "12.*"
               cuda_suffixed: "true"
             packages: &test_python_cu12
-              - cudf-cu12==26.2.*,>=0.0.0a0
-              - dask-cudf-cu12==26.2.*,>=0.0.0a0
-              - distributed-ucxx-cu12==0.48.*,>=0.0.0a0
-              - kvikio-cu12==26.2.*,>=0.0.0a0
+              - cudf-cu12==26.2.*
+              - dask-cudf-cu12==26.2.*
+              - distributed-ucxx-cu12==0.48.*
+              - kvikio-cu12==26.2.*
           - matrix:
               cuda: "13.*"
               cuda_suffixed: "true"
             packages: &test_python_cu13
-              - cudf-cu13==26.2.*,>=0.0.0a0
-              - dask-cudf-cu13==26.2.*,>=0.0.0a0
-              - distributed-ucxx-cu13==0.48.*,>=0.0.0a0
-              - kvikio-cu13==26.2.*,>=0.0.0a0
+              - cudf-cu13==26.2.*
+              - dask-cudf-cu13==26.2.*
+              - distributed-ucxx-cu13==0.48.*
+              - kvikio-cu13==26.2.*
           - matrix:
             packages:
               - *cudf_unsuffixed
@@ -263,4 +263,4 @@ dependencies:
     common:
       - output_types: conda
         packages:
-          - dask-cuda==26.2.*,>=0.0.0a0
+          - dask-cuda==26.2.*
