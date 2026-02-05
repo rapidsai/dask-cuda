@@ -30,7 +30,7 @@ repos:
                 args: ["--module=dask_cuda", "--ignore-missing-imports"]
                 pass_filenames: false
       - repo: https://github.com/rapidsai/pre-commit-hooks
-        rev: v1.3.3
+        rev: v1.4.3
         hooks:
             - id: verify-alpha-spec
             - id: verify-copyright
@@ -50,6 +50,10 @@ repos:
                   Makefile$|
                   [.]flake8$
             - id: verify-pyproject-license
+            - id: verify-hardcoded-version
+            - id: verify-hardcoded-version
+              name: verify-hardcoded-version-ucxx
+              args: [--fix, --version-file=UCXX_VERSION]
       - repo: https://github.com/rapidsai/dependency-file-generator
         rev: v1.20.0
         hooks:
