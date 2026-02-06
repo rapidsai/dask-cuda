@@ -20,7 +20,7 @@ if ProxifyHostFile._spill_to_disk is None:
     )
 
 
-@pytest.mark.parametrize("cuda_lib", ["cupy", "cudf", "numba.cuda"])
+@pytest.mark.parametrize("cuda_lib", ["cupy", "cudf"])
 @pytest.mark.parametrize("gds_enabled", [True, False])
 def test_gds(gds_enabled, cuda_lib):
     lib = pytest.importorskip(cuda_lib)
@@ -30,9 +30,6 @@ def test_gds(gds_enabled, cuda_lib):
     elif cuda_lib == "cudf":
         data_create = lambda: lib.Series(range(10))
         data_compare = lambda x, y: all((x == y).to_numpy())
-    elif cuda_lib == "numba.cuda":
-        data_create = lambda: lib.to_device(range(10))
-        data_compare = lambda x, y: all(x.copy_to_host() == y.copy_to_host())
 
     try:
         if gds_enabled and not ProxifyHostFile._spill_to_disk.gds_enabled:

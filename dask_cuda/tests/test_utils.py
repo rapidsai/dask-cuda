@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import os
@@ -6,7 +6,15 @@ from unittest.mock import patch
 
 import pynvml
 import pytest
-from numba import cuda
+
+try:
+    from cuda.core import Device
+except ImportError:
+    # Remove when cuda-core>=0.5
+    import cuda.core.experimental
+
+    Device = cuda.core.experimental.Device
+
 
 from dask.config import canonical_name
 
@@ -24,6 +32,27 @@ from dask_cuda.utils import (
     parse_device_memory_limit,
     unpack_bitmask,
 )
+
+
+class _DeviceContext:
+    """Context manager for temporarily switching CUDA device."""
+
+    def __init__(self, device_id):
+        self.device_id = device_id
+        self.previous_device = None
+
+    def __enter__(self):
+        # Get current device (Device() with no args returns current device)
+        self.previous_device = Device()
+        # Set the new device as current
+        Device(self.device_id).set_current()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Restore previous device
+        if self.previous_device is not None:
+            self.previous_device.set_current()
+        return False
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
@@ -78,7 +107,7 @@ def test_cpu_affinity_and_cuda_visible_devices():
 
 def test_get_device_total_memory():
     for i in range(get_n_gpus()):
-        with cuda.gpus[i]:
+        with _DeviceContext(i):
             total_mem = get_device_total_memory(i)
             if has_device_memory_resource():
                 assert type(total_mem) is int
