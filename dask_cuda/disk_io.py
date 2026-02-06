@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
@@ -7,7 +7,6 @@ import os.path
 import pathlib
 import tempfile
 import threading
-import weakref
 from typing import Callable, Iterable, Mapping, Optional, Union
 
 import numpy as np
@@ -39,20 +38,9 @@ def get_new_cuda_buffer() -> Callable[[int], object]:
     except ImportError:
         pass
 
-    try:
-        import numba.cuda
-
-        def numba_device_array(n):
-            a = numba.cuda.device_array((n,), dtype="u1")
-            weakref.finalize(a, numba.cuda.current_context)
-            return a
-
-        _new_cuda_buffer = numba_device_array
-        return _new_cuda_buffer
-    except ImportError:
-        pass
-
-    raise RuntimeError("GPUDirect Storage requires RMM, CuPy, or Numba")
+    raise RuntimeError(
+        "GPUDirect Storage requires RMM or CuPy for CUDA buffer allocation."
+    )
 
 
 class SpillToDiskFile:
