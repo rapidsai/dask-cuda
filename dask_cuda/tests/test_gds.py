@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import tempfile
@@ -20,7 +20,7 @@ if ProxifyHostFile._spill_to_disk is None:
     )
 
 
-@pytest.mark.parametrize("cuda_lib", ["cupy", "cudf", "numba.cuda"])
+@pytest.mark.parametrize("cuda_lib", ["cupy", "cudf"])
 @pytest.mark.parametrize("gds_enabled", [True, False])
 def test_gds(gds_enabled, cuda_lib):
     lib = pytest.importorskip(cuda_lib)
@@ -29,10 +29,7 @@ def test_gds(gds_enabled, cuda_lib):
         data_compare = lambda x, y: all(x == y)
     elif cuda_lib == "cudf":
         data_create = lambda: lib.Series(range(10))
-        data_compare = lambda x, y: all((x == y).values_host)
-    elif cuda_lib == "numba.cuda":
-        data_create = lambda: lib.to_device(range(10))
-        data_compare = lambda x, y: all(x.copy_to_host() == y.copy_to_host())
+        data_compare = lambda x, y: all((x == y).to_numpy())
 
     try:
         if gds_enabled and not ProxifyHostFile._spill_to_disk.gds_enabled:

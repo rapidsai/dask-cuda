@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
@@ -188,9 +188,9 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                                     ]
                                     if backend == "cudf":
                                         expected_partition = (
-                                            expected_partition.values_host
+                                            expected_partition.to_numpy()
                                         )
-                                        actual_partition = actual_partition.values_host
+                                        actual_partition = actual_partition.to_numpy()
                                     else:
                                         expected_partition = expected_partition.values
                                         actual_partition = actual_partition.values
