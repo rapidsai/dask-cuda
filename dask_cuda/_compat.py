@@ -26,4 +26,4 @@ def get_cuda_core_version() -> packaging.version.Version:
 
 @functools.lru_cache(maxsize=None)
 def CUDA_CORE_0_5_0():
-    return get_cuda_core_version() > packaging.version.parse("0.5.0")
+    return get_cuda_core_version() >= packaging.version.parse("0.5.0")
