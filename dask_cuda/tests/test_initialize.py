@@ -9,13 +9,7 @@ import sys
 import tempfile
 import textwrap
 
-try:
-    from cuda.core import system
-except ImportError:
-    # Remove when cuda-core>=0.5
-    import cuda.core.experimental
-
-    system = cuda.core.experimental.system
+from dask_cuda._compat import CUDA_CORE_0_5_0
 
 import numpy
 import psutil
@@ -28,6 +22,12 @@ from distributed.deploy.local import LocalCluster
 from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config, get_gpu_handle
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
+
+if CUDA_CORE_0_5_0():
+    from cuda.core import system
+else:
+    from cuda.core.experimental import system
+
 
 mp = mp.get_context("spawn")  # type: ignore
 
@@ -378,7 +378,10 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             ):
                 warnings_assigned_device_found.append(line)
 
-        num_devices = system.num_devices
+        if CUDA_CORE_0_5_0():
+            num_devices = system.get_num_devices()
+        else:
+            num_devices = system.num_devices
 
         # Every worker raises the warning once. With protocol="ucx" the warning is
         # raised once more by the parent process.
