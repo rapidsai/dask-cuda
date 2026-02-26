@@ -62,3 +62,4 @@ jobs:
       date: ${{ inputs.date }}
       script: ci/build_python.sh
       sha: ${{ inputs.sha }}
+      pure-conda: true
