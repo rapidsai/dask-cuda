@@ -150,9 +150,6 @@ filterwarnings = [
     "error::FutureWarning",
     # remove after https://github.com/rapidsai/dask-cuda/issues/1087 is closed
     "ignore:There is no current event loop:DeprecationWarning:tornado",
-    # asyncio.iscoroutinefunction() is deprecated since Python 3.14
-    # fix is upstream in rapidsai/ucxx#599 but testing here
-    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
 ]
 
 [tool.rapids-build-backend]
