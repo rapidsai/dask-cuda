@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
@@ -37,6 +37,7 @@ class LoggedNanny(Nanny):
 
 
 class LocalCUDACluster(LocalCluster):
+    # rapids-pre-commit-hooks: disable[verify-hardcoded-version]
     """A variant of ``dask.distributed.LocalCluster`` that uses one GPU per process.
 
     This assigns a different ``CUDA_VISIBLE_DEVICES`` environment variable to each Dask
@@ -182,6 +183,10 @@ class LocalCUDACluster(LocalCluster):
         the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
         unspilling if this is not set.
 
+        .. deprecated:: 26.4.0
+            JIT unspilling is deprecated and will be removed in a future version.
+            Prefer cuDF native spilling (``enable_cudf_spill``) where possible.
+
         .. note::
             This is experimental and doesn't support memory spilling to disk. See
             ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for
@@ -218,6 +223,7 @@ class LocalCUDACluster(LocalCluster):
     LocalCluster
     """
 
+    # rapids-pre-commit-hooks: enable[verify-hardcoded-version]
     def __init__(
         self,
         CUDA_VISIBLE_DEVICES=None,
@@ -346,7 +352,17 @@ class LocalCUDACluster(LocalCluster):
             shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
 
         if jit_unspill is None:
-            jit_unspill = dask.config.get("jit-unspill", default=False)
+            jit_unspill = dask.config.get("jit-unspill", default=None)
+        if jit_unspill is not None:
+            warnings.warn(
+                "The jit_unspill argument and JIT unspilling feature are deprecated "
+                "and will be removed in a future version. "
+                "Prefer cuDF native spilling (enable_cudf_spill) where possible.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        elif jit_unspill is None:
+            jit_unspill = False
         data = kwargs.pop("data", None)
         if data is None:
             self.data = worker_data_function(

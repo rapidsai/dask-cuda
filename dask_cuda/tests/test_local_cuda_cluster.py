@@ -658,3 +658,17 @@ def test_rmm_pool_size_warns():
             cluster = LocalCUDACluster(n_workers=1, rmm_pool_size="1GB", rmm_async=True)
         finally:
             cluster.close()
+
+
+def test_jit_unspill_deprecation_local_cuda_cluster():
+    with pytest.warns(FutureWarning, match="jit.unspill.*26\\.4\\.0"):
+        try:
+            cluster = LocalCUDACluster(n_workers=1, jit_unspill=True)
+        finally:
+            cluster.close()
+
+
+def test_jit_unspill_deprecation_false():
+    with pytest.warns(FutureWarning, match="jit.unspill"):
+        with LocalCUDACluster(n_workers=1, jit_unspill=False):
+            pass
