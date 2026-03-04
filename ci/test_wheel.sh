@@ -4,6 +4,13 @@
 
 set -eou pipefail
 
+# TODO(jameslamb): revert before merging
+git clone --branch generate-pip-constraints \
+    https://github.com/rapidsai/gha-tools.git \
+    /tmp/gha-tools
+
+export PATH="/tmp/gha-tools/tools:${PATH}"
+
 source rapids-init-pip
 
 RAPIDS_CUDA_MAJOR="${RAPIDS_CUDA_VERSION%%.*}"
