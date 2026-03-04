@@ -27,22 +27,6 @@ from .worker_common import worker_data_function, worker_plugins
 
 
 class CUDAWorker(Server):
-    # rapids-pre-commit-hooks: disable[verify-hardcoded-version]
-    """A GPU worker process that connects to an existing scheduler.
-
-    Parameters
-    ----------
-    jit_unspill : bool or None, optional
-        Enable just-in-time unspilling. ``None`` (default) falls back to
-        ``dask.jit-unspill`` config.
-
-        .. deprecated:: 26.4.0
-            JIT unspilling is deprecated and will be removed in a future version.
-            Prefer cuDF native spilling (``enable_cudf_spill``) where possible.
-    """
-
-    # rapids-pre-commit-hooks: enable[verify-hardcoded-version]
-
     def __init__(
         self,
         scheduler=None,
@@ -173,17 +157,6 @@ class CUDAWorker(Server):
             enable_nvlink=enable_nvlink,
             enable_rdmacm=enable_rdmacm,
         )
-
-        if jit_unspill is None:
-            jit_unspill = dask.config.get("jit-unspill", default=False)
-        if jit_unspill:
-            warnings.warn(
-                "The jit_unspill argument and JIT unspilling feature are deprecated "
-                "and will be removed in a future version. "
-                "Prefer cuDF native spilling (enable_cudf_spill) where possible.",
-                FutureWarning,
-                stacklevel=2,
-            )
 
         data = worker_data_function(
             device_memory_limit=device_memory_limit,

@@ -351,18 +351,6 @@ class LocalCUDACluster(LocalCluster):
             # Notice, we assume a shared filesystem
             shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
 
-        if jit_unspill is None:
-            jit_unspill = dask.config.get("jit-unspill", default=None)
-        if jit_unspill is not None:
-            warnings.warn(
-                "The jit_unspill argument and JIT unspilling feature are deprecated "
-                "and will be removed in a future version. "
-                "Prefer cuDF native spilling (enable_cudf_spill) where possible.",
-                FutureWarning,
-                stacklevel=2,
-            )
-        elif jit_unspill is None:
-            jit_unspill = False
         data = kwargs.pop("data", None)
         if data is None:
             self.data = worker_data_function(

@@ -660,15 +660,14 @@ def test_rmm_pool_size_warns():
             cluster.close()
 
 
-def test_jit_unspill_deprecation_local_cuda_cluster():
-    with pytest.warns(FutureWarning, match="jit.unspill.*26\\.4\\.0"):
-        try:
-            cluster = LocalCUDACluster(n_workers=1, jit_unspill=True)
-        finally:
-            cluster.close()
+@pytest.mark.parametrize("jit_unspill", [True, False, None])
+@pytest.mark.filterwarnings("error")
+def test_jit_unspill_deprecation_local_cuda_cluster(jit_unspill):
+    if jit_unspill is None:
+        ctx = contextlib.nullcontext()
+    else:
+        ctx = pytest.warns(FutureWarning, match="The jit_unspill argument")
 
-
-def test_jit_unspill_deprecation_false():
-    with pytest.warns(FutureWarning, match="jit.unspill"):
-        with LocalCUDACluster(n_workers=1, jit_unspill=False):
+    with ctx:
+        with LocalCUDACluster(n_workers=1, jit_unspill=jit_unspill):
             pass
