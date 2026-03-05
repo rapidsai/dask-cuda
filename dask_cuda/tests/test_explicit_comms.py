@@ -6,6 +6,7 @@ import multiprocessing as mp
 import os
 import signal
 import time
+import warnings
 from functools import partial
 from unittest.mock import patch
 
@@ -343,24 +344,30 @@ def test_dataframe_shuffle_merge(backend, protocol, nworkers):
 def _test_jit_unspill(protocol):
     import cudf
 
-    with dask_cuda.LocalCUDACluster(
-        protocol=protocol,
-        dashboard_address=None,
-        n_workers=1,
-        threads_per_worker=1,
-        jit_unspill=True,
-        device_memory_limit="1B",
-    ) as cluster:
-        with Client(cluster):
-            np.random.seed(42)
-            df = cudf.DataFrame(pd.DataFrame({"key": np.random.random(100)}))
-            ddf = dd.from_pandas(df.copy(), npartitions=4)
-            ddf = explicit_comms_shuffle(ddf, ["key"])
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="The jit_unspill argument and JIT unspilling",
+            category=FutureWarning,
+        )
+        with dask_cuda.LocalCUDACluster(
+            protocol=protocol,
+            dashboard_address=None,
+            n_workers=1,
+            threads_per_worker=1,
+            jit_unspill=True,
+            device_memory_limit="1B",
+        ) as cluster:
+            with Client(cluster):
+                np.random.seed(42)
+                df = cudf.DataFrame(pd.DataFrame({"key": np.random.random(100)}))
+                ddf = dd.from_pandas(df.copy(), npartitions=4)
+                ddf = explicit_comms_shuffle(ddf, ["key"])
 
-            # Check the values of `ddf` (ignoring the row order)
-            expected = df.sort_values("key")
-            got = ddf.compute().sort_values("key")
-            assert_eq(got, expected)
+                # Check the values of `ddf` (ignoring the row order)
+                expected = df.sort_values("key")
+                got = ddf.compute().sort_values("key")
+                assert_eq(got, expected)
 
 
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])

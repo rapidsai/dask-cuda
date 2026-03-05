@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -157,9 +157,6 @@ class CUDAWorker(Server):
             enable_nvlink=enable_nvlink,
             enable_rdmacm=enable_rdmacm,
         )
-
-        if jit_unspill is None:
-            jit_unspill = dask.config.get("jit-unspill", default=False)
 
         data = worker_data_function(
             device_memory_limit=device_memory_limit,

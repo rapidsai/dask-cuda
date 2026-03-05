@@ -36,6 +36,14 @@ The same applies for ``dask cuda worker``, and spilling can be controlled by set
 
 JIT-Unspill
 -----------
+
+.. warning::
+    **Deprecated in 26.4.0.** JIT-Unspilling is deprecated and will be removed in a
+    future version of dask-cuda. Prefer cuDF native spilling (see :ref:`cudf-spilling`)
+    where possible. The ``jit_unspill`` argument, ``--enable-jit-unspill`` CLI option,
+    and ``DASK_JIT_UNSPILL`` environment variable will continue to work but emit a
+    :exc:`FutureWarning` during the deprecation period.
+
 The regular spilling in Dask and Dask-CUDA has some significate issues. Instead of tracking individual objects, it tracks task outputs.
 This means that a task returning a collection of CUDA objects will either spill all of the CUDA objects or none of them.
 Other issues includes *object duplication*, *wrong spilling order*, and *non-tracking of sharing device buffers*
@@ -108,6 +116,8 @@ Thus, if encountering problems remember that it is always possible to use ``unpr
 to access the proxied object directly, or set ``DASK_JIT_UNSPILL_COMPATIBILITY_MODE=True``
 to enable compatibility mode, which automatically calls ``unproxy()`` on all function inputs.
 
+
+.. _cudf-spilling:
 
 cuDF Spilling
 -------------

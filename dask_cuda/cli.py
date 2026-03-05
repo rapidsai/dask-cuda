@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -323,16 +323,22 @@ def cuda():
     requires ``--enable-infiniband``.""",
 )
 @click.option(
+    # rapids-pre-commit-hooks: disable[verify-hardcoded-version]
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
     help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
     the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
     unspilling if this is not set.
 
+    .. deprecated:: 26.4.0
+        This option is deprecated and will be removed in a future version.
+        Prefer cuDF native spilling (--enable-cudf-spill) where possible.
+
     .. note::
         This is experimental and doesn't support memory spilling to disk. See
         ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for more
         info.""",
+    # rapids-pre-commit-hooks: enable[verify-hardcoded-version]
 )
 @click.option(
     "--worker-class",
