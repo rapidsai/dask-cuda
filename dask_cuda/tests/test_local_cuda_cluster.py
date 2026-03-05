@@ -658,7 +658,9 @@ def test_rmm_pool_size_warns():
         FutureWarning, match="'rmm_pool_size' is not needed when 'rmm_async' is enabled"
     ):
         try:
-            cluster = LocalCUDACluster(n_workers=1, rmm_pool_size="1GB", rmm_async=True)
+            cluster = LocalCUDACluster(
+                n_workers=1, rmm_pool_size="1GB", rmm_async=True, dashboard_address=":0"
+            )
         finally:
             cluster.close()
 
@@ -671,6 +673,10 @@ def test_jit_unspill_deprecation_local_cuda_cluster(jit_unspill):
     else:
         ctx = pytest.warns(FutureWarning, match="The jit_unspill argument")
 
-    with ctx:
-        with LocalCUDACluster(n_workers=1, jit_unspill=jit_unspill):
-            pass
+    try:
+        with ctx:
+            cluster = LocalCUDACluster(
+                n_workers=1, jit_unspill=jit_unspill, dashboard_address=":0"
+            )
+    finally:
+        cluster.close()
