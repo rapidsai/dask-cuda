@@ -248,6 +248,9 @@ def test_spill_on_demand(root_dir):
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources do not support spilling"
 )
+@pytest.mark.filterwarnings(
+    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
+)
 @gen_test(timeout=20)
 async def test_local_cuda_cluster(jit_unspill):
     """Testing spilling of a proxied cudf dataframe in a local cuda cluster"""
@@ -403,6 +406,9 @@ def test_incompatible_types(root_dir):
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources do not support JIT-Unspill"
 )
+@pytest.mark.filterwarnings(
+    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
+)
 @gen_test(timeout=30)
 async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartitions):
     cudf = pytest.importorskip("cudf")
@@ -437,6 +443,9 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
 
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources do not support JIT-Unspill"
+)
+@pytest.mark.filterwarnings(
+    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
 )
 @gen_test(timeout=60)
 async def test_worker_force_spill_to_disk():
@@ -480,6 +489,9 @@ async def test_worker_force_spill_to_disk():
 
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources do not support JIT-Unspill"
+)
+@pytest.mark.filterwarnings(
+    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
 )
 def test_on_demand_debug_info():
     """Test worker logging when on-demand-spilling fails"""

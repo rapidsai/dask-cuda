@@ -600,6 +600,9 @@ async def test_cudf_spill_no_dedicated_memory():
     "device_memory_limit",
     [None, "1B"],
 )
+@pytest.mark.filterwarnings(
+    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
+)
 def test_print_cluster_config(capsys, jit_unspill, device_memory_limit):
     pytest.importorskip("distributed_ucxx")
 
