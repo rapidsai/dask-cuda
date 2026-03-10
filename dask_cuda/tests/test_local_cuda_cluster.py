@@ -686,3 +686,48 @@ def test_jit_unspill_deprecation_local_cuda_cluster(jit_unspill):
         LocalCUDACluster(n_workers=1, jit_unspill=jit_unspill, dashboard_address=":0"),
     ):
         pass
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        (
+            {"host": "127.0.0.1", "listen_address": "tcp://0.0.0.0:9000"},
+            "Cannot specify listen_address when host or interface is given",
+        ),
+        (
+            {"interface": "lo", "listen_address": "tcp://0.0.0.0:9000"},
+            "Cannot specify listen_address when host or interface is given",
+        ),
+        (
+            {"contact_address": "tcp://127.0.0.1:9000"},
+            "Must specify listen_address when contact_address is provided",
+        ),
+    ],
+)
+def test_cuda_worker_address_validation(kwargs, match):
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"}):
+        with pytest.raises(ValueError, match=match):
+            CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        (
+            {"listen_address": "tcp://0.0.0.0:9000"},
+            "Cannot specify listen_address or contact_address when using multiple GPUs",
+        ),
+        (
+            {
+                "listen_address": "tcp://0.0.0.0:9000",
+                "contact_address": "tcp://127.0.0.1:9000",
+            },
+            "Cannot specify listen_address or contact_address when using multiple GPUs",
+        ),
+    ],
+)
+def test_cuda_worker_address_nprocs_validation(kwargs, match):
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1"}):
+        with pytest.raises(ValueError, match=match):
+            CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)

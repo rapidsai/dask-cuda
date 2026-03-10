@@ -137,12 +137,14 @@ class CUDAWorker(Server):
                 "Must specify listen_address when contact_address is provided"
             )
 
-        if listen_address and nprocs > 1:
+        if (listen_address or contact_address) and nprocs > 1:
             raise ValueError(
-                "Cannot specify listen_address when using multiple GPUs "
+                "Cannot specify listen_address or contact_address when using multiple GPUs "
                 f"(nprocs={nprocs})."
             )
 
+        if listen_address and not contact_address:
+            contact_address = listen_address
 
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
