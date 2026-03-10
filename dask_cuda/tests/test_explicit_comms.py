@@ -230,7 +230,6 @@ def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
 
 @pytest.mark.parametrize("in_cluster", [True, False])
 def _test_dask_use_explicit_comms(in_cluster):
-    # Warning is emitted in worker/client depending on path; filter so subprocess does not crash.
     def check_shuffle():
         """Check if shuffle use explicit-comms by search for keys named
         'explicit-comms-shuffle'
