@@ -481,13 +481,6 @@ def shuffle(
       (c) Submit a dask graph that extract (using ``getitem()``) individual
           dataframe-partitions from (b).
     """
-    # warnings.warn(
-    #     "The explicit comms feature is deprecated and will be removed in a "
-    #     "future version.",
-    #     FutureWarning,
-    #     stacklevel=2,
-    # )
-
     c = comms.default_comms()
 
     # The ranks of the output workers
