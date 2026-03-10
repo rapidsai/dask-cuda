@@ -1,7 +1,5 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
-
-import os
 
 import pytest
 
@@ -10,12 +8,6 @@ from dask_cuda.utils import has_device_memory_resource
 
 def pytest_configure(config):
     """Register custom markers."""
-    # Propagate pytest's filterwarnings to subprocesses (e.g. mp.Process in
-    # test_explicit_comms) so they treat warnings consistently with the main process.
-    inifilters = config.getini("filterwarnings")
-    if inifilters:
-        # PYTHONWARNINGS uses the same action:message:category:module:lineno format
-        os.environ.setdefault("PYTHONWARNINGS", ",".join(inifilters))
     config.addinivalue_line(
         "markers",
         "skip_if_no_device_memory: mark test to skip if device has no dedicated memory "
