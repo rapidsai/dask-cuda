@@ -50,7 +50,10 @@ def _test_local_cluster(protocol):
         processes=True,
     ) as cluster:
         with Client(cluster) as client:
-            c = comms.CommsContext(client)
+            with pytest.warns(
+                FutureWarning, match="The explicit comms feature is deprecated"
+            ):
+                c = comms.CommsContext(client)
             assert sum(c.run(my_rank, 0)) == sum(range(4))
 
 
@@ -84,12 +87,16 @@ def _test_dataframe_merge_empty_partitions(nrows, npartitions):
             ddf2 = dd.from_pandas(df2, npartitions=npartitions)
 
             for batchsize in (-1, 1, 2):
-                with dask.config.set(
-                    explicit_comms=True, explicit_comms_batchsize=batchsize
+                with pytest.warns(
+                    FutureWarning,
+                    match="explicit.comms.*deprecated|deprecated.*explicit.comms",
                 ):
-                    ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
-                    got = ddf3.compute()
-                    pd.testing.assert_frame_equal(got, expected)
+                    with dask.config.set(
+                        explicit_comms=True, explicit_comms_batchsize=batchsize
+                    ):
+                        ddf3 = ddf1.merge(ddf2, on=["key"]).set_index("key")
+                        got = ddf3.compute()
+                        pd.testing.assert_frame_equal(got, expected)
 
 
 def test_dataframe_merge_empty_partitions():
@@ -129,7 +136,8 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
         processes=True,
     ) as cluster:
         with Client(cluster):
-            comms.default_comms()
+            with pytest.warns(FutureWarning, match="The explicit comms"):
+                comms.default_comms()
             np.random.seed(42)
             df = pd.DataFrame({"key": np.random.randint(0, high=100, size=100)})
             if backend == "cudf":
@@ -144,13 +152,14 @@ def _test_dataframe_shuffle(backend, protocol, n_workers, _partitions):
                     # To reduce test runtime, we change the batchsizes here instead
                     # of using a test parameter.
                     for batchsize in (-1, 1, 2):
-                        with dask.config.set(explicit_comms_batchsize=batchsize):
-                            ddf = explicit_comms_shuffle(
-                                ddf1,
-                                ["_partitions"] if _partitions else ["key"],
-                                npartitions=output_nparts,
-                                batchsize=batchsize,
-                            ).persist()
+                        with pytest.warns(FutureWarning, match="The explicit comms"):
+                            with dask.config.set(explicit_comms_batchsize=batchsize):
+                                ddf = explicit_comms_shuffle(
+                                    ddf1,
+                                    ["_partitions"] if _partitions else ["key"],
+                                    npartitions=output_nparts,
+                                    batchsize=batchsize,
+                                ).persist()
 
                             assert ddf.npartitions == output_nparts
 
@@ -221,6 +230,7 @@ def test_dataframe_shuffle(backend, protocol, nworkers, _partitions):
 
 @pytest.mark.parametrize("in_cluster", [True, False])
 def _test_dask_use_explicit_comms(in_cluster):
+    # Warning is emitted in worker/client depending on path; filter so subprocess does not crash.
     def check_shuffle():
         """Check if shuffle use explicit-comms by search for keys named
         'explicit-comms-shuffle'
@@ -230,7 +240,10 @@ def _test_dask_use_explicit_comms(in_cluster):
         with dask.config.set(explicit_comms=False):
             res = ddf.shuffle(on="key", npartitions=4)
             assert all(name not in str(key) for key in res.dask)
-        with dask.config.set(explicit_comms=True):
+        with (
+            dask.config.set(explicit_comms=True),
+            pytest.warns(FutureWarning, match="The explicit comms"),
+        ):
             res = ddf.shuffle(on="key", npartitions=4)
             if in_cluster:
                 assert any(name in str(key) for key in res.dask)
@@ -244,8 +257,9 @@ def _test_dask_use_explicit_comms(in_cluster):
                 {"DASK_EXPLICIT_COMMS": "1", "DASK_EXPLICIT_COMMS_BATCHSIZE": "-2"},
             ):
                 dask.config.refresh()  # Trigger re-read of the environment variables
-                with pytest.raises(ValueError, match="explicit-comms-batchsize"):
-                    ddf.shuffle(on="key", npartitions=4).dask
+                with pytest.warns(FutureWarning, match="The explicit comms"):
+                    with pytest.raises(ValueError, match="explicit-comms-batchsize"):
+                        ddf.shuffle(on="key", npartitions=4).dask
 
     if in_cluster:
         with LocalCluster(
@@ -319,7 +333,10 @@ def _test_dataframe_shuffle_merge(backend, protocol, n_workers):
             ddf2 = dd.from_pandas(
                 df2, npartitions=n_workers - 1 if n_workers > 1 else 1
             )
-            with dask.config.set(explicit_comms=True):
+            with (
+                dask.config.set(explicit_comms=True),
+                pytest.warns(FutureWarning, match="The explicit comms"),
+            ):
                 got = ddf1.merge(ddf2, on="key").set_index("key").compute()
             assert_eq(got, expected)
 
@@ -362,7 +379,8 @@ def _test_jit_unspill(protocol):
                 np.random.seed(42)
                 df = cudf.DataFrame(pd.DataFrame({"key": np.random.random(100)}))
                 ddf = dd.from_pandas(df.copy(), npartitions=4)
-                ddf = explicit_comms_shuffle(ddf, ["key"])
+                with pytest.warns(FutureWarning, match="The explicit comms"):
+                    ddf = explicit_comms_shuffle(ddf, ["key"])
 
                 # Check the values of `ddf` (ignoring the row order)
                 expected = df.sort_values("key")
@@ -396,7 +414,8 @@ def _test_lock_workers(scheduler_address, ranks):
         worker.running = False
 
     with Client(scheduler_address) as client:
-        c = comms.CommsContext(client)
+        with pytest.warns(FutureWarning, match="The explicit comms"):
+            c = comms.CommsContext(client)
         c.run(f, workers=[c.worker_addresses[r] for r in ranks], lock_workers=True)
 
 
@@ -440,7 +459,8 @@ def test_create_destroy_create():
     assert len(comms._comms_cache) == 0
     with LocalCluster(n_workers=1) as cluster:
         with Client(cluster) as client:
-            context = comms.default_comms()
+            with pytest.warns(FutureWarning, match="The explicit comms"):
+                context = comms.default_comms()
             scheduler_addresses_old = list(
                 client.scheduler_info(n_workers=-1)["workers"].keys()
             )
@@ -451,7 +471,8 @@ def test_create_destroy_create():
             # Add a worker, which should have a new comms object
             cluster.scale(2)
             client.wait_for_workers(2, timeout=5)
-            context2 = comms.default_comms()
+            with pytest.warns(FutureWarning, match="The explicit comms"):
+                context2 = comms.default_comms()
             assert context is not context2
             assert len(comms._comms_cache) == 2
 
@@ -467,7 +488,8 @@ def test_create_destroy_create():
             scheduler_addresses_new = list(
                 client.scheduler_info(n_workers=-1)["workers"].keys()
             )
-            comms_addresses_new = list(comms.default_comms().worker_addresses)
+            with pytest.warns(FutureWarning, match="The explicit comms"):
+                comms_addresses_new = list(comms.default_comms().worker_addresses)
 
     assert scheduler_addresses_new == comms_addresses_new
 
@@ -483,7 +505,10 @@ def test_scaled_cluster_gets_new_comms_context():
 
     with LocalCluster(n_workers=2) as cluster:
         with Client(cluster) as client:
-            context_1 = comms.default_comms()
+            with pytest.warns(
+                FutureWarning, match="The explicit comms feature is deprecated"
+            ):
+                context_1 = comms.default_comms()
 
             def check(dask_worker, session_id: int):
                 has_state = hasattr(dask_worker, "_explicit_comm_state")
@@ -514,9 +539,13 @@ def test_scaled_cluster_gets_new_comms_context():
 
             # Run a shuffle with the initial setup as a sanity test
             with dask.config.set(explicit_comms=True):
-                shuffled = ddf.shuffle(on="key", npartitions=4)
-                assert any(name in str(key) for key in shuffled.dask)
-                result = shuffled.compute()
+                with pytest.warns(
+                    FutureWarning,
+                    match="explicit.comms.*deprecated|deprecated.*explicit.comms",
+                ):
+                    shuffled = ddf.shuffle(on="key", npartitions=4)
+                    assert any(name in str(key) for key in shuffled.dask)
+                    result = shuffled.compute()
 
             with dask.config.set(explicit_comms=False):
                 shuffled = ddf.shuffle(on="key", npartitions=4)
@@ -528,7 +557,10 @@ def test_scaled_cluster_gets_new_comms_context():
             cluster.scale(3)
             client.wait_for_workers(3, timeout=5)
 
-            context_2 = comms.default_comms()
+            with pytest.warns(
+                FutureWarning, match="The explicit comms feature is deprecated"
+            ):
+                context_2 = comms.default_comms()
             result_2 = client.run(check, session_id=context_2.sessionId)
             expected_values = {
                 "has_state": True,
@@ -543,9 +575,13 @@ def test_scaled_cluster_gets_new_comms_context():
 
             # Run a shuffle with the new setup
             with dask.config.set(explicit_comms=True):
-                shuffled = ddf.shuffle(on="key", npartitions=4)
-                assert any(name in str(key) for key in shuffled.dask)
-                result = shuffled.compute()
+                with pytest.warns(
+                    FutureWarning,
+                    match="The explicit comms feature is deprecated",
+                ):
+                    shuffled = ddf.shuffle(on="key", npartitions=4)
+                    assert any(name in str(key) for key in shuffled.dask)
+                    result = shuffled.compute()
 
             with dask.config.set(explicit_comms=False):
                 shuffled = ddf.shuffle(on="key", npartitions=4)
@@ -564,8 +600,12 @@ def test_contains_shuffle_expr():
         assert _contains_shuffle_expr(shuffled)
         assert not _contains_shuffle_expr(df)
 
-        # this requires an active client.
+        # this requires an active client; explicit_comms_shuffle triggers the deprecation
         with LocalCluster(n_workers=1) as cluster:
             with Client(cluster):
-                explict_shuffled = explicit_comms_shuffle(df, ["key"])
+                with pytest.warns(
+                    FutureWarning,
+                    match="explicit.comms.*deprecated|deprecated.*explicit.comms",
+                ):
+                    explict_shuffled = explicit_comms_shuffle(df, ["key"])
                 assert not _contains_shuffle_expr(explict_shuffled)
