@@ -70,7 +70,7 @@ def cuda():
     default=None,
     help="""IP address of serving host; should be visible to the scheduler and other
     workers. Can be a string (like ``"127.0.0.1"``) or ``None`` to fall back on the
-    address of the interface specified by ``--interface`` or the default interface. 
+    address of the interface specified by ``--interface`` or the default interface.
     See ``--listen-address`` and ``--contact-address`` if you need different listen and contact addresses.""",
 )
 @click.option(

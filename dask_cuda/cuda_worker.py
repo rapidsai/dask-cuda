@@ -131,7 +131,7 @@ class CUDAWorker(Server):
             raise ValueError(
                 "Cannot specify listen_address when host or interface is given"
             )
-            
+
         if contact_address and not listen_address:
             raise ValueError(
                 "Must specify listen_address when contact_address is provided"
