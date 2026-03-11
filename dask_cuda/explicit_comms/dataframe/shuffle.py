@@ -1,10 +1,11 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025 NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 import asyncio
 import functools
+import warnings
 from collections import defaultdict
 from math import ceil
 from operator import getitem
@@ -583,6 +584,12 @@ def _use_explicit_comms() -> bool:
         except (ImportError, ValueError):
             pass
         else:
+            warnings.warn(
+                "The explicit comms feature is deprecated and will be removed in a "
+                "future version.",
+                FutureWarning,
+                stacklevel=2,
+            )
             return True
     return False
 
@@ -696,17 +703,24 @@ class ECShuffle(dask_expr._shuffle.TaskShuffle):
 
 
 def _patched_lower(self):
-    if self.method in (None, "tasks") and _use_explicit_comms():
-        return ECShuffle(
-            self.frame,
-            self.partitioning_index,
-            self.npartitions_out,
-            self.ignore_index,
-            self.options,
-            self.original_partitioning_index,
-        )
-    else:
-        return _base_lower(self)
+    if self.method in (None, "tasks"):
+        if dask.config.get("explicit-comms", False):
+            warnings.warn(
+                "The explicit comms feature is deprecated and will be removed in a "
+                "future version.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        if _use_explicit_comms():
+            return ECShuffle(
+                self.frame,
+                self.partitioning_index,
+                self.npartitions_out,
+                self.ignore_index,
+                self.options,
+                self.original_partitioning_index,
+            )
+    return _base_lower(self)
 
 
 def patch_shuffle_expression() -> None:

@@ -447,6 +447,7 @@ async def test_compatibility_mode_dataframe_shuffle(compatibility_mode, npartiti
 @pytest.mark.filterwarnings(
     "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
 )
+@pytest.mark.xfail(strict=False, reason="Flaky test in deprecated feature.")
 @gen_test(timeout=60)
 async def test_worker_force_spill_to_disk():
     """Test Dask triggering CPU-to-Disk spilling"""

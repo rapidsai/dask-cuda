@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025 NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
 import concurrent.futures
@@ -6,6 +6,7 @@ import contextlib
 import time
 import uuid
 import weakref
+import warnings
 from typing import Any, Dict, Hashable, Iterable, List, Optional
 
 import distributed.comm
@@ -205,6 +206,13 @@ class CommsContext:
     worker_addresses: List[str]
 
     def __init__(self, client: Optional[Client] = None):
+        warnings.warn(
+            "The explicit comms feature is deprecated and will be removed in a "
+            "future version.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         self.client = client if client is not None else default_client()
         self.sessionId = uuid.uuid4().int
 
