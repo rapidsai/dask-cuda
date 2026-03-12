@@ -74,6 +74,15 @@ def cuda():
     See ``--listen-address`` and ``--contact-address`` if you need different listen and contact addresses.""",
 )
 @click.option(
+    "--worker-port",
+    type=str,
+    default=None,
+    help="Serving computation port, defaults to random. "
+    "When using multiple GPUs, a sequential range of ports may be specified "
+    "like ``<first-port>:<last-port>``. For example, ``--worker-port=9000:9003`` "
+    "will use ports 9000, 9001, 9002, 9003 across 4 GPUs.",
+)
+@click.option(
     "--listen-address",
     type=str,
     default=None,
@@ -377,6 +386,7 @@ def cuda():
 def worker(
     scheduler,
     host,
+    worker_port,
     listen_address,
     contact_address,
     nthreads,
@@ -454,6 +464,7 @@ def worker(
         worker = CUDAWorker(
             scheduler,
             host,
+            worker_port,
             listen_address,
             contact_address,
             nthreads,

@@ -19,6 +19,7 @@ from distributed.proctitle import (
     enable_proctitle_on_children,
     enable_proctitle_on_current,
 )
+from distributed.utils import parse_ports
 from distributed.worker_memory import parse_memory_limit
 
 from .initialize import initialize
@@ -31,6 +32,7 @@ class CUDAWorker(Server):
         self,
         scheduler=None,
         host=None,
+        worker_port=None,
         listen_address=None,
         contact_address=None,
         nthreads=1,
@@ -106,7 +108,6 @@ class CUDAWorker(Server):
             resources = None
 
         preload_argv = kwargs.pop("preload_argv", [])
-        kwargs = {"worker_port": None, **kwargs}
 
         if (
             scheduler is None
@@ -145,6 +146,19 @@ class CUDAWorker(Server):
 
         if listen_address and not contact_address:
             contact_address = listen_address
+
+        if worker_port and listen_address:
+            raise ValueError("Cannot specify worker_port when listen_address is given")
+
+        if worker_port:
+            ports = parse_ports(worker_port)
+            if len(ports) < nprocs:
+                raise ValueError(
+                    f"Not enough ports in --worker-port range for {nprocs} GPUs. "
+                    f"Provide a range like {ports[0]}:{ports[0] + nprocs - 1}."
+                )
+        else:
+            ports = [None] * nprocs
 
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
@@ -207,6 +221,7 @@ class CUDAWorker(Server):
                 memory_limit=memory_limit,
                 interface=interface,
                 host=host,
+                worker_port=ports[i],
                 listen_address=listen_address,
                 contact_address=contact_address,
                 preload=(list(preload) or []) + ["dask_cuda.initialize"],
