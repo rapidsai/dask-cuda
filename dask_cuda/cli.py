@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -70,7 +70,22 @@ def cuda():
     default=None,
     help="""IP address of serving host; should be visible to the scheduler and other
     workers. Can be a string (like ``"127.0.0.1"``) or ``None`` to fall back on the
-    address of the interface specified by ``--interface`` or the default interface.""",
+    address of the interface specified by ``--interface`` or the default interface.
+    See ``--listen-address`` and ``--contact-address`` if you need different listen and contact addresses.""",
+)
+@click.option(
+    "--listen-address",
+    type=str,
+    default=None,
+    help="The address to which the worker binds. Example: tcp://0.0.0.0:9000 or tcp://:9000 for IPv4+IPv6",
+)
+@click.option(
+    "--contact-address",
+    type=str,
+    default=None,
+    help="The address the worker advertises to the scheduler for "
+    "communication with it and other workers. "
+    "Example: tcp://127.0.0.1:9000",
 )
 @click.option(
     "--nthreads",
@@ -323,16 +338,22 @@ def cuda():
     requires ``--enable-infiniband``.""",
 )
 @click.option(
+    # rapids-pre-commit-hooks: disable[verify-hardcoded-version]
     "--enable-jit-unspill/--disable-jit-unspill",
     default=None,
     help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
     the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
     unspilling if this is not set.
 
+    .. deprecated:: 26.4.0
+        This option is deprecated and will be removed in a future version.
+        Prefer cuDF native spilling (--enable-cudf-spill) where possible.
+
     .. note::
         This is experimental and doesn't support memory spilling to disk. See
         ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for more
         info.""",
+    # rapids-pre-commit-hooks: enable[verify-hardcoded-version]
 )
 @click.option(
     "--worker-class",
@@ -356,6 +377,8 @@ def cuda():
 def worker(
     scheduler,
     host,
+    listen_address,
+    contact_address,
     nthreads,
     name,
     memory_limit,
@@ -431,6 +454,8 @@ def worker(
         worker = CUDAWorker(
             scheduler,
             host,
+            listen_address,
+            contact_address,
             nthreads,
             name,
             memory_limit,

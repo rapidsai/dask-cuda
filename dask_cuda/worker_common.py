@@ -1,8 +1,10 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import os
 import warnings
+
+import dask.config
 
 from .device_host_file import DeviceHostFile
 from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
@@ -48,6 +50,18 @@ def worker_data_function(
         data configuration based on the availability of an dedicated device memory
         resource and arguments passed to the worker.
     """
+    if jit_unspill is None:
+        jit_unspill = dask.config.get("jit-unspill", default=None)
+    if jit_unspill is not None:
+        warnings.warn(
+            "The jit_unspill argument and JIT unspilling feature are deprecated "
+            "and will be removed in a future version. "
+            "Prefer cuDF native spilling (enable_cudf_spill) where possible.",
+            FutureWarning,
+            stacklevel=2,
+        )
+    elif jit_unspill is None:
+        jit_unspill = False
 
     def data(device_index):
         if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:

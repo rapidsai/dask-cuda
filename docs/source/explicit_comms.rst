@@ -1,6 +1,9 @@
 Explicit-comms
 ==============
 
+.. deprecated:: 26.4.0
+   The explicit comms feature is deprecated and will be removed in a future version.
+
 Communication and scheduling overhead can be a major bottleneck in Dask/Distributed. Dask-CUDA addresses this by introducing an API for explicit communication in Dask tasks.
 The idea is that Dask/Distributed spawns workers and distribute data as usual while the user can submit tasks on the workers that communicate explicitly.
 
