@@ -464,7 +464,6 @@ def worker(
         worker = CUDAWorker(
             scheduler,
             host,
-            worker_port,
             listen_address,
             contact_address,
             nthreads,
@@ -499,6 +498,7 @@ def worker(
             enable_jit_unspill,
             worker_class,
             pre_import,
+            worker_port=worker_port,
             **kwargs,
         )
 

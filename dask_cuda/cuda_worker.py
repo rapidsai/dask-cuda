@@ -32,7 +32,6 @@ class CUDAWorker(Server):
         self,
         scheduler=None,
         host=None,
-        worker_port=None,
         listen_address=None,
         contact_address=None,
         nthreads=1,
@@ -67,6 +66,7 @@ class CUDAWorker(Server):
         jit_unspill=None,
         worker_class=None,
         pre_import=None,
+        worker_port=None,
         **kwargs,
     ):
         # Required by RAPIDS libraries (e.g., cuDF) to ensure no context
