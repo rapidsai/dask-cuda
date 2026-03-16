@@ -731,3 +731,24 @@ def test_cuda_worker_address_nprocs_validation(kwargs, match):
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1"}):
         with pytest.raises(ValueError, match=match):
             CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)
+
+
+@pytest.mark.parametrize(
+    "kwargs,match,cuda_visible_devices",
+    [
+        (
+            {"worker_port": "9000", "listen_address": "tcp://0.0.0.0:9000"},
+            "Cannot specify worker_port when listen_address is given",
+            "0",
+        ),
+        (
+            {"worker_port": "9000:9001"},
+            "Not enough ports in --worker-port range for 3 GPUs",
+            "0,1,2",
+        ),
+    ],
+)
+def test_cuda_worker_port_validation(kwargs, match, cuda_visible_devices):
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": cuda_visible_devices}):
+        with pytest.raises(ValueError, match=match):
+            CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)
