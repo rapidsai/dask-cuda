@@ -12,14 +12,20 @@ export RAPIDS_CUDA_MAJOR
 DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-package-name "wheel_python" "dask-cuda" --pure)")
 
 # generate constraints (possibly pinning to oldest supported versions of dependencies)
-rapids-generate-pip-constraints py_test ./constraints.txt
+rapids-generate-pip-constraints py_test "${PIP_CONSTRAINT}"
 
 rapids-logger "Installing test dependencies"
-# echo to expand wildcard
+
+# notes:
+#
+#   * echo to expand wildcard before adding `[test]` requires for pip
+#   * just providing --constraint="${PIP_CONSTRAINT}" to be explicit, and because
+#     that environment variable is ignored if any other --constraint are passed via the CLI
+#
 rapids-pip-retry install \
   -v \
   --prefer-binary \
-  --constraint ./constraints.txt \
+  --constraint "${PIP_CONSTRAINT}" \
   "$(echo "${DASK_CUDA_WHEELHOUSE}"/dask_cuda*.whl)[cu${RAPIDS_CUDA_MAJOR},test,test-cu${RAPIDS_CUDA_MAJOR}]"
 
 RAPIDS_TESTS_DIR=${RAPIDS_TESTS_DIR:-"${PWD}/test-results"}
