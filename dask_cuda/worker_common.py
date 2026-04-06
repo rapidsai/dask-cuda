@@ -2,13 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import warnings
-
-import dask.config
 
 from .device_host_file import DeviceHostFile
 from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
-from .proxify_host_file import ProxifyHostFile
 from .utils import (
     get_cpu_affinity,
     has_device_memory_resource,
@@ -19,9 +15,7 @@ from .utils import (
 def worker_data_function(
     device_memory_limit=None,
     memory_limit=None,
-    jit_unspill=False,
     enable_cudf_spill=False,
-    shared_filesystem=None,
 ):
     """
     Create a data function for CUDA workers based on memory configuration.
@@ -36,12 +30,8 @@ def worker_data_function(
         Limit of device memory, defaults to None
     memory_limit : str or int, optional
         Limit of host memory, defaults to None
-    jit_unspill : bool, optional
-        Whether to enable JIT unspill functionality, defaults to False
     enable_cudf_spill : bool, optional
         Whether to enable cuDF spilling, defaults to False
-    shared_filesystem : str or bool, optional
-        Whether to use shared filesystem for spilling, defaults to None
 
     Returns
     -------
@@ -50,18 +40,6 @@ def worker_data_function(
         data configuration based on the availability of an dedicated device memory
         resource and arguments passed to the worker.
     """
-    if jit_unspill is None:
-        jit_unspill = dask.config.get("jit-unspill", default=None)
-    if jit_unspill is not None:
-        warnings.warn(
-            "The jit_unspill argument and JIT unspilling feature are deprecated "
-            "and will be removed in a future version. "
-            "Prefer cuDF native spilling (enable_cudf_spill) where possible.",
-            FutureWarning,
-            stacklevel=2,
-        )
-    elif jit_unspill is None:
-        jit_unspill = False
 
     def data(device_index):
         if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
@@ -69,12 +47,7 @@ def worker_data_function(
 
         # First raise errors for invalid configurations
         if not has_device_memory_resource(device_index):
-            if jit_unspill:
-                raise ValueError(
-                    "JIT-Unspill is not supported on devices without dedicated memory, "
-                    "such as system on a chip (SoC) devices."
-                )
-            elif enable_cudf_spill:
+            if enable_cudf_spill:
                 raise ValueError(
                     "cuDF spilling is not supported on devices without dedicated "
                     "memory, such as system on a chip (SoC) devices."
@@ -96,35 +69,16 @@ def worker_data_function(
             # host<->disk spilling via Dask's default mechanism.
             return None
         else:
-            if jit_unspill:
-                # JIT-Unspill is enabled
-                if enable_cudf_spill:
-                    warnings.warn(
-                        "Enabling cuDF spilling and JIT-Unspill together is not "
-                        "safe, consider disabling JIT-Unspill."
-                    )
-
-                return (
-                    ProxifyHostFile,
-                    {
-                        "device_memory_limit": parse_device_memory_limit(
-                            device_memory_limit, device_index=device_index
-                        ),
-                        "memory_limit": memory_limit,
-                        "shared_filesystem": shared_filesystem,
-                    },
-                )
-            else:
-                # Device has dedicated memory and host memory is limited
-                return (
-                    DeviceHostFile,
-                    {
-                        "device_memory_limit": parse_device_memory_limit(
-                            device_memory_limit, device_index=device_index
-                        ),
-                        "memory_limit": memory_limit,
-                    },
-                )
+            # Device has dedicated memory and host memory is limited
+            return (
+                DeviceHostFile,
+                {
+                    "device_memory_limit": parse_device_memory_limit(
+                        device_memory_limit, device_index=device_index
+                    ),
+                    "memory_limit": memory_limit,
+                },
+            )
 
     return data
 
@@ -183,7 +137,7 @@ def worker_plugins(
         A set of configured plugins including:
         - CPUAffinity: Configures CPU affinity for the worker
         - RMMSetup: Configures RMM memory management
-        - PreImport: Handles module pre-importing
+        - PreImport: Handles pre-importing of modules
         - CUDFSetup: Configures cuDF functionality and spilling
     """
     if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:

@@ -26,6 +26,7 @@ Client initialization
 ---------------------
 .. currentmodule:: dask_cuda.initialize
 .. autofunction:: initialize
+<<<<<<< HEAD
 
 
 Explicit-comms
@@ -39,3 +40,5 @@ Explicit-comms
 
 .. currentmodule:: dask_cuda.explicit_comms.dataframe.shuffle
 .. autofunction:: shuffle
+=======
+>>>>>>> d815d40 (Remove deprecated features)

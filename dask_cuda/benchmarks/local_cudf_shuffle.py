@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2021-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
@@ -14,7 +14,6 @@ import dask.dataframe
 from dask.distributed import Client, performance_report, wait
 from dask.utils import format_bytes, parse_bytes
 
-import dask_cuda.explicit_comms.dataframe.shuffle
 from dask_cuda.benchmarks.common import Config, execute_benchmark
 from dask_cuda.benchmarks.utils import (
     as_noop,
@@ -39,16 +38,6 @@ def shuffle_dask(df, args):
         result = as_noop(result)
     t1 = perf_counter()
     wait(result.persist())
-    return perf_counter() - t1
-
-
-def shuffle_explicit_comms(df, args):
-    t1 = perf_counter()
-    wait(
-        dask_cuda.explicit_comms.dataframe.shuffle.shuffle(
-            df, column_names=["data"], ignore_index=args.ignore_index
-        ).persist()
-    )
     return perf_counter() - t1
 
 
@@ -166,10 +155,8 @@ def bench_once(client, args, write_profile=None):
         if args.backend == "rapidsmpf":
             duration = shuffle_rapidsmpf(df, args, client, rapidsmpf_bootstrapped)
             rapidsmpf_bootstrapped = True
-        elif args.backend in {"dask", "dask-noop"}:
-            duration = shuffle_dask(df, args)
         else:
-            duration = shuffle_explicit_comms(df, args)
+            duration = shuffle_dask(df, args)
 
     return (data_processed, duration)
 
@@ -258,7 +245,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms", "dask-noop", "rapidsmpf"],
+            "choices": ["dask", "dask-noop", "rapidsmpf"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",

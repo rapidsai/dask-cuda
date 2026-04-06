@@ -7,7 +7,6 @@ import os
 import warnings
 from functools import partial
 
-import dask
 from distributed import LocalCluster, Nanny, Worker
 from distributed.worker_memory import parse_memory_limit
 
@@ -66,9 +65,9 @@ class LocalCUDACluster(LocalCluster):
         Number of threads to be used for each Dask worker process.
     memory_limit : int, float, str, or None, default "auto"
         Size of the host LRU cache, which is used to determine when the worker
-        starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
-        integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
-        or ``"5000M"``), or ``"auto"``, 0, or ``None`` for no memory management.
+        starts spilling to disk. Can be an integer (bytes), float (fraction of total
+        system memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"``, 0, or
+        ``None`` for no memory management.
     device_memory_limit : int, float, str, or None, default "default"
         Size of the CUDA device LRU cache, which is used to determine when the worker
         starts spilling to host memory. Can be an integer (bytes), float (fraction of
@@ -81,9 +80,6 @@ class LocalCUDACluster(LocalCluster):
         system on a chip (SoC) devices.
     enable_cudf_spill : bool, default False
         Enable automatic cuDF spilling.
-
-        .. warning::
-            This should NOT be used together with JIT-Unspill.
     cudf_spill_stats : int, default 0
         Set the cuDF spilling statistics level. This option has no effect if
         ``enable_cudf_spill=False``.
@@ -92,12 +88,6 @@ class LocalCUDACluster(LocalCluster):
         ``"path/to/files"``) or ``None`` to fall back on the value of
         ``dask.temporary-directory`` in the local Dask configuration, using the current
         working directory if this is not set.
-    shared_filesystem: bool or None, default None
-        Whether the ``local_directory`` above is shared between all workers or not.
-        If ``None``, the "jit-unspill-shared-fs" config value are used, which
-        defaults to True. Notice, in all other cases this option defaults to False,
-        but on a local cluster it defaults to True -- we assume all workers use the
-        same filesystem.
     protocol : str or None, default None
         Protocol to use for communication. Can be a string (like ``"tcp"`` or
         ``"ucx"``), or ``None`` to automatically choose the correct protocol.
@@ -178,19 +168,6 @@ class LocalCUDACluster(LocalCluster):
              reported by the Dask dashboard. However, there is significant overhead
              associated with this and it should only be used for debugging and
              memory profiling.
-    jit_unspill : bool or None, default None
-        Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
-        the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
-        unspilling if this is not set.
-
-        .. deprecated:: 26.4.0
-            JIT unspilling is deprecated and will be removed in a future version.
-            Prefer cuDF native spilling (``enable_cudf_spill``) where possible.
-
-        .. note::
-            This is experimental and doesn't support memory spilling to disk. See
-            ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for
-            more info.
     log_spilling : bool, default True
         Enable logging of spilling operations directly to ``distributed.Worker`` with an
         ``INFO`` log level.
@@ -234,7 +211,6 @@ class LocalCUDACluster(LocalCluster):
         enable_cudf_spill=False,
         cudf_spill_stats=0,
         local_directory=None,
-        shared_filesystem=None,
         protocol=None,
         enable_tcp_over_ucx=None,
         enable_infiniband=None,
@@ -248,7 +224,6 @@ class LocalCUDACluster(LocalCluster):
         rmm_release_threshold=None,
         rmm_log_directory=None,
         rmm_track_allocations=False,
-        jit_unspill=None,
         log_spilling=False,
         pre_import=None,
         **kwargs,
@@ -347,18 +322,12 @@ class LocalCUDACluster(LocalCluster):
                 "Processes are necessary in order to use multiple GPUs with Dask"
             )
 
-        if shared_filesystem is None:
-            # Notice, we assume a shared filesystem
-            shared_filesystem = dask.config.get("jit-unspill-shared-fs", default=True)
-
         data = kwargs.pop("data", None)
         if data is None:
             self.data = worker_data_function(
                 device_memory_limit=self.device_memory_limit,
                 memory_limit=self.memory_limit,
-                jit_unspill=jit_unspill,
                 enable_cudf_spill=enable_cudf_spill,
-                shared_filesystem=shared_filesystem,
             )
 
         if enable_tcp_over_ucx or enable_infiniband or enable_nvlink:

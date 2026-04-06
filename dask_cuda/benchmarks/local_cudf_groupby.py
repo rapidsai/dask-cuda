@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
@@ -7,7 +7,6 @@ from time import perf_counter as clock
 
 import pandas as pd
 
-import dask
 import dask.dataframe as dd
 from dask.distributed import performance_report, wait
 from dask.utils import format_bytes
@@ -30,23 +29,14 @@ def apply_groupby(
     split_every=8,
     shuffle=None,
 ):
-    if backend == "dask-noop" and shuffle == "explicit-comms":
-        raise RuntimeError("dask-noop not valid for explicit-comms shuffle")
-    # Handle special "explicit-comms" case
-    config = {}
-    if shuffle == "explicit-comms":
-        shuffle = "tasks"
-        config = {"explicit-comms": True}
-
-    with dask.config.set(config):
-        agg = df.groupby("key", sort=sort).agg(
-            {"int64": ["max", "count"], "float64": "mean"},
-            split_out=split_out,
-            split_every=split_every,
-            shuffle=shuffle,
-        )
-        if backend == "dask-noop":
-            agg = as_noop(agg)
+    agg = df.groupby("key", sort=sort).agg(
+        {"int64": ["max", "count"], "float64": "mean"},
+        split_out=split_out,
+        split_every=split_every,
+        shuffle=shuffle,
+    )
+    if backend == "dask-noop":
+        agg = as_noop(agg)
 
     wait(agg.persist())
     return agg
@@ -236,7 +226,7 @@ def parse_args():
         },
         {
             "name": "--shuffle",
-            "choices": ["False", "True", "tasks", "explicit-comms"],
+            "choices": ["False", "True", "tasks"],
             "default": "False",
             "type": str,
             "help": "Whether to use shuffle-based groupby.",

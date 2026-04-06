@@ -115,9 +115,9 @@ def cuda():
     default="auto",
     show_default=True,
     help="""Size of the host LRU cache, which is used to determine when the worker
-    starts spilling to disk (not available if JIT-Unspill is enabled). Can be an
-    integer (bytes), float (fraction of total system memory), string (like ``"5GB"``
-    or ``"5000M"``), or ``"auto"`` or ``0`` for no memory management.""",
+    starts spilling to disk. Can be an integer (bytes), float (fraction of total system
+    memory), string (like ``"5GB"`` or ``"5000M"``), or ``"auto"`` or ``0`` for no memory
+    management.""",
 )
 @click.option(
     "--device-memory-limit",
@@ -136,8 +136,7 @@ def cuda():
     "--enable-cudf-spill/--disable-cudf-spill",
     default=False,
     show_default=True,
-    help="""Enable automatic cuDF spilling. WARNING: This should NOT be used with
-    JIT-Unspill.""",
+    help="""Enable automatic cuDF spilling.""",
 )
 @click.option(
     "--cudf-spill-stats",
@@ -270,17 +269,6 @@ def cuda():
     ``dask.temporary-directory`` in the local Dask configuration, using the current
     working directory if this is not set.""",
 )
-@click.option(
-    "--shared-filesystem/--no-shared-filesystem",
-    default=None,
-    type=bool,
-    help="""If ``--shared-filesystem`` is specified, inform JIT-Unspill that
-    ``local_directory`` is a shared filesystem available for all workers, whereas
-    ``--no-shared-filesystem`` informs it may not assume it's a shared filesystem.
-    If neither is specified, JIT-Unspill will decide based on the Dask config value
-    specified by ``"jit-unspill-shared-fs"``.
-    Notice, a shared filesystem must support the ``os.link()`` operation.""",
-)
 @scheduler_file
 @click.option(
     "--protocol", type=str, default=None, help="Protocol like tcp, tls, or ucx"
@@ -347,24 +335,6 @@ def cuda():
     requires ``--enable-infiniband``.""",
 )
 @click.option(
-    # rapids-pre-commit-hooks: disable[verify-hardcoded-version]
-    "--enable-jit-unspill/--disable-jit-unspill",
-    default=None,
-    help="""Enable just-in-time unspilling. Can be a boolean or ``None`` to fall back on
-    the value of ``dask.jit-unspill`` in the local Dask configuration, disabling
-    unspilling if this is not set.
-
-    .. deprecated:: 26.4.0
-        This option is deprecated and will be removed in a future version.
-        Prefer cuDF native spilling (--enable-cudf-spill) where possible.
-
-    .. note::
-        This is experimental and doesn't support memory spilling to disk. See
-        ``proxy_object.ProxyObject`` and ``proxify_host_file.ProxifyHostFile`` for more
-        info.""",
-    # rapids-pre-commit-hooks: enable[verify-hardcoded-version]
-)
-@click.option(
     "--worker-class",
     default=None,
     help="""Use a different class than Distributed's default (``distributed.Worker``)
@@ -408,7 +378,6 @@ def worker(
     dashboard,
     dashboard_address,
     local_directory,
-    shared_filesystem,
     scheduler_file,
     interface,
     preload,
@@ -420,7 +389,6 @@ def worker(
     enable_infiniband,
     enable_nvlink,
     enable_rdmacm,
-    enable_jit_unspill,
     worker_class,
     pre_import,
     multiprocessing_method,
@@ -485,7 +453,6 @@ def worker(
             dashboard,
             dashboard_address,
             local_directory,
-            shared_filesystem,
             scheduler_file,
             interface,
             preload,
@@ -495,7 +462,6 @@ def worker(
             enable_infiniband,
             enable_nvlink,
             enable_rdmacm,
-            enable_jit_unspill,
             worker_class,
             pre_import,
             worker_port=worker_port,

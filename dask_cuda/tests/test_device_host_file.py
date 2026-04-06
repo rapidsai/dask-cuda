@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 from random import randint
@@ -20,8 +20,8 @@ cupy = pytest.importorskip("cupy")
 
 
 def assert_eq(x, y):
-    # Explicitly calling "cupy.asnumpy" to support `ProxyObject` because
-    # "cupy" is hardcoded in `dask.array.normalize_to_array()`
+    # Use cupy.asnumpy so comparisons go through host NumPy (cupy is not used by
+    # dask.array.normalize_to_array for device inputs).
     return dask.array.assert_eq(cupy.asnumpy(x), cupy.asnumpy(y))
 
 
