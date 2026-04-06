@@ -146,7 +146,7 @@ section-order = [
 [tool.pytest.ini_options]
 addopts = "--tb=native"
 filterwarnings = [
-    # "error::DeprecationWarning",
+    "error::DeprecationWarning",
     "error::FutureWarning",
     # remove after https://github.com/rapidsai/dask-cuda/issues/1087 is closed
     "ignore:There is no current event loop:DeprecationWarning:tornado",

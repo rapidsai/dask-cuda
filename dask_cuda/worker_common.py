@@ -137,7 +137,7 @@ def worker_plugins(
         A set of configured plugins including:
         - CPUAffinity: Configures CPU affinity for the worker
         - RMMSetup: Configures RMM memory management
-        - PreImport: Handles pre-importing of modules
+        - PreImport: Handles module pre-importing
         - CUDFSetup: Configures cuDF functionality and spilling
     """
     if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
