@@ -16,7 +16,11 @@ from .local_cuda_cluster import LocalCUDACluster
 
 
 def _register_cudf_spill_aware():
-    import cudf
+    """Lazy hook for Distributed; no-op if cuDF is not installed."""
+    try:
+        import cudf
+    except ImportError:
+        return
 
     # Only enable Dask/cuDF spilling if cuDF spilling is disabled, see
     # https://github.com/rapidsai/dask-cuda/issues/1363
