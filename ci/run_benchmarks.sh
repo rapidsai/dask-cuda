@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -12,63 +12,4 @@ python benchmarks/local_cudf_shuffle.py \
   -d 0 \
   --runs 1 \
   --backend dask \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --disable-rmm \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --disable-rmm-pool \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --rmm-maximum-pool-size 4GiB \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --rmm-maximum-pool-size 4GiB \
-  --enable-rmm-async \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
-  "$@"
-
-python benchmarks/local_cudf_shuffle.py \
-  --rmm-pool-size 2GiB \
-  --rmm-maximum-pool-size 4GiB \
-  --enable-rmm-managed \
-  --partition-size="1 KiB" \
-  -d 0 \
-  --runs 1 \
-  --backend explicit-comms \
   "$@"
