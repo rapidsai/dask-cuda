@@ -53,7 +53,6 @@ class CUDAWorker(Server):
         dashboard=True,
         dashboard_address=":0",
         local_directory=None,
-        shared_filesystem=None,
         scheduler_file=None,
         interface=None,
         preload=[],
@@ -63,7 +62,6 @@ class CUDAWorker(Server):
         enable_infiniband=None,
         enable_nvlink=None,
         enable_rdmacm=None,
-        jit_unspill=None,
         worker_class=None,
         pre_import=None,
         worker_port=None,
@@ -196,9 +194,7 @@ class CUDAWorker(Server):
         data = worker_data_function(
             device_memory_limit=device_memory_limit,
             memory_limit=memory_limit,
-            jit_unspill=jit_unspill,
             enable_cudf_spill=enable_cudf_spill,
-            shared_filesystem=shared_filesystem,
         )
 
         cudf_spill_warning = dask.config.get("cudf-spill-warning", default=True)

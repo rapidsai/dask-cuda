@@ -32,7 +32,6 @@ Contents
    :caption: Additional Features
 
    ucx
-   explicit_comms
    spilling
 
 .. toctree::

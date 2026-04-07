@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -541,7 +541,6 @@ def test_get_cluster_configuration(loop):  # noqa: F811
                 wait(ret)
                 assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
                 assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
-                assert ret["jit-unspill"] is False
                 if has_device_memory_resource():
                     assert ret["device-memory-limit"] == 30
 

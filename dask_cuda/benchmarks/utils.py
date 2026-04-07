@@ -159,8 +159,7 @@ def parse_benchmark_args(
         "--enable-rmm-statistics",
         action="store_true",
         help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
-        "This enables spilling implementations such as JIT-Unspill to provides more "
-        "information on out-of-memory errors",
+        "This can provide more information on out-of-memory errors",
     )
     cluster_args.add_argument(
         "--enable-rmm-track-allocations",

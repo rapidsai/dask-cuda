@@ -34,89 +34,6 @@ The same applies for ``dask cuda worker``, and spilling can be controlled by set
     $ dask cuda worker --device-memory-limit 0
 
 
-JIT-Unspill
------------
-
-.. warning::
-    **Deprecated in 26.4.0.** JIT-Unspilling is deprecated and will be removed in a
-    future version of dask-cuda. Prefer cuDF native spilling (see :ref:`cudf-spilling`)
-    where possible. The ``jit_unspill`` argument, ``--enable-jit-unspill`` CLI option,
-    and ``DASK_JIT_UNSPILL`` environment variable will continue to work but emit a
-    :exc:`FutureWarning` during the deprecation period.
-
-The regular spilling in Dask and Dask-CUDA has some significate issues. Instead of tracking individual objects, it tracks task outputs.
-This means that a task returning a collection of CUDA objects will either spill all of the CUDA objects or none of them.
-Other issues includes *object duplication*, *wrong spilling order*, and *non-tracking of sharing device buffers*
-(`see discussion <https://github.com/dask/distributed/issues/4568#issuecomment-805049321>`_).
-
-In order to address all of these issues, Dask-CUDA introduces JIT-Unspilling, which can improve performance and memory usage significantly.
-For workloads that require significant spilling
-(such as large joins on infrastructure with less available memory than data) we have often
-seen greater than 50% improvement (i.e., something taking 300 seconds might take only 110 seconds). For workloads that do not,
-we would not expect to see much difference.
-
-In order to enable JIT-Unspilling use the ``jit_unspill`` argument:
-
-.. code-block::
-
-    >>> import dask​
-    >>> from distributed import Client​
-    >>> from dask_cuda import LocalCUDACluster​
-
-    >>> cluster = LocalCUDACluster(n_workers=10, device_memory_limit="1GB", jit_unspill=True)​
-    >>> client = Client(cluster)​
-
-    >>> with dask.config.set(jit_unspill=True):​
-    ...   cluster = LocalCUDACluster(n_workers=10, device_memory_limit="1GB")​
-    ...   client = Client(cluster)
-
-
-Or set the worker argument ``--enable-jit-unspill​``
-
-.. code-block::
-
-    $ dask scheduler
-    distributed.scheduler - INFO - Scheduler at:  tcp://127.0.0.1:8786
-
-    $ dask cuda worker --enable-jit-unspill​
-
-Or environment variable ``DASK_JIT_UNSPILL=True``
-
-.. code-block::
-
-    $ dask scheduler
-    distributed.scheduler - INFO -   Scheduler at:  tcp://127.0.0.1:8786
-
-    $ DASK_JIT_UNSPILL=True dask cuda worker​
-
-
-Limitations
-~~~~~~~~~~~
-
-JIT-Unspill wraps CUDA objects, such as ``cudf.Dataframe``, in a ``ProxyObject``.
-Objects proxied by an instance of ``ProxyObject`` will be JIT-deserialized when
-accessed. The instance behaves as the proxied object and can be accessed/used
-just like the proxied object.
-
-ProxyObject has some limitations and doesn't mimic the proxied object perfectly.
-Most noticeable, type checking using ``instance()`` works as expected but direct
-type checking doesn't:
-
-.. code-block:: python
-
-        >>> import numpy as np
-        >>> from dask_cuda.proxy_object import asproxy
-        >>> x = np.arange(3)
-        >>> isinstance(asproxy(x), type(x))
-        True
-        >>>  type(asproxy(x)) is type(x)
-        False
-
-Thus, if encountering problems remember that it is always possible to use ``unproxy()``
-to access the proxied object directly, or set ``DASK_JIT_UNSPILL_COMPATIBILITY_MODE=True``
-to enable compatibility mode, which automatically calls ``unproxy()`` on all function inputs.
-
-
 .. _cudf-spilling:
 
 cuDF Spilling
@@ -126,12 +43,10 @@ When executing an ETL workflow with `Dask cuDF <https://docs.rapids.ai/api/dask-
 (i.e. Dask DataFrame), it is usually best to leverage `native spilling support in cuDF
 <https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`_.
 
-Native cuDF spilling has an important advantage over the other methodologies mentioned
-above. When JIT-unspill or default spilling are used, the worker is only able to spill
-the input or output of a task. This means that any data that is created within the task
-is completely off limits until the task is done executing. When cuDF spilling is used,
-however, individual device buffers can be spilled/unspilled as needed while the task
-is executing.
+Native cuDF spilling has an important advantage over Dask-CUDA's default GPU-to-host
+spilling: the latter tracks task outputs as whole units, so intermediate data created
+inside a task generally cannot be spilled until the task finishes. With cuDF spilling,
+individual device buffers can be spilled or unspilled while the task is still running.
 
 When deploying a ``LocalCUDACluster``, cuDF spilling can be enabled with the ``enable_cudf_spill`` argument:
 
@@ -193,4 +108,6 @@ Although cuDF spilling is the best option for most ETL workflows using Dask cuDF
 it will be much less effective if that workflow converts between ``cudf.DataFrame``
 and other data formats (e.g. ``cupy.ndarray``). Once the underlying device buffers
 are "exposed" to external memory references, they become "unspillable" by cuDF.
-In cases like this (e.g., Dask-CUDA + XGBoost), JIT-Unspill is usually a better choice.
+In cases like this (e.g., Dask-CUDA combined with XGBoost), you may need to tune
+``device_memory_limit``, use smaller partitions, or restructure the workflow so that
+data stays in cuDF longer.
