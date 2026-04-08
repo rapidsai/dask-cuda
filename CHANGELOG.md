@@ -1,3 +1,35 @@
+# dask-cuda 26.04.00 (8 Apr 2026)
+
+### 🚨 Breaking Changes
+* Remove numba dependency by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1625
+### 🐛 Bug Fixes
+* cudf compatibility in get_device_memory_objects by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1609
+* Relax `test_cudf_get_device_memory_objects` by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1611
+* Update cuda-core pin by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1615
+* Update cuda-core code to prevent deprecation warnings by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1617
+* Test with oldest supported cuda-core by @bdice in https://github.com/rapidsai/dask-cuda/pull/1619
+* Use `to_numpy()` instead of deprecated `values_host` by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1624
+* cuda-core compatibility in test_initialize by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1628
+### 📖 Documentation
+* remove references to 'nvidia' conda channel by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1626
+### 🛠️ Improvements
+* Remove numba-cuda upper bound by @brandon-b-miller in https://github.com/rapidsai/dask-cuda/pull/1610
+* Drop Python 3.10 support by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1612
+* tighten wheel size limits, enforce PEP 639 metadata, other small changes by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1613
+* remove pip.conf migration code in CI scripts by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1622
+* Use verify-hardcoded-version pre-commit hook by @KyleFromNVIDIA in https://github.com/rapidsai/dask-cuda/pull/1621
+* add PR CI job checking that nightly tests are passing by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1627
+* fix(conda): only build one noarch package for ucxx by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1630
+* Add support for Python 3.14 by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1629
+* Deprecate JIT unspilling by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1631
+* Deprecate explicit comms by @TomAugspurger in https://github.com/rapidsai/dask-cuda/pull/1635
+* Add --listen-address and --contact-address to dask-cuda-worker by @parthsanan in https://github.com/rapidsai/dask-cuda/pull/1618
+* test wheels with mix of CTK versions by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1632
+
+## New Contributors
+
+**Full Changelog**: https://github.com/rapidsai/dask-cuda/compare/v26.04.00a...release/26.04
+
 # dask-cuda 26.02.00 (4 Feb 2026)
 
 ### 🐛 Bug Fixes
