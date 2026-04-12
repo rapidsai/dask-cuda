@@ -235,7 +235,7 @@ async def test_rmm_pool():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.PoolMemoryResource
@@ -251,7 +251,7 @@ async def test_rmm_managed():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.ManagedMemoryResource
@@ -268,7 +268,7 @@ async def test_rmm_async():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.CudaAsyncMemoryResource
@@ -290,7 +290,7 @@ async def test_rmm_async_with_maximum_pool_size():
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_types = await client.run(
                 lambda: (
-                    rmm.mr.get_current_device_resource_type(),
+                    type(rmm.mr.get_current_device_resource()),
                     type(rmm.mr.get_current_device_resource().get_upstream()),
                 )
             )
@@ -315,7 +315,7 @@ async def test_rmm_logging():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.LoggingResourceAdaptor
@@ -433,7 +433,7 @@ async def test_rmm_track_allocations():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.TrackingResourceAdaptor
