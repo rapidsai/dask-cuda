@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
-import math
 import operator
 import os
 import pickle
@@ -13,9 +12,9 @@ from multiprocessing import cpu_count
 from typing import Optional
 
 import click
-import numpy as np
-import pynvml
 import toolz
+
+from cuda.core import system
 
 import dask
 from dask.config import canonical_name
@@ -34,49 +33,6 @@ except ImportError:
         yield
 
 
-def unpack_bitmask(x, mask_bits=64):
-    """Unpack a list of integers containing bitmasks.
-
-    Parameters
-    ----------
-    x: list of int
-        A list of integers
-    mask_bits: int
-        An integer determining the bitwidth of ``x``
-
-    Examples
-    --------
-    >>> from dask_cuda.utils import unpack_bitmaps
-    >>> unpack_bitmask([1 + 2 + 8])
-    [0, 1, 3]
-    >>> unpack_bitmask([1 + 2 + 16])
-    [0, 1, 4]
-    >>> unpack_bitmask([1 + 2 + 16, 2 + 4])
-    [0, 1, 4, 65, 66]
-    >>> unpack_bitmask([1 + 2 + 16, 2 + 4], mask_bits=32)
-    [0, 1, 4, 33, 34]
-    """
-    res = []
-
-    for i, mask in enumerate(x):
-        if not isinstance(mask, int):
-            raise TypeError("All elements of the list `x` must be integers")
-
-        cpu_offset = i * mask_bits
-
-        bytestr = np.frombuffer(
-            bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
-        )
-        mask = np.flip(bytestr - ord("0")).astype(bool)
-        unpacked_mask = np.where(
-            mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
-        )
-
-        res += unpacked_mask[(unpacked_mask >= 0)].tolist()
-
-    return res
-
-
 @toolz.memoize
 def get_cpu_count():
     return cpu_count()
@@ -84,12 +40,11 @@ def get_cpu_count():
 
 @toolz.memoize
 def get_gpu_count():
-    pynvml.nvmlInit()
-    return pynvml.nvmlDeviceGetCount()
+    return system.Device.get_device_count()
 
 
-def get_gpu_handle(device_id=0):
-    """Get GPU handle from device index or UUID.
+def get_gpu(device_id=0):
+    """Get GPU from device index or UUID.
 
     Parameters
     ----------
@@ -100,30 +55,26 @@ def get_gpu_handle(device_id=0):
     ------
     ValueError
         If acquiring the device handle for the device specified failed.
-    pynvml.NVMLError
+    system.NvmlError
         If any NVML error occurred while initializing.
 
     Examples
     --------
-    >>> get_gpu_handle(device_id=0)
+    >>> get_gpu(device_id=0)
 
-    >>> get_gpu_handle(device_id="GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
+    >>> get_gpu(device_id="GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
     """
-    pynvml.nvmlInit()
-
     try:
         if device_id and not str(device_id).isnumeric():
             # This means device_id is UUID.
             # This works for both MIG and non-MIG device UUIDs.
-            handle = pynvml.nvmlDeviceGetHandleByUUID(str.encode(device_id))
-            if pynvml.nvmlDeviceIsMigDeviceHandle(handle):
-                # Additionally get parent device handle
-                # if the device itself is a MIG instance
-                handle = pynvml.nvmlDeviceGetDeviceHandleFromMigDeviceHandle(handle)
+            device = system.Device(uuid=device_id)
+            if device.mig.is_mig_device:
+                device = device.mig.get_parent_device()
         else:
-            handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
-        return handle
-    except pynvml.NVMLError:
+            device = system.Device(index=int(device_id))
+        return device
+    except system.NvmlError:
         raise ValueError(f"Invalid device index or UUID: {device_id}")
 
 
@@ -137,27 +88,11 @@ def get_gpu_count_mig(return_uuids=False):
         Returns the uuids of the MIG instances available optionally
 
     """
-    pynvml.nvmlInit()
     uuids = []
     for index in range(get_gpu_count()):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
-        try:
-            is_mig_mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
-        except pynvml.NVMLError:
-            # if not a MIG device, i.e. a normal GPU, skip
-            continue
-        if is_mig_mode:
-            count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
-            miguuids = []
-            for i in range(count):
-                try:
-                    mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
-                        device=handle, index=i
-                    )
-                    miguuids.append(mighandle)
-                    uuids.append(pynvml.nvmlDeviceGetUUID(mighandle))
-                except pynvml.NVMLError:
-                    pass
+        device = system.Device(index=index)
+        if device.mig.mode:
+            uuids = [d.uuid_with_prefix for d in device.mig.get_all_devices()]
     if return_uuids:
         return len(uuids), uuids
     return len(uuids)
@@ -190,14 +125,9 @@ def get_cpu_affinity(device_index=None):
      60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
     """
     try:
-        handle = get_gpu_handle(device_index)
-        # Result is a list of 64-bit integers, thus ceil(get_cpu_count() / 64)
-        affinity = pynvml.nvmlDeviceGetCpuAffinity(
-            handle,
-            math.ceil(get_cpu_count() / 64),
-        )
-        return unpack_bitmask(affinity)
-    except (pynvml.NVMLError, ValueError):
+        device = get_gpu(device_index)
+        return device.get_cpu_affinity()
+    except (system.NvmlError, ValueError):
         warnings.warn(
             "Cannot get CPU affinity for device with index %d, setting default affinity"
             % device_index
@@ -226,11 +156,11 @@ def get_device_total_memory(device_index=0):
     have a dedicated memory resource, as is usually the case for system on a chip (SoC)
     devices.
     """
-    handle = get_gpu_handle(device_index)
+    device = get_gpu(device_index)
 
     try:
-        return pynvml.nvmlDeviceGetMemoryInfo(handle).total
-    except pynvml.NVMLError_NotSupported:
+        return device.memory_info.total
+    except system.NotSupportedError:
         return None
 
 
@@ -249,11 +179,11 @@ def has_device_memory_resource(device_index=0):
     -------
     Whether the device has a dedicated memory resource.
     """
-    handle = get_gpu_handle(device_index)
+    device = get_gpu(device_index)
 
     try:
-        pynvml.nvmlDeviceGetMemoryInfo(handle).total
-    except pynvml.NVMLError_NotSupported:
+        device.memory_info.total
+    except system.NotSupportedError:
         return False
     else:
         return True
@@ -772,11 +702,8 @@ def get_gpu_uuid(device_index=0):
     >>> get_gpu_uuid("GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6")
     'GPU-9fb42d6f-7d6b-368f-f79c-3c3e784c93f6'
     """
-    handle = get_gpu_handle(device_index)
-    try:
-        return pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
-    except AttributeError:
-        return pynvml.nvmlDeviceGetUUID(handle)
+    device = get_gpu(device_index)
+    return device.uuid_with_prefix
 
 
 def get_worker_config(dask_worker):
