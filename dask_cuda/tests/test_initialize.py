@@ -20,7 +20,7 @@ from distributed import Client
 from distributed.deploy.local import LocalCluster
 
 from dask_cuda.initialize import initialize
-from dask_cuda.utils import get_ucx_config, get_gpu_handle
+from dask_cuda.utils import get_ucx_config, get_gpu
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
 if CUDA_CORE_0_5_0():
@@ -39,13 +39,8 @@ mp = mp.get_context("spawn")  # type: ignore
 
 def _has_v100_gpu():
     """Return True if the first GPU (index 0) is a V100."""
-    import pynvml
-
-    handle = get_gpu_handle(0)
-    name = pynvml.nvmlDeviceGetName(handle)
-    if isinstance(name, bytes):
-        name = name.decode("utf-8", errors="ignore")
-    return "V100" in name
+    device = get_gpu(0)
+    return "V100" in device.name
 
 
 def _test_initialize_ucx_tcp():
