@@ -12,7 +12,6 @@ from multiprocessing import cpu_count
 from typing import Optional
 
 import click
-import numpy as np
 import toolz
 
 from cuda.core import system
@@ -32,49 +31,6 @@ except ImportError:
     @contextmanager
     def nvtx_annotate(message=None, color="blue", domain=None):
         yield
-
-
-def unpack_bitmask(x, mask_bits=64):
-    """Unpack a list of integers containing bitmasks.
-
-    Parameters
-    ----------
-    x: list of int
-        A list of integers
-    mask_bits: int
-        An integer determining the bitwidth of ``x``
-
-    Examples
-    --------
-    >>> from dask_cuda.utils import unpack_bitmaps
-    >>> unpack_bitmask([1 + 2 + 8])
-    [0, 1, 3]
-    >>> unpack_bitmask([1 + 2 + 16])
-    [0, 1, 4]
-    >>> unpack_bitmask([1 + 2 + 16, 2 + 4])
-    [0, 1, 4, 65, 66]
-    >>> unpack_bitmask([1 + 2 + 16, 2 + 4], mask_bits=32)
-    [0, 1, 4, 33, 34]
-    """
-    res = []
-
-    for i, mask in enumerate(x):
-        if not isinstance(mask, int):
-            raise TypeError("All elements of the list `x` must be integers")
-
-        cpu_offset = i * mask_bits
-
-        bytestr = np.frombuffer(
-            bytes(np.binary_repr(mask, width=mask_bits), "utf-8"), "u1"
-        )
-        mask = np.flip(bytestr - ord("0")).astype(bool)
-        unpacked_mask = np.where(
-            mask, np.arange(mask_bits) + cpu_offset, np.full(mask_bits, -1)
-        )
-
-        res += unpacked_mask[(unpacked_mask >= 0)].tolist()
-
-    return res
 
 
 @toolz.memoize
