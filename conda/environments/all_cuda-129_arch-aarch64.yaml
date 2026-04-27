@@ -6,7 +6,8 @@ channels:
 - conda-forge
 dependencies:
 - click >=8.1
-- cuda-core>=0.3.2
+- cuda-bindings>=12.9.6,!=13.0.*,!=13.1.*
+- cuda-core @ git+https://github.com/nvidia/cuda-python@main#subdirectory=cuda_core
 - cuda-nvcc-impl
 - cuda-nvrtc
 - cuda-version=12.9
@@ -16,7 +17,6 @@ dependencies:
 - kvikio==26.6.*,>=0.0.0a0
 - numpy>=1.23,<3.0
 - numpydoc>=1.1.0
-- nvidia-ml-py>=12
 - pandas>=1.3
 - pre-commit
 - pytest

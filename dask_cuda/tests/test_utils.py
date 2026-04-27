@@ -4,7 +4,6 @@
 import os
 from unittest.mock import patch
 
-import pynvml
 import pytest
 
 try:
@@ -14,6 +13,9 @@ except ImportError:
     import cuda.core.experimental
 
     Device = cuda.core.experimental.Device
+
+
+from cuda.core import system
 
 
 from dask.config import canonical_name
@@ -30,7 +32,6 @@ from dask_cuda.utils import (
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
-    unpack_bitmask,
 )
 
 
@@ -60,30 +61,6 @@ def test_get_n_gpus():
     assert isinstance(get_n_gpus(), int)
 
     assert get_n_gpus() == 3
-
-
-@pytest.mark.parametrize(
-    "params",
-    [
-        {
-            "input": [1152920405096267775, 0],
-            "output": [i for i in range(20)] + [i + 40 for i in range(20)],
-        },
-        {
-            "input": [17293823668613283840, 65535],
-            "output": [i + 20 for i in range(20)] + [i + 60 for i in range(20)],
-        },
-        {"input": [18446744073709551615, 0], "output": [i for i in range(64)]},
-        {"input": [0, 18446744073709551615], "output": [i + 64 for i in range(64)]},
-    ],
-)
-def test_unpack_bitmask(params):
-    assert unpack_bitmask(params["input"]) == params["output"]
-
-
-def test_unpack_bitmask_single_value():
-    with pytest.raises(TypeError):
-        unpack_bitmask(1)
 
 
 def test_cpu_affinity():
@@ -220,15 +197,10 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, enable_nvlink):
 
 
 def test_parse_visible_devices():
-    pynvml.nvmlInit()
     indices = []
     uuids = []
-    for index in range(get_gpu_count()):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
-        try:
-            uuid = pynvml.nvmlDeviceGetUUID(handle).decode("utf-8")
-        except AttributeError:
-            uuid = pynvml.nvmlDeviceGetUUID(handle)
+    for index, device in enumerate(system.Device.get_all_devices()):
+        uuid = device.uuid
 
         assert parse_cuda_visible_device(index) == index
         assert parse_cuda_visible_device(uuid) == uuid
@@ -350,12 +322,10 @@ def test_has_device_memory_resoure():
 
 
 def test_parse_visible_mig_devices():
-    pynvml.nvmlInit()
-    for index in range(get_gpu_count()):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(index)
+    for device in system.Device.get_all_devices():
         try:
-            mode = pynvml.nvmlDeviceGetMigMode(handle)[0]
-        except pynvml.NVMLError:
+            mode = device.mig.mode
+        except system.NvmlError:
             # if not a MIG device, i.e. a normal GPU, skip
             continue
         if mode:
@@ -364,14 +334,6 @@ def test_parse_visible_mig_devices():
             # in that GPU is <= to count, where count gives us the
             # maximum number of MIG devices/instances that can exist
             # under a given parent NVML device.
-            count = pynvml.nvmlDeviceGetMaxMigDeviceCount(handle)
-            miguuids = []
-            for i in range(count):
-                try:
-                    mighandle = pynvml.nvmlDeviceGetMigDeviceHandleByIndex(
-                        device=handle, index=i
-                    )
-                    miguuids.append(mighandle)
-                except pynvml.NVMLError:
-                    pass
-            assert len(miguuids) <= count
+            mig_devices = list(device.mig.get_all_devices())
+            count = device.mig.get_device_count()
+            assert len(mig_devices) <= count
