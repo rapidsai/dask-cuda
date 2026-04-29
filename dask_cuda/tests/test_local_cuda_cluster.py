@@ -235,7 +235,7 @@ async def test_rmm_pool():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.PoolMemoryResource
@@ -251,7 +251,7 @@ async def test_rmm_managed():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.ManagedMemoryResource
@@ -268,7 +268,7 @@ async def test_rmm_async():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.CudaAsyncMemoryResource
@@ -290,7 +290,7 @@ async def test_rmm_async_with_maximum_pool_size():
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_types = await client.run(
                 lambda: (
-                    rmm.mr.get_current_device_resource_type(),
+                    type(rmm.mr.get_current_device_resource()),
                     type(rmm.mr.get_current_device_resource().get_upstream()),
                 )
             )
@@ -315,7 +315,7 @@ async def test_rmm_logging():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.LoggingResourceAdaptor
@@ -433,7 +433,7 @@ async def test_rmm_track_allocations():
     ) as cluster:
         async with Client(cluster, asynchronous=True) as client:
             memory_resource_type = await client.run(
-                rmm.mr.get_current_device_resource_type
+                lambda: type(rmm.mr.get_current_device_resource())
             )
             for v in memory_resource_type.values():
                 assert v is rmm.mr.TrackingResourceAdaptor
@@ -460,7 +460,6 @@ async def test_get_cluster_configuration():
             ret = await get_cluster_configuration(client)
             assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
             assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
-            assert ret["jit-unspill"] is False
             if has_device_memory_resource():
                 assert ret["device-memory-limit"] == 30
 
@@ -600,17 +599,10 @@ async def test_cudf_spill_no_dedicated_memory():
 
 
 @pytest.mark.parametrize(
-    "jit_unspill",
-    [False, True],
-)
-@pytest.mark.parametrize(
     "device_memory_limit",
     [None, "1B"],
 )
-@pytest.mark.filterwarnings(
-    "ignore:The jit_unspill argument and JIT unspilling:FutureWarning"
-)
-def test_print_cluster_config(capsys, jit_unspill, device_memory_limit):
+def test_print_cluster_config(capsys, device_memory_limit):
     pytest.importorskip("distributed_ucxx")
 
     pytest.importorskip("rich")
@@ -622,20 +614,11 @@ def test_print_cluster_config(capsys, jit_unspill, device_memory_limit):
                 ValueError,
                 match="device_memory_limit is set but device has no dedicated memory.",
             )
-        if jit_unspill:
-            # JIT-Unspill exception has precedence, thus overwrite ctx if both are
-            # enabled
-            ctx = pytest.raises(
-                ValueError,
-                match="JIT-Unspill is not supported on devices without dedicated "
-                "memory",
-            )
 
     with ctx:
         with LocalCUDACluster(
             n_workers=1,
             device_memory_limit=device_memory_limit,
-            jit_unspill=jit_unspill,
             protocol="ucx",
             dashboard_address=":0",
         ) as cluster:
@@ -671,21 +654,6 @@ def test_rmm_pool_size_warns():
             )
         finally:
             cluster.close()
-
-
-@pytest.mark.parametrize("jit_unspill", [True, False, None])
-@pytest.mark.filterwarnings("error")
-def test_jit_unspill_deprecation_local_cuda_cluster(jit_unspill):
-    if jit_unspill is None:
-        ctx = contextlib.nullcontext()
-    else:
-        ctx = pytest.warns(FutureWarning, match="The jit_unspill argument")
-
-    with (
-        ctx,
-        LocalCUDACluster(n_workers=1, jit_unspill=jit_unspill, dashboard_address=":0"),
-    ):
-        pass
 
 
 @pytest.mark.parametrize(
@@ -729,5 +697,26 @@ def test_cuda_worker_address_validation(kwargs, match):
 )
 def test_cuda_worker_address_nprocs_validation(kwargs, match):
     with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1"}):
+        with pytest.raises(ValueError, match=match):
+            CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)
+
+
+@pytest.mark.parametrize(
+    "kwargs,match,cuda_visible_devices",
+    [
+        (
+            {"worker_port": "9000", "listen_address": "tcp://0.0.0.0:9000"},
+            "Cannot specify worker_port when listen_address is given",
+            "0",
+        ),
+        (
+            {"worker_port": "9000:9001"},
+            "Not enough ports in --worker-port range for 3 GPUs",
+            "0,1,2",
+        ),
+    ],
+)
+def test_cuda_worker_port_validation(kwargs, match, cuda_visible_devices):
+    with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": cuda_visible_devices}):
         with pytest.raises(ValueError, match=match):
             CUDAWorker(scheduler="tcp://localhost:8786", **kwargs)

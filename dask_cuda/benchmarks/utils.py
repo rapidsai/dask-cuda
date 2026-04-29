@@ -159,8 +159,7 @@ def parse_benchmark_args(
         "--enable-rmm-statistics",
         action="store_true",
         help="Use RMM's StatisticsResourceAdaptor to gather allocation statistics. "
-        "This enables spilling implementations such as JIT-Unspill to provides more "
-        "information on out-of-memory errors",
+        "This can provide more information on out-of-memory errors",
     )
     cluster_args.add_argument(
         "--enable-rmm-track-allocations",
@@ -857,6 +856,7 @@ def bandwidth_statistics(
     aggregate = {}
     for address, data in bandwidth.items():
         data = np.asarray(data)
+        # rapids-pre-commit-hooks: disable-next-line[verify-hardcoded-version]
         q25, q50, q75 = np.quantile(data, [0.25, 0.50, 0.75])
         aggregate[address] = BandwidthStats(
             hmean=hmean(data),

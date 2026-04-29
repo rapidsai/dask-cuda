@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -116,7 +116,7 @@ def test_rmm_pool(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
+                    lambda: type(rmm.mr.get_current_device_resource())
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.PoolMemoryResource
@@ -141,7 +141,7 @@ def test_rmm_managed(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
+                    lambda: type(rmm.mr.get_current_device_resource())
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.ManagedMemoryResource
@@ -169,7 +169,7 @@ def test_rmm_async(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
+                    lambda: type(rmm.mr.get_current_device_resource())
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.CudaAsyncMemoryResource
@@ -205,7 +205,7 @@ def test_rmm_async_with_maximum_pool_size(loop):  # noqa: F811
 
                 memory_resource_types = client.run(
                     lambda: (
-                        rmm.mr.get_current_device_resource_type(),
+                        type(rmm.mr.get_current_device_resource()),
                         type(rmm.mr.get_current_device_resource().get_upstream()),
                     )
                 )
@@ -245,7 +245,7 @@ def test_rmm_logging(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
+                    lambda: type(rmm.mr.get_current_device_resource())
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.LoggingResourceAdaptor
@@ -496,7 +496,7 @@ def test_rmm_track_allocations(loop):  # noqa: F811
                 assert wait_workers(client, n_gpus=get_n_gpus())
 
                 memory_resource_type = client.run(
-                    rmm.mr.get_current_device_resource_type
+                    lambda: type(rmm.mr.get_current_device_resource())
                 )
                 for v in memory_resource_type.values():
                     assert v is rmm.mr.TrackingResourceAdaptor
@@ -541,7 +541,6 @@ def test_get_cluster_configuration(loop):  # noqa: F811
                 wait(ret)
                 assert ret["[plugin] RMMSetup"]["initial_pool_size"] == 2000000000
                 assert ret["[plugin] RMMSetup"]["maximum_pool_size"] == 3000000000
-                assert ret["jit-unspill"] is False
                 if has_device_memory_resource():
                     assert ret["device-memory-limit"] == 30
 

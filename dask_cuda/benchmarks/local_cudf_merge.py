@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
@@ -187,17 +187,14 @@ def bench_once(client, args, write_profile=None):
     data_processed += len(ddf_other) * sum([t.itemsize for t in ddf_other.dtypes])
 
     # Get contexts to use (defaults to null contexts that doesn't do anything)
-    ctx1, ctx2 = contextlib.nullcontext(), contextlib.nullcontext()
-    if args.backend == "explicit-comms":
-        ctx1 = dask.config.set(explicit_comms=True)
+    ctx2 = contextlib.nullcontext()
     if write_profile is not None:
         ctx2 = performance_report(filename=write_profile)
 
-    with ctx1:
-        with ctx2:
-            t1 = perf_counter()
-            noopify_duration = merge(args, ddf_base, ddf_other)
-            duration = perf_counter() - t1 - noopify_duration
+    with ctx2:
+        t1 = perf_counter()
+        noopify_duration = merge(args, ddf_base, ddf_other)
+        duration = perf_counter() - t1 - noopify_duration
 
     return (data_processed, duration)
 
@@ -289,7 +286,7 @@ def parse_args():
                 "-b",
                 "--backend",
             ],
-            "choices": ["dask", "explicit-comms", "dask-noop"],
+            "choices": ["dask", "dask-noop"],
             "default": "dask",
             "type": str,
             "help": "The backend to use.",
