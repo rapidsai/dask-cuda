@@ -1,5 +1,4 @@
 name: Trigger Breaking Change Notifications
-
 on:
   pull_request_target:
     types:
@@ -7,11 +6,11 @@ on:
       - reopened
       - labeled
       - unlabeled
-
 jobs:
   trigger-notifier:
     if: contains(github.event.pull_request.labels.*.name, 'breaking')
-    secrets: inherit
+    secrets:
+      NV_SLACK_BREAKING_CHANGE_ALERT: ${{ secrets.NV_SLACK_BREAKING_CHANGE_ALERT }}
     uses: rapidsai/shared-workflows/.github/workflows/breaking-change-alert.yaml@main
     with:
       sender_login: ${{ github.event.sender.login }}

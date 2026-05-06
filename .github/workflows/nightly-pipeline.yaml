@@ -1,8 +1,7 @@
 name: Trigger UCXX Nightly Build and Test Pipelines
-
 on:
   schedule:
-    - cron: "0 5 * * *"  # 5am UTC / 1am EST
+    - cron: "0 5 * * *" # 5am UTC / 1am EST
   workflow_dispatch:
     inputs:
       branch:
@@ -23,7 +22,6 @@ on:
         description: "build_type: one of [branch, nightly, pull-request]"
         type: string
         default: branch
-
 jobs:
   build:
     uses: ./.github/workflows/build-ucxx.yaml
@@ -32,7 +30,6 @@ jobs:
       branch: ${{ inputs.branch }}
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
-
   test:
     needs: build
     uses: ./.github/workflows/test-ucxx.yaml
