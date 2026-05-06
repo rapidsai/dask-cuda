@@ -22,6 +22,7 @@ on:
         description: "build_type: one of [branch, nightly, pull-request]"
         type: string
         default: branch
+permissions: {}
 jobs:
   build:
     uses: ./.github/workflows/build-ucxx.yaml

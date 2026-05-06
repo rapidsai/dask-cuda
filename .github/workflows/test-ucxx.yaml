@@ -40,6 +40,7 @@ on:
         description: "build_type: one of [branch, nightly, pull-request]"
         required: true
         type: string
+permissions: {}
 jobs:
   conda-python-ucxx-tests:
     secrets: inherit # zizmor: ignore[secrets-inherit]
@@ -51,3 +52,9 @@ jobs:
       sha: ${{ inputs.sha }}
       run_codecov: false
       script: ci/test_python_ucxx.sh
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      packages: read
+      pull-requests: read

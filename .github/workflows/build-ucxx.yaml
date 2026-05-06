@@ -49,6 +49,9 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
+
+permissions: {}
+
 jobs:
   conda-python-build:
     secrets: inherit # zizmor: ignore[secrets-inherit]
@@ -60,3 +63,9 @@ jobs:
       script: ci/build_python.sh
       sha: ${{ inputs.sha }}
       pure-conda: true
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      packages: read
+      pull-requests: read
