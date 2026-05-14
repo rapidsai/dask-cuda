@@ -10,10 +10,10 @@ dependencies:
 - cuda-nvcc-impl
 - cuda-nvrtc
 - cuda-version=12.9
-- cudf==26.6.*,>=0.0.0a0
-- dask-cudf==26.6.*,>=0.0.0a0
-- distributed-ucxx==0.50.*,>=0.0.0a0
-- kvikio==26.6.*,>=0.0.0a0
+- cudf==26.8.*,>=0.0.0a0
+- dask-cudf==26.8.*,>=0.0.0a0
+- distributed-ucxx==0.51.*,>=0.0.0a0
+- kvikio==26.8.*,>=0.0.0a0
 - numpy>=1.23,<3.0
 - numpydoc>=1.1.0
 - nvidia-ml-py>=12
@@ -25,7 +25,7 @@ dependencies:
 - pytest-timeout
 - python>=3.11
 - rapids-build-backend>=0.4.0,<0.5.0
-- rapids-dask-dependency==26.6.*,>=0.0.0a0
+- rapids-dask-dependency==26.8.*,>=0.0.0a0
 - setuptools>=77.0.0
 - sphinx
 - sphinx-click>=2.7.1

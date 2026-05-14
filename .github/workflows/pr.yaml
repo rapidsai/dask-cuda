@@ -18,7 +18,7 @@ jobs:
       - wheel-build
       - wheel-tests
       - telemetry-setup
-    uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/pr-builder.yaml@main
     with:
       needs: ${{ toJSON(needs) }}
     permissions:
@@ -52,7 +52,7 @@ jobs:
           target-branch: ${{ fromJSON(steps.get-pr-info.outputs.pr-info).base.ref }}
   checks:
     needs: telemetry-setup
-    uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@main
     with:
       ignored_pr_jobs: telemetry-summarize
     permissions:
@@ -60,7 +60,7 @@ jobs:
   conda-python-build:
     needs: checks
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@main
     with:
       build_type: pull-request
       script: ci/build_python.sh
@@ -74,7 +74,7 @@ jobs:
   conda-python-tests:
     needs: conda-python-build
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@main
     with:
       build_type: pull-request
       script: ci/test_python.sh
@@ -87,12 +87,12 @@ jobs:
   docs-build:
     needs: conda-python-build
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@main
     with:
       build_type: pull-request
       node_type: "gpu-l4-latest-1"
       arch: "amd64"
-      container_image: "rapidsai/ci-conda:26.06-latest"
+      container_image: "rapidsai/ci-conda:26.08-latest"
       script: "ci/build_docs.sh"
     permissions:
       actions: read
@@ -103,7 +103,7 @@ jobs:
   wheel-build:
     needs: checks
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
     with:
       build_type: pull-request
       script: "ci/build_wheel.sh"
@@ -124,7 +124,7 @@ jobs:
   wheel-tests:
     needs: wheel-build
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@cuda-13.2.0
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@main
     with:
       build_type: pull-request
       script: "ci/test_wheel.sh"
