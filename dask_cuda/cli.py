@@ -3,14 +3,17 @@
 
 from __future__ import absolute_import, division, print_function
 
+import asyncio
 import logging
 
 import click
-from tornado.ioloop import IOLoop, TimeoutError
+from tornado.ioloop import TimeoutError
 
 from dask import config as dask_config
 from distributed import Client
-from distributed.cli.utils import install_signal_handlers
+from distributed._signals import wait_for_signals
+from distributed.compatibility import asyncio_run
+from distributed.config import get_loop_factory
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
@@ -468,21 +471,35 @@ def worker(
             **kwargs,
         )
 
-        async def on_signal(signum):
-            logger.info("Exiting on signal %d", signum)
-            await worker.close()
-
         async def run():
-            await worker
-            await worker.finished()
+            async def wait_for_worker_to_finish():
+                """Wait for the worker to initialize and finish"""
+                await worker
+                await worker.finished()
 
-        loop = IOLoop.current()
+            async def wait_for_signals_and_close():
+                """Wait for SIGINT or SIGTERM and close the worker upon receiving one of those signals"""
+                signum = await wait_for_signals()
+                logger.info("Exiting on signal %d", signum)
+                await worker.close(timeout=10)
 
-        install_signal_handlers(loop, cleanup=on_signal)
+            wait_for_signals_and_close_task = asyncio.create_task(
+                wait_for_signals_and_close()
+            )
+            wait_for_worker_to_finish_task = asyncio.create_task(
+                wait_for_worker_to_finish()
+            )
+
+            done, _ = await asyncio.wait(
+                [wait_for_signals_and_close_task, wait_for_worker_to_finish_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            # Re-raise exceptions from done tasks
+            [task.result() for task in done]
 
         try:
-            loop.run_sync(run)
-        except (KeyboardInterrupt, TimeoutError):
+            asyncio_run(run(), loop_factory=get_loop_factory())
+        except (TimeoutError, asyncio.TimeoutError):
             pass
         finally:
             logger.info("End worker")
