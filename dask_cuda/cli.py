@@ -434,6 +434,7 @@ def worker(
     ):
 
         async def run():
+            # Nannies must be created on the same event loop as asyncio_run
             worker = CUDAWorker(
                 scheduler,
                 host,
@@ -480,8 +481,7 @@ def worker(
 
             async def wait_for_signals_and_close():
                 """Wait for SIGINT or SIGTERM and close the worker upon receiving one of those signals"""
-                signum = await wait_for_signals()
-                logger.info("Exiting on signal %d", signum)
+                await wait_for_signals()
                 await worker.close(timeout=10)
 
             wait_for_signals_and_close_task = asyncio.create_task(
