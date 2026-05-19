@@ -74,8 +74,8 @@ def get_gpu(device_id=0):
         else:
             device = system.Device(index=int(device_id))
         return device
-    except system.NvmlError:
-        raise ValueError(f"Invalid device index or UUID: {device_id}")
+    except system.NvmlError as e:
+        raise ValueError(f"Invalid device index or UUID: {device_id}") from e
 
 
 @toolz.memoize

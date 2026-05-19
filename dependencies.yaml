@@ -257,12 +257,12 @@ dependencies:
     common:
       - output_types: [pyproject]
         packages:
-          - cuda-core[cu12]>=0.3.2
+          - cuda-core[cu12]>=1.0.0
   extra_cu13:
     common:
       - output_types: [pyproject]
         packages:
-          - cuda-core[cu13]>=0.3.2
+          - cuda-core[cu13]>=1.0.0
   test_python:
     common:
       - output_types: [conda, requirements, pyproject]
@@ -283,7 +283,7 @@ dependencies:
         matrices:
           - matrix: {dependencies: "oldest"}
             packages:
-              - cuda-core==0.3.2
+              - cuda-core==1.0.0
           - matrix:
             packages:
   test_python_cuda:

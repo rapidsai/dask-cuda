@@ -9,8 +9,6 @@ import sys
 import tempfile
 import textwrap
 
-from dask_cuda._compat import CUDA_CORE_0_5_0
-
 import numpy
 import psutil
 import pytest
@@ -23,10 +21,7 @@ from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config, get_gpu
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
-if CUDA_CORE_0_5_0():
-    from cuda.core import system
-else:
-    from cuda.core.experimental import system
+from cuda.core import system
 
 
 mp = mp.get_context("spawn")  # type: ignore
@@ -263,12 +258,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         # Problematic library that creates CUDA context at import time
         import os
 
-        try:
-            from cuda.core import Device
-        except ImportError:
-            # cuda-core < 0.5
-            import cuda.core.experimental
-            Device = cuda.core.experimental.Device
+        from cuda.core import Device
 
         try:
             # Create CUDA context at import time, this will be inherited by subprocesses
@@ -373,10 +363,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             ):
                 warnings_assigned_device_found.append(line)
 
-        if CUDA_CORE_0_5_0():
-            num_devices = system.get_num_devices()
-        else:
-            num_devices = system.num_devices
+        num_devices = system.get_num_devices()
 
         # Every worker raises the warning once. With protocol="ucx" the warning is
         # raised once more by the parent process.
