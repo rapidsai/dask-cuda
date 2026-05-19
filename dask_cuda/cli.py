@@ -3,14 +3,17 @@
 
 from __future__ import absolute_import, division, print_function
 
+import asyncio
 import logging
 
 import click
-from tornado.ioloop import IOLoop, TimeoutError
+from tornado.ioloop import TimeoutError
 
 from dask import config as dask_config
 from distributed import Client
-from distributed.cli.utils import install_signal_handlers
+from distributed._signals import wait_for_signals
+from distributed.compatibility import asyncio_run
+from distributed.config import get_loop_factory
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
@@ -429,60 +432,75 @@ def worker(
     with dask_config.set(
         {"distributed.worker.multiprocessing-method": multiprocessing_method}
     ):
-        worker = CUDAWorker(
-            scheduler,
-            host,
-            listen_address,
-            contact_address,
-            nthreads,
-            name,
-            memory_limit,
-            device_memory_limit,
-            enable_cudf_spill,
-            cudf_spill_stats,
-            rmm_pool_size,
-            rmm_maximum_pool_size,
-            rmm_managed_memory,
-            rmm_async,
-            rmm_allocator_external_lib_list,
-            rmm_release_threshold,
-            rmm_log_directory,
-            rmm_track_allocations,
-            pid_file,
-            resources,
-            dashboard,
-            dashboard_address,
-            local_directory,
-            scheduler_file,
-            interface,
-            preload,
-            dashboard_prefix,
-            security,
-            enable_tcp_over_ucx,
-            enable_infiniband,
-            enable_nvlink,
-            enable_rdmacm,
-            worker_class,
-            pre_import,
-            worker_port=worker_port,
-            **kwargs,
-        )
-
-        async def on_signal(signum):
-            logger.info("Exiting on signal %d", signum)
-            await worker.close()
 
         async def run():
-            await worker
-            await worker.finished()
+            # Nannies must be created on the same event loop as asyncio_run
+            worker = CUDAWorker(
+                scheduler,
+                host,
+                listen_address,
+                contact_address,
+                nthreads,
+                name,
+                memory_limit,
+                device_memory_limit,
+                enable_cudf_spill,
+                cudf_spill_stats,
+                rmm_pool_size,
+                rmm_maximum_pool_size,
+                rmm_managed_memory,
+                rmm_async,
+                rmm_allocator_external_lib_list,
+                rmm_release_threshold,
+                rmm_log_directory,
+                rmm_track_allocations,
+                pid_file,
+                resources,
+                dashboard,
+                dashboard_address,
+                local_directory,
+                scheduler_file,
+                interface,
+                preload,
+                dashboard_prefix,
+                security,
+                enable_tcp_over_ucx,
+                enable_infiniband,
+                enable_nvlink,
+                enable_rdmacm,
+                worker_class,
+                pre_import,
+                worker_port=worker_port,
+                **kwargs,
+            )
 
-        loop = IOLoop.current()
+            async def wait_for_worker_to_finish():
+                """Wait for the worker to initialize and finish"""
+                await worker
+                await worker.finished()
 
-        install_signal_handlers(loop, cleanup=on_signal)
+            async def wait_for_signals_and_close():
+                """Wait for SIGINT or SIGTERM and close the worker upon receiving one of those signals"""
+                await wait_for_signals()
+                await worker.close(timeout=10)
+
+            wait_for_signals_and_close_task = asyncio.create_task(
+                wait_for_signals_and_close()
+            )
+            wait_for_worker_to_finish_task = asyncio.create_task(
+                wait_for_worker_to_finish()
+            )
+
+            done, _ = await asyncio.wait(
+                [wait_for_signals_and_close_task, wait_for_worker_to_finish_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            # Re-raise exceptions from done tasks
+            [task.result() for task in done]
 
         try:
-            loop.run_sync(run)
-        except (KeyboardInterrupt, TimeoutError):
+            asyncio_run(run(), loop_factory=get_loop_factory())
+        except (TimeoutError, asyncio.TimeoutError):
             pass
         finally:
             logger.info("End worker")
