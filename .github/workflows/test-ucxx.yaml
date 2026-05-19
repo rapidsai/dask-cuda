@@ -1,5 +1,4 @@
 name: Test Dask-CUDA with UCXX
-
 on:
   workflow_dispatch:
     inputs:
@@ -41,10 +40,10 @@ on:
         description: "build_type: one of [branch, nightly, pull-request]"
         required: true
         type: string
-
+permissions: {}
 jobs:
   conda-python-ucxx-tests:
-    secrets: inherit
+    secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@main
     with:
       build_type: ${{ inputs.build_type }}
@@ -53,3 +52,9 @@ jobs:
       sha: ${{ inputs.sha }}
       run_codecov: false
       script: ci/test_python_ucxx.sh
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      packages: read
+      pull-requests: read
