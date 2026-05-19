@@ -247,8 +247,7 @@ dependencies:
       - output_types: [conda, requirements, pyproject]
         packages:
           - click >=8.1
-          # TODO: replace with cuda-core>=0.8.0 once that is released
-          - cuda-core @ git+https://github.com/nvidia/cuda-python@main#subdirectory=cuda_core
+          - cuda-core>=1.0.0
           - cuda-bindings>=12.9.6,!=13.0.*,!=13.1.*
           - numpy>=1.23,<3.0
           - pandas>=1.3
