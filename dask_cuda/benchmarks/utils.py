@@ -83,7 +83,8 @@ def parse_benchmark_args(
         choices=["tcp", "ucx", "ucxx"],
         default="tcp",
         type=str,
-        help="The communication protocol to use.",
+        help="The communication protocol to use. Use tcp as a baseline and ucx "
+        "for automatic UCX transport selection.",
     )
     cluster_args.add_argument(
         "--multiprocessing-method",
@@ -177,21 +178,24 @@ def parse_benchmark_args(
         default=None,
         action="store_true",
         dest="enable_tcp_over_ucx",
-        help="Enable TCP over UCX.",
+        help="Override automatic UCX transport selection to enable TCP over UCX for "
+        "transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--enable-infiniband",
         default=None,
         action="store_true",
         dest="enable_infiniband",
-        help="Enable InfiniBand over UCX.",
+        help="Override automatic UCX transport selection to enable InfiniBand over "
+        "UCX for transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--enable-nvlink",
         default=None,
         action="store_true",
         dest="enable_nvlink",
-        help="Enable NVLink over UCX.",
+        help="Override automatic UCX transport selection to enable NVLink over UCX "
+        "for transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--enable-rdmacm",
@@ -204,19 +208,22 @@ def parse_benchmark_args(
         "--disable-tcp-over-ucx",
         action="store_false",
         dest="enable_tcp_over_ucx",
-        help="Disable TCP over UCX.",
+        help="Override automatic UCX transport selection to disable TCP over UCX for "
+        "transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--disable-infiniband",
         action="store_false",
         dest="enable_infiniband",
-        help="Disable InfiniBand over UCX.",
+        help="Override automatic UCX transport selection to disable InfiniBand over "
+        "UCX for transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--disable-nvlink",
         action="store_false",
         dest="enable_nvlink",
-        help="Disable NVLink over UCX.",
+        help="Override automatic UCX transport selection to disable NVLink over UCX "
+        "for transport-specific benchmarking.",
     )
     cluster_args.add_argument(
         "--disable-rdmacm",
@@ -433,6 +440,44 @@ def get_cluster_options(args):
         "args": cluster_args,
         "kwargs": cluster_kwargs,
         "scheduler_addr": scheduler_addr,
+    }
+
+
+def ucx_transport_selection(args):
+    """Return how UCX transports are selected for benchmark reporting."""
+    if args.protocol not in ("ucx", "ucxx"):
+        return "not-applicable"
+
+    transports = (
+        args.enable_tcp_over_ucx,
+        args.enable_infiniband,
+        args.enable_nvlink,
+    )
+    if all(transport is None for transport in transports):
+        return "automatic"
+    return "manual"
+
+
+def print_ucx_config(args):
+    """Print UCX transport selection details for benchmark output."""
+    selection = ucx_transport_selection(args)
+    if selection == "not-applicable":
+        return
+
+    print_key_value(key="UCX transport selection", value=selection)
+    if selection == "manual":
+        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
+        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
+        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+
+
+def ucx_config_to_dict(args):
+    """Return UCX transport details for tidy benchmark output."""
+    return {
+        "ucx_transport_selection": ucx_transport_selection(args),
+        "tcp": args.enable_tcp_over_ucx,
+        "ib": args.enable_infiniband,
+        "nvlink": args.enable_nvlink,
     }
 
 
