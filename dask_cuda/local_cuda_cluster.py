@@ -92,14 +92,17 @@ class LocalCUDACluster(LocalCluster):
         Protocol to use for communication. Can be a string (like ``"tcp"`` or
         ``"ucx"``), or ``None`` to automatically choose the correct protocol.
     enable_tcp_over_ucx : bool, default None
-        Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
-        are not supported or disabled.
+        Set environment variables to enable TCP over UCX, even if InfiniBand and
+        NVLink are not supported or disabled. Leave as ``None`` to use automatic
+        UCX transport selection when ``protocol="ucx"``.
     enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, requires
         ``protocol="ucx"``, and implies ``enable_tcp_over_ucx=True`` when ``True``.
+        Leave as ``None`` to use automatic UCX transport selection.
     enable_nvlink : bool, default None
         Set environment variables to enable UCX over NVLink, requires
         ``protocol="ucx"``, and implies ``enable_tcp_over_ucx=True`` when ``True``.
+        Leave as ``None`` to use automatic UCX transport selection.
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``protocol="ucx"``, and ``enable_infiniband=True``.
