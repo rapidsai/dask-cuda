@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
@@ -22,6 +22,8 @@ from dask_cuda.benchmarks.utils import (
     print_key_value,
     print_separator,
     print_throughput_bandwidth,
+    print_ucx_config,
+    ucx_config_to_dict,
 )
 
 
@@ -80,10 +82,7 @@ def pretty_print_results(args, address_to_index, p2p_bw, results, client=None):
         )
     print_key_value(key="RMM Pool", value=f"{not args.disable_rmm_pool}")
     print_key_value(key="Protocol", value=f"{args.protocol}")
-    if args.protocol in ["ucx", "ucxx"]:
-        print_key_value(key="TCP", value=f"{args.enable_tcp_over_ucx}")
-        print_key_value(key="InfiniBand", value=f"{args.enable_infiniband}")
-        print_key_value(key="NVLink", value=f"{args.enable_nvlink}")
+    print_ucx_config(args)
     print_key_value(key="Worker thread(s)", value=f"{args.threads_per_worker}")
     data_processed, durations = zip(*results)
     if args.markdown:
@@ -105,9 +104,7 @@ def create_tidy_results(args, p2p_bw, results):
         "worker_threads": args.threads_per_worker,
         "rmm_pool": not args.disable_rmm_pool,
         "protocol": args.protocol,
-        "tcp": args.enable_tcp_over_ucx,
-        "ib": args.enable_infiniband,
-        "nvlink": args.enable_nvlink,
+        **ucx_config_to_dict(args),
         "nreps": args.runs,
         "kernel_size": args.kernel_size,
     }

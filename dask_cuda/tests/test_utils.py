@@ -190,6 +190,18 @@ def test_get_ucx_config(enable_tcp_over_ucx, enable_infiniband, enable_nvlink):
         assert ucx_config[canonical_name("cuda-copy", ucx_config)] is None
 
 
+def test_get_ucx_config_automatic_transport_selection():
+    pytest.importorskip("distributed_ucxx")
+
+    ucx_config = get_ucx_config()
+
+    assert ucx_config[canonical_name("tcp", ucx_config)] is None
+    assert ucx_config[canonical_name("infiniband", ucx_config)] is None
+    assert ucx_config[canonical_name("nvlink", ucx_config)] is None
+    assert ucx_config[canonical_name("cuda-copy", ucx_config)] is None
+    assert ucx_config[canonical_name("create_cuda_context", ucx_config)] is True
+
+
 def test_parse_visible_devices():
     indices = []
     uuids = []

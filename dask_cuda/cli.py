@@ -313,29 +313,30 @@ def cuda():
     "--enable-tcp-over-ucx/--disable-tcp-over-ucx",
     default=None,
     show_default=True,
-    help="""Set environment variables to enable TCP over UCX, even if InfiniBand and
-    NVLink are not supported or disabled.""",
+    help="""Override automatic UCX transport selection to enable or disable TCP over
+    UCX. Prefer leaving this unset except when benchmarking a specific transport.""",
 )
 @click.option(
     "--enable-infiniband/--disable-infiniband",
     default=None,
     show_default=True,
-    help="""Set environment variables to enable UCX over InfiniBand, implies
-    ``--enable-tcp-over-ucx`` when enabled.""",
+    help="""Override automatic UCX transport selection to enable or disable
+    InfiniBand. Prefer leaving this unset except when benchmarking a specific
+    transport.""",
 )
 @click.option(
     "--enable-nvlink/--disable-nvlink",
     default=None,
     show_default=True,
-    help="""Set environment variables to enable UCX over NVLink, implies
-    ``--enable-tcp-over-ucx`` when enabled.""",
+    help="""Override automatic UCX transport selection to enable or disable NVLink.
+    Prefer leaving this unset except when benchmarking a specific transport.""",
 )
 @click.option(
     "--enable-rdmacm/--disable-rdmacm",
     default=None,
     show_default=True,
-    help="""Set environment variables to enable UCX RDMA connection manager support,
-    requires ``--enable-infiniband``.""",
+    help="""Override automatic UCX transport selection to enable or disable UCX RDMA
+    connection manager support, requires ``--enable-infiniband`` when enabled.""",
 )
 @click.option(
     "--worker-class",

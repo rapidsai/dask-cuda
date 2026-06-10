@@ -209,13 +209,16 @@ def initialize(
         Create CUDA context on initialization.
     enable_tcp_over_ucx : bool, default None
         Set environment variables to enable TCP over UCX, even if InfiniBand and NVLink
-        are not supported or disabled.
+        are not supported or disabled. Leave as ``None`` to use automatic UCX
+        transport selection.
     enable_infiniband : bool, default None
         Set environment variables to enable UCX over InfiniBand, implies
-        ``enable_tcp_over_ucx=True`` when ``True``.
+        ``enable_tcp_over_ucx=True`` when ``True``. Leave as ``None`` to use
+        automatic UCX transport selection.
     enable_nvlink : bool, default None
         Set environment variables to enable UCX over NVLink, implies
-        ``enable_tcp_over_ucx=True`` when ``True``.
+        ``enable_tcp_over_ucx=True`` when ``True``. Leave as ``None`` to use
+        automatic UCX transport selection.
     enable_rdmacm : bool, default None
         Set environment variables to enable UCX RDMA connection manager support,
         requires ``enable_infiniband=True``.
