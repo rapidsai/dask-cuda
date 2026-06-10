@@ -6,13 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-try:
-    from cuda.core import Device
-except ImportError:
-    # Remove when cuda-core>=0.5
-    import cuda.core.experimental
-
-    Device = cuda.core.experimental.Device
+from cuda.core import Device
 
 
 from cuda.core import system
