@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -25,5 +25,5 @@ rattler-build build --recipe conda/recipes/dask-cuda \
 # tracked in https://github.com/prefix-dev/rattler-build/issues/1424
 rm -rf "$RAPIDS_CONDA_BLD_OUTPUT_DIR"/build_cache
 
-RAPIDS_PACKAGE_NAME="$(rapids-package-name conda_python dask-cuda --pure)"
+RAPIDS_PACKAGE_NAME="$(rapids-artifact-name conda_python dask-cuda dask-cuda --pure --arch any)"
 export RAPIDS_PACKAGE_NAME
