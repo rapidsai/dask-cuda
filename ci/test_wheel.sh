@@ -9,7 +9,7 @@ source rapids-init-pip
 RAPIDS_CUDA_MAJOR="${RAPIDS_CUDA_VERSION%%.*}"
 export RAPIDS_CUDA_MAJOR
 
-DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-package-name "wheel_python" "dask-cuda" --pure)")
+DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-artifact-name wheel_python dask-cuda dask-cuda --pure --arch any)")
 
 # generate constraints (possibly pinning to oldest supported versions of dependencies)
 rapids-generate-pip-constraints py_test "${PIP_CONSTRAINT}"

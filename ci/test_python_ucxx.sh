@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2022-2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
@@ -10,7 +10,7 @@ rapids-logger "Configuring conda strict channel priority"
 conda config --set channel_priority strict
 
 rapids-logger "Downloading artifacts from previous jobs"
-PYTHON_CHANNEL=$(rapids-download-from-github "$(rapids-package-name "conda_python" dask-cuda --pure)")
+PYTHON_CHANNEL=$(rapids-download-from-github "$(rapids-artifact-name conda_python dask-cuda dask-cuda --pure --arch any)")
 
 rapids-logger "Generate Python testing dependencies"
 rapids-dependency-file-generator \
