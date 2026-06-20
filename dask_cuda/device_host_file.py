@@ -284,10 +284,14 @@ class DeviceHostFile(ZictBase):
         raise KeyError(key)
 
     def __len__(self):
-        return len(self.device_buffer) + len(self.others)
+        return sum(1 for _ in self)
 
     def __iter__(self):
-        return itertools.chain(self.device_buffer, self.others)
+        seen = set()
+        for key in itertools.chain(self.device_buffer, self.host_buffer, self.others):
+            if key not in seen:
+                seen.add(key)
+                yield key
 
     def __delitem__(self, key):
         self.device_keys.discard(key)
