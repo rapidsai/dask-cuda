@@ -38,7 +38,7 @@ requirements:
     - python
     - click >=8.1
     - cuda-core >=0.3
-    - numpy >=1.23,<3.0
+    - numpy >=2.0,<3.0
     # 'nvidia-ml-py' provides the 'pynvml' module
     - nvidia-ml-py>=12
     - pandas >=1.3
