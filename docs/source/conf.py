@@ -91,6 +91,16 @@ pygments_style = None
 # a list of builtin themes.
 #
 html_theme = "nvidia_sphinx_theme"
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/rapidsai/dask-cuda",
+            "icon": "fa-brands fa-github",
+            "type": "fontawesome",
+        },
+    ],
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -141,7 +151,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "dask-cuda.tex", "dask-cuda Documentation", "NVIDIA", "manual")
+    (master_doc, "dask-cuda.tex", f"{project} Documentation", author, "manual")
 ]
 
 
@@ -149,7 +159,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "dask-cuda", "dask-cuda Documentation", [author], 1)]
+man_pages = [(master_doc, "dask-cuda", f"{project} Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -161,7 +171,7 @@ texinfo_documents = [
     (
         master_doc,
         "dask-cuda",
-        "dask-cuda Documentation",
+        f"{project} Documentation",
         author,
         "dask-cuda",
         "One line description of project.",
