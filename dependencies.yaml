@@ -227,7 +227,13 @@ dependencies:
           - numpydoc>=1.1.0
           - sphinx
           - sphinx-click>=2.7.1
-          - sphinx-rtd-theme>=0.5.1
+      - output_types: [requirements, pyproject]
+        packages:
+          - nvidia-sphinx-theme
+      - output_types: conda
+        packages:
+          - pip:
+              - nvidia-sphinx-theme
   py_version:
     specific:
       - output_types: conda
