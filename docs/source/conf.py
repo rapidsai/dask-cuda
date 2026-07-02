@@ -23,9 +23,9 @@ import datetime
 
 # -- Project information -----------------------------------------------------
 
-project = "dask-cuda"
-copyright = "2020-%s, NVIDIA" % datetime.datetime.now().year
-author = "NVIDIA"
+project = "NVIDIA Dask-CUDA"
+copyright = f"2020-{datetime.datetime.today().year}, NVIDIA Corporation"
+author = "NVIDIA Corporation"
 
 # The full version, including alpha/beta/rc tags.
 from dask_cuda import __version__ as release  # noqa: E402
