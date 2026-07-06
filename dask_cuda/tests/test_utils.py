@@ -7,15 +7,7 @@ from unittest.mock import patch
 import pynvml
 import pytest
 
-try:
-    from cuda.core import Device
-except ImportError:
-    # Remove when cuda-core>=0.5
-    import cuda.core.experimental
-
-    Device = cuda.core.experimental.Device
-
-
+from cuda.core import Device
 from dask.config import canonical_name
 
 from dask_cuda.utils import (

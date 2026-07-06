@@ -6,13 +6,7 @@ import os
 
 import click
 
-try:
-    from cuda.core import Device
-except ImportError:
-    # Remove when cuda-core>=0.5
-    import cuda.core.experimental
-
-    Device = cuda.core.experimental.Device
+from cuda.core import Device
 
 import dask
 from distributed.diagnostics.nvml import (
