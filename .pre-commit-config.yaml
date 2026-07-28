@@ -82,10 +82,7 @@ repos:
         exclude: |
           (?x)^(
             [.]github/labeler[.]yml$|
-            conda/environments/.*|
-            cpp/[.]clang-format$|
-            cpp/[.]clang-tidy$|
-            .*xfail\-.*yaml$
+            conda/environments/.*
           )
   - repo: https://github.com/zizmorcore/zizmor-pre-commit
     rev: v1.24.1
