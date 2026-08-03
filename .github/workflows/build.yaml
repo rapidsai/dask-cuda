@@ -33,7 +33,7 @@ permissions: {}
 jobs:
   conda-python-build:
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@codex/release-build-output-manifests
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       branch: ${{ inputs.branch }}
@@ -41,6 +41,8 @@ jobs:
       script: ci/build_python.sh
       sha: ${{ inputs.sha }}
       pure-conda: true
+      release-build-output: true
+      release-unit: conda:dask-cuda
     permissions:
       actions: read
       contents: read
@@ -86,7 +88,7 @@ jobs:
       pull-requests: read
   wheel-build:
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@codex/release-build-output-manifests
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       branch: ${{ inputs.branch }}
@@ -99,6 +101,8 @@ jobs:
       package-type: python
       pure-wheel: true
       append-cuda-suffix: false
+      release-build-output: true
+      release-unit: wheel:dask-cuda
       # this pure wheel build requires its own matrix_filter (not the ones upstream)
       # Package is pure Python and only ever requires one build.
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
