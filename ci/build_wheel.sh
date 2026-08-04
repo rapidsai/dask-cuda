@@ -7,7 +7,8 @@ set -euo pipefail
 source rapids-datetime-string
 source rapids-init-pip
 
-rapids-generate-version > ./VERSION
+RAPIDS_VERSION_SUFFIX=".post${RAPIDS_DATETIME_STRING}" \
+  rapids-generate-version > ./VERSION
 
 RAPIDS_PIP_WHEEL_ARGS=(
   -w "${RAPIDS_WHEEL_BLD_OUTPUT_DIR}"
