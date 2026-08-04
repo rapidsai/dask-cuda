@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-source rapids-date-string
+source rapids-datetime-string
 source rapids-init-pip
 
 rapids-generate-version > ./VERSION
