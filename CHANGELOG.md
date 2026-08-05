@@ -1,3 +1,25 @@
+# dask-cuda 26.08.00 (5 Aug 2026)
+
+### 🐛 Bug Fixes
+* Drop usage of ``install_signal_handlers`` by @rjzamora in https://github.com/rapidsai/dask-cuda/pull/1651
+* Bump cuda-core minimum to 0.5.1 by @bdice in https://github.com/rapidsai/dask-cuda/pull/1661
+* Use ``transfer_incoming_log`` attribute by @rjzamora in https://github.com/rapidsai/dask-cuda/pull/1667
+### 📖 Documentation
+* Improve UCX documentation by @pentschev in https://github.com/rapidsai/dask-cuda/pull/1652
+* Update docs to use NVIDIA Sphinx theme by @bdice in https://github.com/rapidsai/dask-cuda/pull/1662
+### 🛠️ Improvements
+* Add SECURITY.md by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1653
+* fix(ci): fix configuration for breaking change notification workflow by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1654
+* Build and test with CUDA 13.3.0 by @bdice in https://github.com/rapidsai/dask-cuda/pull/1656
+* refactor: switch to `rapids-artifact-name` for consistent artifact naming by @gforsyth in https://github.com/rapidsai/dask-cuda/pull/1657
+* Use main shared-workflows branch by @bdice in https://github.com/rapidsai/dask-cuda/pull/1659
+* Update CuPy and NumPy dependency specs by @bdice in https://github.com/rapidsai/dask-cuda/pull/1660
+* remove workaround for cuda-core<0.5.1, test against oldest cuda-core in UCXX tests by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1664
+* put a <2 ceiling on cuda-core dependency by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1668
+
+
+**Full Changelog**: https://github.com/rapidsai/dask-cuda/compare/v26.08.00a...release/26.08
+
 # dask-cuda 26.06.00 (3 Jun 2026)
 
 ### 🚨 Breaking Changes
