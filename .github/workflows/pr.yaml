@@ -65,8 +65,6 @@ jobs:
       build_type: pull-request
       script: ci/build_python.sh
       pure-conda: true
-      release-build-output: true
-      release-unit: conda:dask-cuda
     permissions:
       actions: read
       contents: read
@@ -113,8 +111,6 @@ jobs:
       package-type: python
       pure-wheel: true
       append-cuda-suffix: false
-      release-build-output: true
-      release-unit: wheel:dask-cuda
       # this pure wheel build requires its own matrix_filter (not the ones upstream)
       # Package is pure Python and only ever requires one build.
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
