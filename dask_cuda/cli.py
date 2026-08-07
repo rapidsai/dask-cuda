@@ -3,6 +3,7 @@
 
 from __future__ import absolute_import, division, print_function
 
+import asyncio
 import logging
 
 import click
@@ -10,7 +11,7 @@ from tornado.ioloop import IOLoop, TimeoutError
 
 from dask import config as dask_config
 from distributed import Client
-from distributed.cli.utils import install_signal_handlers
+from distributed._signals import wait_for_signals
 from distributed.preloading import validate_preload_argv
 from distributed.security import Security
 from distributed.utils import import_term
@@ -468,17 +469,31 @@ def worker(
             **kwargs,
         )
 
-        async def on_signal(signum):
-            logger.info("Exiting on signal %d", signum)
-            await worker.close()
-
         async def run():
-            await worker
-            await worker.finished()
+            async def wait_for_worker_to_finish():
+                await worker
+                await worker.finished()
+
+            async def wait_for_signal_and_close():
+                signum = await wait_for_signals()
+                logger.info("Exiting on signal %d", signum)
+                await worker.close()
+
+            wait_for_signal_and_close_task = asyncio.ensure_future(
+                wait_for_signal_and_close()
+            )
+            wait_for_worker_to_finish_task = asyncio.ensure_future(
+                wait_for_worker_to_finish()
+            )
+
+            done, _ = await asyncio.wait(
+                [wait_for_signal_and_close_task, wait_for_worker_to_finish_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in done:
+                task.result()
 
         loop = IOLoop.current()
-
-        install_signal_handlers(loop, cleanup=on_signal)
 
         try:
             loop.run_sync(run)
