@@ -327,16 +327,17 @@ def get_preload_options(
         needed by Dask workers.
     enable_tcp: bool, default None
         Set environment variables to enable TCP over UCX, even when InfiniBand or
-        NVLink support are disabled.
+        NVLink support are disabled. Leave as ``None`` to use automatic UCX
+        transport selection.
     enable_infiniband: bool, default None
         Set environment variables to enable UCX InfiniBand support. Implies
-        enable_tcp=True.
+        enable_tcp=True. Leave as ``None`` to use automatic UCX transport selection.
     enable_rdmacm: bool, default None
         Set environment variables to enable UCX RDMA connection manager support.
         Currently requires enable_infiniband=True.
     enable_nvlink: bool, default None
         Set environment variables to enable UCX NVLink support. Implies
-        enable_tcp=True.
+        enable_tcp=True. Leave as ``None`` to use automatic UCX transport selection.
 
     Example
     -------

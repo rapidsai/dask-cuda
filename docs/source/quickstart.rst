@@ -19,6 +19,9 @@ To create a Dask-CUDA cluster using all available GPUs and connect a Dask.distri
 .. tip::
 
    Be sure to include an ``if __name__ == "__main__":`` block when using :py:class:`dask_cuda.LocalCUDACluster` in a standalone Python script. See `standalone Python scripts <https://docs.dask.org/en/stable/scheduling.html#standalone-python-scripts>`_ for more details.
+   In scripts, tests, or repeated interactive experiments, context managers are
+   a convenient way to stop local workers promptly when the cluster is no longer
+   needed.
 
 ``dask cuda worker``
 --------------------

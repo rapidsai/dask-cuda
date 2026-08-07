@@ -1,11 +1,11 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
 
 rapids-logger "Downloading artifacts from previous jobs"
-PYTHON_CHANNEL=$(rapids-download-from-github "$(rapids-package-name "conda_python" dask-cuda --pure)")
+PYTHON_CHANNEL=$(rapids-download-from-github "$(rapids-artifact-name conda_python dask-cuda dask-cuda --pure --arch any)")
 
 rapids-logger "Create test conda environment"
 . /opt/conda/etc/profile.d/conda.sh

@@ -2,10 +2,11 @@
 dask_cuda/  @rapidsai/daskcuda-python-codeowners
 
 #CI code owners
-/.github/                @rapidsai/ci-codeowners
 /ci/                     @rapidsai/ci-codeowners
+/.github/                @rapidsai/ci-codeowners
 /.pre-commit-config.yaml @rapidsai/ci-codeowners
 /.shellcheckrc           @rapidsai/ci-codeowners
+/.yamllint.yaml          @rapidsai/ci-codeowners
 
 #packaging code owners
 /.devcontainer/    @rapidsai/packaging-codeowners
@@ -13,3 +14,6 @@ dask_cuda/  @rapidsai/daskcuda-python-codeowners
 /dependencies.yaml @rapidsai/packaging-codeowners
 /build.sh          @rapidsai/packaging-codeowners
 pyproject.toml     @rapidsai/packaging-codeowners
+
+# Ops code owners
+/SECURITY.md             @rapidsai/ops-codeowners

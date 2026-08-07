@@ -268,12 +268,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         # Problematic library that creates CUDA context at import time
         import os
 
-        try:
-            from cuda.core import Device
-        except ImportError:
-            # cuda-core < 0.5
-            import cuda.core.experimental
-            Device = cuda.core.experimental.Device
+        from cuda.core import Device
 
         try:
             # Create CUDA context at import time, this will be inherited by subprocesses

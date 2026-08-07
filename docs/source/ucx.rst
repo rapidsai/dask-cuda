@@ -32,6 +32,11 @@ A memory pool also prevents the Dask scheduler from deserializing CUDA data, whi
 Configuration
 -------------
 
+For most Dask-CUDA deployments, prefer automatic UCX transport selection:
+start the cluster with the UCX protocol and leave individual transports unset.
+Manual transport selection is still supported, but should generally be reserved
+for transport-specific benchmarking.
+
 UCX Configuration can be provided via:
 
 1. **YAML configuration files**: `distributed-ucxx.yaml`
@@ -50,7 +55,11 @@ The configuration schema is defined in `distributed-ucxx-schema.yaml <https://gi
 Example Configuration
 ~~~~~~~~~~~~~~~~~~~~~
 
-New schema (recommended):
+The following examples show the current schema for manual transport selection.
+Use them when benchmarking specific transports; routine Dask-CUDA deployment
+should prefer automatic selection instead.
+
+New schema:
 
 .. code-block:: yaml
 
@@ -87,7 +96,7 @@ Legacy schema (may be removed in the future):
 Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~
 
-New schema (recommended):
+New schema:
 
 .. code-block:: bash
 
@@ -106,7 +115,7 @@ Legacy schema (may be removed in the future):
 Python Configuration
 ~~~~~~~~~~~~~~~~~~~~
 
-New schema (recommended):
+New schema:
 
 .. code-block:: python
 
@@ -148,30 +157,45 @@ Automatic
 
 Beginning with Dask-CUDA 22.02 and assuming UCX >= 1.11.1, specifying UCX transports is now optional.
 
-A local cluster can now be started with ``LocalCUDACluster(protocol="ucx")``, implying automatic UCX transport selection (``UCX_TLS=all``). Starting a cluster separately -- scheduler, workers and client as different processes -- is also possible, as long as Dask scheduler is created with ``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to the scheduler will imply automatic UCX transport selection, but that requires the Dask scheduler and client to be started with ``DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True``. See `Enabling UCX communication <../examples/ucx/>`_ for more details examples of UCX usage with automatic configuration.
+A local cluster can be started with ``LocalCUDACluster(protocol="ucx")``,
+which uses automatic UCX transport selection (``UCX_TLS=all``). Starting a
+cluster separately -- scheduler, workers and client as different processes --
+is also possible, as long as Dask scheduler is created with
+``dask scheduler --protocol="ucx"`` and connecting a ``dask cuda worker`` to
+the scheduler will imply automatic UCX transport selection, but that requires
+the Dask scheduler and client to be started with
+``DASK_DISTRIBUTED_UCXX__CREATE_CUDA_CONTEXT=True``. See
+`Enabling UCX communication <../examples/ucx/>`_ for more detailed examples
+of UCX usage with automatic configuration.
 
-Configuring transports manually is still possible, please refer to the subsection below.
+Configuring transports manually is still possible for benchmarking; see the
+subsection below.
 
 Manual
 ^^^^^^
 
-In addition to installations of UCX and UCXX on your system, for manual configuration several options must be specified within your Dask configuration to enable the integration.
-Typically, these will affect ``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by UCX to decide what transport methods to use and which to prioritize, respectively.
-However, some will affect related libraries, such as RMM:
+Manual transport selection can be useful when comparing specific transports. In
+addition to installations of UCX and UCXX on your system, several options may be
+specified within your Dask configuration to choose transports explicitly.
+Typically, these affect
+``UCX_TLS`` and ``UCX_SOCKADDR_TLS_PRIORITY``, environment variables used by
+UCX to decide what transport methods to use and which to prioritize,
+respectively. Some also affect related libraries, such as RMM:
 
-- ``distributed-ucxx.cuda_copy: true`` -- **required.**
+- ``distributed-ucxx.cuda_copy: true`` -- enable CUDA transfers over UCX
+  when selecting transports manually.
 
-  Adds ``cuda_copy`` to ``UCX_TLS``, enabling CUDA transfers over UCX.
+  Adds ``cuda_copy`` to ``UCX_TLS``.
 
-- ``distributed-ucxx.tcp: true`` -- **required.**
+- ``distributed-ucxx.tcp: true`` -- include TCP over UCX.
 
   Adds ``tcp`` to ``UCX_TLS``, enabling TCP transfers over UCX; this is required for very small transfers which are inefficient for NVLink and InfiniBand.
 
-- ``distributed-ucxx.nvlink: true`` -- **required for NVLink.**
+- ``distributed-ucxx.nvlink: true`` -- include NVLink for same-node benchmark comparisons.
 
   Adds ``cuda_ipc`` to ``UCX_TLS``, enabling NVLink transfers over UCX; affects intra-node communication only.
 
-- ``distributed-ucxx.infiniband: true`` -- **required for InfiniBand.**
+- ``distributed-ucxx.infiniband: true`` -- include InfiniBand for multi-node benchmark comparisons.
 
   Adds ``rc`` to ``UCX_TLS``, enabling InfiniBand transfers over UCX.
 

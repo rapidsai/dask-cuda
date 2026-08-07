@@ -92,13 +92,15 @@ when Dask needed to move data back-and-forth between workers. This setup results
     ================================================================================
 
 
-To compare, we'll now change the ``procotol`` from ``tcp`` to ``ucx``:
+To compare, we'll now change the ``protocol`` from ``tcp`` to ``ucx`` and let
+UCX select the available transports automatically:
 
     python local_cudf_merge.py -d 0,1 -p ucx -c 50_000_000 --rmm-pool-size 30GB
 
 
 
-With UCX and NVLink, we greatly reduced the wall clock time to: ``347.43 ms +/- 5.41 ms``.::
+With automatic UCX transport selection on a system with NVLink, we greatly
+reduced the wall clock time to: ``347.43 ms +/- 5.41 ms``.::
 
     ================================================================================
     Wall clock                | Throughput
