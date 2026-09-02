@@ -5,6 +5,7 @@ import itertools
 import logging
 import os
 import time
+from contextlib import suppress
 
 import numpy
 from zict import Buffer, Func
@@ -262,9 +263,7 @@ class DeviceHostFile(ZictBase):
         self.others = {}
 
     def __setitem__(self, key, value):
-        if key in self.device_buffer:
-            # Make sure we register the removal of an existing key
-            del self[key]
+        self._discard_key(key)
 
         if is_spillable_object(value):
             self.others[key] = value
@@ -284,22 +283,34 @@ class DeviceHostFile(ZictBase):
         raise KeyError(key)
 
     def __len__(self):
-        return len(self.device_buffer) + len(self.others)
+        return sum(1 for _ in self)
 
     def __iter__(self):
-        return itertools.chain(self.device_buffer, self.others)
+        seen = set()
+        for key in itertools.chain(self.device_buffer, self.host_buffer, self.others):
+            if key not in seen:
+                seen.add(key)
+                yield key
+
+    def _discard_key(self, key):
+        removed = key in self.others
+        self.device_keys.discard(key)
+        self.others.pop(key, None)
+
+        with suppress(KeyError):
+            del self.device_buffer[key]
+            removed = True
+
+        if self.host_buffer is not self.device_buffer:
+            with suppress(KeyError):
+                del self.host_buffer[key]
+                removed = True
+
+        return removed
 
     def __delitem__(self, key):
-        self.device_keys.discard(key)
-        if key in self.others:
-            del self.others[key]
-        else:
-            if isinstance(self.device_buffer, dict) and key not in self.device_buffer:
-                # If `self.device_buffer` is a dictionary, host `key`s are inserted
-                # directly into `self.host_buffer`.
-                del self.host_buffer[key]
-            else:
-                del self.device_buffer[key]
+        if not self._discard_key(key):
+            raise KeyError(key)
 
     def evict(self):
         """Evicts least recently used host buffer (aka, CPU or system memory)
