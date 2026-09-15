@@ -135,7 +135,6 @@ jobs:
     with:
       docs-projects: dask-cuda
       dry-run: true
-      version-map: ${{ vars.VERSION_MAP }}
   wheel-build:
     needs: [build-details, checks]
     secrets: inherit # zizmor: ignore[secrets-inherit]

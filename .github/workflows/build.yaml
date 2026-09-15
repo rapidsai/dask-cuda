@@ -101,7 +101,6 @@ jobs:
     with:
       docs-projects: dask-cuda
       dry-run: false
-      version-map: ${{ vars.VERSION_MAP }}
   upload-conda:
     needs: [conda-python-build]
     secrets:
