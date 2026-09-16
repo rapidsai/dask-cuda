@@ -2,7 +2,7 @@ NVIDIA Dask-CUDA Documentation
 ==============================
 
 NVIDIA Dask-CUDA is a library extending `Dask.distributed <https://distributed.dask.org/en/latest/>`_'s single-machine `LocalCluster <https://docs.dask.org/en/latest/setup/single-distributed.html#localcluster>`_ and `Worker <https://distributed.dask.org/en/latest/worker.html>`_ for use in distributed GPU workloads.
-It is a part of the `NVIDIA CUDA-X <https://www.nvidia.com/en-us/technologies/cuda-x/>`_ suite of open-source software libraries for GPU-accelerated data science.
+It is a part of the `NVIDIA CUDA-X <https://developer.nvidia.com/topics/ai/data-science/cuda-x-for-data-science>`_ suite of open-source software libraries for GPU-accelerated data science.
 
 Motivation
 ----------

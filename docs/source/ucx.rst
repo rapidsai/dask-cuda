@@ -26,7 +26,7 @@ A memory pool also prevents the Dask scheduler from deserializing CUDA data, whi
     To avoid this, it is advised to initialize any UCX-enabled clusters before doing operations that would result in a CUDA context being created.
     Depending on the library, even an import can force CUDA context creation.
 
-    For some NVIDIA CUDA-X libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
+    For some libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
 
 
 Configuration

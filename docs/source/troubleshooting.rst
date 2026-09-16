@@ -55,7 +55,7 @@ If after following the instructions contained in this section, including consult
 administrators, please [file an issue under the Dask-CUDA repository](https://github.com/rapidsai/dask-cuda/issues),
 including the output for all commands below, they must be executed from the allocated cluster job:
 
-- ``conda list``, if environment was installed with conda or uses a NVIDIA CUDA-X provided Docker image;
+- ``conda list``, if environment was installed with conda or uses a RAPIDS provided Docker image;
 - ``pip list``, if environment was installed with pip;
 - ``nvidia-smi``;
 - ``nvidia-smi topo -m``;

@@ -82,7 +82,7 @@ To install Dask-CUDA from source, the source code repository must be cloned from
 Other NVIDIA CUDA-X libraries
 -----------------------------
 
-Dask-CUDA is a part of the `NVIDIA CUDA-X <https://www.nvidia.com/en-us/technologies/cuda-x/>`_ suite of open-source software libraries for GPU-accelerated data science, and works well in conjunction with them.
+Dask-CUDA is a part of the `NVIDIA CUDA-X <https://developer.nvidia.com/topics/ai/data-science/cuda-x-for-data-science>`_ suite of open-source software libraries for GPU-accelerated data science, and works well in conjunction with them.
 See `Getting Started <https://docs.nvidia.com/datascience/install/>`_ for instructions on how to install these libraries.
 Keep in mind that these libraries will require:
 
