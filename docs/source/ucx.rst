@@ -17,7 +17,7 @@ Software requirements
 UCX integration requires an environment with both UCX and UCXX installed; see `Installation <../install>`_ for detailed instructions on this process.
 
 When using UCX, each NVLink and InfiniBand memory buffer must create a mapping between each unique pair of processes they are transferred across; this can be quite costly, potentially in the range of hundreds of milliseconds per mapping.
-For this reason, it is strongly recommended to use `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
+For this reason, it is strongly recommended to use `NVIDIA RMM <https://github.com/rapidsai/rmm>`_ to allocate a memory pool that is only prone to a single mapping operation, which all subsequent transfers may rely upon.
 A memory pool also prevents the Dask scheduler from deserializing CUDA data, which will cause a crash.
 
 .. warning::
@@ -26,7 +26,7 @@ A memory pool also prevents the Dask scheduler from deserializing CUDA data, whi
     To avoid this, it is advised to initialize any UCX-enabled clusters before doing operations that would result in a CUDA context being created.
     Depending on the library, even an import can force CUDA context creation.
 
-    For some RAPIDS libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
+    For some NVIDIA CUDA-X libraries (e.g. cuDF), setting ``RAPIDS_NO_INITIALIZE=1`` at runtime will delay or disable their CUDA context creation, allowing for improved compatibility with UCX-enabled clusters and preventing runtime warnings.
 
 
 Configuration
