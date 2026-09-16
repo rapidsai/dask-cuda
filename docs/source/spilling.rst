@@ -39,9 +39,9 @@ The same applies for ``dask cuda worker``, and spilling can be controlled by set
 cuDF Spilling
 -------------
 
-When executing an ETL workflow with `Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_
+When executing an ETL workflow with `Dask cuDF <https://docs.nvidia.com/dask-cudf/latest/>`_
 (i.e. Dask DataFrame), it is usually best to leverage `native spilling support in cuDF
-<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#spilling-to-host-memory>`_.
+<https://docs.nvidia.com/cudf/latest/cudf/developer_guide/library_design/#spilling-to-host-memory>`_.
 
 Native cuDF spilling has an important advantage over Dask-CUDA's default GPU-to-host
 spilling: the latter tracks task outputs as whole units, so intermediate data created
@@ -98,7 +98,7 @@ To have each dask-cuda worker print spill statistics within the workflow, do som
     client.submit(spill_info)
 
 See the `cuDF spilling documentation
-<https://docs.rapids.ai/api/cudf/stable/developer_guide/library_design/#statistics>`_
+<https://docs.nvidia.com/cudf/latest/cudf/developer_guide/library_design/#statistics>`_
 for more information on the available spill-statistics options.
 
 Limitations

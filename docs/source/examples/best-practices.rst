@@ -28,7 +28,7 @@ hundreds of thousand or even millions of allocations in trivial workflows causin
 
 
   .. |rmm-pool| replace:: :abbr:`RMM (RAPIDS Memory Manager)` pool
-  __ https://docs.rapids.ai/api/rmm/stable/
+  __ https://docs.nvidia.com/rmm/latest/
 
 
 .. code-block:: python
@@ -49,7 +49,7 @@ Spilling from Device
 
 Dask-CUDA offers several different ways to enable automatic spilling from device memory.
 The best method often depends on the specific workflow. For classic ETL workloads using
-`Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_, native cuDF spilling is usually
+`Dask cuDF <https://docs.nvidia.com/dask-cudf/latest/>`_, native cuDF spilling is usually
 the best place to start. See :ref:`Dask-CUDA's spilling documentation <spilling-from-device>`
 for more details.
 

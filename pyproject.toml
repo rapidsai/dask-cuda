@@ -79,7 +79,7 @@ test-cu13 = [
 
 [project.urls]
 Homepage = "https://github.com/rapidsai/dask-cuda"
-Documentation = "https://docs.rapids.ai/api/dask-cuda/stable/"
+Documentation = "https://docs.nvidia.com/dask-cuda/latest/"
 Source = "https://github.com/rapidsai/dask-cuda"
 
 [tool.coverage.run]
