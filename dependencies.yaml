@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # Dependency list for https://github.com/rapidsai/dependency-file-generator
@@ -323,6 +323,7 @@ dependencies:
               - distributed-ucxx-cu13==0.53.*,>=0.0.0a0
               - kvikio-cu13==26.12.*,>=0.0.0a0
           - matrix:
+              cuda_suffixed: "false"
             packages:
               - *cudf_unsuffixed
               - *dask_cudf_unsuffixed
