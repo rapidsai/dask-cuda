@@ -404,7 +404,7 @@ def worker(
     argument or a scheduler file passed through the ``--scheduler-file`` option.
 
     See
-    https://docs.rapids.ai/api/dask-cuda/stable/quickstart.html#dask-cuda-worker
+    https://docs.nvidia.com/dask-cuda/latest/quickstart/#dask-cuda-worker
     for info.
     """
     if multiprocessing_method == "forkserver":

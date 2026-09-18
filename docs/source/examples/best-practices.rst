@@ -6,7 +6,7 @@ Multi-GPU Machines
 ~~~~~~~~~~~~~~~~~~
 
 When choosing between two multi-GPU setups, it is best to pick the one where most GPUs are co-located with one-another.  This could be a
-`DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://rapids.ai/cloud>`_ , a high-density GPU HPC instance, etc.  This is done for two reasons:
+`DGX <https://www.nvidia.com/en-us/data-center/dgx-systems/>`_, a cloud instance with `multi-gpu options <https://docs.nvidia.com/datascience/deployment/latest/cloud/>`_ , a high-density GPU HPC instance, etc.  This is done for two reasons:
 
 - Moving data between GPUs is costly and performance decreases when computation stops due to communication overheads, Host-to-Device/Device-to-Host transfers, etc
 - Multi-GPU instances often come with accelerated networking like `NVLink <https://www.nvidia.com/en-us/data-center/nvlink/>`_.  These accelerated networking paths usually have much higher throughput/bandwidth compared with traditional networking *and* don't force and Host-to-Device/Device-to-Host transfers.  See `Accelerated Networking`_ for more discussion.
@@ -23,12 +23,8 @@ For more discussion on controlling number of workers/using multiple GPUs see :re
 GPU Memory Management
 ~~~~~~~~~~~~~~~~~~~~~
 
-When using Dask-CUDA, especially with RAPIDS, it's best to use an |rmm-pool|__ to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
+When using Dask-CUDA, it's best to use an :doc:`NVIDIA RMM <rmm:index>` pool to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
 hundreds of thousand or even millions of allocations in trivial workflows causing significant performance degradations.  With an RMM pool, allocations are sub-sampled from a larger pool and this greatly reduces the allocation time and thereby increases performance:
-
-
-  .. |rmm-pool| replace:: :abbr:`RMM (RAPIDS Memory Manager)` pool
-  __ https://docs.rapids.ai/api/rmm/stable/
 
 
 .. code-block:: python
@@ -49,7 +45,7 @@ Spilling from Device
 
 Dask-CUDA offers several different ways to enable automatic spilling from device memory.
 The best method often depends on the specific workflow. For classic ETL workloads using
-`Dask cuDF <https://docs.rapids.ai/api/dask-cudf/stable/>`_, native cuDF spilling is usually
+:doc:`Dask cuDF <dask-cudf:index>`, native cuDF spilling is usually
 the best place to start. See :ref:`Dask-CUDA's spilling documentation <spilling-from-device>`
 for more details.
 

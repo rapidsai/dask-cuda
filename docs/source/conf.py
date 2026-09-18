@@ -210,3 +210,9 @@ epub_exclude_files = ["search.html"]
 
 
 # -- Extension configuration -------------------------------------------------
+
+intersphinx_mapping = {
+    "cudf": ("https://docs.nvidia.com/cudf/latest/", None),
+    "dask-cudf": ("https://docs.nvidia.com/dask-cudf/latest/", None),
+    "rmm": ("https://docs.nvidia.com/rmm/latest/", None),
+}
