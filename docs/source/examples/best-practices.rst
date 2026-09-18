@@ -23,7 +23,7 @@ For more discussion on controlling number of workers/using multiple GPUs see :re
 GPU Memory Management
 ~~~~~~~~~~~~~~~~~~~~~
 
-When using Dask-CUDA, especially with other NVIDIA CUDA-X libraries, it's best to use an |rmm-pool|__ to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
+When using Dask-CUDA, it's best to use an |rmm-pool|__ to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
 hundreds of thousand or even millions of allocations in trivial workflows causing significant performance degradations.  With an RMM pool, allocations are sub-sampled from a larger pool and this greatly reduces the allocation time and thereby increases performance:
 
 
