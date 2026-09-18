@@ -7,7 +7,7 @@ It is a part of the `NVIDIA CUDA-X <https://developer.nvidia.com/topics/ai/data-
 Motivation
 ----------
 
-While Distributed can be used to leverage GPU workloads through libraries such as `cuDF <https://docs.nvidia.com/cudf/latest/>`_, `CuPy <https://cupy.dev/>`_, and `Numba <https://numba.pydata.org/>`_, Dask-CUDA offers several unique features unavailable to Distributed:
+While Distributed can be used to leverage GPU workloads through libraries such as :doc:`cuDF <cudf:index>`, `CuPy <https://cupy.dev/>`_, and `Numba <https://numba.pydata.org/>`_, Dask-CUDA offers several unique features unavailable to Distributed:
 
 - **Automatic instantiation of per-GPU workers** -- Using Dask-CUDA's LocalCUDACluster or ``dask cuda worker`` CLI will automatically launch one worker for each GPU available on the executing node, avoiding the need to explicitly select GPUs.
 - **Automatic setting of CPU affinity**  -- The setting of CPU affinity for each GPU is done automatically, preventing memory transfers from taking suboptimal paths.

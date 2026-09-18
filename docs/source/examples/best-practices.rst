@@ -23,12 +23,8 @@ For more discussion on controlling number of workers/using multiple GPUs see :re
 GPU Memory Management
 ~~~~~~~~~~~~~~~~~~~~~
 
-When using Dask-CUDA, it's best to use an |rmm-pool|__ to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
+When using Dask-CUDA, it's best to use an :doc:`NVIDIA RMM <rmm:index>` pool to pre-allocate memory on the GPU.  Allocating memory, while fast, takes a small amount of time, however, one can easily make
 hundreds of thousand or even millions of allocations in trivial workflows causing significant performance degradations.  With an RMM pool, allocations are sub-sampled from a larger pool and this greatly reduces the allocation time and thereby increases performance:
-
-
-  .. |rmm-pool| replace:: :abbr:`NVIDIA RMM` pool
-  __ https://docs.nvidia.com/rmm/latest/
 
 
 .. code-block:: python
@@ -49,7 +45,7 @@ Spilling from Device
 
 Dask-CUDA offers several different ways to enable automatic spilling from device memory.
 The best method often depends on the specific workflow. For classic ETL workloads using
-`Dask cuDF <https://docs.nvidia.com/dask-cudf/latest/>`_, native cuDF spilling is usually
+:doc:`Dask cuDF <dask-cudf:index>`, native cuDF spilling is usually
 the best place to start. See :ref:`Dask-CUDA's spilling documentation <spilling-from-device>`
 for more details.
 
