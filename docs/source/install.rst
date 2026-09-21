@@ -79,11 +79,11 @@ To install Dask-CUDA from source, the source code repository must be cloned from
     cd dask-cuda
     python -m pip install .
 
-Other RAPIDS libraries
-----------------------
+Other NVIDIA CUDA-X libraries
+-----------------------------
 
-Dask-CUDA is a part of the `RAPIDS <https://rapids.ai/>`_ suite of open-source software libraries for GPU-accelerated data science, and works well in conjunction with them.
-See `RAPIDS -- Getting Started <https://rapids.ai/start.html>`_ for instructions on how to install these libraries.
+Dask-CUDA is a part of the `NVIDIA CUDA-X <https://developer.nvidia.com/topics/ai/data-science/cuda-x-for-data-science>`_ suite of open-source software libraries for GPU-accelerated data science, and works well in conjunction with them.
+See `Getting Started <https://docs.nvidia.com/datascience/install/>`_ for instructions on how to install these libraries.
 Keep in mind that these libraries will require:
 
 - At least one CUDA-compliant GPU

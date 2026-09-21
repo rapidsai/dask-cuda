@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2025, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES.
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
@@ -23,7 +23,7 @@ class CPUAffinity(WorkerPlugin):
             logger.warning(
                 "Setting CPU affinity for GPU failed. Please refer to the following "
                 "link for troubleshooting information: "
-                "https://docs.rapids.ai/api/dask-cuda/nightly/troubleshooting/#setting-cpu-affinity-failure"  # noqa: E501
+                "https://docs.nvidia.com/dask-cuda/latest/troubleshooting/#setting-cpu-affinity-failure"  # noqa: E501
             )
 
 

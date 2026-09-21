@@ -313,7 +313,7 @@ class LocalCUDACluster(LocalCluster):
                 warnings.warn(
                     "When using NVLink we recommend setting a "
                     "`rmm_pool_size`. Please see: "
-                    "https://docs.rapids.ai/api/dask-cuda/nightly/ucx/ "
+                    "https://docs.nvidia.com/dask-cuda/latest/ucx/"
                     "for more details"
                 )
 
