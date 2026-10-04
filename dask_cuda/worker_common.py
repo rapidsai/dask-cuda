@@ -15,7 +15,7 @@ from .utils import (
 def worker_data_function(
     device_memory_limit=None,
     memory_limit=None,
-    enable_cudf_spill=False,
+    enable_cudf_spill=None,
 ):
     """
     Create a data function for CUDA workers based on memory configuration.

@@ -137,9 +137,9 @@ def cuda():
 )
 @click.option(
     "--enable-cudf-spill/--disable-cudf-spill",
-    default=False,
-    show_default=True,
-    help="""Enable automatic cuDF spilling.""",
+    default=None,
+    help="""Enable automatic cuDF spilling. If unset, cuDF's own setting is used, e.g.,
+    the ``CUDF_SPILL`` environment variable.""",
 )
 @click.option(
     "--cudf-spill-stats",

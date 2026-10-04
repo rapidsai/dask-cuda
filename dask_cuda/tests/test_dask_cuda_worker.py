@@ -280,6 +280,29 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
                     assert v == 0
 
 
+def test_cudf_spill_env_var(loop, monkeypatch):  # noqa: F811
+    cudf = pytest.importorskip("cudf")
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                cudf_spill = client.run(cudf.get_option, "spill")
+                for v in cudf_spill.values():
+                    assert v is True
+
+
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources cannot enable cuDF spill"
 )
