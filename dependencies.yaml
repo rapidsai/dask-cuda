@@ -299,7 +299,8 @@ dependencies:
         matrices:
           - matrix: {dependencies: "oldest"}
             packages:
-              - cuda-core==1.0
+              # cuda-core 1.0.0 cannot import with CUDA 13.0.x bindings.
+              - cuda-core==1.0.1
           - matrix:
             packages:
   test_python_cuda:
