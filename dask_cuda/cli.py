@@ -144,9 +144,9 @@ def cuda():
 @click.option(
     "--cudf-spill-stats",
     type=int,
-    default=0,
-    help="""Set the cuDF spilling statistics level. This option has no effect if
-    ``--enable-cudf-spill`` is not specified.""",
+    default=None,
+    help="""Set the cuDF spilling statistics level. If unset, cuDF's own setting is
+    used, e.g., the ``CUDF_SPILL_STATS`` environment variable.""",
 )
 @click.option(
     "--rmm-pool-size",

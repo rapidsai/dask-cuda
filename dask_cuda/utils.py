@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import math
@@ -232,6 +232,32 @@ def get_device_total_memory(device_index=0):
         return pynvml.nvmlDeviceGetMemoryInfo(handle).total
     except pynvml.NVMLError_NotSupported:
         return None
+
+
+def resolve_cudf_spill(enable_cudf_spill):
+    """Resolve whether cuDF spilling is enabled.
+
+    An explicit ``True``/``False`` takes precedence. If ``None``, fall back to the
+    ``CUDF_SPILL`` environment variable, parsed the same way cuDF does.
+
+    Parameters
+    ----------
+    enable_cudf_spill: bool or None
+        The user-specified value, ``None`` if unspecified.
+
+    Returns
+    -------
+    Whether cuDF spilling is enabled.
+    """
+    if enable_cudf_spill is not None:
+        return bool(enable_cudf_spill)
+
+    env = os.environ.get("CUDF_SPILL", "").lower().strip()
+    try:
+        as_int = int(env)
+    except ValueError:
+        as_int = None
+    return env in ("true", "on") or bool(as_int)
 
 
 def has_device_memory_resource(device_index=0):

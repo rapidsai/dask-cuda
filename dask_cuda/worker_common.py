@@ -6,6 +6,7 @@ import os
 from .device_host_file import DeviceHostFile
 from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .utils import (
+    resolve_cudf_spill,
     get_cpu_affinity,
     has_device_memory_resource,
     parse_device_memory_limit,
@@ -40,6 +41,8 @@ def worker_data_function(
         data configuration based on the availability of an dedicated device memory
         resource and arguments passed to the worker.
     """
+
+    enable_cudf_spill = resolve_cudf_spill(enable_cudf_spill)
 
     def data(device_index):
         if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
@@ -128,8 +131,8 @@ def worker_plugins(
         List of modules to pre-import
     enable_cudf_spill : bool
         Whether to enable cuDF spilling
-    cudf_spill_stats : bool
-        Whether to track cuDF spilling statistics
+    cudf_spill_stats : int or None
+        cuDF spilling statistics level
 
     Returns
     -------

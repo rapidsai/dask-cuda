@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import os
@@ -22,6 +22,7 @@ from dask_cuda.utils import (
     nvml_device_index,
     parse_cuda_visible_device,
     parse_device_memory_limit,
+    resolve_cudf_spill,
     unpack_bitmask,
 )
 
@@ -48,6 +49,28 @@ class _DeviceContext:
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
+@pytest.mark.parametrize(
+    "explicit,env,expected",
+    [
+        (None, None, False),
+        (None, "on", True),
+        (None, "True", True),
+        (None, "1", True),
+        (None, "off", False),
+        (None, "0", False),
+        (None, "garbage", False),
+        (True, "off", True),
+        (False, "on", False),
+    ],
+)
+def test_resolve_cudf_spill(monkeypatch, explicit, env, expected):
+    if env is None:
+        monkeypatch.delenv("CUDF_SPILL", raising=False)
+    else:
+        monkeypatch.setenv("CUDF_SPILL", env)
+    assert resolve_cudf_spill(explicit) is expected
+
+
 def test_get_n_gpus():
     assert isinstance(get_n_gpus(), int)
 

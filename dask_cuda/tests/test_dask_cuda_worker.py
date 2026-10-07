@@ -25,6 +25,7 @@ from dask_cuda.utils import (
     has_device_memory_resource,
     wait_workers,
 )
+from dask_cuda.worker_common import worker_data_function
 
 
 @patch.dict(
@@ -352,6 +353,24 @@ def test_cudf_spill_no_dedicated_memory_error():
         b"cuDF spilling is not supported on devices without dedicated memory"
         in ret.stderr
     )
+
+
+@pytest.mark.parametrize("enable_cudf_spill", [None, True])
+def test_cudf_spill_env_var_no_dedicated_memory_error(monkeypatch, enable_cudf_spill):
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    data = worker_data_function(enable_cudf_spill=enable_cudf_spill)
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        with pytest.raises(ValueError, match="cuDF spilling is not supported"):
+            data(0)
+
+
+def test_cudf_spill_explicit_false_overrides_env_var(monkeypatch):
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    data = worker_data_function(enable_cudf_spill=False, memory_limit=None)
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        data(0)
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
