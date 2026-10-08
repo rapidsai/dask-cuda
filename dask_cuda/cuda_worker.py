@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -23,7 +23,13 @@ from distributed.utils import parse_ports
 from distributed.worker_memory import parse_memory_limit
 
 from .initialize import initialize
-from .utils import cuda_visible_devices, get_n_gpus, get_ucx_config, nvml_device_index
+from .utils import (
+    cuda_visible_devices,
+    get_n_gpus,
+    get_ucx_config,
+    nvml_device_index,
+    resolve_cudf_spill,
+)
 from .worker_common import worker_data_function, worker_plugins
 
 
@@ -38,8 +44,8 @@ class CUDAWorker(Server):
         name=None,
         memory_limit="auto",
         device_memory_limit="default",
-        enable_cudf_spill=False,
-        cudf_spill_stats=0,
+        enable_cudf_spill=None,
+        cudf_spill_stats=None,
         rmm_pool_size=None,
         rmm_maximum_pool_size=None,
         rmm_managed_memory=False,
@@ -198,7 +204,7 @@ class CUDAWorker(Server):
         )
 
         cudf_spill_warning = dask.config.get("cudf-spill-warning", default=True)
-        if enable_cudf_spill and cudf_spill_warning:
+        if resolve_cudf_spill(enable_cudf_spill) and cudf_spill_warning:
             warnings.warn(
                 "cuDF spilling is enabled, please ensure the client and scheduler "
                 "processes set `CUDF_SPILL=on` as well. To disable this warning "
