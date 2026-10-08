@@ -1,3 +1,20 @@
+# dask-cuda 26.10.00 (7 Oct 2026)
+
+### 🐛 Bug Fixes
+### 📖 Documentation
+* Enable public docs features in CI by @bdice in https://github.com/rapidsai/dask-cuda/pull/1679
+* Turn on autosectionlabel in sphinx docs by @wence- in https://github.com/rapidsai/dask-cuda/pull/1682
+### 🛠️ Improvements
+* enforce 'yamllint' checks by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1671
+* ensure nightly builds always produce new packages by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1673
+* Propagate pytest filterwarnings to subprocesses via PYTHONWARNINGS  by @parthsanan in https://github.com/rapidsai/dask-cuda/pull/1638
+* ci: avoid triggered-by-schedule and triggered-by-merge builds cancelling each other by @jameslamb in https://github.com/rapidsai/dask-cuda/pull/1675
+* X-ORG-1676: Publish API docs to docs.nvidia.com by @josephine-wolf-oberholtzer in https://github.com/rapidsai/dask-cuda/pull/1677
+* X-ORG-410: Integrate archived docs into version switcher by @josephine-wolf-oberholtzer in https://github.com/rapidsai/dask-cuda/pull/1689
+
+
+**Full Changelog**: https://github.com/rapidsai/dask-cuda/compare/v26.10.00a...release/26.10
+
 # dask-cuda 26.08.00 (5 Aug 2026)
 
 ### 🐛 Bug Fixes
