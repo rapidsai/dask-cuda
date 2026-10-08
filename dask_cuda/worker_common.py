@@ -32,7 +32,8 @@ def worker_data_function(
     memory_limit : str or int, optional
         Limit of host memory, defaults to None
     enable_cudf_spill : bool, optional
-        Whether to enable cuDF spilling, defaults to False
+        Whether to enable cuDF spilling, defaults to None (falls back
+        to `CUDF_SPILL`)
 
     Returns
     -------
@@ -129,7 +130,7 @@ def worker_plugins(
         List of external libraries to use with RMM allocator
     pre_import : list
         List of modules to pre-import
-    enable_cudf_spill : bool
+    enable_cudf_spill : bool or None
         Whether to enable cuDF spilling
     cudf_spill_stats : int or None
         cuDF spilling statistics level

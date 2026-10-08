@@ -48,7 +48,6 @@ class _DeviceContext:
         return False
 
 
-@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
 @pytest.mark.parametrize(
     "explicit,env,expected",
     [
@@ -71,6 +70,7 @@ def test_resolve_cudf_spill(monkeypatch, explicit, env, expected):
     assert resolve_cudf_spill(explicit) is expected
 
 
+@patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0,1,2"})
 def test_get_n_gpus():
     assert isinstance(get_n_gpus(), int)
 

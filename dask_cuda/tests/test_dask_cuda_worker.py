@@ -281,6 +281,9 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
                     assert v == 0
 
 
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources cannot enable cuDF spill"
+)
 def test_cudf_spill_env_var(loop, monkeypatch):  # noqa: F811
     cudf = pytest.importorskip("cudf")
     monkeypatch.setenv("CUDF_SPILL", "on")
