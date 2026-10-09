@@ -60,6 +60,9 @@ jobs:
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@main
     with:
       ignored_pr_jobs: telemetry-summarize
+      # Main builds seed this cache. PR merge refs can restore it but should not create
+      # duplicate archives that are inaccessible to other PRs.
+      pre-commit-cache-read-only: true
     permissions:
       contents: read
   conda-python-build:
