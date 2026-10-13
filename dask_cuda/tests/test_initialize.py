@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import multiprocessing as mp
@@ -8,8 +8,6 @@ import subprocess
 import sys
 import tempfile
 import textwrap
-
-from dask_cuda._compat import CUDA_CORE_0_5_0
 
 import numpy
 import psutil
@@ -23,10 +21,7 @@ from dask_cuda.initialize import initialize
 from dask_cuda.utils import get_ucx_config, get_gpu_handle
 from dask_cuda.utils_test import IncreasedCloseTimeoutNanny
 
-if CUDA_CORE_0_5_0():
-    from cuda.core import system
-else:
-    from cuda.core.experimental import system
+from cuda.core import system
 
 
 mp = mp.get_context("spawn")  # type: ignore
@@ -373,10 +368,7 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             ):
                 warnings_assigned_device_found.append(line)
 
-        if CUDA_CORE_0_5_0():
-            num_devices = system.get_num_devices()
-        else:
-            num_devices = system.num_devices
+        num_devices = system.get_num_devices()
 
         # Every worker raises the warning once. With protocol="ucx" the warning is
         # raised once more by the parent process.

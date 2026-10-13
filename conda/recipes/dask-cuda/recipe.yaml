@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 schema_version: 1
 
@@ -37,7 +37,7 @@ requirements:
   run:
     - python
     - click >=8.1
-    - cuda-core >=0.5.1,<2
+    - cuda-core >=1.0,<2
     - numpy >=2.0,<3.0
     # 'nvidia-ml-py' provides the 'pynvml' module
     - nvidia-ml-py>=12
