@@ -35,7 +35,7 @@ jobs:
     uses: rapidsai/shared-workflows/.github/workflows/compute-build-details.yaml@main
   conda-python-build:
     needs: [build-details]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@90e352c37eba6b22b8706b32bf9ceb264421af37
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@497a9313661e724a316a38a05c9c805f4f12f430
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
@@ -122,7 +122,7 @@ jobs:
       pull-requests: read
   wheel-build:
     needs: [build-details]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@90e352c37eba6b22b8706b32bf9ceb264421af37
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@497a9313661e724a316a38a05c9c805f4f12f430
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
