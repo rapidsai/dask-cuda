@@ -879,7 +879,7 @@ def bandwidth_statistics(
     Parameters
     ----------
     logs:
-        the ``dask_worker.incoming_transfer_log`` object
+        the ``dask_worker.transfer_incoming_log`` object
     ignore_size: int (optional)
         ignore messages whose total byte count is smaller than this
         value (if provided)
@@ -920,7 +920,7 @@ def bandwidth_statistics(
 def aggregate_transfer_log_data(
     aggregator: Callable[[Any, Optional[int]], Any], ignore_size=None, dask_worker=None
 ) -> Tuple[Mapping[str, Any], Mapping[str, Any]]:
-    """Aggregate ``dask_worker.incoming_transfer_log`` on a single worker
+    """Aggregate ``dask_worker.transfer_incoming_log`` on a single worker
 
     Parameters
     ----------
@@ -933,7 +933,7 @@ def aggregate_transfer_log_data(
     dask_worker:
         The dask ``Worker`` object.
     """
-    return aggregator(dask_worker.incoming_transfer_log, ignore_size=ignore_size)
+    return aggregator(dask_worker.transfer_incoming_log, ignore_size=ignore_size)
 
 
 def peer_to_peer_bandwidths(

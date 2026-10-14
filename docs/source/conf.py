@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2020-2025, NVIDIA CORPORATION. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2020-2026, NVIDIA CORPORATION. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 # -*- coding: utf-8 -*-
@@ -20,12 +20,13 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import datetime
+import os
 
 # -- Project information -----------------------------------------------------
 
-project = "dask-cuda"
-copyright = "2020-%s, NVIDIA" % datetime.datetime.now().year
-author = "NVIDIA"
+project = "NVIDIA Dask-CUDA"
+copyright = f"2020-{datetime.datetime.today().year}, NVIDIA Corporation"
+author = "NVIDIA Corporation"
 
 # The full version, including alpha/beta/rc tags.
 from dask_cuda import __version__ as release  # noqa: E402
@@ -45,6 +46,7 @@ version = ".".join(release.split(".")[:2])
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosectionlabel",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
@@ -53,8 +55,10 @@ extensions = [
     "sphinx.ext.extlinks",
     "numpydoc",
     "sphinx_click",
-    "sphinx_rtd_theme",
 ]
+
+# Disambiguate section anchors across documents
+autosectionlabel_prefix_document = True
 
 numpydoc_show_class_members = False
 
@@ -91,7 +95,23 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "nvidia_sphinx_theme"
+html_theme_options = {
+    "public_docs_features": os.environ.get("CI") == "true",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/rapidsai/dask-cuda",
+            "icon": "fa-brands fa-github",
+            "type": "fontawesome",
+        },
+    ],
+    "navbar_center": "navbar-nav, version-switcher, navbar-external-links",
+    "switcher": {
+        "json_url": "https://docs.nvidia.com/dask-cuda/versions.json",
+        "version_match": version,
+    },
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -142,7 +162,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "dask-cuda.tex", "dask-cuda Documentation", "NVIDIA", "manual")
+    (master_doc, "dask-cuda.tex", f"{project} Documentation", author, "manual")
 ]
 
 
@@ -150,7 +170,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "dask-cuda", "dask-cuda Documentation", [author], 1)]
+man_pages = [(master_doc, "dask-cuda", f"{project} Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -162,7 +182,7 @@ texinfo_documents = [
     (
         master_doc,
         "dask-cuda",
-        "dask-cuda Documentation",
+        f"{project} Documentation",
         author,
         "dask-cuda",
         "One line description of project.",
@@ -191,9 +211,8 @@ epub_exclude_files = ["search.html"]
 
 # -- Extension configuration -------------------------------------------------
 
-
-def setup(app):
-    app.add_css_file("https://docs.rapids.ai/assets/css/custom.css")
-    app.add_js_file(
-        "https://docs.rapids.ai/assets/js/custom.js", loading_method="defer"
-    )
+intersphinx_mapping = {
+    "cudf": ("https://docs.nvidia.com/cudf/latest/", None),
+    "dask-cudf": ("https://docs.nvidia.com/dask-cudf/latest/", None),
+    "rmm": ("https://docs.nvidia.com/rmm/latest/", None),
+}

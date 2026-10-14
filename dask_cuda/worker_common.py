@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import os
@@ -6,6 +6,7 @@ import os
 from .device_host_file import DeviceHostFile
 from .plugins import CPUAffinity, CUDFSetup, PreImport, RMMSetup
 from .utils import (
+    resolve_cudf_spill,
     get_cpu_affinity,
     has_device_memory_resource,
     parse_device_memory_limit,
@@ -15,7 +16,7 @@ from .utils import (
 def worker_data_function(
     device_memory_limit=None,
     memory_limit=None,
-    enable_cudf_spill=False,
+    enable_cudf_spill=None,
 ):
     """
     Create a data function for CUDA workers based on memory configuration.
@@ -31,7 +32,8 @@ def worker_data_function(
     memory_limit : str or int, optional
         Limit of host memory, defaults to None
     enable_cudf_spill : bool, optional
-        Whether to enable cuDF spilling, defaults to False
+        Whether to enable cuDF spilling, defaults to None (falls back
+        to `CUDF_SPILL`)
 
     Returns
     -------
@@ -40,6 +42,8 @@ def worker_data_function(
         data configuration based on the availability of an dedicated device memory
         resource and arguments passed to the worker.
     """
+
+    enable_cudf_spill = resolve_cudf_spill(enable_cudf_spill)
 
     def data(device_index):
         if int(os.environ.get("DASK_CUDA_TEST_DISABLE_DEVICE_SPECIFIC", "0")) != 0:
@@ -126,10 +130,10 @@ def worker_plugins(
         List of external libraries to use with RMM allocator
     pre_import : list
         List of modules to pre-import
-    enable_cudf_spill : bool
+    enable_cudf_spill : bool or None
         Whether to enable cuDF spilling
-    cudf_spill_stats : bool
-        Whether to track cuDF spilling statistics
+    cudf_spill_stats : int or None
+        cuDF spilling statistics level
 
     Returns
     -------

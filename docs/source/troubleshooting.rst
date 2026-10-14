@@ -64,16 +64,10 @@ including the output for all commands below, they must be executed from the allo
 .. code-block:: python
 
     # print_affinity.py
-    import math
-    from multiprocessing import cpu_count
+    from cuda.core import system
 
-    import pynvml
-
-    pynvml.nvmlInit()
-    for i in range(pynvml.nvmlDeviceGetCount()):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-        cpu_affinity = pynvml.nvmlDeviceGetCpuAffinity(handle, math.ceil(cpu_count() / 64))
-        print(f"GPU {i}: list(cpu_affinity)")
+    for i, device in enumerate(system.Device.get_all_devices()):
+        print(f"GPU {i}: {device.get_cpu_affinity()}")
 
 Slurm
 ~~~~~

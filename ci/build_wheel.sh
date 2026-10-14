@@ -4,10 +4,11 @@
 
 set -euo pipefail
 
-source rapids-date-string
+source rapids-datetime-string
 source rapids-init-pip
 
-rapids-generate-version > ./VERSION
+RAPIDS_VERSION_SUFFIX=".post${RAPIDS_DATETIME_STRING}" \
+  rapids-generate-version > ./VERSION
 
 RAPIDS_PIP_WHEEL_ARGS=(
   -w "${RAPIDS_WHEEL_BLD_OUTPUT_DIR}"
@@ -25,5 +26,5 @@ rapids-pip-retry wheel \
 
 ./ci/validate_wheel.sh "${RAPIDS_WHEEL_BLD_OUTPUT_DIR}"
 
-RAPIDS_PACKAGE_NAME="$(rapids-package-name wheel_python dask-cuda --pure)"
+RAPIDS_PACKAGE_NAME="$(rapids-artifact-name wheel_python dask-cuda dask-cuda --pure --arch any)"
 export RAPIDS_PACKAGE_NAME

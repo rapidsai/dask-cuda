@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -25,6 +25,7 @@ from dask_cuda.utils import (
     has_device_memory_resource,
     wait_workers,
 )
+from dask_cuda.worker_common import worker_data_function
 
 
 @patch.dict(
@@ -283,6 +284,32 @@ def test_cudf_spill_disabled(loop):  # noqa: F811
 @pytest.mark.skip_if_no_device_memory(
     "Devices without dedicated memory resources cannot enable cuDF spill"
 )
+def test_cudf_spill_env_var(loop, monkeypatch):  # noqa: F811
+    cudf = pytest.importorskip("cudf")
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
+        with popen(
+            [
+                "dask",
+                "cuda",
+                "worker",
+                "127.0.0.1:9369",
+                "--host",
+                "127.0.0.1",
+                "--no-dashboard",
+            ]
+        ):
+            with Client("127.0.0.1:9369", loop=loop) as client:
+                assert wait_workers(client, n_gpus=get_n_gpus())
+
+                cudf_spill = client.run(cudf.get_option, "spill")
+                for v in cudf_spill.values():
+                    assert v is True
+
+
+@pytest.mark.skip_if_no_device_memory(
+    "Devices without dedicated memory resources cannot enable cuDF spill"
+)
 def test_cudf_spill(loop):  # noqa: F811
     cudf = pytest.importorskip("cudf")
 
@@ -329,6 +356,24 @@ def test_cudf_spill_no_dedicated_memory_error():
         b"cuDF spilling is not supported on devices without dedicated memory"
         in ret.stderr
     )
+
+
+@pytest.mark.parametrize("enable_cudf_spill", [None, True])
+def test_cudf_spill_env_var_no_dedicated_memory_error(monkeypatch, enable_cudf_spill):
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    data = worker_data_function(enable_cudf_spill=enable_cudf_spill)
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        with pytest.raises(ValueError, match="cuDF spilling is not supported"):
+            data(0)
+
+
+def test_cudf_spill_explicit_false_overrides_env_var(monkeypatch):
+    monkeypatch.setenv("CUDF_SPILL", "on")
+    data = worker_data_function(enable_cudf_spill=False, memory_limit=None)
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        data(0)
 
 
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})

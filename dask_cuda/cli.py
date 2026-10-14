@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import absolute_import, division, print_function
@@ -137,16 +137,16 @@ def cuda():
 )
 @click.option(
     "--enable-cudf-spill/--disable-cudf-spill",
-    default=False,
-    show_default=True,
-    help="""Enable automatic cuDF spilling.""",
+    default=None,
+    help="""Enable automatic cuDF spilling. If unset, cuDF's own setting is used, e.g.,
+    the ``CUDF_SPILL`` environment variable.""",
 )
 @click.option(
     "--cudf-spill-stats",
     type=int,
-    default=0,
-    help="""Set the cuDF spilling statistics level. This option has no effect if
-    ``--enable-cudf-spill`` is not specified.""",
+    default=None,
+    help="""Set the cuDF spilling statistics level. If unset, cuDF's own setting is
+    used, e.g., the ``CUDF_SPILL_STATS`` environment variable.""",
 )
 @click.option(
     "--rmm-pool-size",
@@ -404,7 +404,7 @@ def worker(
     argument or a scheduler file passed through the ``--scheduler-file`` option.
 
     See
-    https://docs.rapids.ai/api/dask-cuda/stable/quickstart.html#dask-cuda-worker
+    https://docs.nvidia.com/dask-cuda/latest/quickstart/#dask-cuda-worker
     for info.
     """
     if multiprocessing_method == "forkserver":
