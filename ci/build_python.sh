@@ -1,8 +1,10 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/install_rattler_build.sh"
 
 source rapids-datetime-string
 
