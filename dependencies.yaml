@@ -108,7 +108,7 @@ channels:
 dependencies:
   build_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - rapids-build-backend>=0.4.0,<0.5.0
           - setuptools>=77.0.0
@@ -154,7 +154,7 @@ dependencies:
               cuda: "13.3"
             packages:
               - cuda-version=13.3
-      - output_types: requirements
+      - output_types: [requirements, constraints]
         matrices:
           # if use_cuda_wheels=false is provided, do not add dependencies on any CUDA wheels
           # (e.g. for DLFW and pip devcontainers)
@@ -217,17 +217,17 @@ dependencies:
           - cuda-nvrtc
   develop:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, constraints]
         packages:
           - pre-commit
   docs:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - numpydoc>=1.1.0
           - sphinx
           - sphinx-click>=2.7.1
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages:
           - nvidia-sphinx-theme
       - output_types: conda
@@ -255,7 +255,7 @@ dependencies:
               - python>=3.12
   run_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - click >=8.1
           - cuda-core>=1.0,<2
@@ -277,7 +277,7 @@ dependencies:
           - cuda-core[cu13]>=1.0,<2
   test_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - pytest
           - pytest-cov
@@ -291,7 +291,7 @@ dependencies:
           - &kvikio_unsuffixed kvikio==26.12.*,>=0.0.0a0
     specific:
       # Define additional constraints for testing with oldest dependencies.
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         matrices:
           - matrix: {dependencies: "oldest"}
             packages:
@@ -301,7 +301,7 @@ dependencies:
             packages:
   test_python_cuda:
     specific:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         matrices:
           - matrix:
               cuda: "12.*"
@@ -328,11 +328,11 @@ dependencies:
               - *kvikio_unsuffixed
   test_python_cu12:
     common:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages: *test_python_cu12
   test_python_cu13:
     common:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages: *test_python_cu13
   depends_on_dask_cuda:
     common:
