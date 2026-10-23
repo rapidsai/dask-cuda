@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 set -eou pipefail
@@ -12,7 +12,7 @@ export RAPIDS_CUDA_MAJOR
 DASK_CUDA_WHEELHOUSE=$(rapids-download-from-github "$(rapids-artifact-name wheel_python dask-cuda dask-cuda --pure --arch any)")
 
 # generate constraints (possibly pinning to oldest supported versions of dependencies)
-rapids-generate-pip-constraints py_test "${PIP_CONSTRAINT}"
+rapids-generate-pip-constraints py_test "${PIP_CONSTRAINT}" constraints
 
 rapids-logger "Installing test dependencies"
 
