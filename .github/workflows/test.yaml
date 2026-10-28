@@ -31,6 +31,7 @@ jobs:
       date: ${{ inputs.date }}
       script: ci/test_python.sh
       sha: ${{ inputs.sha }}
+      matrix_type: cuda-13-4-nightly,nightly
     permissions:
       actions: read
       contents: read
@@ -46,6 +47,7 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
       script: ci/test_wheel.sh
+      matrix_type: cuda-13-4-nightly,nightly
     permissions:
       actions: read
       contents: read
