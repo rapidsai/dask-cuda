@@ -16,7 +16,7 @@ To install the latest version of Dask-CUDA along with the CUDA Toolkit:
 
 .. code-block:: bash
 
-    conda install -c rapidsai -c conda-forge dask-cuda cuda-version=13.3
+    conda install -c rapidsai -c conda-forge dask-cuda cuda-version=13.4
 
 UCXX Support
 ~~~~~~~~~~~~
@@ -25,7 +25,7 @@ To install the distributed-ucxx package to support accelerated communications wi
 
 .. code-block:: bash
 
-    conda install -c rapidsai -c conda-forge dask-cuda cuda-version=13.3 distributed-ucxx
+    conda install -c rapidsai -c conda-forge dask-cuda cuda-version=13.4 distributed-ucxx
 
 Pip
 ---
