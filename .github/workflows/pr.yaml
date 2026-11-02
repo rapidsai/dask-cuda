@@ -56,7 +56,7 @@ jobs:
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
       script: ci/build_python.sh
       pure-conda: true
-      matrix_type: cuda-13-4-pr
+      matrix_type: pull-request
     permissions:
       actions: read
       contents: read
@@ -70,7 +70,7 @@ jobs:
     with:
       build_type: pull-request
       script: ci/test_python.sh
-      matrix_type: cuda-13-4-pr,pull-request
+      matrix_type: pull-request
     permissions:
       actions: read
       contents: read
@@ -84,7 +84,7 @@ jobs:
     with:
       build_type: pull-request
       matrix_name: docs-build
-      matrix_type: cuda-13-4-pr
+      matrix_type: pull-request
   docs-build:
     needs: [docs-build-matrix, conda-python-build]
     secrets: inherit # zizmor: ignore[secrets-inherit]
@@ -140,7 +140,7 @@ jobs:
       # Package is pure Python and only ever requires one build.
       # This selects "ARCH=amd64 + the latest supported Python + CUDA".
       matrix_filter: map(select(.ARCH == "amd64")) | sort_by(.CUDA_VER, .PY_VER) | [last]
-      matrix_type: cuda-13-4-pr
+      matrix_type: pull-request
     permissions:
       actions: read
       contents: read
@@ -154,7 +154,7 @@ jobs:
     with:
       build_type: pull-request
       script: "ci/test_wheel.sh"
-      matrix_type: cuda-13-4-pr,pull-request
+      matrix_type: pull-request
     permissions:
       actions: read
       contents: read
