@@ -343,6 +343,8 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             timeout=30,  # Reduced timeout for simpler test
             cwd=os.getcwd(),
         )
+        print("WSLPROBE STDOUT", result.stdout)
+        print("WSLPROBE STDERR", result.stderr)
 
         # Check for successful test execution regardless of warnings
         assert "Context creation successful" in result.stdout, (
