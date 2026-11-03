@@ -13,8 +13,10 @@ from dask.config import canonical_name
 from dask_cuda.utils import (
     cuda_visible_devices,
     get_cpu_affinity,
+    get_cpu_count,
     get_device_total_memory,
     get_gpu_count,
+    get_gpu_uuid,
     get_n_gpus,
     get_preload_options,
     get_ucx_config,
@@ -106,6 +108,18 @@ def test_cpu_affinity():
         affinity = get_cpu_affinity(i)
         os.sched_setaffinity(0, affinity)
         assert os.sched_getaffinity(0) == set(affinity)
+
+
+@pytest.mark.parametrize("by_uuid", [False, True])
+def test_cpu_affinity_not_supported(by_uuid):
+    device = get_gpu_uuid(0) if by_uuid else 0
+    with patch(
+        "pynvml.nvmlDeviceGetCpuAffinity",
+        side_effect=pynvml.NVMLError(pynvml.NVML_ERROR_NOT_SUPPORTED),
+    ):
+        with pytest.warns(UserWarning, match=f"index {device}, setting default"):
+            affinity = get_cpu_affinity(device)
+    assert affinity == list(range(get_cpu_count()))
 
 
 def test_cpu_affinity_and_cuda_visible_devices():
