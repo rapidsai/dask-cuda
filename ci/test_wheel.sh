@@ -43,8 +43,7 @@ set +e
 rapids-logger "pytest dask-cuda"
 python ci/wsl_probe.py
 ./ci/run_pytest.sh \
-  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml" \
-  -k "test_cuda_visible_devices_uuid or test_cuda_context_warning_with_subprocess_warnings or test_gpu_uuid or cpu_affinity"
+  --junitxml="${RAPIDS_TESTS_DIR}/junit-dask-cuda.xml"
 
 
 rapids-logger "Test script exiting with latest error code: $EXITCODE"
