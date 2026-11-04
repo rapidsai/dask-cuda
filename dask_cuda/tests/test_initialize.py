@@ -3,6 +3,7 @@
 
 import multiprocessing as mp
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,10 @@ def _has_v100_gpu():
     if isinstance(name, bytes):
         name = name.decode("utf-8", errors="ignore")
     return "V100" in name
+
+
+def _is_wsl():
+    return "microsoft" in platform.uname().release.lower()
 
 
 def _test_initialize_ucx_tcp():
@@ -412,6 +417,12 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
 @pytest.mark.parametrize("protocol", ["tcp", "ucx"])
 @pytest.mark.xfail(
     _has_v100_gpu(), reason="Known intermittent failure on V100 GPUs", strict=False
+)
+# https://docs.nvidia.com/cuda/wsl-user-guide/index.html#features-not-yet-supported:
+# NVML on WSL does not reliably list active compute processes, which
+# `has_cuda_context()` relies on.
+@pytest.mark.xfail(
+    _is_wsl(), reason="NVML process listing is unreliable on WSL", strict=False
 )
 def test_cuda_context_warning_with_subprocess_warnings(protocol):
     """Test CUDA context warnings from parent and worker subprocesses.
