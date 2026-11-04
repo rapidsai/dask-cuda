@@ -269,6 +269,13 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
             # Create CUDA context at import time, this will be inherited by subprocesses
             Device().set_current()
             print("Problematic library: Created CUDA context at import time")
+            import pynvml
+            from distributed.diagnostics.nvml import has_cuda_context
+            pynvml.nvmlInit()
+            _h = pynvml.nvmlDeviceGetHandleByIndex(0)
+            _p = pynvml.nvmlDeviceGetComputeRunningProcesses_v2(_h)
+            print("WSLPROBE pid", os.getpid(), "n", len(_p), [x.pid for x in _p])
+            print("WSLPROBE has_ctx", has_cuda_context())
             os.environ['SUBPROCESS_CUDA_CONTEXT_CREATED'] = '1'
         except Exception as e:
             raise RuntimeError(
@@ -335,6 +342,12 @@ def _test_cuda_context_warning_with_subprocess_warnings(protocol):
         f.write(main_script_code)
 
     try:
+        print(
+            "WSLPROBE PS",
+            subprocess.run(
+                ["ps", "-eo", "pid,ppid,etime,cmd"], capture_output=True, text=True
+            ).stdout,
+        )
         # Run the main script in a subprocess
         result = subprocess.run(
             [sys.executable, main_script_path],
