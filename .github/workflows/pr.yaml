@@ -28,7 +28,6 @@ jobs:
           repo: ${{ github.repository }}
           target-branch: ${{ fromJSON(steps.get-pr-info.outputs.pr-info).base.ref }}
   checks:
-    if: false
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@main
     permissions:
       contents: read
@@ -112,7 +111,7 @@ jobs:
       docs-projects: dask-cuda
       dry-run: true
   wheel-build:
-    needs: [build-details]
+    needs: [build-details, checks]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
     with:
