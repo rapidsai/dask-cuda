@@ -158,7 +158,7 @@ jobs:
     with:
       build_type: pull-request
       script: "ci/test_wheel.sh"
-      matrix_type: pull-request
+      matrix_type: pull-request,wsl-pr
     permissions:
       actions: read
       contents: read
