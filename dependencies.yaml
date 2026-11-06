@@ -6,7 +6,7 @@ files:
   all:
     output: conda
     matrix:
-      cuda: ["12.9", "13.3"]
+      cuda: ["12.9", "13.4"]
       arch: [x86_64, aarch64]
     includes:
       - build_python
@@ -108,7 +108,7 @@ channels:
 dependencies:
   build_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - rapids-build-backend>=0.4.0,<0.5.0
           - setuptools>=77.0.0
@@ -154,7 +154,11 @@ dependencies:
               cuda: "13.3"
             packages:
               - cuda-version=13.3
-      - output_types: requirements
+          - matrix:
+              cuda: "13.4"
+            packages:
+              - cuda-version=13.4
+      - output_types: [requirements, constraints]
         matrices:
           # if use_cuda_wheels=false is provided, do not add dependencies on any CUDA wheels
           # (e.g. for DLFW and pip devcontainers)
@@ -209,6 +213,11 @@ dependencies:
               use_cuda_wheels: "true"
             packages:
               - cuda-toolkit==13.3.*
+          - matrix:
+              cuda: "13.4"
+              use_cuda_wheels: "true"
+            packages:
+              - cuda-toolkit==13.4.*
   cuda:
     common:
       - output_types: conda
@@ -217,17 +226,17 @@ dependencies:
           - cuda-nvrtc
   develop:
     common:
-      - output_types: [conda, requirements]
+      - output_types: [conda, requirements, constraints]
         packages:
           - pre-commit
   docs:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - numpydoc>=1.1.0
           - sphinx
           - sphinx-click>=2.7.1
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages:
           - nvidia-sphinx-theme
       - output_types: conda
@@ -238,10 +247,6 @@ dependencies:
     specific:
       - output_types: conda
         matrices:
-          - matrix:
-              py: "3.11"
-            packages:
-              - python=3.11
           - matrix:
               py: "3.12"
             packages:
@@ -256,13 +261,13 @@ dependencies:
               - python=3.14
           - matrix:
             packages:
-              - python>=3.11
+              - python>=3.12
   run_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - click >=8.1
-          - cuda-core>=0.5.1,<2
+          - cuda-core>=1.0,<2
           - numpy>=2.0,<3.0
           # 'nvidia-ml-py' provides the 'pynvml' module
           - nvidia-ml-py>=12
@@ -273,15 +278,15 @@ dependencies:
     common:
       - output_types: [pyproject]
         packages:
-          - cuda-core[cu12]>=0.5.1,<2
+          - cuda-core[cu12]>=1.0,<2
   extra_cu13:
     common:
       - output_types: [pyproject]
         packages:
-          - cuda-core[cu13]>=0.5.1,<2
+          - cuda-core[cu13]>=1.0,<2
   test_python:
     common:
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         packages:
           - pytest
           - pytest-cov
@@ -295,16 +300,17 @@ dependencies:
           - &kvikio_unsuffixed kvikio==26.12.*,>=0.0.0a0
     specific:
       # Define additional constraints for testing with oldest dependencies.
-      - output_types: [conda, requirements, pyproject]
+      - output_types: [conda, requirements, constraints, pyproject]
         matrices:
           - matrix: {dependencies: "oldest"}
             packages:
-              - cuda-core==0.5.1
+              # cuda-core 1.0.0 cannot import with CUDA 13.0.x bindings.
+              - cuda-core==1.0.1
           - matrix:
             packages:
   test_python_cuda:
     specific:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         matrices:
           - matrix:
               cuda: "12.*"
@@ -331,11 +337,11 @@ dependencies:
               - *kvikio_unsuffixed
   test_python_cu12:
     common:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages: *test_python_cu12
   test_python_cu13:
     common:
-      - output_types: [requirements, pyproject]
+      - output_types: [requirements, constraints, pyproject]
         packages: *test_python_cu13
   depends_on_dask_cuda:
     common:

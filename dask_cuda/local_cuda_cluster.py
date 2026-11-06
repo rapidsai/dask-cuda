@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2019-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
@@ -78,11 +78,12 @@ class LocalCUDACluster(LocalCluster):
         total device memory (analogous to ``0.8``), and disabled spilling (analogous
         to ``auto``/``0``) on devices without a dedicated memory resource, such as
         system on a chip (SoC) devices.
-    enable_cudf_spill : bool, default False
-        Enable automatic cuDF spilling.
-    cudf_spill_stats : int, default 0
-        Set the cuDF spilling statistics level. This option has no effect if
-        ``enable_cudf_spill=False``.
+    enable_cudf_spill : bool or None, default None
+        Enable automatic cuDF spilling. If ``None``, cuDF's own setting is used, e.g.,
+        the ``CUDF_SPILL`` environment variable.
+    cudf_spill_stats : int or None, default None
+        Set the cuDF spilling statistics level. If ``None``, cuDF's own setting is used,
+        e.g., the ``CUDF_SPILL_STATS`` environment variable.
     local_directory : str or None, default None
         Path on local machine to store temporary files. Can be a string (like
         ``"path/to/files"``) or ``None`` to fall back on the value of
@@ -211,8 +212,8 @@ class LocalCUDACluster(LocalCluster):
         threads_per_worker=1,
         memory_limit="auto",
         device_memory_limit="default",
-        enable_cudf_spill=False,
-        cudf_spill_stats=0,
+        enable_cudf_spill=None,
+        cudf_spill_stats=None,
         local_directory=None,
         protocol=None,
         enable_tcp_over_ucx=None,
@@ -240,7 +241,8 @@ class LocalCUDACluster(LocalCluster):
 
             # cuDF spilling must be enabled in the client/scheduler process too.
             cudf.set_option("spill", enable_cudf_spill)
-            cudf.set_option("spill_stats", cudf_spill_stats)
+            if cudf_spill_stats is not None:
+                cudf.set_option("spill_stats", cudf_spill_stats)
 
         if threads_per_worker < 1:
             raise ValueError("threads_per_worker must be higher than 0.")

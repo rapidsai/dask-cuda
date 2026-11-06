@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
@@ -36,8 +36,11 @@ class CUDFSetup(WorkerPlugin):
         try:
             import cudf
 
-            cudf.set_option("spill", self.spill)
-            cudf.set_option("spill_stats", self.spill_stats)
+            # ``None`` leaves cuDF's own setting (e.g. ``CUDF_SPILL``) untouched.
+            if self.spill is not None:
+                cudf.set_option("spill", self.spill)
+            if self.spill_stats is not None:
+                cudf.set_option("spill_stats", self.spill_stats)
         except ImportError:
             pass
 
