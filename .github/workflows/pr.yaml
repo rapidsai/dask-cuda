@@ -45,6 +45,10 @@ jobs:
           target-branch: ${{ fromJSON(steps.get-pr-info.outputs.pr-info).base.ref }}
   checks:
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@main
+    with:
+      # Main builds seed this cache. PR merge refs can restore it but should not create
+      # duplicate archives that are inaccessible to other PRs.
+      pre-commit-cache-read-only: true
     permissions:
       contents: read
   conda-python-build:
