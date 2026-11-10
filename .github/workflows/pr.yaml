@@ -10,6 +10,7 @@ permissions: {}
 jobs:
   pr-builder:
     needs:
+      - burndown-pr
       - build-details
       - check-nightly-ci
       - checks
@@ -25,6 +26,13 @@ jobs:
       needs: ${{ toJSON(needs) }}
     permissions:
       contents: read
+  burndown-pr:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    uses: rapidsai/shared-workflows/.github/workflows/burndown-pr.yaml@main
+
   build-details:
     uses: rapidsai/shared-workflows/.github/workflows/compute-build-details.yaml@main
   check-nightly-ci:
@@ -52,7 +60,9 @@ jobs:
     permissions:
       contents: read
   conda-python-build:
-    needs: [build-details, checks]
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, build-details, checks]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@main
     with:
@@ -68,7 +78,9 @@ jobs:
       packages: read
       pull-requests: read
   conda-python-tests:
-    needs: conda-python-build
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, conda-python-build]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/conda-python-tests.yaml@main
     with:
@@ -82,6 +94,9 @@ jobs:
       packages: read
       pull-requests: read
   docs-build-matrix:
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr]
     permissions:
       contents: read
     uses: rapidsai/shared-workflows/.github/workflows/compute-matrix.yaml@main
@@ -90,7 +105,9 @@ jobs:
       matrix_name: docs-build
       matrix_type: pull-request
   docs-build:
-    needs: [docs-build-matrix, conda-python-build]
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, docs-build-matrix, conda-python-build]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/custom-job.yaml@main
     strategy:
@@ -109,7 +126,9 @@ jobs:
       packages: read
       pull-requests: read
   publish-api-docs:
-    needs: [docs-build]
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, docs-build]
     permissions:
       contents: read
       id-token: write
@@ -129,7 +148,9 @@ jobs:
       docs-projects: dask-cuda
       dry-run: true
   wheel-build:
-    needs: [build-details, checks]
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, build-details, checks]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
     with:
@@ -152,7 +173,9 @@ jobs:
       packages: read
       pull-requests: read
   wheel-tests:
-    needs: wheel-build
+    if: >-
+      needs.burndown-pr.result == 'success' && needs.burndown-pr.outputs.skip-product-ci != 'true'
+    needs: [burndown-pr, wheel-build]
     secrets: inherit # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/wheels-test.yaml@main
     with:
