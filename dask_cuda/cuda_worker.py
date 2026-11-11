@@ -164,6 +164,18 @@ class CUDAWorker(Server):
         else:
             ports = [None] * nprocs
 
+        if rmm_allocator_external_lib_list is not None:
+            if isinstance(rmm_allocator_external_lib_list, str):
+                rmm_allocator_external_lib_list = [
+                    v.strip() for v in rmm_allocator_external_lib_list.split(",")
+                ]
+            elif not isinstance(rmm_allocator_external_lib_list, list):
+                raise ValueError(
+                    "rmm_allocator_external_lib_list must be either a comma-separated "
+                    "string or a list of strings. Examples: 'torch,cupy' "
+                    "or ['torch', 'cupy']"
+                )
+
         if rmm_pool_size is not None or rmm_managed_memory:
             try:
                 import rmm  # noqa F401
