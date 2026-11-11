@@ -47,7 +47,7 @@ jobs:
       date: ${{ inputs.date }}
       sha: ${{ inputs.sha }}
       script: ci/test_wheel.sh
-      matrix_type: nightly
+      matrix_type: nightly,wsl-nightly
     permissions:
       actions: read
       contents: read
