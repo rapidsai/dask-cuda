@@ -46,6 +46,7 @@ jobs:
   checks:
     uses: rapidsai/shared-workflows/.github/workflows/checks.yaml@main
     with:
+      ignored_pr_jobs: "docs-preview"
       # Main builds seed this cache. PR merge refs can restore it but should not create
       # duplicate archives that are inaccessible to other PRs.
       pre-commit-cache-read-only: true
@@ -108,6 +109,16 @@ jobs:
       id-token: write
       packages: read
       pull-requests: read
+  docs-preview:
+    needs: [docs-build]
+    if: needs.docs-build.result == 'success'
+    permissions:
+      statuses: write
+    uses: rapidsai/shared-workflows/.github/workflows/docs-preview-status.yaml@main
+    with:
+      docs-project: dask-cuda
+      docs-preview-urls: ${{ needs.docs-build.outputs.docs-preview-urls }}
+      sha: ${{ github.sha }}
   publish-api-docs:
     needs: [docs-build]
     permissions:
