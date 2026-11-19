@@ -41,11 +41,12 @@ requirements:
     - numpy >=2.0,<3.0
     # 'nvidia-ml-py' provides the 'pynvml' module
     - nvidia-ml-py>=12
-    - pandas >=1.3
     - rapids-dask-dependency =${{ minor_version }}
     - zict >=2.0.0
     - __linux
     - __glibc >=${{ c_stdlib_version }}
+  run_constraints:
+    - pandas >=1.3
 
 tests:
   - python:
