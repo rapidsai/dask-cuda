@@ -376,6 +376,26 @@ def test_cudf_spill_explicit_false_overrides_env_var(monkeypatch):
         data(0)
 
 
+@pytest.mark.parametrize("device_memory_limit", [0, "0", "0 GiB", "auto"])
+def test_device_memory_limit_disabled_no_dedicated_memory(device_memory_limit):
+    # `dask cuda worker` passes `--device-memory-limit` unparsed, values that
+    # disable spilling must be accepted just like in `LocalCUDACluster`.
+    data = worker_data_function(
+        device_memory_limit=device_memory_limit, memory_limit=MEMORY_LIMIT
+    )
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        assert data(0) is None
+
+
+def test_device_memory_limit_no_dedicated_memory_error():
+    data = worker_data_function(device_memory_limit="1GB", memory_limit=MEMORY_LIMIT)
+
+    with patch("dask_cuda.worker_common.has_device_memory_resource", lambda _: False):
+        with pytest.raises(ValueError, match="device_memory_limit is set"):
+            data(0)
+
+
 @patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "0"})
 def test_dashboard_address(loop):  # noqa: F811
     with popen(["dask", "scheduler", "--port", "9369", "--no-dashboard"]):
