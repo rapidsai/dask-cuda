@@ -199,7 +199,7 @@ def get_cpu_affinity(device_index=None):
         return unpack_bitmask(affinity)
     except (pynvml.NVMLError, ValueError):
         warnings.warn(
-            "Cannot get CPU affinity for device with index %d, setting default affinity"
+            "Cannot get CPU affinity for device with index %s, setting default affinity"
             % device_index
         )
         return list(range(get_cpu_count()))
