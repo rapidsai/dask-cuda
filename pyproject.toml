@@ -149,6 +149,9 @@ filterwarnings = [
     "error::FutureWarning",
     # remove after https://github.com/rapidsai/dask-cuda/issues/1087 is closed
     "ignore:There is no current event loop:DeprecationWarning:tornado",
+    # temporary: emitted by numba-cuda-mlir at import time with NumPy>=2.5,
+    # remove once fixed upstream in numba-cuda-mlir
+    "ignore:The 'generic' unit for NumPy timedelta is deprecated:DeprecationWarning",
 ]
 
 [tool.rapids-build-backend]
