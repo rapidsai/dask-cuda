@@ -7,13 +7,10 @@ channels:
 dependencies:
 - click >=8.1
 - cuda-core>=1.0,<2
-- cuda-nvcc-impl
-- cuda-nvrtc
 - cuda-version=12.9
 - cudf==27.2.*,>=0.0.0a0
 - dask-cudf==27.2.*,>=0.0.0a0
 - distributed-ucxx==0.54.*,>=0.0.0a0
-- kvikio==27.2.*,>=0.0.0a0
 - numpy>=2.0,<3.0
 - numpydoc>=1.1.0
 - nvidia-ml-py>=12
