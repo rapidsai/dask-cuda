@@ -947,8 +947,8 @@ def peer_to_peer_bandwidths(
     aggregate_bandwidth_data
         Dict mapping worker addresses to per-worker bandwidth data
 
-    name_worker
-        Function mapping worker addresses to useful names
+    address_to_index
+        Mapping from worker addresses to indices (in the returned array)
 
     Returns
     -------
